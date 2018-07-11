@@ -1,0 +1,18 @@
+# storage server configuration file.
+
+# 服务器绑定的IP，用于服务之间互通时的地址，如果没有设置，则默认使用socket解析的远程地址
+# 改地址发送给tracker，tracker再通知给所有的组内storage
+bind_address=
+
+# 服务监听端口
+port=1022
+
+# 服务基目录，将log和data保存的目录
+# 目录结构如：
+# -base_path
+#   └logs
+#   └data
+base_path=
+
+
+trackers=127.0.0.1:8080
