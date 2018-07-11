@@ -35,7 +35,7 @@ func startUploadService(port string) {
         for {
             common.Try(func() {
                 listener, e := net.Listen("tcp", ":" + strconv.Itoa(pt))
-                logger.Info("service listening on port: ", pt)
+                logger.Info("service listening on port:", pt)
                 if e != nil {
                     panic(e)
                 } else {
@@ -52,7 +52,7 @@ func startUploadService(port string) {
                     }
                 }
             }, func(i interface{}) {
-                logger.Error("["+ strconv.Itoa(tryTimes) +"] error start service duo to: ", i)
+                logger.Error("["+ strconv.Itoa(tryTimes) +"] error start service duo to:", i)
             })
         }
     }
@@ -72,7 +72,7 @@ func startConnTracker(trackers string) {
 }
 
 func onceConnTracker(tracker string) {
-    logger.Info("start trakcer conn with tracker server: ", tracker)
+    logger.Info("start trakcer conn with tracker server:", tracker)
 
 }
 
@@ -95,7 +95,7 @@ func uploadHandler(conn net.Conn) {
             }
         }
     }, func(i interface{}) {
-        logger.Error("read from client occurs errors: ", i)
+        logger.Error("read from client occurs errors:", i)
     })
     conn.Close()
 }
