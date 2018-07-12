@@ -5,7 +5,7 @@
 bind_address=
 
 # 服务监听端口
-port=1024
+port=1022
 
 # 服务基目录，将log和data保存的目录
 # 目录结构如：
@@ -14,7 +14,5 @@ port=1024
 #   └data
 base_path=
 
-
-trackers=127.0.0.1:8080
 
 secret=OASAD834jA97AAQE761==

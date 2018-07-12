@@ -1,26 +1,50 @@
 package header
 
-// Definition some data headers for data transfer.
-// [operation][meta][body...]
-type UploadHeader struct {
-    operation [2]byte   // operations such as upload, sync, communication.
-                        // 1.   1 1     和tracker通信头
-                        // 2.   2 1     客户端上传通信头
-                        // 3.   3 1     组内同步通信头
-    metaLen [10]byte    // meta length for read meta.
-                        // meta represents a json string.
-    bodyLen [10]byte    // body length for read body.
-                        // if operations is communication then no body.
+import "container/list"
+
+var (
+    COM_REG_STORAGE = []byte{1,1}
+    COM_REG_FILE = []byte{1,1}
+    COM_UPLOAD_FILE = []byte{2,1}
+)
+
+
+type Member struct {
+    BindAddr string `json:"addr"`
+    Port int `json:"port"`
 }
 
-type UploadMetaData struct {
-    Mode int `json:"mode"`
+// 客户端上传文件到storage的meta
+type UploadRequestMeta struct {
+    Secret string   `json:"secret"`  // 通信秘钥
     FileSize int64 `json:"fileSize"`
 }
+// 客户端上传文件到storage的meta
+type UploadResponseMeta struct {
+    Status int                  `json:"status"`     // 状态
+                                                    // 0:success
+                                                    // 1:bad secret
+    Path string `json:"path"`
+}
 
-type CommunicationMetaData struct {
-    Mode int `json:"mode"`
-    Operation int `json:"operation"`// register service, register file
+// storage将自己注册到tracker的meta
+type CommunicationRegisterStorageRequestMeta struct {
+    Secret string   `json:"secret"`  // 通信秘钥
+    BindAddr string `json:"addr"`
+    Group string    `json:"group"`
+    Port int        `json:"port"`
+}
+// tracker响应storage注册自己的meta
+type CommunicationRegisterStorageResponseMeta struct {
+    Status int                  `json:"status"`     // 状态
+                                                    // 0:success
+                                                    // 1:bad secret
+    LookBackAddr string         `json:"backAddr"`   // tracker反看地址
+    GroupMembers *list.List     `json:"members"`    // 我的组内成员（不包括自己）
+}
+
+// storage将文件注册到tracker的meta
+type CommunicationRegisterFileRequestMeta struct {
     BindAddr int `json:"addr"`
     Port int `json:"port"`
 }

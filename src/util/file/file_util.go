@@ -15,6 +15,10 @@ import (
     "util/logger"
 )
 
+// GetFile return a File for read.
+func GetFile(path string) (*os.File, error) {
+    return os.Open(path)
+}
 
 // Copy file.
 // 将文件复制为另一个文件
@@ -143,9 +147,9 @@ func DeleteAll(path string) bool {
 
 // create new file.
 // 创建一个新文件
-func CreateFile(path string) error {
-    _, err := os.Create(path)
-    return err
+func CreateFile(path string) (*os.File, error) {
+    fi, err := os.Create(path)
+    return fi, err
 }
 
 // create new directory.
@@ -251,7 +255,6 @@ func GetFileExt(filePath string) string {
 
 // read properties file on filesystem.
 func ReadPropFile(path string) (map[string] string, error) {
-
     f, e := os.Open(path)
     if e == nil {
         if IsFile1(f) {
