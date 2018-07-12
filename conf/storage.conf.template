@@ -35,3 +35,12 @@ log_level=info
 # 不区分大小写
 rotation_log_interval=d
 
+# 给storage服务器分配的最大磁盘空间大小，例如：
+# 10k, 100MB, 3GB, 1.5T
+# 如果使用的磁盘空间超过该大小，则将拒绝上传，提供只读服务
+assign_disk_space=50G
+
+# 文件分片大小
+# 将大文件拆分为较小的文件分片存储
+# 定义每个小文件的大小，0则不分片，值写法参考规则：assign_disk_space
+slice_size=1M
