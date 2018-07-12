@@ -18,6 +18,7 @@ import (
     "time"
     "crypto/md5"
     "encoding/hex"
+    "hash"
 )
 
 var p, _ = pool.NewPool(1000, 100000)
@@ -98,6 +99,8 @@ func uploadHandler(conn net.Conn) {
     common.Try(func() {
         bs := make([]byte, headerSize)  // meta header size
         bodybuff := make([]byte, bodyBuffSize)     // body buff
+        index := 0 //test
+        md := md5.New()
         for {
             // read header meta data
             len, e3 := readBytes(bs, headerSize, conn)
@@ -124,6 +127,7 @@ func uploadHandler(conn net.Conn) {
 
                 //TODO limit meta size
                 meta := readMetaBytes(metaSize, conn)
+                logger.Info("upload meta: ", meta)
                 if operation == 1 {
                     code := handleUploadFile(meta, conn)
                     if code != 0 {
@@ -133,18 +137,21 @@ func uploadHandler(conn net.Conn) {
                     }
                     continue
                 }
+                index++
                 // begin upload file
                 logger.Info("开始上传文件，文件大小：", bodySize/1024, "KB")
-                fi, _ := file.CreateFile("D:\\godfs\\1.txt")
-                e4 := readBodyBytes(bodySize, bodyBuffSize, bodybuff, fi, conn)
+                fi, _ := file.CreateFile("D:\\godfs\\1.txt" + strconv.Itoa(index))
+                println(&bodybuff)
+                e4 := readBodyBytes(bodySize, bodyBuffSize, bodybuff, fi, conn, md)
+                fi.Close()
                 if e4 != nil {
                     logger.Error("delete file")
                     logger.Error(e4)
-                    fi.Close()
                     file.Delete(fi.Name())
                     break
                 }
             } else {
+                logger.Error("read header failed")
                 if e3 == io.EOF {
                     logger.Error("error EOF from client(1)")
                 } else {
@@ -212,15 +219,22 @@ func readMetaBytes(metaSize uint64, conn net.Conn) string {
 }
 
 // 读取body
-func readBodyBytes(bodySize uint64, bodyBuffSize int, bodybuff []byte, out io.Writer, conn net.Conn) error {
+func readBodyBytes(bodySize uint64, bodyBuffSize int, bodybuff []byte, out io.Writer, conn net.Conn, md hash.Hash) error {
+    println(&bodybuff)
     var readBodySize uint64 = 0
     var nextReadSize int
-    md := md5.New()
     for {
         //read finish
         if readBodySize == bodySize {
             cipherStr := md.Sum(nil)
             logger.Info("上传结束，读取字节：", readBodySize, " MD5= " , hex.EncodeToString(cipherStr))
+            md.Reset()
+
+            /*resp := &header.UploadResponseMeta{}
+            resp.Status = 0
+            resp.Path = ""
+            conn.Write()*/
+
             return nil
         }
         if (bodySize - readBodySize) / uint64(bodyBuffSize) >= 1 {
