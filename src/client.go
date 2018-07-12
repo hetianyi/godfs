@@ -66,7 +66,7 @@ func Upload(path string) error {
 }
 
 func main() {
-    path := "D:/1.txt"
+    path := "D:/nginx-1.8.1.zip"
     Upload(path)
 
 }

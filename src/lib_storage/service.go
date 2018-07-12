@@ -140,7 +140,7 @@ func uploadHandler(conn net.Conn) {
                 index++
                 // begin upload file
                 logger.Info("开始上传文件，文件大小：", bodySize/1024, "KB")
-                fi, _ := file.CreateFile("D:\\godfs\\1.txt" + strconv.Itoa(index))
+                fi, _ := file.CreateFile("D:\\godfs\\nginx-1.8.1("+ strconv.Itoa(index) +").zip")
                 println(&bodybuff)
                 e4 := readBodyBytes(bodySize, bodyBuffSize, bodybuff, fi, conn, md)
                 fi.Close()
