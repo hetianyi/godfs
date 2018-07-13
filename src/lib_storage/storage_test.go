@@ -2,7 +2,6 @@ package lib_storage
 
 import (
     "testing"
-    "common"
     "errors"
     "util/logger"
     "encoding/json"
@@ -11,6 +10,7 @@ import (
     "time"
     "crypto/md5"
     "encoding/hex"
+    "lib_common"
 )
 
 
@@ -24,7 +24,7 @@ func Test1(t *testing.T) {
     /*bool, _ := regexp.Match("^[1-9][0-9]{1,6}$", []byte("190000"))
     println(bool)*/
 
-    common.Try(func() {
+    lib_common.Try(func() {
         r, e := dev(1, 0)
         if e != nil {
             logger.Debug("panic...")

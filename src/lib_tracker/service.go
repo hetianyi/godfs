@@ -15,6 +15,7 @@ import (
     "strings"
     "errors"
     "util/file"
+    "lib_common"
 )
 
 var p, _ = pool.NewPool(1000, 100000)
@@ -38,7 +39,7 @@ func startTrackerService(port string) {
     if pt > 0 {
         tryTimes := 0
         for {
-            common.Try(func() {
+            lib_common.Try(func() {
                 listener, e := net.Listen("tcp", ":" + strconv.Itoa(pt))
                 logger.Info("service listening on port:", pt)
                 if e != nil {
@@ -70,7 +71,7 @@ func registerHandler(conn net.Conn) {
     var headerSize = 18
     var bodyBuffSize = 1024*30
     defer conn.Close()
-    common.Try(func() {
+    lib_common.Try(func() {
         bs := make([]byte, headerSize)  // meta header size
         bodybuff := make([]byte, bodyBuffSize)     // body buff
         for {

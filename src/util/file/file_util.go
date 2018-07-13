@@ -11,8 +11,8 @@ import (
     "bufio"
     "strings"
     "bytes"
-    "common"
     "util/logger"
+    "lib_common"
 )
 
 // GetFile return a File for read.
@@ -35,8 +35,8 @@ func CopyFile(src string, dest string) (s bool, e error) {
         }()
         // if "create or truncate dest file" succeed then start copying
         if err2 == nil {
-            common.Try(func() {
-                bs := make([]byte, common.BUFF_SIZE)
+            lib_common.Try(func() {
+                bs := make([]byte, lib_common.BUFF_SIZE)
                 for {
                     len, e1 := srcfile.Read(bs)
                     if e1 == io.EOF {
@@ -79,8 +79,8 @@ func CopyFileTo(src string, dir string) (s bool, e error) {
         }()
         // if "create or truncate dest file" succeed then start copying
         if err2 == nil {
-            common.Try(func() {
-                bs := make([]byte, common.BUFF_SIZE)
+            lib_common.Try(func() {
+                bs := make([]byte, lib_common.BUFF_SIZE)
                 for {
                     len, e1 := srcfile.Read(bs)
                     if e1 == io.EOF {
@@ -241,11 +241,6 @@ func IsAbsPath(filePath string) bool {
     return path.IsAbs(filePath)
 }
 
-// fix path to standard file path like /xxx/xxx.
-// 将路径格式规范化： ////xx/x/xx///xxx//  --> /xx/x/xx/xxx
-func FixPath(filePath string) string {
-    return path.Dir(filePath)
-}
 
 // get file extension
 // 获取文件的扩展名
@@ -265,7 +260,13 @@ func ReadPropFile(path string) (map[string] string, error) {
                 if e1 == nil || e1 == io.EOF {
                     line = strings.TrimSpace(line)
                     if len(line) != 0 && line[0] != '#' {
-                        li := strings.Split(line, "=")
+                        //li := strings.Split(line, "=")
+                        eIndex := strings.Index(line, "=")
+                        if eIndex == -1 {
+                            logger.Fatal("error parameter: '"+ line +"'")
+                            break
+                        }
+                        li := []string{line[0:eIndex], line[eIndex+1:]}
                         if len(li) > 1 {
                             k := strings.TrimSpace(li[0])
                             v := strings.TrimSpace(joinLeft(li[1:]))

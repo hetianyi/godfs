@@ -6,19 +6,19 @@ import (
     "container/list"
     "regexp"
     "strconv"
-    "common"
     "net"
     "util/pool"
     "io"
     "util/file"
     "bytes"
-    "common/header"
     "encoding/binary"
     "encoding/json"
     "time"
     "crypto/md5"
     "encoding/hex"
     "hash"
+    "lib_common"
+    "lib_common/header"
 )
 
 var p, _ = pool.NewPool(1000, 100000)
@@ -43,7 +43,7 @@ func startUploadService(port string) {
     if pt > 0 {
         tryTimes := 0
         for {
-            common.Try(func() {
+            lib_common.Try(func() {
                 listener, e := net.Listen("tcp", ":" + strconv.Itoa(pt))
                 logger.Info("service listening on port:", pt)
                 if e != nil {
@@ -96,7 +96,7 @@ func uploadHandler(conn net.Conn) {
         conn.Close()
         logger.Info("Close connection/////")
     }()
-    common.Try(func() {
+    lib_common.Try(func() {
         bs := make([]byte, headerSize)  // meta header size
         bodybuff := make([]byte, bodyBuffSize)     // body buff
         index := 0 //test

@@ -4,8 +4,8 @@ import (
     "container/list"
     "errors"
     "sync"
-    "common"
     "util/logger"
+    "lib_common"
 )
 
 
@@ -109,7 +109,7 @@ func (t *Task) Run(pool *Pool) {
         logger.Info("finish task!")
         pool.taskFinish()
     }()
-    common.Try(func() {
+    lib_common.Try(func() {
         t.f()
     }, func(i interface{}) {
         logger.Info("exec task error: ", i)

@@ -14,7 +14,7 @@ port=1024
 # -base_path
 #   └logs
 #   └data
-base_path=/var/godfs
+base_path=
 
 
 trackers=127.0.0.1:8080
@@ -24,19 +24,19 @@ trackers=127.0.0.1:8080
 # 如果校验失败则会拒绝连接
 secret=OASAD834jA97AAQE761==
 
-# 日志级别：debug, info, warn, error
+# 日志级别：debug, info, warn, error, fatal
 # 如不设置，默认为info
 log_level=info
 
-# 轮转日志间隔，支持以小时(h)、天(d)、周(w)、月(m)、年(y)为周期创建及备份日志文件
+# 轮转日志间隔，支持以小时(h)、天(d)、月(m)、年(y)为周期创建及备份日志文件
 # 日志文件名称格式为：
 # godfsLog-yyyy-MM-dd[-h].log
 # 轮转日志到期之后会自动压缩备份为gz文件
 # 不区分大小写
-rotation_log_interval=d
+log_rotation_interval=d
 
 # 给storage服务器分配的最大磁盘空间大小，例如：
-# 10k, 100MB, 3GB, 1.5T
+# 10k, 100MB, 3GB, 1.5T (默认单位为MB)
 # 如果使用的磁盘空间超过该大小，则将拒绝上传，提供只读服务
 assign_disk_space=50G
 
