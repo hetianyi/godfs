@@ -1,4 +1,4 @@
-package lib_common
+package common
 
 func Try(f func(), catcher func(interface{})) {
     defer func() {

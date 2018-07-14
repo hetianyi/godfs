@@ -4,7 +4,7 @@ import (
     "time"
     "strconv"
     "bytes"
-    "lib_common"
+    "app"
 )
 
 
@@ -63,22 +63,22 @@ func GetLongLongDateString(t time.Time) string {
 func GetLogFileName(t time.Time) string {
     var buff bytes.Buffer
     buff.WriteString(strconv.Itoa(GetYear(t)))
-    if lib_common.LOG_INTERVAL == "y" {
+    if app.LOG_INTERVAL == "y" {
         return buff.String()
     }
     buff.WriteString("-")
     buff.WriteString(format2(GetMonth(t)))
-    if lib_common.LOG_INTERVAL == "m" {
+    if app.LOG_INTERVAL == "m" {
         return buff.String()
     }
     buff.WriteString("-")
     buff.WriteString(format2(GetDay(t)))
-    if lib_common.LOG_INTERVAL == "d" {
+    if app.LOG_INTERVAL == "d" {
         return buff.String()
     }
     buff.WriteString("_")
     buff.WriteString(format2(GetHour(t)))
-    if lib_common.LOG_INTERVAL == "h" {
+    if app.LOG_INTERVAL == "h" {
         return buff.String()
     }
     buff.WriteString("_")

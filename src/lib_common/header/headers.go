@@ -19,11 +19,13 @@ type UploadRequestMeta struct {
     Secret string   `json:"secret"`  // 通信秘钥
     FileSize int64 `json:"fileSize"`
 }
+
 // 客户端上传文件到storage的meta
-type UploadResponseMeta struct {
+type ResponseMeta struct {
     Status int                  `json:"status"`     // 状态
                                                     // 0:success
                                                     // 1:bad secret
+                                                    // 2:operation not support
     Path string `json:"path"`
 }
 

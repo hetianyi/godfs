@@ -9,7 +9,7 @@ import (
     "util/file"
     "bytes"
     "regexp"
-    "lib_common"
+    "app"
 )
 
 // check configuration file parameter.
@@ -42,7 +42,7 @@ func Check(m map[string] string, runWith int) {
     } else {
         m["base_path"] = file.FixPath(basePath)
     }
-    lib_common.BASE_PATH = m["base_path"]
+    app.BASE_PATH = m["base_path"]
     prepareDirs(m["base_path"])
 
     // check secret
@@ -63,7 +63,7 @@ func Check(m map[string] string, runWith int) {
         log_rotation_interval = "d"
     }
     m["log_rotation_interval"] = log_rotation_interval
-    lib_common.LOG_INTERVAL = log_rotation_interval
+    app.LOG_INTERVAL = log_rotation_interval
 
     //enable log config
     logger.SetEnable(true)
@@ -83,7 +83,7 @@ func Check(m map[string] string, runWith int) {
         logger.Fatal("error assign_disk_space:", value + unit)
     }
     var _unit = GetUnitVal(unit)
-    lib_common.ASSIGN_DISK_SPACE = int64(_val * float64(_unit))
+    app.ASSIGN_DISK_SPACE = int64(_val * float64(_unit))
     m["assign_disk_space"] = value + unit
 
 
@@ -103,7 +103,7 @@ func Check(m map[string] string, runWith int) {
         logger.Fatal("error slice_size:", value1 + unit1)
     }
     var _unit1 = GetUnitVal(unit1)
-    lib_common.SLICE_SIZE = int64(_val1 * float64(_unit1))
+    app.SLICE_SIZE = int64(_val1 * float64(_unit1))
     m["slice_size"] = value1 + unit1
 
 

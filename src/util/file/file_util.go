@@ -11,7 +11,8 @@ import (
     "bufio"
     "strings"
     "bytes"
-    "lib_common"
+    "util/common"
+    "app"
 )
 
 // GetFile return a File for read.
@@ -34,8 +35,8 @@ func CopyFile(src string, dest string) (s bool, e error) {
         }()
         // if "create or truncate dest file" succeed then start copying
         if err2 == nil {
-            lib_common.Try(func() {
-                bs := make([]byte, lib_common.BUFF_SIZE)
+            common.Try(func() {
+                bs := make([]byte, app.BUFF_SIZE)
                 for {
                     len, e1 := srcfile.Read(bs)
                     if e1 == io.EOF {
@@ -78,8 +79,8 @@ func CopyFileTo(src string, dir string) (s bool, e error) {
         }()
         // if "create or truncate dest file" succeed then start copying
         if err2 == nil {
-            lib_common.Try(func() {
-                bs := make([]byte, lib_common.BUFF_SIZE)
+            common.Try(func() {
+                bs := make([]byte, app.BUFF_SIZE)
                 for {
                     len, e1 := srcfile.Read(bs)
                     if e1 == io.EOF {

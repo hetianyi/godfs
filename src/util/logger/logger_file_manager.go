@@ -4,10 +4,10 @@ import (
     "os"
     "time"
     "util/timeutil"
-    "lib_common"
     "util/file"
     "strconv"
     "sync"
+    "app"
 )
 
 var (
@@ -38,19 +38,19 @@ func check() {
     year_now, month_now, day_now := now.Date()
     hour_now := timeutil.GetHour(now)
 
-    if lib_common.LOG_INTERVAL == "d" {
+    if app.LOG_INTERVAL == "d" {
         if year_last != year_now || int(month_last) != int(month_now) || day_last != day_now {
             resetLogFile(now)
         }
-    } else if lib_common.LOG_INTERVAL == "h" {
+    } else if app.LOG_INTERVAL == "h" {
         if year_last != year_now || int(month_last) != int(month_now) || day_last != day_now || hour_last != hour_now {
             resetLogFile(now)
         }
-    } else if lib_common.LOG_INTERVAL == "m" {
+    } else if app.LOG_INTERVAL == "m" {
         if year_last != year_now || int(month_last) != int(month_now) {
             resetLogFile(now)
         }
-    } else if lib_common.LOG_INTERVAL == "y" {
+    } else if app.LOG_INTERVAL == "y" {
         if year_last != year_now {
             resetLogFile(now)
         }
@@ -65,14 +65,14 @@ func closeLogFile() {
 
 func resetLogFile(now time.Time) {
     closeLogFile()
-    logFileName := lib_common.BASE_PATH + string(os.PathSeparator) + "logs" + string(os.PathSeparator) +
+    logFileName := app.BASE_PATH + string(os.PathSeparator) + "logs" + string(os.PathSeparator) +
                     logFilePrefix + timeutil.GetLogFileName(now) + ".log"
     index := 0
     for {
         index++
         // exist file is a directory, rename to another.
         if file.Exists(logFileName) && file.IsDir(logFileName) {
-            logFileName = lib_common.BASE_PATH + string(os.PathSeparator) + "logs" + string(os.PathSeparator) +
+            logFileName = app.BASE_PATH + string(os.PathSeparator) + "logs" + string(os.PathSeparator) +
                     logFilePrefix + timeutil.GetLogFileName(now) + "(" + strconv.Itoa(index) + ").log"
             continue
         }

@@ -23,6 +23,7 @@ func Upload(path string) error {
 
                 operation := []byte{2, 1}
                 meta := &header.UploadRequestMeta{
+                    Secret: "OASAD834jA97AAQE761==",
                     FileSize: fInfo.Size(),
                 }
                 metaStr, _ := json.Marshal(meta)
