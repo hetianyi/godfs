@@ -32,28 +32,18 @@ func Check(m map[string] string, runWith int) {
     }
 
     // check base_path
-    base_path := strings.TrimSpace(m["base_path"])
-    if base_path == "" {
+    basePath := strings.TrimSpace(m["base_path"])
+    if basePath == "" {
         abs,_ := filepath.Abs(os.Args[0])
         parent, _ := filepath.Split(abs)
         finalPath := parent + "godfs"
         logger.Info("base_path not set, use", finalPath)
-        if file.Exists(finalPath) && file.IsFile(finalPath) {
-            logger.Fatal("could not create base path:", finalPath)
-        }
-
-        if !file.Exists(finalPath) {
-            e := file.CreateDir(finalPath)
-            if e != nil {
-                logger.Fatal("could not create base path:", finalPath)
-            }
-        }
-        //TODO support fix path
-        createDirs(finalPath)
         m["base_path"] = finalPath
-        lib_common.BASE_PATH = finalPath
+    } else {
+        m["base_path"] = file.FixPath(basePath)
     }
-
+    lib_common.BASE_PATH = m["base_path"]
+    prepareDirs(m["base_path"])
 
     // check secret
     m["secret"] = strings.TrimSpace(m["secret"])
@@ -74,6 +64,9 @@ func Check(m map[string] string, runWith int) {
     }
     m["log_rotation_interval"] = log_rotation_interval
     lib_common.LOG_INTERVAL = log_rotation_interval
+
+    //enable log config
+    logger.SetEnable(true)
 
 
     // check assign_disk_space
@@ -210,4 +203,19 @@ func setSystemLogLevel(logLevel string) {
     } else if logLevel == "fatal" {
         logger.SetLogLevel(5)
     }
+}
+
+func prepareDirs(finalPath string) {
+    // if basepath file exists and it is a file.
+    if file.Exists(finalPath) && file.IsFile(finalPath) {
+        logger.Fatal("could not create base path:", finalPath)
+    }
+
+    if !file.Exists(finalPath) {
+        e := file.CreateDir(finalPath)
+        if e != nil {
+            logger.Fatal("could not create base path:", finalPath)
+        }
+    }
+    createDirs(finalPath)
 }

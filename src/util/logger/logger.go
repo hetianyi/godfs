@@ -1,101 +1,62 @@
 package logger
 
 import (
-    "log"
     "os"
     "fmt"
-    "sync"
+    "time"
+    "util/timeutil"
+    "bytes"
+    "strings"
 )
 
-var (
-    _trace   *log.Logger    // 0
-    _debug   *log.Logger    // 1
-    _info    *log.Logger    // 2
-    _warn    *log.Logger    // 3
-    _error   *log.Logger    // 4
-    _fatal   *log.Logger    // 5
-    increRollSize sync.Mutex
+const (
+    tracePrefix = "TRACE - "    // 0
+    debugPrefix = "DEBUG - "    // 1
+    infoPrefix  = "INFO  - "    // 2
+    warnPrefix  = "WARN  - "    // 3
+    errorPrefix = "ERROR - "    // 4
+    fatalPrefix = "FATAL - "    // 5
 )
 
 
 func init() {
-    //fmt.Println("初始化Logger//////")
-    _trace = log.New(os.Stdout, "TRACE - ", log.LstdFlags)
-    _debug = log.New(os.Stdout, "DEBUG - ", log.LstdFlags)
-    _info  = log.New(os.Stdout, "INFO  - ", log.LstdFlags)
-    _warn  = log.New(os.Stdout, "WARN  - ", log.LstdFlags)
-    _error = log.New(os.Stdout, "ERROR - ", log.LstdFlags)
-    _fatal = log.New(os.Stdout, "FATAL - ", log.LstdFlags)
+    now := time.Now()
+    lastLogTime = &now
 }
-
-func doIncreRollSize(size int) {
-    increRollSize.Lock()
-    defer increRollSize.Unlock()
-    if nil != trigger {
-        trigger.check()
-    }
-
-}
-
 
 func Trace(o ...interface{}) {
     if logLevel  > 0 {
         return
     }
-    line := fmt.Sprintln(o)
-    _trace.Println(line)
-    if out != nil {
-        doIncreRollSize(len([]byte(line)))
-        out.Write([]byte(line))
-    }
+    write(tracePrefix, o)
 }
 
 func Debug(o ...interface{}) {
     if logLevel  > 1 {
         return
     }
-    line := fmt.Sprintln(o)
-    _debug.Println(line)
-    if out != nil {
-        doIncreRollSize(len([]byte(line)))
-        out.Write([]byte(line))
-    }
+    write(debugPrefix, o)
 }
 
 func Info(o ...interface{}) {
     if logLevel  > 2 {
         return
     }
-    line := fmt.Sprintln(o)
-    _info.Print(line)
-    if out != nil {
-        doIncreRollSize(len([]byte(line)))
-        out.Write([]byte(line))
-    }
+    write(infoPrefix, o)
 }
 
 func Warn(o ...interface{}) {
     if logLevel  > 3 {
         return
     }
-    line := fmt.Sprintln(o)
-    _warn.Println(line)
-    if out != nil {
-        out.Write([]byte(line))
-        doIncreRollSize(len([]byte(line)))
-    }
+    write(warnPrefix, o)
 }
 
 func Error(o ...interface{}) {
     if logLevel  > 4 {
         return
     }
-    line := fmt.Sprintln(o)
-    _error.Println(line)
-    if out != nil {
-        doIncreRollSize(len([]byte(line)))
-        out.Write([]byte(line))
-    }
+    write(errorPrefix, o)
 }
 
 // !!!this will cause system exists
@@ -103,13 +64,27 @@ func Fatal(o ...interface{}) {
     if logLevel  > 5 {
         return
     }
-    line := fmt.Sprintln(o)
-    _fatal.Println(line)
-    if out != nil {
-        doIncreRollSize(len([]byte(line)))
-        out.Write([]byte(line))
-    }
+    write(fatalPrefix, o)
     os.Exit(0)
 }
 
+
+func write(levelPrefix string, o ...interface{}) {
+    line := fmt.Sprint(o)
+    ts := timeutil.GetLongLongDateString(time.Now())
+
+    var buff bytes.Buffer
+    buff.WriteString(levelPrefix)
+    buff.WriteString(ts)
+    buff.WriteString(" ")
+    buff.WriteString(strings.TrimRight(strings.TrimLeft(line, "["), "]"))
+    //buff.WriteString(line)
+    buff.WriteString("\n")
+
+    fmt.Print(string(buff.Bytes()))
+    if out != nil {
+        check()
+        out.Write(buff.Bytes())
+    }
+}
 

@@ -14,7 +14,7 @@ port=1024
 # -base_path
 #   └logs
 #   └data
-base_path=
+base_path=D:/godfs//
 
 
 trackers=127.0.0.1:8080

@@ -6,25 +6,24 @@ import (
     "util/timeutil"
     "lib_common"
     "util/file"
+    "strconv"
+    "sync"
 )
 
 var (
     enable = false
     logLevel = 2
     out *os.File
-    trigger *Trigger //当前轮转日志达到最大时的触发器
     lastLogTime *time.Time
     logFilePrefix = "godfsLog-"
+    increRollSize sync.Mutex
 )
 
-type ITrigger interface {
-    check(rollSize int64)
-}
 
-type Trigger struct {
-}
+func check() {
+    increRollSize.Lock()
+    defer increRollSize.Unlock()
 
-func (trigger *Trigger) check() {
     if !enable {
         return
     }
@@ -41,37 +40,63 @@ func (trigger *Trigger) check() {
 
     if lib_common.LOG_INTERVAL == "d" {
         if year_last != year_now || int(month_last) != int(month_now) || day_last != day_now {
-            logFileName := logFilePrefix + timeutil.GetLogFileName(now) + ".log"
-            file.CreateFile(lib_common.BASE_PATH)
+            resetLogFile(now)
         }
     } else if lib_common.LOG_INTERVAL == "h" {
-
+        if year_last != year_now || int(month_last) != int(month_now) || day_last != day_now || hour_last != hour_now {
+            resetLogFile(now)
+        }
     } else if lib_common.LOG_INTERVAL == "m" {
-
+        if year_last != year_now || int(month_last) != int(month_now) {
+            resetLogFile(now)
+        }
     } else if lib_common.LOG_INTERVAL == "y" {
-
+        if year_last != year_now {
+            resetLogFile(now)
+        }
     }
-
-
 }
 
-
-
-
-// enable write into log file.
-// till: 参考 timeutil.GetLogFileName()
-func EnableLogFile(_maxRollSize int64, _logLevel int, till int) {
-    enable = true
-    maxRollSize = _maxRollSize
-    if _logLevel < 0 || _logLevel > 5 {
-        _logLevel = 2
+func closeLogFile() {
+    if out != nil {
+        out.Close()
     }
-    logLevel = _logLevel
-
 }
 
+func resetLogFile(now time.Time) {
+    closeLogFile()
+    logFileName := lib_common.BASE_PATH + string(os.PathSeparator) + "logs" + string(os.PathSeparator) +
+                    logFilePrefix + timeutil.GetLogFileName(now) + ".log"
+    index := 0
+    for {
+        index++
+        // exist file is a directory, rename to another.
+        if file.Exists(logFileName) && file.IsDir(logFileName) {
+            logFileName = lib_common.BASE_PATH + string(os.PathSeparator) + "logs" + string(os.PathSeparator) +
+                    logFilePrefix + timeutil.GetLogFileName(now) + "(" + strconv.Itoa(index) + ").log"
+            continue
+        }
+        if !file.Exists(logFileName) || (file.Exists(logFileName) && file.IsFile(logFileName)) {
+            tmp, e1 := file.OpenFile4Write(logFileName)
+            if e1 == nil {
+                out = tmp
+                break
+            } else {
+                if index > 10  {
+                    Fatal("failed create log file:", e1)
+                }
+            }
+        }
+    }
+}
 
 func SetLogLevel(level int) {
     logLevel = level
+}
+
+func SetEnable(e bool) {
+    now := time.Now()
+    resetLogFile(now)
+    enable = e
 }
 

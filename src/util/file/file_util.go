@@ -11,7 +11,6 @@ import (
     "bufio"
     "strings"
     "bytes"
-    "util/logger"
     "lib_common"
 )
 
@@ -108,9 +107,13 @@ func CopyFileTo(src string, dir string) (s bool, e error) {
 
 // check whether the file exists.
 // 判断文件是否存在
+// TODO need to check
 func Exists(path string) bool {
-    _, err := os.Stat(path)
+    fi, err := os.Stat(path)
     if os.IsNotExist(err) {
+        return false
+    }
+    if fi == nil {
         return false
     }
     return true
@@ -149,6 +152,12 @@ func DeleteAll(path string) bool {
 // 创建一个新文件
 func CreateFile(path string) (*os.File, error) {
     fi, err := os.Create(path)
+    return fi, err
+}
+// create new file.
+// 创建一个新文件
+func OpenFile4Write(path string) (*os.File, error) {
+    fi, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
     return fi, err
 }
 
@@ -248,6 +257,42 @@ func GetFileExt(filePath string) string {
     return path.Ext(filePath)
 }
 
+//fix path, ep:
+//    /aaa/aa\\bb\\cc/d/////     -> /aaa/aa/bb/cc/d
+//    E:/aaa/aa\\bb\\cc/d////e/  -> E:/aaa/aa/bb/cc/d/e
+//    ""                         -> .
+//    /                          -> /
+func FixPath(input string) string {
+    input = strings.TrimSpace(input)
+    if len(input) == 0 {
+        return "."
+    }
+    // replace windows path separator '\' to '/'
+    replaceMent := strings.Replace(input, "\\", "/", -1)
+
+    for {
+        if strings.Contains(replaceMent, "//") {
+            replaceMent = strings.Replace(replaceMent, "//", "/", -1)
+            continue
+        }
+        if replaceMent == "/" {
+            return replaceMent
+        }
+        len := len(replaceMent)
+        if len <= 0 {
+            break
+        }
+        if replaceMent[len - 1:] == "/" {
+            replaceMent = replaceMent[0:len - 1]
+        } else  {
+            break
+        }
+    }
+    return replaceMent
+}
+
+
+
 // read properties file on filesystem.
 func ReadPropFile(path string) (map[string] string, error) {
     f, e := os.Open(path)
@@ -263,8 +308,7 @@ func ReadPropFile(path string) (map[string] string, error) {
                         //li := strings.Split(line, "=")
                         eIndex := strings.Index(line, "=")
                         if eIndex == -1 {
-                            logger.Fatal("error parameter: '"+ line +"'")
-                            break
+                            return nil, errors.New("error parameter: '"+ line +"'")
                         }
                         li := []string{line[0:eIndex], line[eIndex+1:]}
                         if len(li) > 1 {
@@ -272,8 +316,7 @@ func ReadPropFile(path string) (map[string] string, error) {
                             v := strings.TrimSpace(joinLeft(li[1:]))
                             propMap[k] = v
                         } else {
-                            logger.Fatal("error parameter: '"+ li[0] +"'")
-                            break
+                            return nil, errors.New("error parameter: '"+ li[0] +"'")
                         }
                     }
                     if e1 == io.EOF {
@@ -281,8 +324,7 @@ func ReadPropFile(path string) (map[string] string, error) {
                     }
                 } else {
                     // real read error.
-                    logger.Fatal("error read from configuration file")
-                    break
+                    return nil, errors.New("error read from configuration file")
                 }
             }
             return propMap, nil

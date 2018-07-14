@@ -2,13 +2,13 @@ package main
 
 import (
     "util/file"
-    "common/header"
     "net"
     "util/logger"
     "encoding/json"
     "encoding/binary"
     "time"
     "bytes"
+    "lib_common/header"
 )
 
 //client demo for upload file to storage server.
