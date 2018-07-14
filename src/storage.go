@@ -2,7 +2,6 @@ package main
 
 import (
     "util/file"
-    "fmt"
     "path/filepath"
     "util/logger"
     "lib_storage"
@@ -12,14 +11,13 @@ import (
 func main() {
     s, _ := file.GetWorkDir()
     m, e := file.ReadPropFile(s + string(filepath.Separator) + "conf" + string(filepath.Separator) + "storage.conf.template")
-    validate.Check(m, 1)
     if e == nil {
+        validate.Check(m, 1)
         for k, v := range m {
-            fmt.Println(k+"="+fmt.Sprint(v))
+            logger.Debug(k, "=", v)
         }
+        lib_storage.StartService(m)
     } else {
         logger.Fatal("error read file:", e)
     }
-
-    lib_storage.StartService(m)
 }
