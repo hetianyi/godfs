@@ -26,7 +26,7 @@ secret=OASAD834jA97AAQE761==
 
 # 日志级别：debug, info, warn, error, fatal
 # 如不设置，默认为info
-log_level=info
+log_level=debug
 
 # 轮转日志间隔，支持以小时(h)、天(d)、月(m)、年(y)为周期创建及备份日志文件
 # 日志文件名称格式为：
