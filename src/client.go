@@ -10,6 +10,8 @@ import (
     "bytes"
     "io"
     "encoding/json"
+    "flag"
+    "fmt"
 )
 
 //client demo for upload file to storage server.
@@ -88,7 +90,13 @@ func Upload(path string) error {
 }
 
 func main() {
-    path := "D:/nginx-1.8.1.zip"
-    Upload(path)
+
+    var uploadFile = flag.String("f", "", "custom config file")
+    flag.Parse()
+
+    fmt.Println("上传文件：", *uploadFile)
+
+   /* path := "D:/nginx-1.8.1.zip"
+    Upload(path)*/
 
 }

@@ -141,7 +141,7 @@ func ReadBytes(buff []byte, len int, conn net.Conn) (int, error) {
 // 读取meta字节信息
 func readMetaBytes(metaSize int, conn net.Conn) (string, error) {
     tmp := make([]byte, metaSize)
-    len, e := ReadBytes(tmp, metaSize, conn)//conn.Read(tmp)
+    len, e := ReadBytes(tmp, metaSize, conn)
     if e != nil && e != io.EOF {
         return "", e
     }
