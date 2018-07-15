@@ -10,6 +10,9 @@ import (
     "util/logger"
     "encoding/hex"
     "hash"
+    "regexp"
+    "strconv"
+    "encoding/json"
 )
 
 const HeaderSize = 18
@@ -26,13 +29,16 @@ func ParseConnRequestMeta(conn net.Conn) (operation int, meta string, bodySize u
     len, e := ReadBytes(headerBytes, HeaderSize, conn)
     if e == nil && len == HeaderSize {
         op := headerBytes[0:2]
-        if bytes.Compare(op, header.COM_REG_FILE) == 0 {// 注册storage
+        if bytes.Compare(op, header.OperationHeadByteMap[0]) == 0 {
+            operation = 0
+        } else if bytes.Compare(op, header.OperationHeadByteMap[1]) == 0 {
             operation = 1
-        } else if bytes.Compare(op, header.COM_REG_FILE) == 0 {// 注册文件
+        } else if bytes.Compare(op, header.OperationHeadByteMap[2]) == 0 {
             operation = 2
-        } else if bytes.Compare(op, header.COM_UPLOAD_FILE) == 0 {// 上传文件
+        } else if bytes.Compare(op, header.OperationHeadByteMap[3]) == 0 {
             operation = 3
         } else {
+            logger.Warn("operation not support")
             // otherwise mark as broken connection
             return 0, "", 0, nil
         }
@@ -48,6 +54,7 @@ func ParseConnRequestMeta(conn net.Conn) (operation int, meta string, bodySize u
         if e1 != nil {
             // otherwise mark as broken connection
             Close(conn)
+            logger.Warn("operation not support")
             return -1, "", 0, e
         }
         return operation, metaStr, bodySize, nil
@@ -55,6 +62,7 @@ func ParseConnRequestMeta(conn net.Conn) (operation int, meta string, bodySize u
     } else {
         // otherwise mark as broken connection
         Close(conn)
+        logger.Warn("read meta bytes failed")
         return -1, "", 0, e
     }
 }
@@ -86,7 +94,7 @@ func ParseConnRequestBody(bodySize uint64, buffer []byte, conn net.Conn, out io.
         } else {// left bytes less than a buffer
             nextReadSize = int(bodySize - readBodySize)
         }
-        len1, e3 := readBytes(buffer, nextReadSize, conn)
+        len1, e3 := ReadBytes(buffer, nextReadSize, conn)
         if e3 == nil && len1 == nextReadSize {
             readBodySize += uint64(len1)
             len2, e1 := out.Write(buffer[0:len1])
@@ -104,16 +112,6 @@ func ParseConnRequestBody(bodySize uint64, buffer []byte, conn net.Conn, out io.
             return e3
         }
     }
-}
-
-
-// 通用字节读取函数，如果读取结束/失败自动关闭连接
-func readBytes(buff []byte, len int, conn net.Conn) (int, error) {
-    len, e := conn.Read(buff[0:len])
-    if len == 0 || e == io.EOF {
-        Close(conn)
-    }
-    return len, e
 }
 
 // close connection
@@ -142,4 +140,58 @@ func readMetaBytes(metaSize uint64, conn net.Conn) (string, error) {
     }
     //should never happen, mark as broken connection
     return "", errors.New("error read meta bytes")
+}
+
+// 从string解析port端口，返回int类型的port端口
+// 如果返回0表示port不合法
+func ParsePort(port string) int {
+    if len(port) < 1 {
+        logger.Error("parameter 'port' not set yet, server will not exit now!")
+        return 0
+    }
+    if b, _ := regexp.Match("^[1-9][0-9]{1,6}$", []byte(port)); b {
+        p, e := strconv.Atoi(port)
+        if e != nil || p > 65535 {
+            logger.Error("parameter 'port' must be a valid port number!")
+            return 0
+        }
+        return p
+    }
+    return 0
+}
+
+// generate meta header data using given meta
+// returns (wrapped meta length bytes, body length bytes, meta json bytes, error)
+func PrepareMetaData(bodySize int64, meta interface{}) ([]byte, []byte, []byte, error) {
+    metaStr, e := json.Marshal(meta)
+    if e != nil {
+        return nil, nil, nil, e
+    }
+
+    metaSize := len(metaStr)
+    metaBytes := make([]byte, 8)
+    bodyBytes := make([]byte, 8)
+
+    binary.BigEndian.PutUint64(metaBytes, uint64(metaSize))
+    binary.BigEndian.PutUint64(bodyBytes, uint64(bodySize))
+    return metaBytes, bodyBytes, metaStr, nil
+}
+
+
+// write response
+func WriteResponse(operation int, conn net.Conn, response interface{}) error {
+    metaSize, bodySize, metaBytes, e := PrepareMetaData(0, response)
+    if e != nil {
+        return e
+    }
+    var buff bytes.Buffer
+    buff.Write(header.OperationHeadByteMap[operation])
+    buff.Write(metaSize)
+    buff.Write(bodySize)
+    buff.Write(metaBytes)
+    len, e1 := conn.Write(buff.Bytes())
+    if e1 != nil || len != buff.Len() {
+        return errors.New("error write response")
+    }
+    return nil
 }

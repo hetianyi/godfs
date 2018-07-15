@@ -4,11 +4,10 @@ import (
     "util/file"
     "net"
     "util/logger"
-    "encoding/json"
-    "encoding/binary"
     "time"
-    "bytes"
     "lib_common/header"
+    "lib_common"
+    "bytes"
 )
 
 //client demo for upload file to storage server.
@@ -21,28 +20,30 @@ func Upload(path string) error {
             if e == nil {
                 fInfo, _ := fi.Stat()
 
-                operation := []byte{2, 1}
+                operation := 2
                 meta := &header.UploadRequestMeta{
                     Secret: "OASAD834jA97AAQE761==",
                     FileSize: fInfo.Size(),
                 }
-                metaStr, _ := json.Marshal(meta)
-                metaSize := uint64(len([]byte(metaStr)))
-                bodySize := uint64(fInfo.Size())
 
-                metaSizeHeader := make([]byte, 8)
-                bodySizeHeader := make([]byte, 8)
-
-                binary.BigEndian.PutUint64(metaSizeHeader, metaSize)
-                binary.BigEndian.PutUint64(bodySizeHeader, bodySize)
+                metaSize, bodySize, metaBytes, e2 := lib_common.PrepareMetaData(fInfo.Size(), meta)
+                if e2 != nil {
+                    logger.Fatal("meta prepare failed")
+                }
 
                 var headerBuff bytes.Buffer
-                headerBuff.Write(operation)
-                headerBuff.Write(metaSizeHeader)
-                headerBuff.Write(bodySizeHeader)
+                headerBuff.Write(header.OperationHeadByteMap[operation])
+                headerBuff.Write(metaSize)
+                headerBuff.Write(bodySize)
 
-                conn.Write(headerBuff.Bytes())
-                conn.Write([]byte(metaStr))
+                len1, e2 := conn.Write(headerBuff.Bytes())
+                if e2 != nil || len1 != headerBuff.Len() {
+                    logger.Fatal("error write meta len")
+                }
+                len2, e3 := conn.Write(metaBytes)
+                if e3 != nil || len2 != len(metaBytes) {
+                    logger.Fatal("error write meta")
+                }
 
                 buff := make([]byte, 1024*30)
                 for {
@@ -54,8 +55,6 @@ func Upload(path string) error {
                         break
                     }
                 }
-
-
             }
             time.Sleep(time.Millisecond * 10)
             //break

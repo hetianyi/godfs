@@ -4,7 +4,6 @@ import (
     "strings"
     "util/logger"
     "container/list"
-    "regexp"
     "strconv"
     "net"
     "util/pool"
@@ -35,7 +34,7 @@ func StartService(config map[string] string) {
 
 // upload listen
 func startUploadService(port string) {
-    pt := parsePort(port)
+    pt := lib_common.ParsePort(port)
     if pt > 0 {
         tryTimes := 0
         for {
@@ -46,7 +45,7 @@ func startUploadService(port string) {
                     panic(e)
                 } else {
                     // keep accept connections.
-                    for  {
+                    for {
                         conn, e1 := listener.Accept()
                         if e1 == nil {
                             p.Exec(func() {
@@ -54,12 +53,15 @@ func startUploadService(port string) {
                             })
                         } else {
                             logger.Info("accept new conn error", e1)
+                            if conn != nil {
+                                lib_common.Close(conn)
+                            }
                         }
                     }
                 }
             }, func(i interface{}) {
                 logger.Error("["+ strconv.Itoa(tryTimes) +"] error shutdown service duo to:", i)
-                time.Sleep(time.Second * 5)
+                time.Sleep(time.Second * 10)
             })
         }
     }
@@ -80,11 +82,11 @@ func startConnTracker(trackers string) {
 
 func onceConnTracker(tracker string) {
     logger.Info("start tracker conn with tracker server:", tracker)
-
 }
 
 
-
+// accept a new connection for file upload
+// the connection will keep till it is broken
 func uploadHandler(conn net.Conn) {
     defer func() {
         logger.Debug("close connection from server")
@@ -149,21 +151,6 @@ func parseTrackers(tracker string) *list.List {
     return ls
 }
 
-func parsePort(port string) int {
-    if len(port) < 2 {
-        logger.Fatal("parameter 'port' not set yet, server will not exit now!")
-    }
-    if b, _ := regexp.Match("^[1-9][0-9]{1,6}$", []byte(port)); b {
-        p, e := strconv.Atoi(port)
-        if e != nil || p > 65535 {
-            logger.Fatal("parameter 'port' must be a valid port number!")
-            return 0
-        }
-        return p
-    }
-    return 0
-}
-
 
 // 处理注册storage
 func checkUploadMeta(meta string, conn net.Conn) (int, *header.UploadRequestMeta) {
@@ -175,6 +162,7 @@ func checkUploadMeta(meta string, conn net.Conn) (int, *header.UploadRequestMeta
         } else {
             //TODO write response
             //close conn
+            logger.Error("error check secret")
             return 1, headerMeta // bad secret
         }
     } else {

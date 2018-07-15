@@ -2,11 +2,16 @@ package header
 
 import "container/list"
 
-var (
-    COM_REG_STORAGE = []byte{1,1}
-    COM_REG_FILE = []byte{1,1}
-    COM_UPLOAD_FILE = []byte{2,1}
-)
+// operation code mapped first 2 bytes
+var OperationHeadByteMap = make(map[int] []byte)
+
+func init() {
+    OperationHeadByteMap[0] = []byte{1,1}   //for tracker server: register storage client
+    OperationHeadByteMap[1] = []byte{1,2}   //for tracker server: register file from client
+    OperationHeadByteMap[2] = []byte{2,1}   //for storage server: upload file from client
+    OperationHeadByteMap[3] = []byte{2,2}   //for storage server: sync file from another storage server
+}
+
 
 
 type Member struct {
