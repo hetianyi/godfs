@@ -22,7 +22,7 @@ const BodyBuffSize = 1024*30
 // operation : 请求操作，0：不支持的操作，1：注册storage，2：注册文件，3：上传文件
 // meta      : 请求头信息
 // err       : 如果发生错误，返回值为operation=-1, meta="", e
-func ParseConnRequestMeta(conn net.Conn) (operation int, meta string, bodySize uint64, err error) {
+func ReadConnMeta(conn net.Conn) (operation int, meta string, bodySize uint64, err error) {
     operation = -1
     headerBytes := make([]byte, HeaderSize)  // meta header size
     // read header meta data
@@ -37,8 +37,10 @@ func ParseConnRequestMeta(conn net.Conn) (operation int, meta string, bodySize u
             operation = 2
         } else if bytes.Compare(op, header.OperationHeadByteMap[3]) == 0 {
             operation = 3
+        } else if bytes.Compare(op, header.OperationHeadByteMap[4]) == 0 {
+            operation = 4
         } else {
-            logger.Warn("operation not support")
+            logger.Debug("operation not support")
             // otherwise mark as broken connection
             return 0, "", 0, nil
         }
@@ -50,11 +52,11 @@ func ParseConnRequestMeta(conn net.Conn) (operation int, meta string, bodySize u
         bodySize := binary.BigEndian.Uint64(bBodySize)
 
         // read meta bytes
-        metaStr, e1 := readMetaBytes(metaSize, conn)
+        metaStr, e1 := readMetaBytes(int(metaSize), conn)
         if e1 != nil {
             // otherwise mark as broken connection
             Close(conn)
-            logger.Warn("operation not support")
+            logger.Debug("operation not support")
             return -1, "", 0, e
         }
         return operation, metaStr, bodySize, nil
@@ -62,7 +64,7 @@ func ParseConnRequestMeta(conn net.Conn) (operation int, meta string, bodySize u
     } else {
         // otherwise mark as broken connection
         Close(conn)
-        logger.Warn("read meta bytes failed")
+        logger.Debug("read meta bytes failed")
         return -1, "", 0, e
     }
 }
@@ -72,7 +74,7 @@ func ParseConnRequestMeta(conn net.Conn) (operation int, meta string, bodySize u
 // meta      : 请求头信息
 // err       : 如果发生错误，返回值为operation=-1, meta="", e
 
-func ParseConnRequestBody(bodySize uint64, buffer []byte, conn net.Conn, out io.WriteCloser, md hash.Hash) error {
+func ReadConnBody(bodySize uint64, buffer []byte, conn net.Conn, out io.WriteCloser, md hash.Hash) error {
     defer func() {
         out.Close()
         md.Reset()
@@ -106,7 +108,7 @@ func ParseConnRequestBody(bodySize uint64, buffer []byte, conn net.Conn, out io.
                 return errors.New("write out error(0)")
             }
         } else {
-            logger.Error("error read body")
+            logger.Error("error read body:", e3)
             Close(conn)
             // 终止循环
             return e3
@@ -121,21 +123,29 @@ func Close(conn net.Conn) {
 
 // 通用字节读取函数，如果读取结束/失败自动关闭连接
 func ReadBytes(buff []byte, len int, conn net.Conn) (int, error) {
-    len, e := conn.Read(buff[0:len])
-    if len == 0 || e == io.EOF {
-        defer conn.Close()
+    read := 0
+    for {
+        l, e := conn.Read(buff[read:len])
+        if l == 0 || e == io.EOF {
+            Close(conn)
+            return 0, errors.New("error read bytes")
+        }
+        if l < len {
+            read = l
+            continue
+        }
+        return len, e
     }
-    return len, e
 }
 
 // 读取meta字节信息
-func readMetaBytes(metaSize uint64, conn net.Conn) (string, error) {
+func readMetaBytes(metaSize int, conn net.Conn) (string, error) {
     tmp := make([]byte, metaSize)
-    len, e := conn.Read(tmp)
+    len, e := ReadBytes(tmp, metaSize, conn)//conn.Read(tmp)
     if e != nil && e != io.EOF {
         return "", e
     }
-    if (e == nil || e == io.EOF) && uint64(len) == metaSize {
+    if (e == nil || e == io.EOF) && len == metaSize {
         return string(tmp[:]), nil
     }
     //should never happen, mark as broken connection

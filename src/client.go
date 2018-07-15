@@ -8,6 +8,8 @@ import (
     "lib_common/header"
     "lib_common"
     "bytes"
+    "io"
+    "encoding/json"
 )
 
 //client demo for upload file to storage server.
@@ -47,14 +49,34 @@ func Upload(path string) error {
 
                 buff := make([]byte, 1024*30)
                 for {
-                    len, e := fi.Read(buff)
-                    if len > 0 {
-                        conn.Write(buff[0:len])
+                    len5, e := fi.Read(buff)
+                    if len5 > 0 {
+                        len3, e4 := conn.Write(buff[0:len5])
+                        if e4 != nil || len3 != len(buff[0:len5]) {
+                            lib_common.Close(conn)
+                            logger.Fatal("error write body:", e4)
+                        }
                     } else {
-                        logger.Error(e)
+                        if e != io.EOF {
+                            lib_common.Close(conn)
+                            logger.Error(e)
+                        } else {
+                            logger.Info("上传完毕")
+                        }
                         break
                     }
                 }
+                _, respMeta, _, e6 := lib_common.ReadConnMeta(conn)
+                if e6 != nil {
+                    logger.Fatal("error read response:", e6)
+                }
+                var resp = &header.UploadResponseMeta{}
+                e7 := json.Unmarshal([]byte(respMeta), resp)
+                if e7 != nil {
+                    lib_common.Close(conn)
+                    logger.Error(e7)
+                }
+                logger.Info(respMeta)
             }
             time.Sleep(time.Millisecond * 10)
             //break

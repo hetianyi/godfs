@@ -7,9 +7,12 @@ var OperationHeadByteMap = make(map[int] []byte)
 
 func init() {
     OperationHeadByteMap[0] = []byte{1,1}   //for tracker server: register storage client
-    OperationHeadByteMap[1] = []byte{1,2}   //for tracker server: register file from client
-    OperationHeadByteMap[2] = []byte{2,1}   //for storage server: upload file from client
-    OperationHeadByteMap[3] = []byte{2,2}   //for storage server: sync file from another storage server
+    OperationHeadByteMap[1] = []byte{2,2}   //for tracker server: register file from client
+    OperationHeadByteMap[2] = []byte{3,1}   //for storage server: upload file from client
+    OperationHeadByteMap[4] = []byte{3,2}   //for all kinds of client        : response
+    OperationHeadByteMap[3] = []byte{4,2}   //for storage server: sync file from another storage server
+
+
 }
 
 
@@ -25,14 +28,16 @@ type UploadRequestMeta struct {
     FileSize int64 `json:"fileSize"`
 }
 
-// 客户端上传文件到storage的meta
-type ResponseMeta struct {
+// upload finish response meta
+type UploadResponseMeta struct {
     Status int                  `json:"status"`     // 状态
                                                     // 0:success
                                                     // 1:bad secret
                                                     // 2:operation not support
     Path string `json:"path"`
 }
+
+
 
 // storage将自己注册到tracker的meta
 type CommunicationRegisterStorageRequestMeta struct {

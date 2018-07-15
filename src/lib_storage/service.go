@@ -97,7 +97,7 @@ func uploadHandler(conn net.Conn) {
         index := 0 //test
         md := md5.New()
         for {
-            operation, meta, bodySize, err := lib_common.ParseConnRequestMeta(conn)
+            operation, meta, bodySize, err := lib_common.ReadConnMeta(conn)
             //respond unSupport operation
             if operation == 0 {
                 //TODO write response
@@ -117,6 +117,14 @@ func uploadHandler(conn net.Conn) {
             // if secret validate failed or meta parse error
             if checkStatus != 0 {
                 lib_common.Close(conn)
+                var response = &header.UploadResponseMeta{
+                    Status: 1,
+                    Path: "",
+                }
+                e5 := lib_common.WriteResponse(4, conn, response)
+                if e5 != nil {
+                    logger.Error(e5)
+                }
                 break
             }
             index++
@@ -124,10 +132,20 @@ func uploadHandler(conn net.Conn) {
             logger.Info("开始上传文件，文件大小：", bodySize/1024, "KB")
             fi, _ := file.CreateFile("D:\\godfs\\nginx-1.8.1("+ strconv.Itoa(index) +").zip")
 
-            e4 := lib_common.ParseConnRequestBody(bodySize, bodyBuff, conn, fi, md)
+            e4 := lib_common.ReadConnBody(bodySize, bodyBuff, conn, fi, md)
             if e4 != nil {
                 logger.Error(e4, "delete file")
                 file.Delete(fi.Name())
+                break
+            }
+            var response = &header.UploadResponseMeta{
+                Status: 0,
+                Path: "/aaa/bbb/ccc",
+            }
+            e5 := lib_common.WriteResponse(4, conn, response)
+            if e5 != nil {
+                lib_common.Close(conn)
+                logger.Error(e5)
                 break
             }
         }
