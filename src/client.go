@@ -94,6 +94,7 @@ func main() {
     var uploadFile = flag.String("f", "", "custom config file")
     flag.Parse()
 
+
     fmt.Println("上传文件：", *uploadFile)
 
    /* path := "D:/nginx-1.8.1.zip"
