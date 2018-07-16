@@ -7,7 +7,6 @@ import (
     "lib_storage"
     "validate"
     "flag"
-    "fmt"
 )
 
 // TODO 文件保存分为group和Initial memeber ID(文件初始成员ID)
@@ -18,9 +17,7 @@ func main() {
     s, _ := file.GetWorkDir()
     s = file.FixPath(s)
     var confPath = flag.String("c", s + string(filepath.Separator) + ".." + string(filepath.Separator) + "conf" + string(filepath.Separator) + "storage.conf.template", "custom config file")
-
     flag.Parse()
-    fmt.Println("confPath ", *confPath)
 
     m, e := file.ReadPropFile(*confPath)
     if e == nil {
