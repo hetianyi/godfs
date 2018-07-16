@@ -211,10 +211,17 @@ func operationUpload(meta string, bodySize uint64, bodyBuff []byte, md hash.Hash
         return e4
     }
 
-    dig := strings.ToUpper(md5[0:2])
-    finalPath := app.BASE_PATH + "/data/" + dig + "/" + md5
+    dig1 := strings.ToUpper(md5[0:2])
+    dig2 := strings.ToUpper(md5[2:4])
+    finalPath := app.BASE_PATH + "/data/" + dig1 + "/" + dig2
     if !file.Exists(finalPath) {
-        eee := file.MoveFile(tmpPath, finalPath)
+        e := file.CreateAllDir(finalPath)
+        if e != nil {
+            return e4
+        }
+    }
+    if !file.Exists(finalPath + "/" + md5) {
+        eee := file.MoveFile(tmpPath, finalPath + "/" + md5)
         if eee != nil {
             logger.Error("error move tmp file from", tmpPath, "to", finalPath)
             // upload success
@@ -238,7 +245,7 @@ func operationUpload(meta string, bodySize uint64, bodyBuff []byte, md hash.Hash
     // upload success
     var response = &header.UploadResponseMeta{
         Status: 0,
-        Path: app.GROUP + "/" + app.INSTANCE_ID + "/" + dig + "/" + md5,
+        Path: app.GROUP + "/" + app.INSTANCE_ID + "/" + md5,
     }
     e5 := lib_common.WriteResponse(4, conn, response)
     if e5 != nil {

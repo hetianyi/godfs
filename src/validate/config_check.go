@@ -12,6 +12,11 @@ import (
     "app"
 )
 
+
+
+var az = []rune{'A', 'B', 'C', 'D', 'E', 'F'}
+var i09 = []rune{'0', '1', '2', '3', '4', '5', '6', '7', '8', '9'}
+
 // check configuration file parameter.
 // if check failed, system will shutdown.
 // runWith:
@@ -111,14 +116,14 @@ func Check(m map[string] string, runWith int) {
 
         // check GROUP
         m["group"] = strings.TrimSpace(m["group"])
-        if m, e := regexp.Match("^[0-9a-zA-Z_]+$", []byte(m["group"])); e != nil && m {
+        if mat, _ := regexp.Match("^[0-9a-zA-Z_]+$", []byte(m["group"])); !mat {
             logger.Fatal("error parameter 'group'")
         }
         app.GROUP = m["group"]
 
         // check instance id
         m["instance_id"] = strings.TrimSpace(m["instance_id"])
-        if m, e := regexp.Match("^[0-9a-zA-Z_]+$", []byte(m["instance_id"])); e != nil && m {
+        if mat, _ := regexp.Match("^[0-9a-zA-Z_]+$", []byte(m["instance_id"])); !mat {
             logger.Fatal("error parameter 'instance_id'")
         }
         app.INSTANCE_ID = m["instance_id"]
@@ -178,15 +183,15 @@ func createDirs(basePath string) {
     if file.Exists(tmpDir) && file.IsFile(tmpDir) {
         logger.Fatal("cannot create data directory:", tmpDir)
     }
-
-    az := []rune{'A', 'B', 'C', 'D', 'E', 'F'}
-    i09 := []rune{'0', '1', '2', '3', '4', '5', '6', '7', '8', '9'}
-    crossCreateDir(dataDir, az, az)
-    crossCreateDir(dataDir, i09, i09)
-    crossCreateDir(dataDir, az, i09)
+    //create dir now disabled
+    /*
+    crossCreateDir(dataDir, az, az, true)
+    crossCreateDir(dataDir, i09, i09, true)
+    crossCreateDir(dataDir, az, i09, true)
+    */
 }
 
-func crossCreateDir(dataDir string, arr1 []rune, arr2 []rune) {
+func crossCreateDir(dataDir string, arr1 []rune, arr2 []rune, deeper bool) {
     for i := range arr1 {
         for k := range arr2 {
             d1 := dataDir + string(os.PathSeparator) + string(arr1[i]) + string(arr2[k])
@@ -212,6 +217,17 @@ func crossCreateDir(dataDir string, arr1 []rune, arr2 []rune) {
                     logger.Fatal("error create dir:", d2)
                     logger.Debug("create data dir:", d2)
                 }
+                logger.Debug("create data dir:", d2)
+            }
+            if deeper {
+                cd1 := string(arr2[k]) + string(arr1[i])
+                crossCreateDir(dataDir + "/" + cd1, az, az, false)
+                crossCreateDir(dataDir + "/" + cd1, i09, i09, false)
+                crossCreateDir(dataDir + "/" + cd1, az, i09, false)
+                cd2 := string(arr1[i]) + string(arr2[k])
+                crossCreateDir(dataDir + "/" + cd2, az, az, false)
+                crossCreateDir(dataDir + "/" + cd2, i09, i09, false)
+                crossCreateDir(dataDir + "/" + cd2, az, i09, false)
             }
         }
     }
