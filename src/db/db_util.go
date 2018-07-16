@@ -8,6 +8,9 @@ import (
     "util/file"
 )
 
+// download sqlite3 studio @
+// https://sqlitestudio.pl/index.rvt?act=download
+
 var db *sql.DB
 
 func init() {
