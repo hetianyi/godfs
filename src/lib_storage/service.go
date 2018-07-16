@@ -14,6 +14,10 @@ import (
     "lib_common"
     "lib_common/header"
     "util/common"
+    "errors"
+    "util/timeutil"
+    "hash"
+    "app"
 )
 
 var p, _ = pool.NewPool(1000, 100000)
@@ -88,23 +92,22 @@ func onceConnTracker(tracker string) {
 // accept a new connection for file upload
 // the connection will keep till it is broken
 func uploadHandler(conn net.Conn) {
+
     defer func() {
         logger.Debug("close connection from server")
         conn.Close()
     }()
-    common.Try(func() {
-        bodyBuff := make([]byte, lib_common.BodyBuffSize)     // body buff
-        index := 0 //test
-        md := md5.New()
-        for {
-            operation, meta, bodySize, err := lib_common.ReadConnMeta(conn)
-            //respond unSupport operation
-            if operation == 0 {
-                //TODO write response
-                //close conn
-                break
-            }
 
+    common.Try(func() {
+
+        // body buff
+        bodyBuff := make([]byte, lib_common.BodyBuffSize)
+        // calculate md5
+        md := md5.New()
+
+        for {
+            // read meta
+            operation, meta, bodySize, err := lib_common.ReadConnMeta(conn)
             if operation == -1 || meta == "" || err != nil {
                 // otherwise mark as broken connection
                 if err != nil {
@@ -113,39 +116,15 @@ func uploadHandler(conn net.Conn) {
                 break
             }
 
-            checkStatus, _ := checkUploadMeta(meta,conn)
+            // check secret
+            checkStatus, _ := checkUploadMeta(meta, conn)
             // if secret validate failed or meta parse error
             if checkStatus != 0 {
-                lib_common.Close(conn)
-                var response = &header.UploadResponseMeta{
-                    Status: 1,
-                    Path: "",
-                }
-                e5 := lib_common.WriteResponse(4, conn, response)
-                if e5 != nil {
-                    logger.Error(e5)
-                }
                 break
             }
-            index++
-            // begin upload file
-            logger.Info("开始上传文件，文件大小：", bodySize/1024, "KB")
-            fi, _ := file.CreateFile("D:\\godfs\\nginx-1.8.1("+ strconv.Itoa(index) +").zip")
-
-            e4 := lib_common.ReadConnBody(bodySize, bodyBuff, conn, fi, md)
-            if e4 != nil {
-                logger.Error(e4, "delete file")
-                file.Delete(fi.Name())
-                break
-            }
-            var response = &header.UploadResponseMeta{
-                Status: 0,
-                Path: "/aaa/bbb/ccc",
-            }
-            e5 := lib_common.WriteResponse(4, conn, response)
-            if e5 != nil {
-                lib_common.Close(conn)
-                logger.Error(e5)
+            ee := operationUpload(meta, bodySize, bodyBuff, md, conn)
+            if ee != nil {
+                logger.Error("error read upload file:", ee)
                 break
             }
         }
@@ -178,8 +157,14 @@ func checkUploadMeta(meta string, conn net.Conn) (int, *header.UploadRequestMeta
         if headerMeta.Secret == secret {
             return 0, headerMeta // success
         } else {
-            //TODO write response
+            var response = &header.UploadResponseMeta{
+                Status: 1,
+                Path: "",
+            }
+            // write response close conn, and not check if success
+            lib_common.WriteResponse(4, conn, response)
             //close conn
+            lib_common.Close(conn)
             logger.Error("error check secret")
             return 1, headerMeta // bad secret
         }
@@ -187,3 +172,84 @@ func checkUploadMeta(meta string, conn net.Conn) (int, *header.UploadRequestMeta
         return 2, nil // parse meta error
     }
 }
+
+// 处理文件上传请求
+func operationUpload(meta string, bodySize uint64, bodyBuff []byte, md hash.Hash, conn net.Conn) error {
+
+    logger.Info("begin read file body, file len is ", bodySize/1024, "KB")
+    checkStatus, _ := checkUploadMeta(meta,conn)
+    // if secret validate failed or meta parse error
+    if checkStatus != 0 {
+        lib_common.Close(conn)
+        var response = &header.UploadResponseMeta{
+            Status: 1,
+            Path: "",
+        }
+        e5 := lib_common.WriteResponse(4, conn, response)
+        if e5 != nil {
+            logger.Error(e5)
+        }
+        return errors.New("error check meta")
+    }
+
+    // begin upload file
+    tmpFileName := timeutil.GetUUID()
+    logger.Info("begin read file body, file len is ", bodySize/1024, "KB")
+    // using tmp ext and rename after upload success
+    tmpPath := file.FixPath(app.BASE_PATH + "/data/tmp/" + tmpFileName)
+    fi, e8 := file.CreateFile(tmpPath)
+    if e8 != nil {
+        lib_common.Close(conn)
+        logger.Error("error create file")
+        return e8
+    }
+
+    // read file bytes
+    md5, e4 := lib_common.ReadConnBody(bodySize, bodyBuff, conn, fi, md)
+    if e4 != nil {
+        file.Delete(fi.Name())
+        return e4
+    }
+
+    dig := strings.ToUpper(md5[0:2])
+    finalPath := app.BASE_PATH + "/data/" + dig + "/" + md5
+    if !file.Exists(finalPath) {
+        eee := file.MoveFile(tmpPath, finalPath)
+        if eee != nil {
+            logger.Error("error move tmp file from", tmpPath, "to", finalPath)
+            // upload success
+            var response = &header.UploadResponseMeta{
+                Status: 3,
+                Path: "",
+            }
+            e9 := lib_common.WriteResponse(4, conn, response)
+            if e9 != nil {
+                lib_common.Close(conn)
+                return e9
+            }
+        }
+    } else {
+        s := file.Delete(tmpPath)
+        if !s {
+            logger.Error("error clean tmp file:", tmpPath)
+        }
+    }
+
+    // upload success
+    var response = &header.UploadResponseMeta{
+        Status: 0,
+        Path: app.GROUP + "/" + app.INSTANCE_ID + "/" + dig + "/" + md5,
+    }
+    e5 := lib_common.WriteResponse(4, conn, response)
+    if e5 != nil {
+        lib_common.Close(conn)
+        return e5
+    }
+    return nil
+}
+
+
+
+
+
+

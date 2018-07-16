@@ -5,8 +5,14 @@ import (
     "strconv"
     "bytes"
     "app"
+    "sync"
 )
 
+
+var (
+    lock = *new(sync.Mutex)
+    increment = 0
+)
 
 // 获取短日期格式：2018-11-11
 func GetDateString(t time.Time) string {
@@ -92,6 +98,11 @@ func GetTimestamp(t time.Time) int64 {
     return t.UnixNano() / 1e6
 }
 
+// get current timestamp in Nanosecond.
+func GetNanosecond(t time.Time) int64 {
+    return t.UnixNano()
+}
+
 func GetYear(t time.Time) int {
     return t.Year()
 }
@@ -114,6 +125,23 @@ func GetSecond(t time.Time) int {
 func GetMillionSecond(t time.Time) int {
     return t.Nanosecond() / 1e6
 }
+
+
+func getGroupIncrement() int {
+    lock.Lock()
+    defer lock.Unlock()
+    increment++
+    if increment > 100000 {
+        increment = 0
+    }
+    return increment
+}
+
+func GetUUID() string {
+    return "tmp_" + strconv.FormatInt(GetNanosecond(time.Now()), 10) + "_" + strconv.Itoa(getGroupIncrement())
+}
+
+
 
 func format2(input int) string {
     if input < 10 {

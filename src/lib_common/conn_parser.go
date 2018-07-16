@@ -19,7 +19,7 @@ const HeaderSize = 18
 const BodyBuffSize = 1024*30
 
 // 解析连接传输数据Meta
-// operation : 请求操作，0：不支持的操作，1：注册storage，2：注册文件，3：上传文件
+// operation : 请求操作，1：注册storage，2：注册文件，3：上传文件
 // meta      : 请求头信息
 // err       : 如果发生错误，返回值为operation=-1, meta="", e
 func ReadConnMeta(conn net.Conn) (operation int, meta string, bodySize uint64, err error) {
@@ -41,8 +41,15 @@ func ReadConnMeta(conn net.Conn) (operation int, meta string, bodySize uint64, e
             operation = 4
         } else {
             logger.Debug("operation not support")
+            var response = &header.UploadResponseMeta{
+                Status: 2,
+                Path: "",
+            }
+            // write response close conn, and not check if success
+            WriteResponse(4, conn, response)
             // otherwise mark as broken connection
-            return 0, "", 0, nil
+            Close(conn)
+            return -1, "", 0, nil
         }
 
         // read meta and body size
@@ -74,8 +81,9 @@ func ReadConnMeta(conn net.Conn) (operation int, meta string, bodySize uint64, e
 // meta      : 请求头信息
 // err       : 如果发生错误，返回值为operation=-1, meta="", e
 
-func ReadConnBody(bodySize uint64, buffer []byte, conn net.Conn, out io.WriteCloser, md hash.Hash) error {
+func ReadConnBody(bodySize uint64, buffer []byte, conn net.Conn, out io.WriteCloser, md hash.Hash) (string, error) {
     defer func() {
+        logger.Debug("close out writer")
         out.Close()
         md.Reset()
     }()
@@ -87,8 +95,9 @@ func ReadConnBody(bodySize uint64, buffer []byte, conn net.Conn, out io.WriteClo
         //read finish
         if readBodySize == bodySize {
             cipherStr := md.Sum(nil)
-            logger.Info("上传结束，读取字节：", readBodySize, " MD5= " , hex.EncodeToString(cipherStr))
-            return nil
+            md5 := hex.EncodeToString(cipherStr)
+            logger.Info("上传结束，读取字节：", readBodySize, " MD5= " , md5)
+            return md5, nil
         }
         // left bytes is more than a buffer
         if (bodySize - readBodySize) / uint64(BodyBuffSize) >= 1 {
@@ -96,6 +105,7 @@ func ReadConnBody(bodySize uint64, buffer []byte, conn net.Conn, out io.WriteClo
         } else {// left bytes less than a buffer
             nextReadSize = int(bodySize - readBodySize)
         }
+        logger.Debug("read next bytes:", nextReadSize, "total is:", bodySize)
         len1, e3 := ReadBytes(buffer, nextReadSize, conn)
         if e3 == nil && len1 == nextReadSize {
             readBodySize += uint64(len1)
@@ -105,13 +115,13 @@ func ReadConnBody(bodySize uint64, buffer []byte, conn net.Conn, out io.WriteClo
             if e1 != nil || e2 != nil || len2 != len1 || len3 != len1 {
                 logger.Error("write out error:", e1, "|", e2)
                 Close(conn)
-                return errors.New("write out error(0)")
+                return "", errors.New("write out error(0)")
             }
         } else {
             logger.Error("error read body:", e3)
             Close(conn)
             // 终止循环
-            return e3
+            return "", e3
         }
     }
 }
@@ -123,19 +133,22 @@ func Close(conn net.Conn) {
 
 // 通用字节读取函数，如果读取结束/失败自动关闭连接
 func ReadBytes(buff []byte, len int, conn net.Conn) (int, error) {
-    read := 0
+     read := 0
     for {
+        if read >= len {
+            break
+        }
         l, e := conn.Read(buff[read:len])
         if l == 0 || e == io.EOF {
             Close(conn)
             return 0, errors.New("error read bytes")
         }
-        if l < len {
-            read = l
+        if l <= len {
+            read += l
             continue
         }
-        return len, e
     }
+    return len, nil
 }
 
 // 读取meta字节信息

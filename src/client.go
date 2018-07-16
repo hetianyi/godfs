@@ -79,6 +79,8 @@ func Upload(path string) error {
                     logger.Error(e7)
                 }
                 logger.Info(respMeta)
+            } else {
+                logger.Fatal("error open file:", e)
             }
             time.Sleep(time.Millisecond * 10)
             //break
@@ -91,13 +93,13 @@ func Upload(path string) error {
 
 func main() {
 
-    var uploadFile = flag.String("f", "", "custom config file")
+    var uploadFile = flag.String("f", "", "the file to be uploaded")
     flag.Parse()
-
-
-    fmt.Println("上传文件：", *uploadFile)
-
-   /* path := "D:/nginx-1.8.1.zip"
-    Upload(path)*/
+    if *uploadFile != "" {
+        fmt.Println("上传文件：", *uploadFile)
+        Upload(*uploadFile)
+    }
+    //path := "D:/nginx-1.8.1.zip"
+    //Upload(path)
 
 }

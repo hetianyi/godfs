@@ -1,5 +1,14 @@
 # storage server configuration file.
 
+
+
+# 组，名称必须符合正则表达式：0-9a-zA-Z_
+group=G01
+
+# 实例ID
+instance_id=001
+
+
 # 服务器绑定的IP，用于服务之间互通时的地址，如果没有设置，则默认使用socket解析的远程地址
 # 改地址发送给tracker，tracker再通知给所有的组内storage
 bind_address=
@@ -26,7 +35,7 @@ secret=OASAD834jA97AAQE761==
 
 # 日志级别：debug, info, warn, error, fatal
 # 如不设置，默认为info
-log_level=debug
+log_level=info
 
 # 轮转日志间隔，支持以小时(h)、天(d)、月(m)、年(y)为周期创建及备份日志文件
 # 日志文件名称格式为：

@@ -108,6 +108,21 @@ func Check(m map[string] string, runWith int) {
 
 
     if runWith == 1 {
+
+        // check GROUP
+        m["group"] = strings.TrimSpace(m["group"])
+        if m, e := regexp.Match("^[0-9a-zA-Z_]+$", []byte(m["group"])); e != nil && m {
+            logger.Fatal("error parameter 'group'")
+        }
+        app.GROUP = m["group"]
+
+        // check instance id
+        m["instance_id"] = strings.TrimSpace(m["instance_id"])
+        if m, e := regexp.Match("^[0-9a-zA-Z_]+$", []byte(m["instance_id"])); e != nil && m {
+            logger.Fatal("error parameter 'instance_id'")
+        }
+        app.INSTANCE_ID = m["instance_id"]
+
         // check trackers
         trackers := strings.TrimSpace(m["trackers"])
         _ts := strings.Split(trackers, ",")
@@ -133,8 +148,9 @@ func Check(m map[string] string, runWith int) {
 
 
 func createDirs(basePath string) {
-    dataDir := basePath + string(os.PathSeparator) + "data"
-    logsDir := basePath + string(os.PathSeparator) + "logs"
+    dataDir := file.FixPath(basePath + string(os.PathSeparator) + "data")
+    logsDir := file.FixPath(basePath + string(os.PathSeparator) + "logs")
+    tmpDir  := file.FixPath(basePath + string(os.PathSeparator) + "data/tmp")
     if !file.Exists(dataDir) {
         e := file.CreateAllDir(dataDir)
         if e != nil {
@@ -147,11 +163,57 @@ func createDirs(basePath string) {
             logger.Fatal("cannot create data directory:", logsDir)
         }
     }
+    if !file.Exists(tmpDir) {
+        e := file.CreateAllDir(tmpDir)
+        if e != nil {
+            logger.Fatal("cannot create data directory:", tmpDir)
+        }
+    }
     if file.Exists(dataDir) && file.IsFile(dataDir) {
         logger.Fatal("cannot create data directory:", dataDir)
     }
     if file.Exists(logsDir) && file.IsFile(logsDir) {
         logger.Fatal("cannot create data directory:", logsDir)
+    }
+    if file.Exists(tmpDir) && file.IsFile(tmpDir) {
+        logger.Fatal("cannot create data directory:", tmpDir)
+    }
+
+    az := []rune{'A', 'B', 'C', 'D', 'E', 'F'}
+    i09 := []rune{'0', '1', '2', '3', '4', '5', '6', '7', '8', '9'}
+    crossCreateDir(dataDir, az, az)
+    crossCreateDir(dataDir, i09, i09)
+    crossCreateDir(dataDir, az, i09)
+}
+
+func crossCreateDir(dataDir string, arr1 []rune, arr2 []rune) {
+    for i := range arr1 {
+        for k := range arr2 {
+            d1 := dataDir + string(os.PathSeparator) + string(arr1[i]) + string(arr2[k])
+            d2 := dataDir + string(os.PathSeparator) + string(arr2[k]) + string(arr1[i])
+            if file.Exists(d1) {
+                if file.IsFile(d1) {
+                    logger.Fatal("error create dir:", d1)
+                }
+            } else {
+                e := file.CreateDir(d1)
+                if e != nil {
+                    logger.Fatal("error create dir:", d1)
+                }
+                logger.Debug("create data dir:", d1)
+            }
+            if file.Exists(d2) {
+                if file.IsFile(d2) {
+                    logger.Fatal("error create dir:", d2)
+                }
+            } else {
+                e := file.CreateDir(d2)
+                if e != nil {
+                    logger.Fatal("error create dir:", d2)
+                    logger.Debug("create data dir:", d2)
+                }
+            }
+        }
     }
 }
 

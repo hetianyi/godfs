@@ -4,6 +4,7 @@ import (
     "testing"
     "fmt"
     "time"
+    "strings"
 )
 
 func Test1(t *testing.T) {
@@ -33,4 +34,13 @@ func Test3(t *testing.T) {
     fmt.Println(GetLogFileName(tm))
     fmt.Println(GetLogFileName(tm))
     fmt.Println(GetLogFileName(tm))
+    fmt.Println(string('z'))
+    fmt.Println(strings.ToUpper("az2597de0e65eedbc867620e744a35ad"[0:2]))
+}
+
+
+func Test4(t *testing.T) {
+    for {
+        fmt.Println(GetUUID())
+    }
 }

@@ -8,4 +8,6 @@ var (
     SLICE_SIZE int64
     LOG_INTERVAL string    //log文件精度：h/d/w/m/y
     BASE_PATH string
+    GROUP string
+    INSTANCE_ID string
 )

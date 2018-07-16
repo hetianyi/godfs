@@ -10,6 +10,10 @@ import (
     "fmt"
 )
 
+// TODO 文件保存分为group和Initial memeber ID(文件初始成员ID)
+// 当客户端下载文件的时候，如果文件尚未在组内全部同步完成，
+// 并且恰好访问到没有同步完成的机器时，客户端会将请求重定向到文件原始服务器
+// exp: /G001(组)/M01(原始服务器)/{MD5}
 func main() {
     s, _ := file.GetWorkDir()
     s = file.FixPath(s)

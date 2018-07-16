@@ -25,7 +25,8 @@ type Member struct {
 // 客户端上传文件到storage的meta
 type UploadRequestMeta struct {
     Secret string   `json:"secret"`  // 通信秘钥
-    FileSize int64 `json:"fileSize"`
+    FileSize int64 `json:"fileSize"` // 文件大小
+    FileExt string `json:"ext"`      //文件扩展名，不包含'.'
 }
 
 // upload finish response meta
@@ -34,6 +35,7 @@ type UploadResponseMeta struct {
                                                     // 0:success
                                                     // 1:bad secret
                                                     // 2:operation not support
+                                                    // 3:server failed, will not close connection
     Path string `json:"path"`
 }
 
