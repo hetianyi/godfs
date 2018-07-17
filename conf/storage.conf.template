@@ -53,3 +53,10 @@ assign_disk_space=50G
 # 将大文件拆分为较小的文件分片存储
 # 定义每个小文件的大小，0则不分片，值写法参考规则：assign_disk_space
 slice_size=1M
+
+
+# 是否启用http协议下载服务
+http_enable=true
+
+# http下载服务监听端口
+http_port=8001

@@ -8,7 +8,9 @@ import (
 )
 
 func Test1(t *testing.T) {
-    fmt.Println(Upload("D:/UltraISO.zip"))
+    //fmt.Println(Upload("D:/UltraISO.zip"))
+    //fmt.Println(Upload("F:/project.rar"))
+    fmt.Println(Upload("D:/1.txt"))
 }
 
 

@@ -20,6 +20,7 @@ import (
     "regexp"
     "io"
     "errors"
+    "net/http"
 )
 
 
@@ -35,6 +36,7 @@ func StartService(config map[string] string) {
     trackers := config["trackers"]
     port := config["port"]
     secret = config["secret"]
+    startDownloadService()
     startUploadService(port)
     startConnTracker(trackers)
 }
@@ -77,6 +79,85 @@ func startUploadService(port string) {
             })
         }
     }
+}
+
+func startDownloadService() {
+
+    if !app.HTTP_ENABLE {
+        logger.Info("http server disabled")
+        return
+    }
+    http.HandleFunc("/download/", func(writer http.ResponseWriter, request *http.Request) {
+        qIndex := strings.Index(request.RequestURI, "?")
+        var servletPath = request.RequestURI
+        if qIndex != -1 {
+            servletPath = request.RequestURI[0:qIndex]
+        }
+
+        pathRegex := "^/download/([0-9a-zA-Z_]+)/([0-9a-zA-Z_]+)/([0-9a-fA-F]{32})$"
+        var md5 string
+        if mat, _ := regexp.Match(pathRegex, []byte(servletPath)); !mat {
+            writer.WriteHeader(404)
+            writer.Write([]byte("Not found."))
+            return
+        }
+        md5 = regexp.MustCompile(pathRegex).ReplaceAllString(servletPath, "${3}")
+        finalPath := GetFilePathByMd5(md5)
+        logger.Info("file path is :", finalPath)
+        if file.Exists(finalPath) {
+            downFile, e := file.GetFile(finalPath)
+            if e != nil {
+                writer.WriteHeader(500)
+                return
+            } else {
+                fInfo, _ := downFile.Stat()
+                headers := writer.Header()
+                headers.Set("Pragma", "public")
+                headers.Set("Expires", "0")
+                headers.Set("Cache-Control", "must-revalidate, post-check=0, pre-check=0")
+                headers.Set("Content-Type", "application/octet-stream")
+                headers.Set("Content-Length", strconv.FormatInt(fInfo.Size(), 10))
+                headers.Set("Content-Disposition", "attachment;filename=测试.rar")
+                headers.Set("Content-Transfer-Encoding", "binary")
+
+                var buff = make([]byte, 1024*10)
+                for {
+                    len, e2 := downFile.Read(buff)
+                    if e2 == nil || e2 == io.EOF {
+                        wl, e5 := writer.Write(buff[0:len])
+                        if e2 == io.EOF {
+                            logger.Info("file download success")
+                            downFile.Close()
+                            break
+                        }
+                        if e5 != nil || wl != len {
+                            logger.Error("error write download file:", e5)
+                            downFile.Close()
+                            break
+                        }
+                    } else {
+                        logger.Error("error read download file:", e2)
+                        downFile.Close()
+                        break
+                    }
+                }
+            }
+        } else {
+            writer.WriteHeader(404)
+            writer.Write([]byte("Not found."))
+            return
+        }
+    })
+
+
+    s := &http.Server{
+        Addr:           ":" + strconv.Itoa(app.HTTP_PORT),
+        ReadTimeout:    10 * time.Second,
+        WriteTimeout:   100 * time.Second,
+        MaxHeaderBytes: 1 << 20,
+    }
+    logger.Info("http server listen on port:", app.HTTP_PORT)
+    go s.ListenAndServe()
 }
 
 // communication with tracker
@@ -347,9 +428,7 @@ func operationDownloadFile(meta string, buff []byte, conn net.Conn) error {
     //initialServer := regexp.MustCompile(pathRegex).ReplaceAllString("/x_/_123/432597de0e65eedbc867620e744a35ad", "${2}")
     md5 := regexp.MustCompile(pathRegex).ReplaceAllString(queryMeta.Path, "${3}")
 
-    dig1 := md5[0:2]
-    dig2 := md5[2:4]
-    finalPath := app.BASE_PATH + "/data/" + dig1 + "/" + dig2 + "/" + md5
+    finalPath := GetFilePathByMd5(md5)
 
     var response = &header.UploadResponseMeta{}
     if file.Exists(finalPath) {
@@ -411,6 +490,18 @@ func operationDownloadFile(meta string, buff []byte, conn net.Conn) error {
     return nil
 }
 
+// check if file exists on the filesystem
+func CheckIfFileExistByMd5(md5 string) bool {
+    if file.Exists(GetFilePathByMd5(md5)) {
+        return true
+    }
+    return false
+}
 
-
+// return file path using md5
+func GetFilePathByMd5(md5 string) string {
+    dig1 := md5[0:2]
+    dig2 := md5[2:4]
+    return app.BASE_PATH + "/data/" + dig1 + "/" + dig2 + "/" + md5
+}
 
