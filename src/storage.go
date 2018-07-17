@@ -17,6 +17,7 @@ import (
 // exp: /G001(组)/M01(原始服务器)/{MD5}
 func main() {
     fmt.Println(os.Args)
+    fmt.Println(filepath.Abs(os.Args[0]))
     s, _ := file.GetWorkDir()
     fmt.Println(s)
     s = file.FixPath(s)
