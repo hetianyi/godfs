@@ -439,8 +439,8 @@ func CheckIfFileExistByMd5(md5 string) bool {
 
 // return file path using md5
 func GetFilePathByMd5(md5 string) string {
-    dig1 := md5[0:2]
-    dig2 := md5[2:4]
+    dig1 := strings.ToUpper(md5[0:2])
+    dig2 := strings.ToUpper(md5[2:4])
     return app.BASE_PATH + "/data/" + dig1 + "/" + dig2 + "/" + md5
 }
 

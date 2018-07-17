@@ -14,7 +14,8 @@ import (
 func Test1(t *testing.T) {
     //fmt.Println(Upload("D:/UltraISO.zip"))
     //fmt.Println(Upload("F:/project.rar"))
-    fmt.Println(Upload("D:/nginx-1.8.1.zip"))
+    //fmt.Println(Upload("D:/nginx-1.8.1.zip"))
+    fmt.Println(Upload("D:/图片/图片.rar"))
 }
 
 
@@ -37,7 +38,7 @@ func Test4(t *testing.T) {
 
 func Test5(t *testing.T) {
     for {
-        conn,_ := http.Get("http://localhost:8001/download/G01/001/3e7cf91a2c854dece2e54a1509551e87")
+        conn,_ := http.Get("http://localhost:8001/download/G01/001/a9a79cfdf784946e72a079c317a0a7c9")
         body := conn.Body
         len, _ := strconv.Atoi(conn.Header.Get("Content-Length"))
         var buffer = make([]byte, len)
@@ -47,6 +48,8 @@ func Test5(t *testing.T) {
         fi.Write(buffer)
         fi.Close()
         body.Close()
+
+        break
     }
 
 }
