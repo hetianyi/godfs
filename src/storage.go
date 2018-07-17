@@ -7,7 +7,6 @@ import (
     "lib_storage"
     "validate"
     "flag"
-    "fmt"
     "os"
 )
 
@@ -16,12 +15,9 @@ import (
 // 并且恰好访问到没有同步完成的机器时，客户端会将请求重定向到文件原始服务器
 // exp: /G001(组)/M01(原始服务器)/{MD5}
 func main() {
-    fmt.Println(os.Args)
-    fmt.Println(filepath.Abs(os.Args[0]))
-    s, _ := file.GetWorkDir()
-    fmt.Println(s)
+    s, _ := filepath.Abs(os.Args[0])
     s = file.FixPath(s)
-    var confPath = flag.String("c", s + string(filepath.Separator) + ".." + string(filepath.Separator) + "conf" + string(filepath.Separator) + "storage.conf.template", "custom config file")
+    var confPath = flag.String("c", s + string(filepath.Separator) + "conf" + string(filepath.Separator) + "storage.conf.template", "custom config file")
     flag.Parse()
 
     m, e := file.ReadPropFile(*confPath)
