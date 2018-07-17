@@ -20,7 +20,7 @@ func main() {
     s = file.FixPath(s)
     var confPath = flag.String("c", s + string(filepath.Separator) + ".." + string(filepath.Separator) + "conf" + string(filepath.Separator) + "storage.conf.template", "custom config file")
     flag.Parse()
-    logger.Info("using config file:", confPath)
+    logger.Info("using config file:", *confPath)
     m, e := file.ReadPropFile(*confPath)
     if e == nil {
         validate.Check(m, 1)
