@@ -15,11 +15,12 @@ import (
 // 并且恰好访问到没有同步完成的机器时，客户端会将请求重定向到文件原始服务器
 // exp: /G001(组)/M01(原始服务器)/{MD5}
 func main() {
-    s, _ := filepath.Abs(os.Args[0])
+    abs, _ := filepath.Abs(os.Args[0])
+    s, _ := filepath.Split(abs)
     s = file.FixPath(s)
-    var confPath = flag.String("c", s + string(filepath.Separator) + "conf" + string(filepath.Separator) + "storage.conf.template", "custom config file")
+    var confPath = flag.String("c", s + string(filepath.Separator) + ".." + string(filepath.Separator) + "conf" + string(filepath.Separator) + "storage.conf.template", "custom config file")
     flag.Parse()
-
+    logger.Info("using config file:", confPath)
     m, e := file.ReadPropFile(*confPath)
     if e == nil {
         validate.Check(m, 1)
