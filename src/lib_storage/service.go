@@ -87,68 +87,8 @@ func startDownloadService() {
         logger.Info("http server disabled")
         return
     }
-    http.HandleFunc("/download/", func(writer http.ResponseWriter, request *http.Request) {
-        qIndex := strings.Index(request.RequestURI, "?")
-        var servletPath = request.RequestURI
-        if qIndex != -1 {
-            servletPath = request.RequestURI[0:qIndex]
-        }
 
-        pathRegex := "^/download/([0-9a-zA-Z_]+)/([0-9a-zA-Z_]+)/([0-9a-fA-F]{32})$"
-        var md5 string
-        if mat, _ := regexp.Match(pathRegex, []byte(servletPath)); !mat {
-            writer.WriteHeader(404)
-            writer.Write([]byte("Not found."))
-            return
-        }
-        md5 = regexp.MustCompile(pathRegex).ReplaceAllString(servletPath, "${3}")
-        finalPath := GetFilePathByMd5(md5)
-        logger.Info("file path is :", finalPath)
-        if file.Exists(finalPath) {
-            downFile, e := file.GetFile(finalPath)
-            if e != nil {
-                writer.WriteHeader(500)
-                return
-            } else {
-                fInfo, _ := downFile.Stat()
-                headers := writer.Header()
-                headers.Set("Pragma", "public")
-                headers.Set("Expires", "0")
-                headers.Set("Cache-Control", "must-revalidate, post-check=0, pre-check=0")
-                headers.Set("Content-Type", "application/octet-stream")
-                headers.Set("Content-Length", strconv.FormatInt(fInfo.Size(), 10))
-                headers.Set("Content-Disposition", "attachment;filename=测试.rar")
-                headers.Set("Content-Transfer-Encoding", "binary")
-
-                var buff = make([]byte, 1024*10)
-                for {
-                    len, e2 := downFile.Read(buff)
-                    if e2 == nil || e2 == io.EOF {
-                        wl, e5 := writer.Write(buff[0:len])
-                        if e2 == io.EOF {
-                            logger.Info("file download success")
-                            downFile.Close()
-                            break
-                        }
-                        if e5 != nil || wl != len {
-                            logger.Error("error write download file:", e5)
-                            downFile.Close()
-                            break
-                        }
-                    } else {
-                        logger.Error("error read download file:", e2)
-                        downFile.Close()
-                        break
-                    }
-                }
-            }
-        } else {
-            writer.WriteHeader(404)
-            writer.Write([]byte("Not found."))
-            return
-        }
-    })
-
+    http.HandleFunc("/download/", DownloadHandler)
 
     s := &http.Server{
         Addr:           ":" + strconv.Itoa(app.HTTP_PORT),
@@ -283,7 +223,6 @@ func operationUpload(meta string, bodySize uint64, bodyBuff []byte, md hash.Hash
     logger.Info("begin read file body, file len is ", bodySize/1024, "KB")
     // begin upload file
     tmpFileName := timeutil.GetUUID()
-    logger.Info("begin read file body, file len is ", bodySize/1024, "KB")
     // using tmp ext and rename after upload success
     tmpPath := file.FixPath(app.BASE_PATH + "/data/tmp/" + tmpFileName)
     fi, e8 := file.CreateFile(tmpPath)

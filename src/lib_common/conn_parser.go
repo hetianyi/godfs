@@ -179,12 +179,12 @@ func ReadConnDownloadBody(bodySize uint64, buffer []byte, conn net.Conn, out io.
 
 
 // close connection
-func Close(conn net.Conn) {
+func Close(conn io.ReadCloser) {
     conn.Close()
 }
 
 // 通用字节读取函数，如果读取结束/失败自动关闭连接
-func ReadBytes(buff []byte, len int, conn net.Conn) (int, error) {
+func ReadBytes(buff []byte, len int, conn io.ReadCloser) (int, error) {
      read := 0
     for {
         if read >= len {
