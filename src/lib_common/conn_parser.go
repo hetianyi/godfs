@@ -39,6 +39,10 @@ func ReadConnMeta(conn net.Conn) (operation int, meta string, bodySize uint64, e
             operation = 3
         } else if bytes.Compare(op, header.OperationHeadByteMap[4]) == 0 {
             operation = 4
+        } else if bytes.Compare(op, header.OperationHeadByteMap[5]) == 0 {
+            operation = 5
+        } else if bytes.Compare(op, header.OperationHeadByteMap[6]) == 0 {
+            operation = 6
         } else {
             logger.Debug("operation not support")
             var response = &header.UploadResponseMeta{
@@ -125,6 +129,54 @@ func ReadConnBody(bodySize uint64, buffer []byte, conn net.Conn, out io.WriteClo
         }
     }
 }
+
+
+// 解析连接传输数据Body(用于客户端下载文件读取文件body)
+// operation : 请求操作，0：不支持的操作，1：注册storage，2：注册文件，3：上传文件
+// meta      : 请求头信息
+// err       : 如果发生错误，返回值为operation=-1, meta="", e
+
+func ReadConnDownloadBody(bodySize uint64, buffer []byte, conn net.Conn, out io.WriteCloser) error {
+    defer func() {
+        logger.Debug("close out writer")
+        out.Close()
+    }()
+    // total read bytes
+    var readBodySize uint64 = 0
+    // next time bytes to read
+    var nextReadSize int
+    for {
+        //read finish
+        if readBodySize == bodySize {
+            logger.Info("下载结束，读取字节：", readBodySize)
+            return nil
+        }
+        // left bytes is more than a buffer
+        if (bodySize - readBodySize) / uint64(BodyBuffSize) >= 1 {
+            nextReadSize = int(BodyBuffSize)
+        } else {// left bytes less than a buffer
+            nextReadSize = int(bodySize - readBodySize)
+        }
+        logger.Debug("read next bytes:", nextReadSize, "total is:", bodySize)
+        len1, e3 := ReadBytes(buffer, nextReadSize, conn)
+        if e3 == nil && len1 == nextReadSize {
+            readBodySize += uint64(len1)
+            len2, e1 := out.Write(buffer[0:len1])
+            // write error
+            if e1 != nil || len2 != len1 {
+                logger.Error("write out error:", e1)
+                Close(conn)
+                return errors.New("write out error(0)")
+            }
+        } else {
+            logger.Error("error read body:", e3)
+            Close(conn)
+            // 终止循环
+            return e3
+        }
+    }
+}
+
 
 // close connection
 func Close(conn net.Conn) {

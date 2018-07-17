@@ -11,6 +11,8 @@ func init() {
     OperationHeadByteMap[2] = []byte{3,1}   //for storage server: upload file from client
     OperationHeadByteMap[4] = []byte{3,2}   //for all kinds of client        : response
     OperationHeadByteMap[3] = []byte{4,2}   //for storage server: sync file from another storage server
+    OperationHeadByteMap[5] = []byte{4,3}   //for storage server: query if file exists
+    OperationHeadByteMap[6] = []byte{4,4}   //for storage server: download file
 
 
 }
@@ -27,6 +29,7 @@ type UploadRequestMeta struct {
     Secret string   `json:"secret"`  // 通信秘钥
     FileSize int64 `json:"fileSize"` // 文件大小
     FileExt string `json:"ext"`      //文件扩展名，不包含'.'
+    Md5 string `json:"md5"`          //文件md5, 如果已存在则不需要上传
 }
 
 // upload finish response meta
@@ -37,7 +40,24 @@ type UploadResponseMeta struct {
                                                     // 2:operation not support
                                                     // 3:server failed, will not close connection
     Path string `json:"path"`
+    FileSize int64 `json:"size"`
+    Exist bool                  `json:"exist"`      // true:the file exists
+                                                    // true:the file does not exists
 }
+
+
+// 客户端查询文件是否存在的meta
+type QueryFileRequestMeta struct {
+    Secret string   `json:"secret"`  // 通信秘钥
+    Md5 string `json:"md5"`          //文件md5, 如果已存在则不需要上传
+}
+
+// 客户端下载文件的meta
+type DownloadFileRequestMeta struct {
+    Secret string   `json:"secret"`  // 通信秘钥
+    Path string `json:"path"`
+}
+
 
 
 

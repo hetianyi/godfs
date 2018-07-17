@@ -14,12 +14,16 @@ import (
     "lib_common"
     "lib_common/header"
     "util/common"
-    "errors"
     "util/timeutil"
     "hash"
     "app"
+    "regexp"
+    "io"
+    "errors"
 )
 
+
+// max client connection set to 1000
 var p, _ = pool.NewPool(1000, 100000)
 
 var secret string
@@ -52,9 +56,13 @@ func startUploadService(port string) {
                     for {
                         conn, e1 := listener.Accept()
                         if e1 == nil {
-                            p.Exec(func() {
+                            ee := p.Exec(func() {
                                 uploadHandler(conn)
                             })
+                            // maybe the poll is full
+                            if ee != nil {
+                                lib_common.Close(conn)
+                            }
                         } else {
                             logger.Info("accept new conn error", e1)
                             if conn != nil {
@@ -99,12 +107,10 @@ func uploadHandler(conn net.Conn) {
     }()
 
     common.Try(func() {
-
         // body buff
         bodyBuff := make([]byte, lib_common.BodyBuffSize)
         // calculate md5
         md := md5.New()
-
         for {
             // read meta
             operation, meta, bodySize, err := lib_common.ReadConnMeta(conn)
@@ -122,10 +128,26 @@ func uploadHandler(conn net.Conn) {
             if checkStatus != 0 {
                 break
             }
-            ee := operationUpload(meta, bodySize, bodyBuff, md, conn)
-            if ee != nil {
-                logger.Error("error read upload file:", ee)
-                break
+
+            // client wants to upload file
+            if operation == 2 {
+                ee := operationUpload(meta, bodySize, bodyBuff, md, conn)
+                if ee != nil {
+                    logger.Error("error read upload file:", ee)
+                    break
+                }
+            } else if operation == 5 {// client wants to query file
+                ee := operationQueryFile(meta, conn)
+                if ee != nil {
+                    logger.Error("error query file:", ee)
+                    break
+                }
+            } else if operation == 6 {// client wants to query file
+                ee := operationDownloadFile(meta, bodyBuff, conn)
+                if ee != nil {
+                    logger.Error("error query file:", ee)
+                    break
+                }
             }
         }
     }, func(i interface{}) {
@@ -160,6 +182,7 @@ func checkUploadMeta(meta string, conn net.Conn) (int, *header.UploadRequestMeta
             var response = &header.UploadResponseMeta{
                 Status: 1,
                 Path: "",
+                Exist: false,
             }
             // write response close conn, and not check if success
             lib_common.WriteResponse(4, conn, response)
@@ -177,21 +200,6 @@ func checkUploadMeta(meta string, conn net.Conn) (int, *header.UploadRequestMeta
 func operationUpload(meta string, bodySize uint64, bodyBuff []byte, md hash.Hash, conn net.Conn) error {
 
     logger.Info("begin read file body, file len is ", bodySize/1024, "KB")
-    checkStatus, _ := checkUploadMeta(meta,conn)
-    // if secret validate failed or meta parse error
-    if checkStatus != 0 {
-        lib_common.Close(conn)
-        var response = &header.UploadResponseMeta{
-            Status: 1,
-            Path: "",
-        }
-        e5 := lib_common.WriteResponse(4, conn, response)
-        if e5 != nil {
-            logger.Error(e5)
-        }
-        return errors.New("error check meta")
-    }
-
     // begin upload file
     tmpFileName := timeutil.GetUUID()
     logger.Info("begin read file body, file len is ", bodySize/1024, "KB")
@@ -228,6 +236,7 @@ func operationUpload(meta string, bodySize uint64, bodyBuff []byte, md hash.Hash
             var response = &header.UploadResponseMeta{
                 Status: 3,
                 Path: "",
+                Exist: false,
             }
             e9 := lib_common.WriteResponse(4, conn, response)
             if e9 != nil {
@@ -242,10 +251,19 @@ func operationUpload(meta string, bodySize uint64, bodyBuff []byte, md hash.Hash
         }
     }
 
+    // try log file md5, but not
+    /*common.Try(func() {
+        db.AddFile(md5)
+    }, func(i interface{}) {
+        logger.Error(i)
+    })*/
+
+
     // upload success
     var response = &header.UploadResponseMeta{
         Status: 0,
         Path: app.GROUP + "/" + app.INSTANCE_ID + "/" + md5,
+        Exist: true,
     }
     e5 := lib_common.WriteResponse(4, conn, response)
     if e5 != nil {
@@ -256,6 +274,142 @@ func operationUpload(meta string, bodySize uint64, bodyBuff []byte, md hash.Hash
 }
 
 
+// 处理文件上传请求
+func operationQueryFile(meta string, conn net.Conn) error {
+    var queryMeta = &header.QueryFileRequestMeta{}
+    e := json.Unmarshal([]byte(meta), queryMeta)
+    if e != nil {
+        var response = &header.UploadResponseMeta {
+            Status: 3,
+            Path: "",
+            Exist: false,
+        }
+        lib_common.WriteResponse(4, conn, response)
+        lib_common.Close(conn)
+        return e
+    }
+
+    dig1 := queryMeta.Md5[0:2]
+    dig2 := queryMeta.Md5[2:4]
+    finalPath := app.BASE_PATH + "/data/" + dig1 + "/" + dig2 + "/" + queryMeta.Md5
+
+    var response = &header.UploadResponseMeta{}
+    if file.Exists(finalPath) {
+        response = &header.UploadResponseMeta {
+            Status: 0,
+            Path: "",
+            Exist: true,
+        }
+    } else {
+        response = &header.UploadResponseMeta {
+            Status: 0,
+            Path: "",
+            Exist: false,
+        }
+    }
+    e1 := lib_common.WriteResponse(4, conn, response)
+    if e1 != nil {
+        lib_common.Close(conn)
+        return e1
+    }
+    return nil
+}
+
+// 处理文件下载请求
+func operationDownloadFile(meta string, buff []byte, conn net.Conn) error {
+    var queryMeta = &header.DownloadFileRequestMeta{}
+    e := json.Unmarshal([]byte(meta), queryMeta)
+    if e != nil {
+        var response = &header.UploadResponseMeta {
+            Status: 3,
+            Path: "",
+            Exist: false,
+        }
+        lib_common.WriteResponse(4, conn, response)
+        lib_common.Close(conn)
+        return e
+    }
+
+    pathRegex := "^/([0-9a-zA-Z_]+)/([0-9a-zA-Z_]+)/([0-9a-fA-F]{32})$"
+    if mat, _ := regexp.Match(pathRegex, []byte(queryMeta.Path)); !mat {
+        var response = &header.UploadResponseMeta {
+            Status: 0,
+            Path: "",
+            Exist: false,
+        }
+        e1 := lib_common.WriteResponse(4, conn, response)
+        if e1 != nil {
+            lib_common.Close(conn)
+            return e1
+        }
+        return nil
+    }
+    //initialServer := regexp.MustCompile(pathRegex).ReplaceAllString("/x_/_123/432597de0e65eedbc867620e744a35ad", "${2}")
+    md5 := regexp.MustCompile(pathRegex).ReplaceAllString(queryMeta.Path, "${3}")
+
+    dig1 := md5[0:2]
+    dig2 := md5[2:4]
+    finalPath := app.BASE_PATH + "/data/" + dig1 + "/" + dig2 + "/" + md5
+
+    var response = &header.UploadResponseMeta{}
+    if file.Exists(finalPath) {
+        response = &header.UploadResponseMeta {
+            Status: 0,
+            Path: "",
+            Exist: true,
+        }
+        downFile, e1 := file.GetFile(finalPath)
+        if e1 != nil {
+            response.Status = 3
+            response.Exist = false
+            e1 := lib_common.WriteResponse(4, conn, response)
+            if e1 != nil {
+                lib_common.Close(conn)
+                return e1
+            }
+            return nil
+        }
+        fInfo, _ := downFile.Stat()
+        response.Status = 0
+        response.Exist = true
+        response.FileSize = fInfo.Size()
+        e4 := lib_common.WriteResponse(4, conn, response)
+        if e4 != nil {
+            lib_common.Close(conn)
+            return e4
+        }
+        for {
+            len, e2 := downFile.Read(buff)
+            if e2 == nil || e2 == io.EOF {
+                wl, e5 := conn.Write(buff[0:len])
+                if e2 == io.EOF {
+                    downFile.Close()
+                    return nil
+                }
+                if e5 != nil || wl != len {
+                    downFile.Close()
+                    lib_common.Close(conn)
+                    return errors.New("error handle download file")
+                }
+            } else {
+                downFile.Close()
+                return e2
+            }
+        }
+    } else {
+        response = &header.UploadResponseMeta {
+            Status: 0,
+            Path: "",
+            Exist: false,
+        }
+        e1 := lib_common.WriteResponse(4, conn, response)
+        if e1 != nil {
+            lib_common.Close(conn)
+            return e1
+        }
+    }
+    return nil
+}
 
 
 
