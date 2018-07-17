@@ -18,6 +18,7 @@ import (
 func main() {
     fmt.Println(os.Args)
     s, _ := file.GetWorkDir()
+    fmt.Println(s)
     s = file.FixPath(s)
     var confPath = flag.String("c", s + string(filepath.Separator) + ".." + string(filepath.Separator) + "conf" + string(filepath.Separator) + "storage.conf.template", "custom config file")
     flag.Parse()
