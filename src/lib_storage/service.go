@@ -93,7 +93,7 @@ func startDownloadService() {
     s := &http.Server{
         Addr:           ":" + strconv.Itoa(app.HTTP_PORT),
         ReadTimeout:    10 * time.Second,
-        WriteTimeout:   100 * time.Second,
+        WriteTimeout:   0,
         MaxHeaderBytes: 1 << 20,
     }
     logger.Info("http server listen on port:", app.HTTP_PORT)
