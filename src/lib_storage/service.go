@@ -136,7 +136,7 @@ func onceConnTracker(tracker string) {
                     }
                 }
             } else {
-                logger.Error("error connect to tracker server:", tracker)
+                logger.Error("(" + strconv.Itoa(retry) + ")error connect to tracker server:", tracker)
                 retry++
                 time.Sleep(time.Second * 10)
             }
