@@ -119,11 +119,10 @@ func startConnTracker(trackers string) {
 // connect to each tracker
 func onceConnTracker(tracker string) {
     logger.Info("start tracker conn with tracker server:", tracker)
-
+    retry := 0
     for {//keep trying to connect to tracker server.
         common.Try(func() {
             conn, e := net.Dial("tcp", tracker)
-            retry := 0
             if e == nil {
                 for { // keep sending client statistic info to tracker server.
                     logger.Debug("send info to tracker server")
@@ -137,7 +136,7 @@ func onceConnTracker(tracker string) {
                     }
                 }
             } else {
-                logger.Error("(" + strconv.Itoa(retry) + ")error connect to tracker server:", tracker)
+                logger.Error("error connect to tracker server:", tracker)
                 retry++
                 time.Sleep(time.Second * 10)
             }
