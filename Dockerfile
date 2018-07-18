@@ -9,5 +9,5 @@ CMD ["/tmp/godfs/bin/storage"]
 FROM alpine:latest
 WORKDIR /tmp
 COPY --from=0 /tmp/godfs/bin/storage .
-COPY --from=0 /tmp/godfs/conf/storage.conf.template .
-CMD ["/tmp/storage", "-c", "storage.conf.template"]
+COPY --from=0 /tmp/godfs/conf/storage.conf .
+CMD ["/tmp/storage", "-c", "storage.conf"]
