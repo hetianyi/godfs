@@ -11,6 +11,7 @@ import (
     "crypto/md5"
     "encoding/hex"
     "util/common"
+    "regexp"
 )
 
 
@@ -99,4 +100,22 @@ func Test5(t *testing.T) {
     md.Write(a)
     cipherStr := md.Sum(nil)
     fmt.Println(hex.EncodeToString(cipherStr))
+}
+
+
+func Test6(t *testing.T) {
+    pathRegexRestful := "^/download/([0-9a-zA-Z_]+)/([0-9a-zA-Z_]+)/([0-9a-fA-F]{32})(/([^/]*))?$"
+    fmt.Println(regexp.Match(pathRegexRestful, []byte("/download/G01/01/432597de0e65eedbc867620e744a35ad")))
+    fmt.Println(regexp.MustCompile(pathRegexRestful).ReplaceAllString("/download/G01/01/432597de0e65eedbc867620e744a35ad/12==-=-=*/", "${5}"))
+    fmt.Println(time.Now().UTC().String())
+}
+
+
+func Test7(t *testing.T) {
+
+    //Wed, 18 Jul 2018 04:49:08 GMT
+
+    gmtLocation, _ := time.LoadLocation("GMT")
+    fmt.Println(time.Now().In(gmtLocation).Format(time.RFC1123))
+
 }

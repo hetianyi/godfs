@@ -11,5 +11,6 @@ var (
     GROUP string
     INSTANCE_ID string
     HTTP_ENABLE bool
+    MIME_TYPES_ENABLE bool
     HTTP_PORT int
 )

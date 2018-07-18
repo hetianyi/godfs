@@ -13,7 +13,8 @@ import (
 // TODO 文件保存分为group和Initial memeber ID(文件初始成员ID)
 // 当客户端下载文件的时候，如果文件尚未在组内全部同步完成，
 // 并且恰好访问到没有同步完成的机器时，客户端会将请求重定向到文件原始服务器
-// exp: /G001(组)/M01(原始服务器)/{MD5}
+// exp: /G001(组)/M01(原始服务器实例ID)/{MD5}[.ext]
+// 文件的原始名称需要客户端自行记录（可能未来加上服务端记录功能）
 func main() {
     abs, _ := filepath.Abs(os.Args[0])
     s, _ := filepath.Split(abs)

@@ -15,7 +15,7 @@ import (
 
 //client demo for upload file to storage server.
 func Upload(path string) error {
-    conn, e := net.Dial("tcp", "ssh.foxless.com:1024")
+    conn, e := net.Dial("tcp", "127.0.0.1:1024")
     if e == nil {
         fi, e := file.GetFile(path)
         if e == nil {

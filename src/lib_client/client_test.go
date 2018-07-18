@@ -15,7 +15,8 @@ func Test1(t *testing.T) {
     //fmt.Println(Upload("D:/UltraISO.zip"))
     //fmt.Println(Upload("F:/project.rar"))
     //fmt.Println(Upload("D:/nginx-1.8.1.zip"))
-    fmt.Println(Upload("D:/图片/图片.rar"))
+    //fmt.Println(Upload("D:/图片/图片.rar"))
+    fmt.Println(Upload("D:/IMG_20161207_155837.jpg"))
 }
 
 

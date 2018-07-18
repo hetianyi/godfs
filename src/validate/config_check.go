@@ -121,6 +121,17 @@ func Check(m map[string] string, runWith int) {
     m["http_enable"] = http_enable
     app.HTTP_ENABLE = http_enable == "true"
 
+    // check enable_mime_types
+    enable_mime_types := strings.ToLower(strings.TrimSpace(m["enable_mime_types"]))
+    if enable_mime_types != "true" && enable_mime_types != "false" {
+        enable_mime_types = "true"
+    }
+    m["enable_mime_types"] = enable_mime_types
+    app.MIME_TYPES_ENABLE = (enable_mime_types == "true") && app.HTTP_ENABLE
+    if app.MIME_TYPES_ENABLE {
+        app.SetMimeTypesEnable()
+    }
+
     // check http_port
     http_port := strings.ToLower(strings.TrimSpace(m["http_port"]))
 
