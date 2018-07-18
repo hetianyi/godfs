@@ -1,3 +1,11 @@
+
+# reference:
+# https://docs.docker.com/develop/develop-images/multistage-build/#before-multi-stage-builds
+# NOTICE:Multi-stage builds are a new feature requiring Docker 17.05 or higher on the daemon and client.
+# docker install : https://get.docker.com
+# author : hetianyi(https://github.com/hetianyi)
+# date   : 2018/07/18
+
 FROM golang:alpine as builder
 RUN apk add git
 WORKDIR /tmp
