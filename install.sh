@@ -1,5 +1,9 @@
 #!/bin/sh
 GOPATH=$PWD
 export GOPATH
-mkdir ./bin
+
+if [ ! -e "./bin" ];then
+    mkdir ./bin
+fi
+
 go build -i -o $PWD/bin/storage ./src/storage.go
