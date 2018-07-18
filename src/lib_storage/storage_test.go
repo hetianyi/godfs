@@ -127,3 +127,7 @@ func Test8(t *testing.T) {
     ls.PushBack("xxx")
     fmt.Println(json.Marshal(ls))
 }
+func Test9(t *testing.T) {
+    var m = make(map[string] int)
+    fmt.Println(m["aaaa"])
+}

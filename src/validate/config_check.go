@@ -26,6 +26,9 @@ var (
 //        1: storage server
 //        2: tracker server
 func Check(m map[string] string, runWith int) {
+
+    replaceParams(m)
+
     // check: bind_address
     //bind_address := m["bind_address"]
 
