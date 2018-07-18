@@ -47,7 +47,7 @@ func DownloadHandler(writer http.ResponseWriter, request *http.Request) {
     headers := writer.Header()
     eTag := request.Header["If-None-Match"]
     // 304 Not Modified
-    if eTag != nil && len(eTag) > 0 && eTag[0] == "\"" + md5 + "\"" {
+    if app.MIME_TYPES_ENABLE && eTag != nil && len(eTag) > 0 && eTag[0] == "\"" + md5 + "\"" {
         setMimeHeaders(md5, &headers)
         writer.WriteHeader(304)
         return

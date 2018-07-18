@@ -1,7 +1,5 @@
 package header
 
-import "container/list"
-
 // operation code mapped first 2 bytes
 var OperationHeadByteMap = make(map[int] []byte)
 
@@ -14,6 +12,8 @@ func init() {
     OperationHeadByteMap[5] = []byte{4,3}   //for storage server: query if file exists
     OperationHeadByteMap[6] = []byte{4,4}   //for storage server: download file
 
+    //OperationHeadByteMap[7] = []byte{10,1}   //for tracker server:
+
 
 }
 
@@ -21,6 +21,7 @@ func init() {
 
 type Member struct {
     BindAddr string `json:"addr"`
+    InstanceId string `json:"instance_id"`
     Port int `json:"port"`
 }
 
@@ -62,19 +63,23 @@ type DownloadFileRequestMeta struct {
 
 
 // storage将自己注册到tracker的meta
+// TODO add more statistic info about storage server
 type CommunicationRegisterStorageRequestMeta struct {
-    Secret string   `json:"secret"`  // 通信秘钥
-    BindAddr string `json:"addr"`
-    Group string    `json:"group"`
-    Port int        `json:"port"`
+    Secret string        `json:"secret"`  // 通信秘钥
+    BindAddr string      `json:"addr"`
+    Group string         `json:"group"`
+    InstanceId string    `json:"instance_id"`
+    Port int             `json:"port"`
 }
 // tracker响应storage注册自己的meta
 type CommunicationRegisterStorageResponseMeta struct {
     Status int                  `json:"status"`     // 状态
                                                     // 0:success
                                                     // 1:bad secret
-    LookBackAddr string         `json:"backAddr"`   // tracker反看地址
-    GroupMembers *list.List     `json:"members"`    // 我的组内成员（不包括自己）
+                                                    // 2:operation not support
+                                                    // 3:server failed, will not close connection
+    LookBackAddr string         `json:"backAddr"`   // tracker反视地址
+    GroupMembers []Member       `json:"members"`    // 我的组内成员（不包括自己）
 }
 
 // storage将文件注册到tracker的meta

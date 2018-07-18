@@ -1,9 +1,5 @@
 # storage server configuration file.
 
-# 服务器绑定的IP，用于服务之间互通时的地址，如果没有设置，则默认使用socket解析的远程地址
-# 改地址发送给tracker，tracker再通知给所有的组内storage
-bind_address=
-
 # 服务监听端口
 port=1022
 
@@ -12,7 +8,17 @@ port=1022
 # -base_path
 #   └logs
 #   └data
-base_path=
+base_path=D:/tracker
 
+
+
+# secret用于服务通信时校验身份
+# 服务之间建立通信时会校验secret
+# 如果校验失败则会拒绝连接
+secret=OASAD834jA97AAQE761==
+
+# 日志级别：debug, info, warn, error, fatal
+# 如不设置，默认为info
+log_level=debug
 
 secret=OASAD834jA97AAQE761==

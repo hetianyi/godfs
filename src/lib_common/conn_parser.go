@@ -244,12 +244,12 @@ func PrepareMetaData(bodySize int64, meta interface{}) ([]byte, []byte, []byte, 
     }
 
     metaSize := len(metaStr)
-    metaBytes := make([]byte, 8)
+    metaSizeBytes := make([]byte, 8)
     bodyBytes := make([]byte, 8)
 
-    binary.BigEndian.PutUint64(metaBytes, uint64(metaSize))
+    binary.BigEndian.PutUint64(metaSizeBytes, uint64(metaSize))
     binary.BigEndian.PutUint64(bodyBytes, uint64(bodySize))
-    return metaBytes, bodyBytes, metaStr, nil
+    return metaSizeBytes, bodyBytes, metaStr, nil
 }
 
 
@@ -267,6 +267,24 @@ func WriteResponse(operation int, conn net.Conn, response interface{}) error {
     len, e1 := conn.Write(buff.Bytes())
     if e1 != nil || len != buff.Len() {
         return errors.New("error write response")
+    }
+    return nil
+}
+
+func WriteMeta(operation int, metaSize []byte, bodySize []byte, meta []byte, conn net.Conn) error {
+    var headerBuff bytes.Buffer
+    headerBuff.Write(header.OperationHeadByteMap[operation])
+    headerBuff.Write(metaSize)
+    headerBuff.Write(bodySize)
+    len1, e2 := conn.Write(headerBuff.Bytes())
+    if e2 != nil || len1 != headerBuff.Len() {
+        Close(conn)
+        return errors.New("error write head bytes")
+    }
+    len2, e3 := conn.Write(meta)
+    if e3 != nil || len2 != len(meta) {
+        Close(conn)
+        return errors.New("error write meta")
     }
     return nil
 }

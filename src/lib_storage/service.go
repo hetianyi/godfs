@@ -29,16 +29,19 @@ var p, _ = pool.NewPool(1000, 100000)
 
 var secret string
 
+var cfg map[string] string
+
 // Start service and listen
 // 1. Start task for upload listen
 // 2. Start task for communication with tracker
 func StartService(config map[string] string) {
+    cfg = config
     trackers := config["trackers"]
     port := config["port"]
     secret = config["secret"]
     startDownloadService()
+    go startConnTracker(trackers)
     startUploadService(port)
-    startConnTracker(trackers)
 }
 
 
@@ -113,10 +116,72 @@ func startConnTracker(trackers string) {
     }
 }
 
+// connect to each tracker
 func onceConnTracker(tracker string) {
     logger.Info("start tracker conn with tracker server:", tracker)
+
+    for {//keep trying to connect to tracker server.
+        common.Try(func() {
+            conn, e := net.Dial("tcp", tracker)
+            retry := 0
+            if e == nil {
+                for { // keep sending client statistic info to tracker server.
+                    logger.Debug("send info to tracker server")
+                    //TODO
+                    e1 := onConnectTrackerTask(conn)
+                    if e1 != nil {
+                        logger.Error("error keep connection with tracker server:", e1)
+                        break
+                    } else {
+                        time.Sleep(time.Second * 5)
+                    }
+                }
+            } else {
+                logger.Error("(" + strconv.Itoa(retry) + ")error connect to tracker server:", tracker)
+                retry++
+                time.Sleep(time.Second * 10)
+            }
+        }, func(i interface{}) {
+
+        })
+    }
 }
 
+
+func onConnectTrackerTask(conn net.Conn) error {
+    regMeta := &header.CommunicationRegisterStorageRequestMeta{
+        Secret: cfg["secret"],
+        Group: cfg["group"],
+        InstanceId: cfg["instance_id"],
+        BindAddr: cfg["bind_address"],
+        Port: lib_common.ParsePort(cfg["port"]),
+    }
+    metaSizeBytes, bodyBytes, metaStr, e1 := lib_common.PrepareMetaData(0, regMeta)
+    if e1 != nil {
+        logger.Error(e1)
+        lib_common.Close(conn)
+        return e1
+    }
+    e2 := lib_common.WriteMeta(0, metaSizeBytes, bodyBytes, []byte(metaStr), conn)
+    if nil != e2 {
+        lib_common.Close(conn)
+        return e2
+    }
+    // read response
+    _, respMeta, _, e3 := lib_common.ReadConnMeta(conn)
+    if e3 != nil {
+        lib_common.Close(conn)
+        return e3
+    }
+    var resp = &header.CommunicationRegisterStorageResponseMeta{}
+    e4 := json.Unmarshal([]byte(respMeta), resp)
+    if e4 != nil {
+        lib_common.Close(conn)
+        return e4
+    }
+    logger.Debug("register success:", *resp)
+    return nil
+}
 
 // accept a new connection for file upload
 // the connection will keep till it is broken
@@ -213,6 +278,8 @@ func checkUploadMeta(meta string, conn net.Conn) (int, *header.UploadRequestMeta
             return 1, headerMeta // bad secret
         }
     } else {
+        //close conn
+        lib_common.Close(conn)
         return 2, nil // parse meta error
     }
 }

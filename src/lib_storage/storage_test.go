@@ -12,6 +12,7 @@ import (
     "encoding/hex"
     "util/common"
     "regexp"
+    "container/list"
 )
 
 
@@ -118,4 +119,11 @@ func Test7(t *testing.T) {
     gmtLocation, _ := time.LoadLocation("GMT")
     fmt.Println(time.Now().In(gmtLocation).Format(time.RFC1123))
 
+}
+
+
+func Test8(t *testing.T) {
+    var ls list.List
+    ls.PushBack("xxx")
+    fmt.Println(json.Marshal(ls))
 }

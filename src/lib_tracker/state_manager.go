@@ -5,8 +5,9 @@ import (
     "util/logger"
     "sync"
     "strconv"
-    "container/list"
     "lib_common/header"
+    "util/timeutil"
+    "container/list"
 )
 
 var managedStorages = make(map[string] *storageMeta)
@@ -14,23 +15,22 @@ var managedStorages = make(map[string] *storageMeta)
 var operationLock = *new(sync.Mutex)
 
 type storageMeta struct {
-    expireTime int64
-    group string
-    host string
-    port int
+    ExpireTime int64
+    Group string
+    InstanceId string
+    Host string
+    Port int
 }
 
 // 定时任务，剔除过期的storage服务器
 func ExpirationDetection() {
-    operationLock.Lock()
-    defer operationLock.Unlock()
-    timer := time.NewTimer(time.Second * 30)
+    timer := time.NewTicker(time.Second * 30)
     for {
         <-timer.C
-        logger.Info("exec expired detected")
+        logger.Debug("exec expired detected")
         curTime := time.Now().UnixNano() / 1e6
         for k, v := range managedStorages {
-            if v.expireTime <= curTime { // 过期
+            if v.ExpireTime <= curTime { // 过期
                 delete(managedStorages, k)
                 logger.Info("storage server:", k, "expired")
             }
@@ -40,23 +40,48 @@ func ExpirationDetection() {
 }
 
 // 添加storage服务器
-func AddStorageServer(host string, port int, group string) {
+func AddStorageServer(meta *header.CommunicationRegisterStorageRequestMeta) {
     operationLock.Lock()
     defer operationLock.Unlock()
-    meta := &storageMeta{expireTime: time.Now().UnixNano() / 1e6, group: group, host: host, port: port}
-    managedStorages[host + ":" + strconv.Itoa(port)] = meta
+    key := meta.BindAddr + ":" + strconv.Itoa(meta.Port)
+    holdMeta := &storageMeta{
+        ExpireTime: timeutil.GetTimestamp(time.Now().Add(time.Minute)),
+        Group: meta.Group,
+        InstanceId: meta.InstanceId,
+        Host: meta.BindAddr,
+        Port: meta.Port,
+    }
+    managedStorages[key] = holdMeta
+    //js, _ := json.Marshal(*managedStorages[key])
+    //fmt.Println(string(js))
+}
+
+// check if instance if is unique
+func IsInstanceIdUnique(meta *header.CommunicationRegisterStorageRequestMeta) bool {
+    key := meta.BindAddr + ":" + strconv.Itoa(meta.Port)
+    for k, v := range managedStorages {
+        if k != key && v.Group == meta.Group && v.InstanceId == meta.InstanceId {
+            return false
+        }
+    }
+    return true
 }
 
 // 获取组内成员
-func GetGroupMembers(host string, port int, group string) *list.List {
-    me := host + ":" + strconv.Itoa(port)
-    members := list.New()
+func GetGroupMembers(meta *header.CommunicationRegisterStorageRequestMeta) []header.Member {
+    key := meta.BindAddr + ":" + strconv.Itoa(meta.Port)
+    var mList list.List
     for k, v := range managedStorages {
-        if k != me && v.group == group { // 过期
-            m := header.Member{BindAddr: v.host, Port: v.port}
-            members.PushBack(m)
-            logger.Info("storage server:", k, "expired")
+        if k != key && v.Group == meta.Group { // 过期
+            m := header.Member{BindAddr: v.Host, Port: v.Port, InstanceId: v.InstanceId}
+            mList.PushBack(m)
         }
+    }
+    var members = make([]header.Member, mList.Len())
+    index := 0
+    for e := mList.Front(); e != nil; e = e.Next() {
+        members[index] = e.Value.(header.Member)
+        index++
     }
     return members
 }

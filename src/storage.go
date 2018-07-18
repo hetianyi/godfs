@@ -8,6 +8,7 @@ import (
     "validate"
     "flag"
     "os"
+    "app"
 )
 
 // TODO 文件保存分为group和Initial memeber ID(文件初始成员ID)
@@ -28,6 +29,7 @@ func main() {
         for k, v := range m {
             logger.Debug(k, "=", v)
         }
+        app.RUN_WITH = 1
         lib_storage.StartService(m)
     } else {
         logger.Fatal("error read file:", e)

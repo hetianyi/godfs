@@ -13,9 +13,12 @@ import (
 )
 
 
+var (
+    az = []rune{'A', 'B', 'C', 'D', 'E', 'F'}
+    i09 = []rune{'0', '1', '2', '3', '4', '5', '6', '7', '8', '9'}
+    GroupInstancePattern = "^[0-9a-zA-Z_]+$"
+)
 
-var az = []rune{'A', 'B', 'C', 'D', 'E', 'F'}
-var i09 = []rune{'0', '1', '2', '3', '4', '5', '6', '7', '8', '9'}
 
 // check configuration file parameter.
 // if check failed, system will shutdown.
@@ -57,7 +60,7 @@ func Check(m map[string] string, runWith int) {
     if logLevel != "debug" && logLevel != "info" && logLevel != "warn" &&
         logLevel != "error" && logLevel != "fatal" {
         logLevel = "info"
-    }   
+    }
     m["log_level"] = logLevel
     setSystemLogLevel(logLevel)
 
@@ -74,87 +77,17 @@ func Check(m map[string] string, runWith int) {
     logger.SetEnable(true)
 
 
-    // check assign_disk_space
-    assign_disk_space := strings.ToLower(strings.TrimSpace(m["assign_disk_space"]))
-    value, unit := FixStorageSize(assign_disk_space, "MB")
-    if value == "" {
-        value = "50"
-    }
-    if unit == "" {
-        unit = "MB"
-    }
-    _val, e3 := strconv.ParseFloat(value, 64)
-    if e3 != nil {
-        logger.Fatal("error assign_disk_space:", value + unit)
-    }
-    var _unit = GetUnitVal(unit)
-    app.ASSIGN_DISK_SPACE = int64(_val * float64(_unit))
-    m["assign_disk_space"] = value + unit
-
-
-
-
-    // check slice_size
-    slice_size := strings.ToLower(strings.TrimSpace(m["slice_size"]))
-    value1, unit1 := FixStorageSize(slice_size, "MB")
-    if value1 == "" {
-        value1 = "50"
-    }
-    if unit1 == "" {
-        unit1 = "MB"
-    }
-    _val1, e4 := strconv.ParseFloat(value1, 64)
-    if e4 != nil {
-        logger.Fatal("error slice_size:", value1 + unit1)
-    }
-    var _unit1 = GetUnitVal(unit1)
-    app.SLICE_SIZE = int64(_val1 * float64(_unit1))
-    m["slice_size"] = value1 + unit1
-
-
-
-    // check http_enable
-    http_enable := strings.ToLower(strings.TrimSpace(m["http_enable"]))
-    if http_enable != "true" && http_enable != "false" {
-        http_enable = "false"
-    }
-    m["http_enable"] = http_enable
-    app.HTTP_ENABLE = http_enable == "true"
-
-    // check enable_mime_types
-    enable_mime_types := strings.ToLower(strings.TrimSpace(m["enable_mime_types"]))
-    if enable_mime_types != "true" && enable_mime_types != "false" {
-        enable_mime_types = "true"
-    }
-    m["enable_mime_types"] = enable_mime_types
-    app.MIME_TYPES_ENABLE = (enable_mime_types == "true") && app.HTTP_ENABLE
-    if app.MIME_TYPES_ENABLE {
-        app.SetMimeTypesEnable()
-    }
-
-    // check http_port
-    http_port := strings.ToLower(strings.TrimSpace(m["http_port"]))
-
-    httpPort, ehp := strconv.Atoi(http_port)
-    if ehp != nil || httpPort <= 0 || httpPort > 65535 {
-        logger.Fatal("error http_port:", http_port)
-    }
-    m["http_port"] = http_port
-    app.HTTP_PORT = httpPort
-
-
     if runWith == 1 {
-
         // check GROUP
         m["group"] = strings.TrimSpace(m["group"])
-        if mat, _ := regexp.Match("^[0-9a-zA-Z_]+$", []byte(m["group"])); !mat {
+        if mat, _ := regexp.Match(GroupInstancePattern, []byte(m["group"])); !mat {
             logger.Fatal("error parameter 'group'")
         }
         app.GROUP = m["group"]
 
         // check instance id
         m["instance_id"] = strings.TrimSpace(m["instance_id"])
-        if mat, _ := regexp.Match("^[0-9a-zA-Z_]+$", []byte(m["instance_id"])); !mat {
+        if mat, _ := regexp.Match(GroupInstancePattern, []byte(m["instance_id"])); !mat {
             logger.Fatal("error parameter 'instance_id'")
         }
         app.INSTANCE_ID = m["instance_id"]
@@ -174,6 +107,78 @@ func Check(m map[string] string, runWith int) {
             }
         }
         m["trackers"] = string(bytebuff.Bytes())
+
+
+
+        // check http_port
+        http_port := strings.ToLower(strings.TrimSpace(m["http_port"]))
+
+        httpPort, ehp := strconv.Atoi(http_port)
+        if ehp != nil || httpPort <= 0 || httpPort > 65535 {
+            logger.Fatal("error http_port:", http_port)
+        }
+        m["http_port"] = http_port
+        app.HTTP_PORT = httpPort
+
+
+        // check assign_disk_space
+        assign_disk_space := strings.ToLower(strings.TrimSpace(m["assign_disk_space"]))
+        value, unit := FixStorageSize(assign_disk_space, "MB")
+        if value == "" {
+            value = "50"
+        }
+        if unit == "" {
+            unit = "MB"
+        }
+        _val, e3 := strconv.ParseFloat(value, 64)
+        if e3 != nil {
+            logger.Fatal("error assign_disk_space:", value + unit)
+        }
+        var _unit = GetUnitVal(unit)
+        app.ASSIGN_DISK_SPACE = int64(_val * float64(_unit))
+        m["assign_disk_space"] = value + unit
+
+
+
+
+        // check slice_size
+        slice_size := strings.ToLower(strings.TrimSpace(m["slice_size"]))
+        value1, unit1 := FixStorageSize(slice_size, "MB")
+        if value1 == "" {
+            value1 = "50"
+        }
+        if unit1 == "" {
+            unit1 = "MB"
+        }
+        _val1, e4 := strconv.ParseFloat(value1, 64)
+        if e4 != nil {
+            logger.Fatal("error slice_size:", value1 + unit1)
+        }
+        var _unit1 = GetUnitVal(unit1)
+        app.SLICE_SIZE = int64(_val1 * float64(_unit1))
+        m["slice_size"] = value1 + unit1
+
+
+
+        // check http_enable
+        http_enable := strings.ToLower(strings.TrimSpace(m["http_enable"]))
+        if http_enable != "true" && http_enable != "false" {
+            http_enable = "false"
+        }
+        m["http_enable"] = http_enable
+        app.HTTP_ENABLE = http_enable == "true"
+
+        // check enable_mime_types
+        enable_mime_types := strings.ToLower(strings.TrimSpace(m["enable_mime_types"]))
+        if enable_mime_types != "true" && enable_mime_types != "false" {
+            enable_mime_types = "true"
+        }
+        m["enable_mime_types"] = enable_mime_types
+        app.MIME_TYPES_ENABLE = (enable_mime_types == "true") && app.HTTP_ENABLE
+        if app.MIME_TYPES_ENABLE {
+            app.SetMimeTypesEnable()
+        }
+
         //--
     }
 
