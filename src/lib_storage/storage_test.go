@@ -131,3 +131,14 @@ func Test9(t *testing.T) {
     var m = make(map[string] int)
     fmt.Println(m["aaaa"])
 }
+
+func Test10(t *testing.T) {
+    a := "^bytes=([0-9]+)-([0-9]+)?$"
+    fmt.Println(regexp.Match(a, []byte("bytes=0-801")))
+    fmt.Println(regexp.Match(a, []byte("bytes=0-45454545")))
+
+    fmt.Println(parseHeaderRange("bytes=0-801"))
+    fmt.Println(parseHeaderRange("bytes=0-45454545"))
+    fmt.Println(parseHeaderRange("bytes=120-"))
+    fmt.Println(parseHeaderRange("bytes=-"))
+}
