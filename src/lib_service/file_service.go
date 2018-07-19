@@ -14,15 +14,7 @@ const (
     partExistsSQL  = "select id from parts a where a.md5 = ?"
 )
 
-
-func ExistsPart(md5 string) bool {
-    return false
-}
-
-func ExistsFile(md5 string) bool {
-    return false
-}
-
+// get file id by md5
 func GetFileId(md5 string) (int, error) {
     var id = 0
     e := db.Query(func(rows *sql.Rows) error {
@@ -42,17 +34,75 @@ func GetFileId(md5 string) (int, error) {
     return id, nil
 }
 
+// get part id by md5
 func GetPartId(md5 string) (int, error) {
-    return 0,nil
+    var id = 0
+    e := db.Query(func(rows *sql.Rows) error {
+        if rows != nil {
+            for rows.Next() {
+                e := rows.Scan(&id)
+                if e != nil {
+                    return e
+                }
+            }
+        }
+        return nil
+    }, partExistsSQL, md5)
+    if e != nil {
+        return 0, e
+    }
+    return id, nil
 }
 
 
 func AddPart(md5 string) (int, error) {
-    return 0,nil
+    var id int
+    err := db.DoTransaction(func(tx *sql.Tx) error {
+        state, e2 := tx.Prepare(insertPartSQL)
+        if e2 != nil {
+            return e2
+        }
+        ret, e3 := state.Exec(md5)
+        if e3 != nil {
+            return e3
+        }
+        lastId, e4 := ret.LastInsertId()
+        if e4 != nil {
+            return e4
+        }
+        id = int(lastId)
+        return nil
+    })
+    return id, err
 }
 
-func AddFile(md5 string, parts *list.List) {
-
+func AddFile(md5 string, parts *list.List) error {
+    return db.DoTransaction(func(tx *sql.Tx) error {
+        state, e2 := tx.Prepare(insertFileSQL)
+        if e2 != nil {
+            return e2
+        }
+        ret, e3 := state.Exec(md5, parts.Len())
+        if e3 != nil {
+            return e3
+        }
+        lastId, e4 := ret.LastInsertId()
+        if e4 != nil {
+            return e4
+        }
+        id := int(lastId)
+        for ele := parts.Front(); ele != nil; ele = ele.Next() {
+            state, e2 := tx.Prepare(insertRelationSQL)
+            if e2 != nil {
+                return e2
+            }
+            _, e3 := state.Exec(id, ele.Value)
+            if e3 != nil {
+                return e3
+            }
+        }
+        return nil
+    })
 }
 
 

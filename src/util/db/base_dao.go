@@ -87,17 +87,18 @@ func DoTransaction(works func(tx *sql.Tx) error) error {
     common.Try(func() {
         e2 := works(tx)
         if e2 != nil {
-            logger.Info("roll back")
+            logger.Debug("roll back")
             tx.Rollback()
             globalErr = e2
-        }
-        if e3 := tx.Commit(); e3 != nil {
-            logger.Info("roll back")
-            tx.Rollback()
-            globalErr = e3
+        } else {
+            if e3 := tx.Commit(); e3 != nil {
+                logger.Debug("roll back")
+                tx.Rollback()
+                globalErr = e3
+            }
         }
     }, func(i interface{}) {
-        logger.Info("roll back")
+        logger.Debug("roll back")
         tx.Rollback()
         globalErr = i.(error)
     })
