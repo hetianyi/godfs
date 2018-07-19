@@ -7,7 +7,7 @@
 # date   : 2018/07/18
 
 FROM golang:alpine as builder
-RUN apk add git gcc && \
+RUN apk add git gcc g++ make automake && \
     go get github.com/mattn/go-sqlite3 && \
     go install github.com/mattn/go-sqlite3
 WORKDIR /tmp
