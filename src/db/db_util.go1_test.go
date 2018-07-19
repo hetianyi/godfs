@@ -9,7 +9,7 @@ import (
 )
 
 func initParam() {
-    app.BASE_PATH = "D:/godfs"
+    app.BASE_PATH = "E:/WorkSpace2018/godfs"
     logger.SetLogLevel(1)
 }
 

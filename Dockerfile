@@ -12,7 +12,7 @@ RUN apk add git gcc g++ make automake && \
     go install github.com/mattn/go-sqlite3
 WORKDIR /tmp
 RUN rm -rf godfs && git clone https://github.com/hetianyi/godfs.git && \
-    cd godfs && ./install.sh
+    cd godfs && ./docker_build.sh
 CMD ["/tmp/godfs/bin/storage"]
 
 

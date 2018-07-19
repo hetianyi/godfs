@@ -33,7 +33,7 @@ func InitDB() {
 
 
 func connect() (*sql.DB, error) {
-    return sql.Open("sqlite3", app.BASE_PATH + "/data/storage.db")
+    return sql.Open("sqlite3", app.BASE_PATH + "/conf/storage.db")
 }
 
 func checkDb() error {
