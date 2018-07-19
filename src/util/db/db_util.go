@@ -2,71 +2,10 @@ package db
 
 import (
     _ "github.com/mattn/go-sqlite3"
-    "database/sql"
-    "util/logger"
-    "sync"
-    "time"
-    "app"
-    "container/list"
-    "util/common"
 )
 
-// download sqlite3 studio @
-// https://sqlitestudio.pl/index.rvt?act=download
 
-var db *sql.DB
-var connMutex sync.Mutex
-
-const (
-    insertFileSQL  = "insert into files(md5, parts_num) values(?,?)"
-    insertPartSQL  = "insert into parts(md5) values(?)"
-    insertRelationSQL  = "insert into parts_relation(fid, pid) values(?, ?)"
-    fileExistsSQL  = "select id from files a where a.md5 = ?"
-    partExistsSQL  = "select id from parts a where a.md5 = ?"
-)
-
-func InitDB() {
-    logger.Debug("initial db connection")
-    connMutex = *new(sync.Mutex)
-    checkDb()
-}
-
-
-func connect() (*sql.DB, error) {
-    return sql.Open("sqlite3", app.BASE_PATH + "/conf/storage.db")
-}
-
-func checkDb() error {
-    connMutex.Lock()
-    defer connMutex.Unlock()
-    for {
-        if db == nil {
-            tdb, e := connect()
-            if e != nil {
-                logger.Error("error connect db, wait...:", app.BASE_PATH + "/data/storage.db")
-                time.Sleep(time.Second * 5)
-                continue
-            }
-            db = tdb
-            logger.Debug("connect db success")
-            return nil
-        } else {
-            return db.Ping()
-        }
-    }
-}
-
-func verifyConn() {
-    for {
-        if checkDb() != nil {
-            db = nil
-            time.Sleep(time.Second * 2)
-        } else {
-            break
-        }
-    }
-}
-
+/*
 // which:
 //      1:file
 //      2:part
@@ -173,7 +112,7 @@ func AddFile(md5 string, parts *list.List) error {
     })
     return err
 }
-
+*/
 
 
 
