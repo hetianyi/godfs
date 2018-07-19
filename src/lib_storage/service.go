@@ -21,6 +21,7 @@ import (
     "io"
     "errors"
     "net/http"
+    "db"
 )
 
 
@@ -39,6 +40,10 @@ func StartService(config map[string] string) {
     trackers := config["trackers"]
     port := config["port"]
     secret = config["secret"]
+
+    // 连接数据库
+    db.InitDB()
+
     startDownloadService()
     go startConnTracker(trackers)
     startUploadService(port)
@@ -138,7 +143,7 @@ func onceConnTracker(tracker string) {
             } else {
                 logger.Error("(" + strconv.Itoa(retry) + ")error connect to tracker server:", tracker)
                 retry++
-                time.Sleep(time.Second * 10)
+                time.Sleep(time.Second * app.REG_STORAGE_INTERVAL)
             }
         }, func(i interface{}) {
 
@@ -184,6 +189,10 @@ func onConnectTrackerTask(conn net.Conn) error {
 
 // accept a new connection for file upload
 // the connection will keep till it is broken
+// 文件同步策略：
+// 文件上传成功将任务写到本地文件storage_task.data作为备份
+// 将任务通知到tracker服务器，通知成功，tracker服务进行广播
+// 其他storage定时取任务，将任务
 func uploadHandler(conn net.Conn) {
 
     defer func() {

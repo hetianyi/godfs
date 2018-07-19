@@ -8,6 +8,7 @@ import (
     "lib_common/header"
     "util/timeutil"
     "container/list"
+    "app"
 )
 
 var managedStorages = make(map[string] *storageMeta)
@@ -24,7 +25,7 @@ type storageMeta struct {
 
 // 定时任务，剔除过期的storage服务器
 func ExpirationDetection() {
-    timer := time.NewTicker(time.Second * 30)
+    timer := time.NewTicker(time.Second * app.STORAGE_CLIENT_EXPIRE_TIME)
     for {
         <-timer.C
         logger.Debug("exec expired detected")

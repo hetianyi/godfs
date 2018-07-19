@@ -1,5 +1,7 @@
 package app
 
+import "time"
+
 const (
     BUFF_SIZE = 1024*30 // byte buffer size set to 30kb
 )
@@ -14,4 +16,6 @@ var (
     HTTP_ENABLE bool
     MIME_TYPES_ENABLE bool
     HTTP_PORT int
+    STORAGE_CLIENT_EXPIRE_TIME time.Duration = 60
+    REG_STORAGE_INTERVAL       time.Duration = 30
 )

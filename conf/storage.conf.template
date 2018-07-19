@@ -26,7 +26,7 @@ port=1024
 base_path=D:/godfs//
 
 
-trackers=#127.0.0.1:1022
+trackers=127.0.0.1:1022
 
 # secret用于服务通信时校验身份
 # 服务之间建立通信时会校验secret
