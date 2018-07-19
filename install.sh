@@ -1,5 +1,7 @@
 #!/bin/sh
+GOROOT="/usr/local/go"
 GOPATH="$PWD;/go"
+export GOROOT
 export GOPATH
 
 if [ ! -e "./bin" ];then
