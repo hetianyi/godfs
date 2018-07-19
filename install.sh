@@ -1,5 +1,5 @@
 #!/bin/sh
-GOPATH=$PWD
+GOPATH="$PWD;/go"
 export GOPATH
 
 if [ ! -e "./bin" ];then
