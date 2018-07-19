@@ -7,7 +7,9 @@
 # date   : 2018/07/18
 
 FROM golang:alpine as builder
-RUN apk add git
+RUN apk add git gcc && \
+    go get github.com/mattn/go-sqlite3 && \
+    go install github.com/mattn/go-sqlite3
 WORKDIR /tmp
 RUN rm -rf godfs && git clone https://github.com/hetianyi/godfs.git && \
     cd godfs && ./install.sh
