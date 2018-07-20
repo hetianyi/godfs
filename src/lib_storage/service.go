@@ -14,7 +14,6 @@ import (
     "lib_common"
     "lib_common/header"
     "util/common"
-    "util/timeutil"
     "hash"
     "app"
     "regexp"
@@ -27,10 +26,12 @@ import (
 
 // max client connection set to 1000
 var p, _ = pool.NewPool(1000, 100000)
-
+// sys secret
 var secret string
-
+// sys config
 var cfg map[string] string
+// tasks put in this list
+var fileRegisterList list.List
 
 // Start service and listen
 // 1. Start task for upload listen
@@ -126,28 +127,23 @@ func onceConnTracker(tracker string) {
     logger.Info("start tracker conn with tracker server:", tracker)
     retry := 0
     for {//keep trying to connect to tracker server.
-        common.Try(func() {
-            conn, e := net.Dial("tcp", tracker)
-            if e == nil {
-                for { // keep sending client statistic info to tracker server.
-                    logger.Debug("send info to tracker server")
-                    //TODO
-                    e1 := onConnectTrackerTask(conn)
-                    if e1 != nil {
-                        logger.Error("error keep connection with tracker server:", e1)
-                        break
-                    } else {
-                        time.Sleep(time.Second * 5)
-                    }
-                }
+        conn, e := net.Dial("tcp", tracker)
+        if e == nil {
+            // validate client
+            e1 := onConnectTrackerTask(conn)
+            if e1 != nil {
+                logger.Error("error keep connection with tracker server:", e1)
             } else {
-                logger.Error("(" + strconv.Itoa(retry) + ")error connect to tracker server:", tracker)
-                retry++
-                time.Sleep(time.Second * app.REG_STORAGE_INTERVAL)
-            }
-        }, func(i interface{}) {
+                for { // keep sending client statistic info to tracker server.
 
-        })
+                    logger.Debug("send info to tracker server")
+                }
+            }
+        } else {
+            logger.Error("(" + strconv.Itoa(retry) + ")error connect to tracker server:", tracker)
+        }
+        retry++
+        time.Sleep(time.Second * app.REG_STORAGE_INTERVAL)
     }
 }
 
@@ -183,9 +179,12 @@ func onConnectTrackerTask(conn net.Conn) error {
         lib_common.Close(conn)
         return e4
     }
-    logger.Debug("register success:", *resp)
-    return nil
+    logger.Debug("register response:", *resp)
+    return lib_common.TranslateResponseStatus(resp.Status, conn)
 }
+
+
+
 
 // accept a new connection for file upload
 // the connection will keep till it is broken
@@ -236,7 +235,7 @@ func uploadHandler(conn net.Conn) {
                     logger.Error("error query file:", ee)
                     break
                 }
-            } else if operation == 6 {// client wants to query file
+            } else if operation == 6 {// client wants to download file
                 ee := operationDownloadFile(meta, bodyBuff, conn)
                 if ee != nil {
                     logger.Error("error query file:", ee)
@@ -294,76 +293,11 @@ func checkUploadMeta(meta string, conn net.Conn) (int, *header.UploadRequestMeta
 
 // 处理文件上传请求
 func operationUpload(meta string, bodySize uint64, bodyBuff []byte, md hash.Hash, conn net.Conn) error {
-
     logger.Info("begin read file body, file len is ", bodySize/1024, "KB")
-    // begin upload file
-    tmpFileName := timeutil.GetUUID()
-    // using tmp ext and rename after upload success
-    tmpPath := file.FixPath(app.BASE_PATH + "/data/tmp/" + tmpFileName)
-    fi, e8 := file.CreateFile(tmpPath)
-    if e8 != nil {
-        lib_common.Close(conn)
-        logger.Error("error create file")
-        return e8
-    }
-
     // read file bytes
-    md5, e4 := lib_common.ReadConnBody(bodySize, bodyBuff, conn, fi, md)
-    if e4 != nil {
-        file.Delete(fi.Name())
-        return e4
-    }
-
-    dig1 := strings.ToUpper(md5[0:2])
-    dig2 := strings.ToUpper(md5[2:4])
-    finalPath := app.BASE_PATH + "/data/" + dig1 + "/" + dig2
-    if !file.Exists(finalPath) {
-        e := file.CreateAllDir(finalPath)
-        if e != nil {
-            return e4
-        }
-    }
-    if !file.Exists(finalPath + "/" + md5) {
-        eee := file.MoveFile(tmpPath, finalPath + "/" + md5)
-        if eee != nil {
-            logger.Error("error move tmp file from", tmpPath, "to", finalPath)
-            // upload success
-            var response = &header.UploadResponseMeta{
-                Status: 3,
-                Path: "",
-                Exist: false,
-            }
-            e9 := lib_common.WriteResponse(4, conn, response)
-            if e9 != nil {
-                lib_common.Close(conn)
-                return e9
-            }
-        }
-    } else {
-        s := file.Delete(tmpPath)
-        if !s {
-            logger.Error("error clean tmp file:", tmpPath)
-        }
-    }
-
-    // try log file md5, but not
-    /*common.Try(func() {
-        db.AddFile(md5)
-    }, func(i interface{}) {
-        logger.Error(i)
-    })*/
-
-
-    // upload success
-    var response = &header.UploadResponseMeta{
-        Status: 0,
-        Path: app.GROUP + "/" + app.INSTANCE_ID + "/" + md5,
-        Exist: true,
-    }
-    e5 := lib_common.WriteResponse(4, conn, response)
-    if e5 != nil {
-        lib_common.Close(conn)
-        return e5
+    e := lib_common.ReadConnBody(bodySize, bodyBuff, conn, md)
+    if e != nil {
+        return e
     }
     return nil
 }
@@ -518,4 +452,3 @@ func GetFilePathByMd5(md5 string) string {
     dig2 := strings.ToUpper(md5[2:4])
     return app.BASE_PATH + "/data/" + dig1 + "/" + dig2 + "/" + md5
 }
-

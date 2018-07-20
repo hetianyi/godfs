@@ -6,6 +6,7 @@ import (
     "testing"
     "database/sql"
     "errors"
+    "lib_service"
 )
 
 func initParam() {
@@ -99,4 +100,5 @@ func Test5(t *testing.T) {
     logger.Info(err)
 
 }
+
 

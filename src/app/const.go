@@ -18,4 +18,5 @@ var (
     HTTP_PORT int
     STORAGE_CLIENT_EXPIRE_TIME time.Duration = 60
     REG_STORAGE_INTERVAL       time.Duration = 30
+    SYNC_INTERVAL              time.Duration = 5 //每5s取一次同步任务
 )

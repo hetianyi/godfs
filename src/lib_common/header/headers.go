@@ -4,7 +4,7 @@ package header
 var OperationHeadByteMap = make(map[int] []byte)
 
 func init() {
-    OperationHeadByteMap[0] = []byte{1,1}   //for tracker server: register storage client
+    OperationHeadByteMap[0] = []byte{1,1}   //for tracker server: register storage client //add upload client in the future
     OperationHeadByteMap[1] = []byte{2,2}   //for tracker server: register file from client
     OperationHeadByteMap[2] = []byte{3,1}   //for storage server: upload file from client
     OperationHeadByteMap[4] = []byte{3,2}   //for all kinds of client        : response
@@ -12,7 +12,6 @@ func init() {
     OperationHeadByteMap[5] = []byte{4,3}   //for storage server: query if file exists
     OperationHeadByteMap[6] = []byte{4,4}   //for storage server: download file
 
-    //OperationHeadByteMap[7] = []byte{10,1}   //for tracker server:
 
 
 }
@@ -71,6 +70,7 @@ type CommunicationRegisterStorageRequestMeta struct {
     InstanceId string    `json:"instance_id"`
     Port int             `json:"port"`
 }
+
 // tracker响应storage注册自己的meta
 type CommunicationRegisterStorageResponseMeta struct {
     Status int                  `json:"status"`     // 状态
@@ -82,9 +82,36 @@ type CommunicationRegisterStorageResponseMeta struct {
     GroupMembers []Member       `json:"members"`    // 我的组内成员（不包括自己）
 }
 
+
+
+type FilePart struct {
+    Md5 string                  `json:"md5"`     // 分片md5
+    FileSize int64              `json:"size"`    // 文件大小
+}
+type File struct {
+    Id int                      `json:"id"`      // 分片md5
+    Md5 string                  `json:"md5"`     // 分片md5
+    PartNum int                 `json:"partNum"` // 文件分片数量
+    Instance string             `json:"instance"`// 实例id
+    Parts []FilePart            `json:"parts"`   // 实例id
+}
+
 // storage将文件注册到tracker的meta
 type CommunicationRegisterFileRequestMeta struct {
-    BindAddr int `json:"addr"`
-    Port int `json:"port"`
+    File File                    `json:"file"`    // 文件md5
 }
+
+// storage将文件注册到tracker的meta
+type CommunicationRegisterFileResponseMeta struct {
+    status int                   `json:"status"`   // 状态，0：成功，其他失败
+}
+
+type CommunicationPullFileRequestMeta struct {
+    LastId string                `json:"lastId"`   // 上次同步的ID位置（tracker端的ID）
+}
+type CommunicationPullFileResponseMeta struct {
+    File File                    `json:"file"`    // 文件md5
+    Parts []FilePart             `json:"parts"`   // 文件分片
+}
+
 

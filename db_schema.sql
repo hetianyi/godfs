@@ -24,12 +24,16 @@ CREATE INDEX index_q1 ON parts_relation (
 );
 #-----------------------------------------------
 CREATE TABLE task (
-    id     INTEGER      PRIMARY KEY AUTOINCREMENT
-                        NOT NULL,
-    type   INTEGER      NOT NULL,
-    md5    VARCHAR (32) DEFAULT "",
-    status INTEGER      DEFAULT (1)
-                        NOT NULL
+    id     INTEGER PRIMARY KEY AUTOINCREMENT
+                   NOT NULL,
+    type   INTEGER NOT NULL,
+    fid    INTEGER,
+    status INTEGER DEFAULT (1)
+                   NOT NULL
 );
 #-----------------------------------------------
+# 同步状态表，记录当前同步tracker服务器的最大file id
+CREATE TABLE sys (
+    master_sync_id INTEGER
+);
 

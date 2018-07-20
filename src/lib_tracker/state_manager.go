@@ -37,7 +37,6 @@ func ExpirationDetection() {
             }
         }
     }
-
 }
 
 // 添加storage服务器
@@ -46,7 +45,7 @@ func AddStorageServer(meta *header.CommunicationRegisterStorageRequestMeta) {
     defer operationLock.Unlock()
     key := meta.BindAddr + ":" + strconv.Itoa(meta.Port)
     holdMeta := &storageMeta{
-        ExpireTime: timeutil.GetTimestamp(time.Now().Add(time.Minute)),
+        ExpireTime: timeutil.GetTimestamp(time.Now().Add(time.Hour * 876000)),//set to 100 years
         Group: meta.Group,
         InstanceId: meta.InstanceId,
         Host: meta.BindAddr,
@@ -55,6 +54,22 @@ func AddStorageServer(meta *header.CommunicationRegisterStorageRequestMeta) {
     managedStorages[key] = holdMeta
     //js, _ := json.Marshal(*managedStorages[key])
     //fmt.Println(string(js))
+}
+
+// 执行即将过期storage服务器
+// 通常是storage客户端和tracker服务器断开连接时
+func FutureExpireStorageServer(meta *header.CommunicationRegisterStorageRequestMeta) {
+    operationLock.Lock()
+    defer operationLock.Unlock()
+    key := meta.BindAddr + ":" + strconv.Itoa(meta.Port)
+    holdMeta := &storageMeta{
+        ExpireTime: timeutil.GetTimestamp(time.Now().Add(time.Second * app.STORAGE_CLIENT_EXPIRE_TIME)),//set to 100 years
+        Group: meta.Group,
+        InstanceId: meta.InstanceId,
+        Host: meta.BindAddr,
+        Port: meta.Port,
+    }
+    managedStorages[key] = holdMeta
 }
 
 // check if instance if is unique

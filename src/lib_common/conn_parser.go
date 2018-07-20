@@ -13,6 +13,14 @@ import (
     "regexp"
     "strconv"
     "encoding/json"
+    "crypto/md5"
+    "util/timeutil"
+    "util/file"
+    "app"
+    "os"
+    "lib_service"
+    "container/list"
+    "strings"
 )
 
 const HeaderSize = 18
@@ -84,24 +92,70 @@ func ReadConnMeta(conn net.Conn) (operation int, meta string, bodySize uint64, e
 // operation : 请求操作，0：不支持的操作，1：注册storage，2：注册文件，3：上传文件
 // meta      : 请求头信息
 // err       : 如果发生错误，返回值为operation=-1, meta="", e
-
-func ReadConnBody(bodySize uint64, buffer []byte, conn net.Conn, out io.WriteCloser, md hash.Hash) (string, error) {
+func ReadConnBody(bodySize uint64, buffer []byte, conn net.Conn, md hash.Hash) error {
     defer func() {
-        logger.Debug("close out writer")
-        out.Close()
         md.Reset()
     }()
+    out, oe := createTmpFile()
+    if oe != nil {
+        return oe
+    }
     // total read bytes
     var readBodySize uint64 = 0
     // next time bytes to read
     var nextReadSize int
+    var sliceReadSize int64 = 0
+    var sliceMd5 = md5.New()
+    var sliceIds list.List
+
     for {
         //read finish
         if readBodySize == bodySize {
-            cipherStr := md.Sum(nil)
-            md5 := hex.EncodeToString(cipherStr)
+            totalCipherStr := md.Sum(nil)
+            sliceCipherStr := sliceMd5.Sum(nil)
+            md5  := hex.EncodeToString(totalCipherStr)
+            sMd5 := hex.EncodeToString(sliceCipherStr)
+            out.Close()
+            md.Reset()
+            sliceMd5.Reset()
+
+            e10 := moveTmpFileTo(sMd5, out)
+            if e10 != nil {
+                return e10
+            }
+            // save slice info to db
+            pid, e8 := lib_service.AddPart(sMd5, app.SLICE_SIZE)
+            if e8 != nil {
+                Close(conn)
+                return e8
+            }
+            sliceIds.PushBack(pid)
             logger.Info("上传结束，读取字节：", readBodySize, " MD5= " , md5)
-            return md5, nil
+
+            stoe := lib_service.StorageAddFile(md5, &sliceIds)
+            if stoe != nil {
+                Close(conn)
+                return stoe
+            }
+            // mark the file is multi part or single part
+            var path string
+            if sliceIds.Len() > 1 {
+                path = app.GROUP + "/" + app.INSTANCE_ID + "/M/" + md5
+            } else {
+                path = app.GROUP + "/" + app.INSTANCE_ID + "/S/" + md5
+            }
+            // upload success
+            var response = &header.UploadResponseMeta{
+                Status: 0,
+                Path: path,
+                Exist: true,
+            }
+            e5 := WriteResponse(4, conn, response)
+            if e5 != nil {
+                Close(conn)
+                return e5
+            }
+            return nil
         }
         // left bytes is more than a buffer
         if (bodySize - readBodySize) / uint64(BodyBuffSize) >= 1 {
@@ -112,22 +166,115 @@ func ReadConnBody(bodySize uint64, buffer []byte, conn net.Conn, out io.WriteClo
         logger.Debug("read next bytes:", nextReadSize, "total is:", bodySize)
         len1, e3 := ReadBytes(buffer, nextReadSize, conn)
         if e3 == nil && len1 == nextReadSize {
-            readBodySize += uint64(len1)
-            len2, e1 := out.Write(buffer[0:len1])
-            len3, e2 := md.Write(buffer[0:len1])
-            // write error
-            if e1 != nil || e2 != nil || len2 != len1 || len3 != len1 {
-                logger.Error("write out error:", e1, "|", e2)
-                Close(conn)
-                return "", errors.New("write out error(0)")
+            // if sliceReadSize > sliceSize then create a new slice file
+            if sliceReadSize + int64(len1) > app.SLICE_SIZE {
+                // write bytes to file
+                leftN := app.SLICE_SIZE - sliceReadSize
+                rightN := int64(len1) - (app.SLICE_SIZE - sliceReadSize)
+                len2, e1 := out.Write(buffer[0:leftN])
+                len4, e11 := sliceMd5.Write(buffer[0:leftN])
+                if e1 != nil || e11 != nil || int64(len2) != leftN || int64(len4) != leftN {
+                    logger.Error("write out error:", e1, "|", e11)
+                    closeAndDeleteTmpFile(out)
+                    Close(conn)
+                    return errors.New("write out error(0)")
+                }
+
+                // close slice file and create a new slice file （承上启下）
+                out.Close()
+                sliceCipherStr := sliceMd5.Sum(nil)
+                sMd5 := hex.EncodeToString(sliceCipherStr)
+                sliceMd5.Reset()
+                e10 := moveTmpFileTo(sMd5, out)
+                if e10 != nil {
+                    return e10
+                }
+                // save slice info to db
+                pid, e8 := lib_service.AddPart(sMd5, app.SLICE_SIZE)
+                if e8 != nil {
+                    Close(conn)
+                    return e8
+                }
+                sliceIds.PushBack(pid)
+
+                out12, e12 := createTmpFile()
+                if e12 != nil {
+                    return e12
+                }
+                out = out12
+                len6, e2 := out.Write(buffer[leftN:len1])
+                len7, e12 := sliceMd5.Write(buffer[leftN:len1])
+                if e2 != nil || e12 != nil || int64(len6) != rightN || int64(len7) != rightN {
+                    logger.Error("write out error:", e2, "|", e12)
+                    closeAndDeleteTmpFile(out)
+                    Close(conn)
+                    return errors.New("write out error(1)")
+                }
+                sliceReadSize = rightN
+            } else {
+                // write bytes to file
+                len2, e1 := out.Write(buffer[0:len1])
+                len3, e2 := md.Write(buffer[0:len1])
+                len4, e3 := sliceMd5.Write(buffer[0:len1])
+                // write error
+                if e1 != nil || e2 != nil || e3 != nil || len2 != len1 || len3 != len1 || len4 != len1 {
+                    logger.Error("write out error:", e1, "|", e2)
+                    closeAndDeleteTmpFile(out)
+                    Close(conn)
+                    return errors.New("write out error(0)")
+                }
+                sliceReadSize += int64(len1)
             }
+            readBodySize += uint64(len1)
         } else {
             logger.Error("error read body:", e3)
+            closeAndDeleteTmpFile(out)
             Close(conn)
             // 终止循环
-            return "", e3
+            return e3
         }
     }
+}
+
+func createTmpFile() (*os.File, error) {
+    // begin upload file
+    tmpFileName := timeutil.GetUUID()
+    // using tmp ext and rename after upload success
+    tmpPath := file.FixPath(app.BASE_PATH + "/data/tmp/" + tmpFileName)
+    fi, e8 := file.CreateFile(tmpPath)
+    if e8 != nil {
+        return nil, e8
+    }
+    return fi, nil
+}
+
+func closeAndDeleteTmpFile(fi *os.File) {
+    fi.Close()
+    file.Delete(fi.Name())
+}
+
+func moveTmpFileTo(md5 string, fi *os.File) error {
+    dig1 := strings.ToUpper(md5[0:2])
+    dig2 := strings.ToUpper(md5[2:4])
+    finalPath := app.BASE_PATH + "/data/" + dig1 + "/" + dig2
+    if !file.Exists(finalPath) {
+        e := file.CreateAllDir(finalPath)
+        if e != nil {
+            return e
+        }
+    }
+    if !file.Exists(finalPath + "/" + md5) {
+        eee := file.MoveFile(fi.Name(), finalPath + "/" + md5)
+        if eee != nil {
+            return eee
+        }
+    } else {
+        s := file.Delete(fi.Name())
+        if !s {
+            logger.Error("error clean tmp file:", fi.Name())
+        }
+    }
+    return nil
 }
 
 
@@ -287,4 +434,17 @@ func WriteMeta(operation int, metaSize []byte, bodySize []byte, meta []byte, con
         return errors.New("error write meta")
     }
     return nil
+}
+
+func TranslateResponseStatus(status int, conn net.Conn) error {
+    if status == 1 {
+        return nil
+    } else if status == 1 {
+        return errors.New("register storage to tracker server failed with error: bad secret|" + conn.RemoteAddr().String())
+    } else if status == 2 {
+        return errors.New("register storage to tracker server failed with error: operation not support|" + conn.RemoteAddr().String())
+    } else if status == 3 {
+        return errors.New("register storage to tracker server failed with error: server error|" + conn.RemoteAddr().String())
+    }
+    return errors.New("unknown error")
 }
