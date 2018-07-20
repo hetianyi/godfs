@@ -51,6 +51,8 @@ func ReadConnMeta(conn net.Conn) (operation int, meta string, bodySize uint64, e
             operation = 5
         } else if bytes.Compare(op, header.OperationHeadByteMap[6]) == 0 {
             operation = 6
+        } else if bytes.Compare(op, header.OperationHeadByteMap[8]) == 0 {
+            operation = 8
         } else {
             logger.Debug("operation not support")
             var response = &header.UploadResponseMeta{
@@ -447,4 +449,53 @@ func TranslateResponseStatus(status int, conn net.Conn) error {
         return errors.New("register storage to tracker server failed with error: server error|" + conn.RemoteAddr().String())
     }
     return errors.New("unknown error")
+}
+
+// 首次的时候检查客户端
+// return error
+func CheckOnceOnConnect(conn net.Conn) error {
+    // read meta
+    operation, meta, _, err := ReadConnMeta(conn)
+    // TODO maybe add one more operation for upload client
+    if operation != 8 || meta == "" || err != nil {
+        // otherwise mark as broken connection
+        Close(conn)
+        if err != nil {
+            return err
+        }
+        return errors.New("meta check failed")
+    }
+    // check secret
+    s := checkMetaSecret(meta, conn)
+    // if secret validate failed or meta parse error
+    if !s {
+        return errors.New("secret check failed")
+    }
+    return nil
+}
+
+
+
+// 处理注册storage
+func checkMetaSecret(meta string, conn net.Conn) bool {
+    var head = &header.ConnectionHead{}
+    e2 := json.Unmarshal([]byte(meta), head)
+    if e2 == nil {
+        if head.Secret == app.SECRET {
+            return true // success
+        } else {
+            var response = &header.ConnectionHeadResponse {
+                Status: 1,
+            }
+            // write response close conn, and not check if success
+            WriteResponse(4, conn, response)
+            //close conn
+            Close(conn)
+            return false // bad secret
+        }
+    } else {
+        //close conn
+        Close(conn)
+        return false // parse meta error
+    }
 }

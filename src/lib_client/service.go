@@ -11,7 +11,54 @@ import (
     "net"
     "regexp"
     "errors"
+    "strconv"
+    "sync"
 )
+
+
+// each client has one tcp connection with storage server,
+// once the connection is broken, the client will destroy.
+// one client can only do 1 operation at a time.
+var conn net.Conn
+var connecString string
+var operationLock *sync.Mutex
+
+func NewClient(host string, port int) {
+    operationLock = make()
+    connecString = host + ":" + strconv.Itoa(port)
+    con, e := connect()
+    if e != nil {
+        logger.Error(e)
+    }
+    conn = con
+}
+
+// close client connection and set it to nil
+func closeConn() {
+    if conn != nil {
+        conn.Close()
+    }
+    conn = nil
+}
+
+func connect() (net.Conn, error) {
+    con, e := net.Dial("tcp", connecString)
+    if e != nil {
+        logger.Error(e)
+        return nil, e
+    }
+    return con, nil
+}
+
+func getConn() net.Conn {
+    if conn != nil {
+        return conn
+    }
+    return connect(),_
+
+}
+
+
 
 //client demo for upload file to storage server.
 func Upload(path string) error {

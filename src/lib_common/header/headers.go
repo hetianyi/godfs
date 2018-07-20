@@ -8,6 +8,7 @@ func init() {
     OperationHeadByteMap[1] = []byte{2,2}   //for tracker server: register file from client
     OperationHeadByteMap[2] = []byte{3,1}   //for storage server: upload file from client
     OperationHeadByteMap[4] = []byte{3,2}   //for all kinds of client        : response
+    OperationHeadByteMap[8] = []byte{3,3}   //for all kinds of first request : connection validate
     OperationHeadByteMap[3] = []byte{4,2}   //for storage server: sync file from another storage server
     OperationHeadByteMap[5] = []byte{4,3}   //for storage server: query if file exists
     OperationHeadByteMap[6] = []byte{4,4}   //for storage server: download file
@@ -16,6 +17,20 @@ func init() {
 
 }
 
+
+// 当连接初次建立时发送的头部信息，用于校验secret
+type ConnectionHead struct {
+    Secret string   `json:"secret"`  // 通信秘钥
+}
+
+// 当连接初次建立时发送的头部信息，用于校验secret
+type ConnectionHeadResponse struct {
+    Status int                  `json:"status"`     // 状态
+                                                    // 0:success
+                                                    // 1:bad secret
+                                                    // 2:operation not support
+                                                    // 3:server failed, will not close connection
+}
 
 
 type Member struct {

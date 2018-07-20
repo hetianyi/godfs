@@ -13,6 +13,7 @@ var (
     BASE_PATH string
     GROUP string
     INSTANCE_ID string
+    SECRET string
     HTTP_ENABLE bool
     MIME_TYPES_ENABLE bool
     HTTP_PORT int

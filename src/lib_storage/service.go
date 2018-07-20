@@ -204,6 +204,12 @@ func uploadHandler(conn net.Conn) {
         bodyBuff := make([]byte, lib_common.BodyBuffSize)
         // calculate md5
         md := md5.New()
+
+        feo := lib_common.CheckOnceOnConnect(conn)
+        if feo != nil {
+            return
+        }
+
         for {
             // read meta
             operation, meta, bodySize, err := lib_common.ReadConnMeta(conn)
@@ -215,16 +221,9 @@ func uploadHandler(conn net.Conn) {
                 break
             }
 
-            // check secret
-            checkStatus, _ := checkUploadMeta(meta, conn)
-            // if secret validate failed or meta parse error
-            if checkStatus != 0 {
-                break
-            }
-
             // client wants to upload file
             if operation == 2 {
-                ee := operationUpload(meta, bodySize, bodyBuff, md, conn)
+                ee := operationUpload(bodySize, bodyBuff, md, conn)
                 if ee != nil {
                     logger.Error("error read upload file:", ee)
                     break
@@ -249,6 +248,7 @@ func uploadHandler(conn net.Conn) {
 }
 
 
+
 // parse trackers into a list
 func parseTrackers(tracker string) *list.List {
     sp := strings.Split(tracker, ",")
@@ -264,35 +264,9 @@ func parseTrackers(tracker string) *list.List {
 }
 
 
-// 处理注册storage
-func checkUploadMeta(meta string, conn net.Conn) (int, *header.UploadRequestMeta) {
-    headerMeta := &header.UploadRequestMeta{}
-    e2 := json.Unmarshal([]byte(meta), &headerMeta)
-    if e2 == nil {
-        if headerMeta.Secret == secret {
-            return 0, headerMeta // success
-        } else {
-            var response = &header.UploadResponseMeta{
-                Status: 1,
-                Path: "",
-                Exist: false,
-            }
-            // write response close conn, and not check if success
-            lib_common.WriteResponse(4, conn, response)
-            //close conn
-            lib_common.Close(conn)
-            logger.Error("error check secret")
-            return 1, headerMeta // bad secret
-        }
-    } else {
-        //close conn
-        lib_common.Close(conn)
-        return 2, nil // parse meta error
-    }
-}
 
 // 处理文件上传请求
-func operationUpload(meta string, bodySize uint64, bodyBuff []byte, md hash.Hash, conn net.Conn) error {
+func operationUpload(bodySize uint64, bodyBuff []byte, md hash.Hash, conn net.Conn) error {
     logger.Info("begin read file body, file len is ", bodySize/1024, "KB")
     // read file bytes
     e := lib_common.ReadConnBody(bodySize, bodyBuff, conn, md)

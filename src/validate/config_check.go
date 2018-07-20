@@ -58,6 +58,8 @@ func Check(m map[string] string, runWith int) {
 
     // check secret
     m["secret"] = strings.TrimSpace(m["secret"])
+    app.SECRET = m["secret"]
+
     // check log_level
     logLevel := strings.ToLower(strings.TrimSpace(m["log_level"]))
     if logLevel != "debug" && logLevel != "info" && logLevel != "warn" &&
