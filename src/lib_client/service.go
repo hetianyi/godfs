@@ -1,7 +1,6 @@
 package lib_client
 
 import (
-    "bytes"
     "lib_common/header"
     "util/logger"
     "lib_common"
@@ -13,233 +12,254 @@ import (
     "errors"
     "strconv"
     "sync"
+    "app"
 )
 
 
 // each client has one tcp connection with storage server,
 // once the connection is broken, the client will destroy.
 // one client can only do 1 operation at a time.
-var conn net.Conn
-var connecString string
+var connection net.Conn
+var connectString string
 var operationLock *sync.Mutex
+var secretString string
 
-func NewClient(host string, port int) {
-    operationLock = make()
-    connecString = host + ":" + strconv.Itoa(port)
+func NewClient(host string, port int, secret string) {
+    operationLock = new(sync.Mutex)
+    secretString = secret
+    connectString = host + ":" + strconv.Itoa(port)
     con, e := connect()
     if e != nil {
         logger.Error(e)
     }
-    conn = con
+    connection = con
 }
 
 // close client connection and set it to nil
 func closeConn() {
-    if conn != nil {
-        conn.Close()
+    if connection != nil {
+        connection.Close()
     }
-    conn = nil
+    connection = nil
 }
 
 func connect() (net.Conn, error) {
-    con, e := net.Dial("tcp", connecString)
+    logger.Debug("connecting to storage server...")
+    con, e := net.Dial("tcp", connectString)
     if e != nil {
         logger.Error(e)
         return nil, e
     }
+    e1 := validConn(con)
+    if e1 != nil {
+        logger.Error("error validate connection:", e1)
+        return nil, e1
+    }
+    logger.Debug("successful validate connection:", e1)
     return con, nil
 }
 
 func getConn() net.Conn {
-    if conn != nil {
-        return conn
+    if connection != nil {
+        return connection
     }
-    return connect(),_
-
+    con, e := connect()
+    if e != nil {
+        logger.Error(e)
+        return nil
+    }
+    connection = con
+    return connection
 }
+
+func validConn(con net.Conn) error {
+    logger.Debug("validate connection...")
+    var head = &header.ConnectionHead{Secret: secretString}
+    metaLenBytes, bodyLenBytes, metaBytes, e1 := lib_common.PrepareMetaData(0, head)
+    if e1 != nil {
+        return e1
+    }
+    e2 := lib_common.WriteMeta(8, metaLenBytes, bodyLenBytes, metaBytes, con)
+    if e2 != nil {
+        return e2
+    }
+    _, meta, _, e3 := lib_common.ReadConnMeta(con)
+    if e3 != nil {
+        return e3
+    }
+    var response = &header.ConnectionHeadResponse{}
+    e4 := json.Unmarshal([]byte(meta), response)
+    if e4 != nil {
+        return e4
+    }
+    if response.Status != 0 {
+        return errors.New("error connect to storage server, status:" + strconv.Itoa(response.Status))
+    }
+    return nil
+}
+
 
 
 
 //client demo for upload file to storage server.
 func Upload(path string) error {
-    conn, e := net.Dial("tcp", "127.0.0.1:1024")
-    if e == nil {
+    conn := getConn()
+    if conn != nil {
         fi, e := file.GetFile(path)
         if e == nil {
+            defer fi.Close()
             fInfo, _ := fi.Stat()
-
             operation := 2
-            meta := &header.UploadRequestMeta{
-                Secret: "OASAD834jA97AAQE761==",
-                FileSize: fInfo.Size(),
-            }
+            meta := &header.UploadRequestMeta{FileSize: fInfo.Size()}
 
             metaSize, bodySize, metaBytes, e2 := lib_common.PrepareMetaData(fInfo.Size(), meta)
             if e2 != nil {
-                logger.Fatal("meta prepare failed")
+                closeConn()
+                return e2
             }
-
-            var headerBuff bytes.Buffer
-            headerBuff.Write(header.OperationHeadByteMap[operation])
-            headerBuff.Write(metaSize)
-            headerBuff.Write(bodySize)
-
-            len1, e2 := conn.Write(headerBuff.Bytes())
-            if e2 != nil || len1 != headerBuff.Len() {
-                logger.Fatal("error write meta len")
+            e3 := lib_common.WriteMeta(operation, metaSize, bodySize, metaBytes, conn)
+            if e3 != nil {
+                closeConn()
+                return e3
             }
-            len2, e3 := conn.Write(metaBytes)
-            if e3 != nil || len2 != len(metaBytes) {
-                logger.Fatal("error write meta")
-            }
-
-            buff := make([]byte, 1024*30)
+            // begin upload file body bytes
+            buff := make([]byte, app.BUFF_SIZE)
             for {
-                len5, e := fi.Read(buff)
+                len5, e4 := fi.Read(buff)
+                if e4 != nil && e4 != io.EOF {
+                    closeConn()
+                    return e4
+                }
                 if len5 > 0 {
-                    len3, e4 := conn.Write(buff[0:len5])
-                    if e4 != nil || len3 != len(buff[0:len5]) {
-                        lib_common.Close(conn)
-                        logger.Fatal("error write body:", e4)
+                    len3, e5 := conn.Write(buff[0:len5])
+                    if e5 != nil || len3 != len(buff[0:len5]) {
+                        closeConn()
+                        return e5
+                    }
+                    if e5 == io.EOF {
+                        logger.Debug("upload finish")
                     }
                 } else {
-                    if e != io.EOF {
-                        lib_common.Close(conn)
-                        logger.Error(e)
+                    if e4 != io.EOF {
+                        closeConn()
+                        return e4
                     } else {
-                        logger.Info("上传完毕")
+                        logger.Debug("upload finish")
                     }
                     break
                 }
             }
             _, respMeta, _, e6 := lib_common.ReadConnMeta(conn)
             if e6 != nil {
-                logger.Fatal("error read response:", e6)
+                return e6
             }
             var resp = &header.UploadResponseMeta{}
             e7 := json.Unmarshal([]byte(respMeta), resp)
             if e7 != nil {
-                lib_common.Close(conn)
-                logger.Error(e7)
+                closeConn()
+                return e7
             }
-            logger.Info(respMeta)
+            if resp.Status != 0 {
+                return errors.New("error response status from server:" + strconv.Itoa(resp.Status))
+            }
+            return nil
         } else {
-            logger.Fatal("error open file:", e)
+            return e
         }
     } else {
-        logger.Error("error connect to storage server")
+        return errors.New("error connect to storage server")
     }
-    return e
 }
 
 
-func CheckFileExists(md5 string) error {
-    conn, e := net.Dial("tcp", "127.0.0.1:1024")
-    if e == nil {
-        defer conn.Close()
+func CheckFileExists(md5 string) (bool, error) {
+    conn := getConn()
+    if conn != nil {
         operation := 5
-        meta := &header.QueryFileRequestMeta{
-            Secret: "OASAD834jA97AAQE761==",
-            Md5: md5,
-        }
-
+        meta := &header.QueryFileRequestMeta{PathOrMd5: md5}
         metaSize, bodySize, metaBytes, e2 := lib_common.PrepareMetaData(0, meta)
         if e2 != nil {
-            logger.Fatal("meta prepare failed")
+            closeConn()
+            return false, e2
         }
-
-        var headerBuff bytes.Buffer
-        headerBuff.Write(header.OperationHeadByteMap[operation])
-        headerBuff.Write(metaSize)
-        headerBuff.Write(bodySize)
-
-        len1, e2 := conn.Write(headerBuff.Bytes())
-        if e2 != nil || len1 != headerBuff.Len() {
-            logger.Fatal("error write meta len")
-        }
-        len2, e3 := conn.Write(metaBytes)
-        if e3 != nil || len2 != len(metaBytes) {
-            logger.Fatal("error write meta")
+        e3 := lib_common.WriteMeta(operation, metaSize, bodySize, metaBytes, conn)
+        if e3 != nil {
+            closeConn()
+            return false, e3
         }
 
         _, respMeta, _, e6 := lib_common.ReadConnMeta(conn)
         if e6 != nil {
-            logger.Fatal("error read response:", e6)
+            return false, e6
         }
-        var resp = &header.UploadResponseMeta{}
+        logger.Debug(respMeta)
+        var resp = &header.QueryFileResponseMeta{}
         e7 := json.Unmarshal([]byte(respMeta), resp)
         if e7 != nil {
-            lib_common.Close(conn)
-            logger.Error(e7)
+            closeConn()
+            return false, e7
         }
-        logger.Info(respMeta)
+        if resp.Status != 0 {
+            return false, errors.New("error response status from server:" + strconv.Itoa(resp.Status))
+        } else {
+            if resp.Exist {
+                return true, nil
+            }
+            return false, nil
+        }
+        return false, nil
     } else {
-        logger.Error("error connect to storage server")
+        return false, errors.New("error connect to storage server")
     }
-    return e
 }
 
 
 func DownloadFile(path string, writer io.WriteCloser) error {
-    // TODO move
-    pathRegex := "^/([0-9a-zA-Z_]+)/([0-9a-zA-Z_]+)/([0-9a-fA-F]{32})$"
-    if mat, _ := regexp.Match(pathRegex, []byte(path)); !mat {
-        return errors.New("path format error")
+    if mat, _ := regexp.Match(app.PATH_REGEX, []byte(path)); !mat {
+        return errors.New("file path format error")
     }
-    conn, e := net.Dial("tcp", "127.0.0.1:1024")
-    if e == nil {
-        defer conn.Close()
+    conn := getConn()
+    if conn != nil {
         operation := 6
-        meta := &header.DownloadFileRequestMeta{
-            Secret: "OASAD834jA97AAQE761==",
-            Path: path,
-        }
-
+        meta := &header.DownloadFileRequestMeta{Path: path}
         metaSize, bodySize, metaBytes, e2 := lib_common.PrepareMetaData(0, meta)
         if e2 != nil {
-            logger.Fatal("meta prepare failed")
+            closeConn()
+            return e2
+        }
+        e3 := lib_common.WriteMeta(operation, metaSize, bodySize, metaBytes, conn)
+        if e3 != nil {
+            closeConn()
+            return e3
         }
 
-        var headerBuff bytes.Buffer
-        headerBuff.Write(header.OperationHeadByteMap[operation])
-        headerBuff.Write(metaSize)
-        headerBuff.Write(bodySize)
-
-        len1, e2 := conn.Write(headerBuff.Bytes())
-        if e2 != nil || len1 != headerBuff.Len() {
-            logger.Fatal("error write meta len")
-        }
-        len2, e3 := conn.Write(metaBytes)
-        if e3 != nil || len2 != len(metaBytes) {
-            logger.Fatal("error write meta")
-        }
-
-        _, respMeta, _, e6 := lib_common.ReadConnMeta(conn)
+        _, respMeta, respBodySize, e6 := lib_common.ReadConnMeta(conn)
         if e6 != nil {
-            logger.Fatal("error read response:", e6)
+            return e6
         }
-        var resp = &header.UploadResponseMeta{}
+        var resp = &header.DownloadFileResponseMeta{}
         e7 := json.Unmarshal([]byte(respMeta), resp)
         if e7 != nil {
-            lib_common.Close(conn)
-            logger.Error(e7)
+            closeConn()
+            return e7
         }
-        logger.Info(respMeta)
-        if resp.Exist && resp.Status == 0 {
-            // server status is ok, begin download
-            fileLen := resp.FileSize
-            buffer := make([]byte, 1024*30)
-            e11 := lib_common.ReadConnDownloadBody(uint64(fileLen), buffer, conn, writer)
-            if e11 != nil {
-                logger.Error("download failed:", e11)
-                return e11
+        if resp.Status != 0 {
+            if resp.Status == 4 {
+                return errors.New("file not found")
             }
-            logger.Info("download success")
+            return errors.New("error response status from server:" + strconv.Itoa(resp.Status))
         } else {
-            logger.Error("file not found")
+            // begin download
+            // begin upload file body bytes
+            buff := make([]byte, app.BUFF_SIZE)
+            e4 := lib_common.ReadConnDownloadBody(respBodySize, buff, conn, writer)
+            if e4 != nil {
+                closeConn()
+                return e4
+            }
+            return nil
         }
     } else {
-        logger.Error("error connect to storage server")
+        return errors.New("error connect to storage server")
     }
-    return e
 }

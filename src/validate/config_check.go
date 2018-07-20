@@ -162,6 +162,7 @@ func Check(m map[string] string, runWith int) {
         var _unit1 = GetUnitVal(unit1)
         app.SLICE_SIZE = int64(_val1 * float64(_unit1))
         m["slice_size"] = value1 + unit1
+        logger.Debug("slice_size:", app.SLICE_SIZE)
 
 
 

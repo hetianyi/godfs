@@ -12,7 +12,7 @@ import (
 )
 
 func initParam() {
-    app.BASE_PATH = "D:/Hetianyi/svn/godfs"
+    app.BASE_PATH = "D:/godfs"
     logger.SetLogLevel(1)
 }
 
@@ -62,6 +62,11 @@ func Test7(t *testing.T) {
             fmt.Println("->", m.Parts[i].Md5, "(", m.Parts[i].FileSize, ")")
         }
     }
+}
+
+func Test8(t *testing.T) {
+    initParam()
+    fmt.Println(GetFullFile("f3d5a643583ed27cf865ade45698e692"))
 }
 
 

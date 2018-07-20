@@ -21,6 +21,7 @@ import (
     "errors"
     "net/http"
     "util/db"
+    "lib_service"
 )
 
 
@@ -45,7 +46,7 @@ func StartService(config map[string] string) {
     // 连接数据库
     db.InitDB()
 
-    startDownloadService()
+    startHttpDownloadService()
     go startConnTracker(trackers)
     startUploadService(port)
 }
@@ -90,7 +91,7 @@ func startUploadService(port string) {
     }
 }
 
-func startDownloadService() {
+func startHttpDownloadService() {
 
     if !app.HTTP_ENABLE {
         logger.Info("http server disabled")
@@ -135,8 +136,10 @@ func onceConnTracker(tracker string) {
                 logger.Error("error keep connection with tracker server:", e1)
             } else {
                 for { // keep sending client statistic info to tracker server.
-
+                    //TODO
+                    logger.Debug("connect to tracker server")
                     logger.Debug("send info to tracker server")
+                    time.Sleep(time.Second * 10)
                 }
             }
         } else {
@@ -282,9 +285,8 @@ func operationQueryFile(meta string, conn net.Conn) error {
     var queryMeta = &header.QueryFileRequestMeta{}
     e := json.Unmarshal([]byte(meta), queryMeta)
     if e != nil {
-        var response = &header.UploadResponseMeta {
+        var response = &header.QueryFileResponseMeta {
             Status: 3,
-            Path: "",
             Exist: false,
         }
         lib_common.WriteResponse(4, conn, response)
@@ -292,30 +294,48 @@ func operationQueryFile(meta string, conn net.Conn) error {
         return e
     }
 
-    dig1 := queryMeta.Md5[0:2]
-    dig2 := queryMeta.Md5[2:4]
-    finalPath := app.BASE_PATH + "/data/" + dig1 + "/" + dig2 + "/" + queryMeta.Md5
+    mat1, _ := regexp.Match("[0-9a-f]{32}", []byte(queryMeta.PathOrMd5))
+    mat2, _ := regexp.Match(app.PATH_REGEX, []byte(queryMeta.PathOrMd5))
+    md5 := regexp.MustCompile(app.PATH_REGEX).ReplaceAllString(queryMeta.PathOrMd5, "${3}")
 
-    var response = &header.UploadResponseMeta{}
-    if file.Exists(finalPath) {
-        response = &header.UploadResponseMeta {
-            Status: 0,
-            Path: "",
-            Exist: true,
+    if mat1 || mat2 {
+        fid, e1 := lib_service.GetFileId(md5)
+        if e1 != nil {// error query file
+            var resp = &header.QueryFileResponseMeta{Status: 3, Exist: false}
+            e2 := lib_common.WriteResponse(4, conn, resp)
+            if e2 != nil {
+                lib_common.Close(conn)
+                return e2
+            }
+            return nil
+        } else {
+            if fid == 0 {//file not found
+                var resp = &header.QueryFileResponseMeta{Status: 0, Exist: false}
+                e2 := lib_common.WriteResponse(4, conn, resp)
+                if e2 != nil {
+                    lib_common.Close(conn)
+                    return e2
+                }
+                return nil
+            } else {//file exists
+                var resp = &header.QueryFileResponseMeta{Status: 0, Exist: true}
+                e2 := lib_common.WriteResponse(4, conn, resp)
+                if e2 != nil {
+                    lib_common.Close(conn)
+                    return e2
+                }
+                return nil
+            }
         }
     } else {
-        response = &header.UploadResponseMeta {
-            Status: 0,
-            Path: "",
-            Exist: false,
+        var resp = &header.QueryFileResponseMeta{Status: 0, Exist: false}
+        e2 := lib_common.WriteResponse(4, conn, resp)
+        if e2 != nil {
+            lib_common.Close(conn)
+            return e2
         }
+        return nil
     }
-    e1 := lib_common.WriteResponse(4, conn, response)
-    if e1 != nil {
-        lib_common.Close(conn)
-        return e1
-    }
-    return nil
 }
 
 // 处理文件下载请求
@@ -323,23 +343,13 @@ func operationDownloadFile(meta string, buff []byte, conn net.Conn) error {
     var queryMeta = &header.DownloadFileRequestMeta{}
     e := json.Unmarshal([]byte(meta), queryMeta)
     if e != nil {
-        var response = &header.UploadResponseMeta {
-            Status: 3,
-            Path: "",
-            Exist: false,
-        }
+        var response = &header.DownloadFileResponseMeta {Status: 3}
         lib_common.WriteResponse(4, conn, response)
         lib_common.Close(conn)
         return e
     }
-
-    pathRegex := "^/([0-9a-zA-Z_]+)/([0-9a-zA-Z_]+)/([0-9a-fA-F]{32})$"
-    if mat, _ := regexp.Match(pathRegex, []byte(queryMeta.Path)); !mat {
-        var response = &header.UploadResponseMeta {
-            Status: 0,
-            Path: "",
-            Exist: false,
-        }
+    if mat, _ := regexp.Match(app.PATH_REGEX, []byte(queryMeta.Path)); !mat {
+        var response = &header.DownloadFileResponseMeta {Status: 4}
         e1 := lib_common.WriteResponse(4, conn, response)
         if e1 != nil {
             lib_common.Close(conn)
@@ -347,45 +357,73 @@ func operationDownloadFile(meta string, buff []byte, conn net.Conn) error {
         }
         return nil
     }
-    //initialServer := regexp.MustCompile(pathRegex).ReplaceAllString("/x_/_123/432597de0e65eedbc867620e744a35ad", "${2}")
-    md5 := regexp.MustCompile(pathRegex).ReplaceAllString(queryMeta.Path, "${3}")
-
-    finalPath := GetFilePathByMd5(md5)
-
-    var response = &header.UploadResponseMeta{}
-    if file.Exists(finalPath) {
-        response = &header.UploadResponseMeta {
-            Status: 0,
-            Path: "",
-            Exist: true,
-        }
-        downFile, e1 := file.GetFile(finalPath)
+    md5 := regexp.MustCompile(app.PATH_REGEX).ReplaceAllString(queryMeta.Path, "${4}")
+    fullFile, e11 := lib_service.GetFullFile(md5)
+    if e11 != nil {
+        var response = &header.DownloadFileResponseMeta {Status: 3}
+        e1 := lib_common.WriteResponse(4, conn, response)
         if e1 != nil {
-            response.Status = 3
-            response.Exist = false
-            e1 := lib_common.WriteResponse(4, conn, response)
-            if e1 != nil {
-                lib_common.Close(conn)
-                return e1
-            }
-            return nil
-        }
-        fInfo, _ := downFile.Stat()
-        response.Status = 0
-        response.Exist = true
-        response.FileSize = fInfo.Size()
-        e4 := lib_common.WriteResponse(4, conn, response)
-        if e4 != nil {
             lib_common.Close(conn)
-            return e4
+            return e1
+        }
+        return nil
+    }
+    if fullFile == nil {
+        var response = &header.DownloadFileResponseMeta {Status: 4}
+        e1 := lib_common.WriteResponse(4, conn, response)
+        if e1 != nil {
+            lib_common.Close(conn)
+            return e1
+        }
+        return nil
+    }
+    if len(fullFile.Parts) == 0 {
+        var response = &header.DownloadFileResponseMeta {Status: 3}
+        e1 := lib_common.WriteResponse(4, conn, response)
+        if e1 != nil {
+            lib_common.Close(conn)
+            return e1
+        }
+        return nil
+    }
+    var fileSize int64 = 0
+    for i := range fullFile.Parts {
+        fileSize += fullFile.Parts[i].FileSize
+    }
+
+    var response = &header.DownloadFileResponseMeta {Status: 0}
+    metaLen, bodyLen, metaBytes, e12 := lib_common.PrepareMetaData(fileSize, response)
+    if e12 != nil {
+        var response1 = &header.DownloadFileResponseMeta {Status: 3}
+        e1 := lib_common.WriteResponse(4, conn, response1)
+        if e1 != nil {
+            lib_common.Close(conn)
+            return e1
+        }
+        return nil
+    }
+    e13 := lib_common.WriteMeta(4, metaLen, bodyLen, metaBytes, conn)
+    if e13 != nil {
+        lib_common.Close(conn)
+        return e13
+    }
+
+    var read int64 = 0
+    for i := range fullFile.Parts {
+        downFile, e14 := file.GetFile(GetFilePathByMd5(fullFile.Parts[i].Md5))
+        if e14 != nil {
+            lib_common.Close(conn)
+            return e14
         }
         for {
             len, e2 := downFile.Read(buff)
             if e2 == nil || e2 == io.EOF {
+                logger.Debug("总字节：", fileSize, "已写：", read)
                 wl, e5 := conn.Write(buff[0:len])
+                read+=int64(len)
                 if e2 == io.EOF {
                     downFile.Close()
-                    return nil
+                    break
                 }
                 if e5 != nil || wl != len {
                     downFile.Close()
@@ -394,19 +432,9 @@ func operationDownloadFile(meta string, buff []byte, conn net.Conn) error {
                 }
             } else {
                 downFile.Close()
+                lib_common.Close(conn)
                 return e2
             }
-        }
-    } else {
-        response = &header.UploadResponseMeta {
-            Status: 0,
-            Path: "",
-            Exist: false,
-        }
-        e1 := lib_common.WriteResponse(4, conn, response)
-        if e1 != nil {
-            lib_common.Close(conn)
-            return e1
         }
     }
     return nil

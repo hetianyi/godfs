@@ -9,19 +9,30 @@ import (
     "strconv"
     "util/timeutil"
     "lib_common"
+    "util/logger"
 )
 
+func Init() {
+    logger.SetLogLevel(1)
+    NewClient("127.0.0.1", 1024, "OASAD834jA97AAQE761==")
+}
+
+
 func Test1(t *testing.T) {
+    Init()
     //fmt.Println(Upload("D:/UltraISO.zip"))
     //fmt.Println(Upload("F:/project.rar"))
     //fmt.Println(Upload("D:/nginx-1.8.1.zip"))
+    fmt.Println(Upload("D:/FTP/instantfap-gifs.part8.zip"))
     //fmt.Println(Upload("D:/图片/图片.rar"))
-    fmt.Println(Upload("D:/IMG_20161207_155837.jpg"))
+    //fmt.Println(Upload("D:/IMG_20161207_155837.jpg"))
 }
 
 
 func Test2(t *testing.T) {
-    fmt.Println(CheckFileExists("432597de0e65eedbc867620e744a35ad"))
+    Init()
+    fmt.Println(CheckFileExists("f3d5a643583ed27cf865ade45698e699"))
+    fmt.Println(CheckFileExists("f3d5a643583ed27cf865ade45698e698"))
 }
 
 func Test3(t *testing.T) {
@@ -32,8 +43,9 @@ func Test3(t *testing.T) {
 
 
 func Test4(t *testing.T) {
-    path := "/G1/001/432597de0e65eedbc867620e744a35ac"
-    newFile, _ := file.CreateFile("D:/godfs/test_down/432597de0e65eedbc867620e744a35ad.zip")
+    Init()
+    path := "/G1/001/M/f3d5a643583ed27cf865ade45698e698"
+    newFile, _ := file.CreateFile("D:/godfs/test_down/123.zip")
     fmt.Println(DownloadFile(path, newFile))
 }
 

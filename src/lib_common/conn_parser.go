@@ -94,7 +94,7 @@ func ReadConnMeta(conn net.Conn) (operation int, meta string, bodySize uint64, e
 // operation : 请求操作，0：不支持的操作，1：注册storage，2：注册文件，3：上传文件
 // meta      : 请求头信息
 // err       : 如果发生错误，返回值为operation=-1, meta="", e
-func ReadConnBody(bodySize uint64, buffer []byte, conn net.Conn, md hash.Hash) error {
+func ReadConnBody(bodySize uint64, buffer []byte, conn io.ReadWriteCloser, md hash.Hash) error {
     defer func() {
         md.Reset()
     }()
@@ -126,7 +126,7 @@ func ReadConnBody(bodySize uint64, buffer []byte, conn net.Conn, md hash.Hash) e
                 return e10
             }
             // save slice info to db
-            pid, e8 := lib_service.AddPart(sMd5, app.SLICE_SIZE)
+            pid, e8 := lib_service.AddPart(sMd5, sliceReadSize)
             if e8 != nil {
                 Close(conn)
                 return e8
@@ -165,7 +165,7 @@ func ReadConnBody(bodySize uint64, buffer []byte, conn net.Conn, md hash.Hash) e
         } else {// left bytes less than a buffer
             nextReadSize = int(bodySize - readBodySize)
         }
-        logger.Debug("read next bytes:", nextReadSize, "total is:", bodySize)
+        logger.Trace("read next bytes:", nextReadSize, "total is:", bodySize)
         len1, e3 := ReadBytes(buffer, nextReadSize, conn)
         if e3 == nil && len1 == nextReadSize {
             // if sliceReadSize > sliceSize then create a new slice file
@@ -285,7 +285,7 @@ func moveTmpFileTo(md5 string, fi *os.File) error {
 // meta      : 请求头信息
 // err       : 如果发生错误，返回值为operation=-1, meta="", e
 
-func ReadConnDownloadBody(bodySize uint64, buffer []byte, conn net.Conn, out io.WriteCloser) error {
+func ReadConnDownloadBody(bodySize uint64, buffer []byte, in io.ReadWriteCloser, out io.WriteCloser) error {
     defer func() {
         logger.Debug("close out writer")
         out.Close()
@@ -297,7 +297,7 @@ func ReadConnDownloadBody(bodySize uint64, buffer []byte, conn net.Conn, out io.
     for {
         //read finish
         if readBodySize == bodySize {
-            logger.Info("下载结束，读取字节：", readBodySize)
+            logger.Debug("download finish, read bytes:", readBodySize)
             return nil
         }
         // left bytes is more than a buffer
@@ -306,22 +306,23 @@ func ReadConnDownloadBody(bodySize uint64, buffer []byte, conn net.Conn, out io.
         } else {// left bytes less than a buffer
             nextReadSize = int(bodySize - readBodySize)
         }
-        logger.Debug("read next bytes:", nextReadSize, "total is:", bodySize)
-        len1, e3 := ReadBytes(buffer, nextReadSize, conn)
+        logger.Trace("read next bytes:", nextReadSize, "total is:", bodySize)
+        len1, e3 := ReadBytes(buffer, nextReadSize, in)
         if e3 == nil && len1 == nextReadSize {
             readBodySize += uint64(len1)
             len2, e1 := out.Write(buffer[0:len1])
             // write error
             if e1 != nil || len2 != len1 {
                 logger.Error("write out error:", e1)
-                Close(conn)
+                Close(in)
+                out.Close()
                 return errors.New("write out error(0)")
             }
         } else {
-            logger.Error("error read body:", e3)
-            Close(conn)
+            Close(in)
+            out.Close()
             // 终止循环
-            return e3
+            return errors.New("error read body")
         }
     }
 }
@@ -403,7 +404,7 @@ func PrepareMetaData(bodySize int64, meta interface{}) ([]byte, []byte, []byte, 
 
 
 // write response
-func WriteResponse(operation int, conn net.Conn, response interface{}) error {
+func WriteResponse(operation int, conn io.ReadWriteCloser, response interface{}) error {
     metaSize, bodySize, metaBytes, e := PrepareMetaData(0, response)
     if e != nil {
         return e
@@ -482,6 +483,16 @@ func checkMetaSecret(meta string, conn net.Conn) bool {
     e2 := json.Unmarshal([]byte(meta), head)
     if e2 == nil {
         if head.Secret == app.SECRET {
+            var response = &header.ConnectionHeadResponse {
+                Status: 0,
+            }
+            // write response close conn, and not check if success
+            e3 := WriteResponse(4, conn, response)
+            if e3 != nil {
+                //close conn
+                Close(conn)
+                return false
+            }
             return true // success
         } else {
             var response = &header.ConnectionHeadResponse {

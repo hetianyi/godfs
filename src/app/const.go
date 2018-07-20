@@ -20,4 +20,5 @@ var (
     STORAGE_CLIENT_EXPIRE_TIME time.Duration = 60
     REG_STORAGE_INTERVAL       time.Duration = 30
     SYNC_INTERVAL              time.Duration = 5 //每5s取一次同步任务
+    PATH_REGEX = "^/([0-9a-zA-Z_]{1,10})/([0-9a-zA-Z_]{1,10})/([MS])/([0-9a-fA-F]{32})$"
 )

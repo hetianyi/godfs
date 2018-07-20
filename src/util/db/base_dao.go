@@ -2,8 +2,12 @@ package db
 
 import (
     "database/sql"
-    "util/logger"
     "sync"
+)
+
+import (
+    _ "github.com/mattn/go-sqlite3"
+    "util/logger"
     "app"
     "time"
     "util/common"
@@ -24,7 +28,8 @@ func InitDB() {
 
 
 func connect() (*sql.DB, error) {
-    return sql.Open("sqlite3", app.BASE_PATH + "/conf/storage.db")
+    logger.Debug("connect db file:", app.BASE_PATH + "/data/storage.db")
+    return sql.Open("sqlite3", app.BASE_PATH + "/data/storage.db")
 }
 
 func checkDb() error {
@@ -49,8 +54,9 @@ func checkDb() error {
 
 func verifyConn() {
     for {
-        if checkDb() != nil {
+        if e := checkDb(); e != nil {
             db = nil
+            logger.Error(e)
             time.Sleep(time.Second * 2)
         } else {
             break

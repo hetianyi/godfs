@@ -41,7 +41,6 @@ type Member struct {
 
 // 客户端上传文件到storage的meta
 type UploadRequestMeta struct {
-    Secret string   `json:"secret"`  // 通信秘钥
     FileSize int64 `json:"fileSize"` // 文件大小
     FileExt string `json:"ext"`      //文件扩展名，不包含'.'
     Md5 string `json:"md5"`          //文件md5, 如果已存在则不需要上传
@@ -63,14 +62,31 @@ type UploadResponseMeta struct {
 
 // 客户端查询文件是否存在的meta
 type QueryFileRequestMeta struct {
-    Secret string   `json:"secret"`  // 通信秘钥
-    Md5 string `json:"md5"`          //文件md5, 如果已存在则不需要上传
+    PathOrMd5 string `json:"md5"`          //文件md5, 如果已存在则不需要上传
+}
+// 客户端查询文件是否存在的meta
+type QueryFileResponseMeta struct {
+    Status int                  `json:"status"`     // 状态
+                                                    // 0:success
+                                                    // 1:bad secret
+                                                    // 2:operation not support
+                                                    // 3:server failed, will not close connection
+    Exist bool                  `json:"exist"`      // true:the file exists
+                                                    // true:the file does not exists
 }
 
 // 客户端下载文件的meta
 type DownloadFileRequestMeta struct {
-    Secret string   `json:"secret"`  // 通信秘钥
     Path string `json:"path"`
+}
+// 客户端下载文件的meta
+type DownloadFileResponseMeta struct {
+    Status int                  `json:"status"`     // 状态
+                                                    // 0:success
+                                                    // 1:bad secret
+                                                    // 2:operation not support
+                                                    // 3:server failed, will not close connection
+                                                    // 4:file not found
 }
 
 

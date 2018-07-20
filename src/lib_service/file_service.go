@@ -22,6 +22,11 @@ const (
                         left join parts_relation c on b.id = c.fid
                         left join parts d on c.pid = d.id
                         where a.type = 1 and a.status = 1 limit 10  `
+    getFullFileSQL1  = `select b.id, b.md5, b.instance from files b where b.md5=? `
+    getFullFileSQL2  = `select d.md5, d.size
+                        from files b
+                        left join parts_relation c on b.id = c.fid
+                        left join parts d on c.pid = d.id where b.md5=? order by d.id`
 
 )
 
@@ -233,6 +238,65 @@ func GetSyncTask() (*list.List, error) {
         return nil, e
     }
     return &ls, nil
+}
+
+func GetFullFile(md5 string) (*header.File, error) {
+    var fi *header.File
+    // query file
+    e1 := db.Query(func(rows *sql.Rows) error {
+        if rows != nil {
+            for rows.Next() {
+                var id int
+                var md5, instance string
+                e1 := rows.Scan(&id, &md5, &instance)
+                if e1 != nil {
+                    return e1
+                } else {
+                    fi = &header.File{Id: id, Md5: md5, Instance: instance}
+                }
+            }
+        }
+        return nil
+    }, getFullFileSQL1, md5)
+
+    if e1 != nil {
+        return nil, e1
+    }
+    // not exists
+    if fi == nil {
+        return nil, nil
+    }
+
+    e2 := db.Query(func(rows *sql.Rows) error {
+        if rows != nil {
+            var tparsList list.List
+            for rows.Next() {
+                var size int64
+                var md5 string
+                e1 := rows.Scan(&md5, &size)
+                if e1 != nil {
+                    return e1
+                } else {
+                    var part = &header.FilePart{Md5: md5, FileSize: size}
+                    tparsList.PushBack(part)
+                }
+            }
+            var parsList = make([]header.FilePart, tparsList.Len())
+            index := 0
+            for ele := tparsList.Front(); ele != nil; ele = ele.Next() {
+                parsList[index] = *ele.Value.(*header.FilePart)
+                index++
+            }
+            fi.PartNum = tparsList.Len()
+            fi.Parts = parsList
+        }
+        return nil
+    }, getFullFileSQL2, md5)
+
+    if e2 != nil {
+        return nil, e2
+    }
+    return fi, nil
 }
 
 
