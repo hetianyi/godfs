@@ -22,6 +22,7 @@ import (
     "net/http"
     "util/db"
     "lib_service"
+    "lib_common/bridge"
 )
 
 
@@ -48,12 +49,12 @@ func StartService(config map[string] string) {
 
     startHttpDownloadService()
     go startConnTracker(trackers)
-    startUploadService(port)
+    startStorageService(port)
 }
 
 
 // upload listen
-func startUploadService(port string) {
+func startStorageService(port string) {
     pt := lib_common.ParsePort(port)
     if pt > 0 {
         tryTimes := 0
@@ -69,16 +70,16 @@ func startUploadService(port string) {
                         conn, e1 := listener.Accept()
                         if e1 == nil {
                             ee := p.Exec(func() {
-                                uploadHandler(conn)
+                                clientHandler(conn)
                             })
                             // maybe the poll is full
                             if ee != nil {
-                                lib_common.Close(conn)
+                                bridge.Close(conn)
                             }
                         } else {
                             logger.Info("accept new conn error", e1)
                             if conn != nil {
-                                lib_common.Close(conn)
+                                bridge.Close(conn)
                             }
                         }
                     }
@@ -91,8 +92,8 @@ func startUploadService(port string) {
     }
 }
 
+// http download service
 func startHttpDownloadService() {
-
     if !app.HTTP_ENABLE {
         logger.Info("http server disabled")
         return
@@ -195,16 +196,49 @@ func onConnectTrackerTask(conn net.Conn) error {
 // 文件上传成功将任务写到本地文件storage_task.data作为备份
 // 将任务通知到tracker服务器，通知成功，tracker服务进行广播
 // 其他storage定时取任务，将任务
-func uploadHandler(conn net.Conn) {
+func clientHandler(conn net.Conn) {
 
     defer func() {
         logger.Debug("close connection from server")
-        conn.Close()
+        bridge.Close(conn)
     }()
 
     common.Try(func() {
         // body buff
-        bodyBuff := make([]byte, lib_common.BodyBuffSize)
+        bodyBuff := make([]byte, bridge.HeaderSize)
+        // calculate md5
+        md := md5.New()
+        connBridge := bridge.NewBridge(conn)
+        for {
+            error := connBridge.ReceiveRequest(func(request *bridge.Meta, in io.ReadCloser) error {
+                //return requestRouter(request, &bodyBuff, md, connBridge, conn)
+                if request.Err != nil {
+                    return request.Err
+                }
+                // route
+                if request.Operation == bridge.O_CONNECT {
+                    return validateClientHandler(request, connBridge)
+                } else if request.Operation == bridge.O_UPLOAD {
+                    return uploadHandler(request, bodyBuff, md, conn, connBridge)
+                } else if request.Operation == bridge.O_QUERY_FILE {
+                    return queryFileHandler(request, conn, connBridge)
+                }
+                return nil
+            })
+            if error != nil {
+                logger.Error(error)
+                break
+            }
+        }
+    }, func(i interface{}) {
+        logger.Error("connection error:", i)
+    })
+    
+
+
+    common.Try(func() {
+        // body buff
+        bodyBuff := make([]byte, bridge.HeaderSize)
         // calculate md5
         md := md5.New()
 
@@ -439,6 +473,22 @@ func operationDownloadFile(meta string, buff []byte, conn net.Conn) error {
     }
     return nil
 }
+
+// request router
+func requestRouter(request *bridge.Meta, buffer *[]byte, md hash.Hash, connBridge *bridge.Bridge, conn net.Conn) error {
+    if request.Err != nil {
+        return request.Err
+    }
+    // route
+    if request.Operation == bridge.O_CONNECT {
+        return validateClientHandler(request, connBridge)
+    } else if request.Operation == bridge.O_CONNECT {
+        return uploadHandler(request, *buffer, md, conn, connBridge)
+    }
+    return nil
+}
+
+
 
 // check if file exists on the filesystem
 func CheckIfFileExistByMd5(md5 string) bool {

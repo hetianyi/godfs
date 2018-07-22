@@ -94,7 +94,7 @@ func ReadConnMeta(conn net.Conn) (operation int, meta string, bodySize uint64, e
 // operation : 请求操作，0：不支持的操作，1：注册storage，2：注册文件，3：上传文件
 // meta      : 请求头信息
 // err       : 如果发生错误，返回值为operation=-1, meta="", e
-func ReadConnBody(bodySize uint64, buffer []byte, conn io.ReadWriteCloser, md hash.Hash) error {
+func ReadConnBody(bodySize uint64, buffer []byte, conn io.ReadCloser, md hash.Hash) error {
     defer func() {
         md.Reset()
     }()
@@ -238,7 +238,7 @@ func ReadConnBody(bodySize uint64, buffer []byte, conn io.ReadWriteCloser, md ha
     }
 }
 
-func createTmpFile() (*os.File, error) {
+func CreateTmpFile() (*os.File, error) {
     // begin upload file
     tmpFileName := timeutil.GetUUID()
     // using tmp ext and rename after upload success
@@ -250,12 +250,12 @@ func createTmpFile() (*os.File, error) {
     return fi, nil
 }
 
-func closeAndDeleteTmpFile(fi *os.File) {
+func CloseAndDeleteTmpFile(fi *os.File) {
     fi.Close()
     file.Delete(fi.Name())
 }
 
-func moveTmpFileTo(md5 string, fi *os.File) error {
+func MoveTmpFileTo(md5 string, fi *os.File) error {
     dig1 := strings.ToUpper(md5[0:2])
     dig2 := strings.ToUpper(md5[2:4])
     finalPath := app.BASE_PATH + "/data/" + dig1 + "/" + dig2

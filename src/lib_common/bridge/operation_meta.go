@@ -1,5 +1,16 @@
 package bridge
 
+
+const (
+    STATUS_OK = 0
+    STATUS_BAD_SECRET = 1
+    STATUS_OPERATION_NOT_SUPPORT = 2
+    STATUS_INTERNAL_SERVER_ERROR = 3
+    STATUS_NOT_FOUND = 4
+)
+
+
+
 type Member struct {
     BindAddr string `json:"addr"`
     InstanceId string `json:"instance_id"`
@@ -19,25 +30,13 @@ type File struct {
     Parts []FilePart            `json:"parts"`   // 实例id
 }
 
-// generic operation response
-type OperationResponse struct {
-    // 0: operation success
-    // 1: bad secret
-    // 2: operation not support
-    // 3: internal server error
-    // 4:
-    // 5:
-    // 6:
-    Status int
-}
-
 // validate operation request.
 type OperationValidationRequest struct {
     Secret string
 }
 // validate operation response.
 type OperationValidationResponse struct {
-    OperationResponse
+    Status int
 }
 
 
@@ -50,7 +49,7 @@ type OperationRegisterStorageClientRequest struct {
 }
 // validate operation response.
 type OperationRegisterStorageClientResponse struct {
-    OperationResponse
+    Status int
     LookBackAddr string         `json:"backAddr"`   // tracker反视地址
     GroupMembers []Member       `json:"members"`    // 我的组内成员（不包括自己）
 }
@@ -65,7 +64,7 @@ type OperationUploadFileRequest struct {
 }
 // upload file response.
 type OperationUploadFileResponse struct {
-    OperationResponse
+    Status int
     Path string `json:"path"`
 }
 
@@ -76,7 +75,7 @@ type OperationQueryFileRequest struct {
 }
 // query file response.
 type OperationQueryFileResponse struct {
-    OperationResponse
+    Status int
     Exist bool `json:"exist"`      // true:the file exists
     FileSize uint64 `json:"fileSize"` // 文件大小
 }
@@ -87,7 +86,7 @@ type OperationDownloadFileRequest struct {
 }
 // download file response.
 type OperationDownloadFileResponse struct {
-    OperationResponse
+    Status int
 }
 
 
@@ -97,7 +96,7 @@ type OperationRegisterFileRequest struct {
 }
 // register file response.
 type OperationRegisterFileResponse struct {
-    OperationResponse
+    Status int
 }
 
 // register file operation request.
@@ -106,7 +105,7 @@ type OperationPullFileRequest struct {
 }
 // register file response.
 type OperationPullFileResponse struct {
-    OperationResponse
+    Status int
     File File                    `json:"file"`    // 文件md5
     Parts []FilePart             `json:"parts"`   // 文件分片
 }

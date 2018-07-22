@@ -13,6 +13,11 @@ import (
 const (
     O_CONNECT = 1
     O_RESPONSE = 2
+
+    O_UPLOAD = 2
+    O_QUERY_FILE = 3
+    O_DOWNLOAD_FILE = 4
+
 )
 
 const HeaderSize = 18
@@ -29,6 +34,7 @@ var READ_ERROR = errors.New("error read bytes")
 func init() {
     operationHeadMap[O_CONNECT] = []byte{1,1}
     operationHeadMap[O_RESPONSE] = []byte{1,2}
+    operationHeadMap[O_UPLOAD] = []byte{1,3}
 }
 
 // SendReceiveCloser
@@ -41,6 +47,8 @@ type SendReceiver interface {
     SendResponse(response *Meta, bodyWriterHandler func(out io.WriteCloser) error) error
     // client receive response from server.
     ReceiveResponse(responseHandler func(response *Meta, in io.ReadCloser) error) error
+    // client or server ready body bytes from connection.
+    //ReadBody(readBodyHandler func(request *Meta, in io.ReadCloser) error) error
 }
 
 // include a tcp interact request meta data:
@@ -58,6 +66,11 @@ type Bridge struct {
     connection net.Conn
 }
 
+func (bridge *Bridge) Close() {
+    Close(bridge.connection)
+}
+
+
 func (bridge *Bridge) SendRequest(request *Meta, bodyWriterHandler func(out io.WriteCloser) error) error {
     metaLenBytes := convertLen2Bytes(request.metaLength)
     bodyLenBytes := convertLen2Bytes(request.BodyLength)
@@ -69,18 +82,18 @@ func (bridge *Bridge) SendRequest(request *Meta, bodyWriterHandler func(out io.W
     headerBuff.Write(request.MetaBody)
     len1, e1 := bridge.connection.Write(headerBuff.Bytes())
     if e1 != nil {
-        close(bridge.connection)
+        Close(bridge.connection)
         return e1
     }
     if len1 != headerBuff.Len() {
-        close(bridge.connection)
+        Close(bridge.connection)
         return SEND_HEAD_BYTES_ERROR
     }
     if request.BodyLength > 0 {
         // write request body bytes using custom writer handler.
         err := bodyWriterHandler(bridge.connection)
         if err != nil {
-            close(bridge.connection)
+            Close(bridge.connection)
             return err
         }
     }
@@ -114,7 +127,11 @@ func (bridge *Bridge) ReceiveRequest(requestHandler func(request *Meta, in io.Re
     return requestHandler(request, bridge.connection)
 }
 
-func (bridge *Bridge) SendResponse(response *Meta, bodyWriterHandler func(out io.WriteCloser) error) error {
+func (bridge *Bridge) SendResponse(meta interface{}, bodyLen uint64, bodyWriterHandler func(out io.WriteCloser) error) error {
+    response, e2 := CreateMeta(O_RESPONSE, meta, bodyLen)
+    if e2 != nil {
+        return e2
+    }
     metaLenBytes := convertLen2Bytes(response.metaLength)
     bodyLenBytes := convertLen2Bytes(response.BodyLength)
     var headerBuff bytes.Buffer
@@ -123,23 +140,27 @@ func (bridge *Bridge) SendResponse(response *Meta, bodyWriterHandler func(out io
     headerBuff.Write(bodyLenBytes)
     len1, e1 := bridge.connection.Write(headerBuff.Bytes())
     if e1 != nil {
-        close(bridge.connection)
+        Close(bridge.connection)
         return e1
     }
     if len1 != headerBuff.Len() {
-        close(bridge.connection)
+        Close(bridge.connection)
         return SEND_HEAD_BYTES_ERROR
     }
     if response.BodyLength > 0 {
         // write request body bytes using custom writer handler.
         err := bodyWriterHandler(bridge.connection)
         if err != nil {
-            close(bridge.connection)
+            Close(bridge.connection)
             return err
         }
     }
     return nil
 }
+
+
+
+
 
 func NewBridge(conn net.Conn) *Bridge {
     return &Bridge{connection: conn}
@@ -147,7 +168,7 @@ func NewBridge(conn net.Conn) *Bridge {
 
 
 
-func close(closer io.Closer) error {
+func Close(closer io.Closer) error {
     if closer != nil {
         return closer.Close()
     }
@@ -169,7 +190,7 @@ func ReadBytes(buff []byte, len int, conn io.ReadCloser) (int, error) {
         }
         l, e := conn.Read(buff[read:len])
         if l == 0 || e == io.EOF {
-            close(conn)
+            Close(conn)
             return 0, READ_ERROR
         }
         if l <= len {
@@ -186,7 +207,7 @@ func readHeadBytes(reader io.ReadCloser) (int, uint64, uint64, []byte, error) {
     // read header meta data
     len, e := ReadBytes(headerBytes, HeaderSize, reader)
     if e == nil && len == HeaderSize {
-        operation := retrieveOperation(&headerBytes[0:2])
+        operation := retrieveOperation(headerBytes[0:2])
         // read meta and body size
         bMetaSize := headerBytes[2:10]
         bBodySize := headerBytes[10:18]
@@ -234,13 +255,13 @@ func retrieveOperation(op []byte) int {
 // meta     : meta object
 // bodyLen  : request body length
 // if create success, it returns a *Request, or else returns with error
-func NewRequest(operation int, meta *interface{}, bodyLen uint64) (*Meta, error) {
+func CreateMeta(operation int, meta interface{}, bodyLen uint64) (*Meta, error) {
     // operation bytes not found
     if operationHeadMap[operation] == nil {
         return nil, OPERATION_NOT_SUPPORT_ERROR
     }
 
-    metaBodyBytes, e := json.Marshal(*meta)
+    metaBodyBytes, e := json.Marshal(meta)
     if e != nil {
         return nil, e
     }

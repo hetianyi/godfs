@@ -30,7 +30,7 @@ func Test2(t *testing.T) {
 
 
 type A struct {
-	id int
+	Id int
 }
 
 type B struct {
@@ -44,8 +44,9 @@ func Test3(t *testing.T) {
 	m[2] = "xxxx"
 	fmt.Println(m[1])
 	fmt.Println(m[2])
-	var b = &B{}
-	fmt.Println(b.id)
+	var b = &B{
+	}
+	fmt.Println(b.Id)
 
 
 	operationHeadMap := make(map[int][]byte)
