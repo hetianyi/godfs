@@ -186,7 +186,7 @@ func readHeadBytes(reader io.ReadCloser) (int, uint64, uint64, []byte, error) {
     // read header meta data
     len, e := ReadBytes(headerBytes, HeaderSize, reader)
     if e == nil && len == HeaderSize {
-        operation := retrieveOperation(headerBytes[0:2])
+        operation := retrieveOperation(&headerBytes[0:2])
         // read meta and body size
         bMetaSize := headerBytes[2:10]
         bBodySize := headerBytes[10:18]
