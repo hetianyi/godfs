@@ -30,7 +30,8 @@ func Check(m map[string] string, runWith int) {
     replaceParams(m)
 
     // check: bind_address
-    //bind_address := m["bind_address"]
+    bind_address := strings.TrimSpace(m["bind_address"])
+    app.BIND_ADDRESS = bind_address
 
     // check port
     port, e := strconv.Atoi(m["port"])
@@ -38,6 +39,7 @@ func Check(m map[string] string, runWith int) {
         if port <= 0 || port > 65535 {
             logger.Fatal("invalid port range:", m["port"])
         }
+        app.PORT = port
     } else {
         logger.Fatal("invalid port ", m["port"], ":", e)
     }

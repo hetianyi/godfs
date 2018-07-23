@@ -1,9 +1,7 @@
 package lib_client
 
 import (
-    "lib_common/header"
     "util/logger"
-    "lib_common"
     "encoding/json"
     "util/file"
     "io"
@@ -13,6 +11,7 @@ import (
     "strconv"
     "sync"
     "app"
+    "lib_common/bridge"
 )
 
 
@@ -20,120 +19,83 @@ import (
 // once the connection is broken, the client will destroy.
 // one client can only do 1 operation at a time.
 var connection net.Conn
-var connectString string
 var operationLock *sync.Mutex
 var secretString string
+var connBridge *bridge.Bridge
 
-func NewClient(host string, port int, secret string) {
+
+type IClient interface {
+    Close()
+    Upload(path string) (string, error)
+    CheckFileExists(md5 string) (bool, error)
+    DownloadFile(path string, writerHandler func(fileLen uint64, writer io.WriteCloser) error) error
+}
+
+type Client struct {
+    connBridge *bridge.Bridge
+    buffer []byte
+}
+
+func NewClient(host string, port int, secret string) (*Client, error) {
     operationLock = new(sync.Mutex)
     secretString = secret
-    connectString = host + ":" + strconv.Itoa(port)
-    con, e := connect()
+    connectString := host + ":" + strconv.Itoa(port)
+    connBridge, e := connect(connectString, secret)
     if e != nil {
-        logger.Error(e)
+        return nil, e
     }
-    connection = con
+    client := &Client{
+        connBridge: connBridge,
+        buffer: make([]byte, app.BUFF_SIZE),
+    }
+    return client, nil
 }
 
-// close client connection and set it to nil
-func closeConn() {
-    if connection != nil {
-        connection.Close()
-    }
-    connection = nil
-}
-
-func connect() (net.Conn, error) {
+func connect(connectString string, secret string) (*bridge.Bridge, error) {
     logger.Debug("connecting to storage server...")
     con, e := net.Dial("tcp", connectString)
     if e != nil {
         logger.Error(e)
         return nil, e
     }
-    e1 := validConn(con)
+    connBridge := bridge.NewBridge(con)
+    e1 := connBridge.ValidateConnection(secret)
     if e1 != nil {
-        logger.Error("error validate connection:", e1)
         return nil, e1
     }
     logger.Debug("successful validate connection:", e1)
-    return con, nil
-}
-
-func getConn() net.Conn {
-    if connection != nil {
-        return connection
-    }
-    con, e := connect()
-    if e != nil {
-        logger.Error(e)
-        return nil
-    }
-    connection = con
-    return connection
-}
-
-func validConn(con net.Conn) error {
-    logger.Debug("validate connection...")
-    var head = &header.ConnectionHead{Secret: secretString}
-    metaLenBytes, bodyLenBytes, metaBytes, e1 := lib_common.PrepareMetaData(0, head)
-    if e1 != nil {
-        return e1
-    }
-    e2 := lib_common.WriteMeta(8, metaLenBytes, bodyLenBytes, metaBytes, con)
-    if e2 != nil {
-        return e2
-    }
-    _, meta, _, e3 := lib_common.ReadConnMeta(con)
-    if e3 != nil {
-        return e3
-    }
-    var response = &header.ConnectionHeadResponse{}
-    e4 := json.Unmarshal([]byte(meta), response)
-    if e4 != nil {
-        return e4
-    }
-    if response.Status != 0 {
-        return errors.New("error connect to storage server, status:" + strconv.Itoa(response.Status))
-    }
-    return nil
+    return connBridge, nil
 }
 
 
+func (client *Client) Close() {
+    client.connBridge.Close()
+}
 
 
 //client demo for upload file to storage server.
-func Upload(path string) error {
-    conn := getConn()
-    if conn != nil {
-        fi, e := file.GetFile(path)
-        if e == nil {
-            defer fi.Close()
-            fInfo, _ := fi.Stat()
-            operation := 2
-            meta := &header.UploadRequestMeta{FileSize: fInfo.Size()}
+func (client *Client) Upload(path string) (string, error) {
+    fi, e := file.GetFile(path)
+    if e == nil {
+        defer fi.Close()
+        fInfo, _ := fi.Stat()
 
-            metaSize, bodySize, metaBytes, e2 := lib_common.PrepareMetaData(fInfo.Size(), meta)
-            if e2 != nil {
-                closeConn()
-                return e2
-            }
-            e3 := lib_common.WriteMeta(operation, metaSize, bodySize, metaBytes, conn)
-            if e3 != nil {
-                closeConn()
-                return e3
-            }
+        uploadMeta := &bridge.OperationUploadFileRequest{
+            FileSize: uint64(fInfo.Size()),
+            FileExt: file.GetFileExt(fInfo.Name()),
+            Md5: "",
+        }
+        e2 := client.connBridge.SendRequest(bridge.O_UPLOAD, uploadMeta, uint64(fInfo.Size()), func(out io.WriteCloser) error {
             // begin upload file body bytes
-            buff := make([]byte, app.BUFF_SIZE)
+            buff := client.buffer
             for {
                 len5, e4 := fi.Read(buff)
                 if e4 != nil && e4 != io.EOF {
-                    closeConn()
                     return e4
                 }
                 if len5 > 0 {
-                    len3, e5 := conn.Write(buff[0:len5])
+                    len3, e5 := out.Write(buff[0:len5])
                     if e5 != nil || len3 != len(buff[0:len5]) {
-                        closeConn()
                         return e5
                     }
                     if e5 == io.EOF {
@@ -141,7 +103,6 @@ func Upload(path string) error {
                     }
                 } else {
                     if e4 != io.EOF {
-                        closeConn()
                         return e4
                     } else {
                         logger.Debug("upload finish")
@@ -149,117 +110,99 @@ func Upload(path string) error {
                     break
                 }
             }
-            _, respMeta, _, e6 := lib_common.ReadConnMeta(conn)
-            if e6 != nil {
-                return e6
-            }
-            var resp = &header.UploadResponseMeta{}
-            e7 := json.Unmarshal([]byte(respMeta), resp)
-            if e7 != nil {
-                closeConn()
-                return e7
-            }
-            if resp.Status != 0 {
-                return errors.New("error response status from server:" + strconv.Itoa(resp.Status))
-            }
             return nil
-        } else {
-            return e
-        }
-    } else {
-        return errors.New("error connect to storage server")
-    }
-}
-
-
-func CheckFileExists(md5 string) (bool, error) {
-    conn := getConn()
-    if conn != nil {
-        operation := 5
-        meta := &header.QueryFileRequestMeta{PathOrMd5: md5}
-        metaSize, bodySize, metaBytes, e2 := lib_common.PrepareMetaData(0, meta)
+        })
         if e2 != nil {
-            closeConn()
-            return false, e2
-        }
-        e3 := lib_common.WriteMeta(operation, metaSize, bodySize, metaBytes, conn)
-        if e3 != nil {
-            closeConn()
-            return false, e3
+            return "", e2
         }
 
-        _, respMeta, _, e6 := lib_common.ReadConnMeta(conn)
-        if e6 != nil {
-            return false, e6
-        }
-        logger.Debug(respMeta)
-        var resp = &header.QueryFileResponseMeta{}
-        e7 := json.Unmarshal([]byte(respMeta), resp)
-        if e7 != nil {
-            closeConn()
-            return false, e7
-        }
-        if resp.Status != 0 {
-            return false, errors.New("error response status from server:" + strconv.Itoa(resp.Status))
-        } else {
-            if resp.Exist {
-                return true, nil
+        var fid string
+        // receive response
+        e3 := client.connBridge.ReceiveResponse(func(response *bridge.Meta, in io.Reader) error {
+            if response.Err != nil {
+                return response.Err
             }
-            return false, nil
+            var uploadResponse = &bridge.OperationUploadFileResponse{}
+            e4 := json.Unmarshal(response.MetaBody, uploadResponse)
+            if e4 != nil {
+                return e4
+            }
+            if uploadResponse.Status != 0 {
+                return errors.New("error connect to server, server response status:" + strconv.Itoa(uploadResponse.Status))
+            }
+            fid = uploadResponse.Path
+            // connect success
+            return nil
+        })
+        if e3 != nil {
+            return "", e3
         }
-        return false, nil
+        return fid, nil
     } else {
-        return false, errors.New("error connect to storage server")
+        return "", e
     }
 }
 
 
-func DownloadFile(path string, writer io.WriteCloser) error {
+func (client *Client) CheckFileExists(pathOrMd5 string) (bool, error) {
+    queryMeta := &bridge.OperationQueryFileRequest{PathOrMd5: pathOrMd5}
+    e2 := client.connBridge.SendRequest(bridge.O_QUERY_FILE, queryMeta, 0, nil)
+    if e2 != nil {
+        return false, e2
+    }
+
+    var exist bool
+    // receive response
+    e3 := client.connBridge.ReceiveResponse(func(response *bridge.Meta, in io.Reader) error {
+        if response.Err != nil {
+            return response.Err
+        }
+        var queryResponse = &bridge.OperationQueryFileResponse{}
+        e4 := json.Unmarshal(response.MetaBody, queryResponse)
+        if e4 != nil {
+            return e4
+        }
+        if queryResponse.Status != 0 {
+            return errors.New("error connect to server, server response status:" + strconv.Itoa(queryResponse.Status))
+        }
+        exist = queryResponse.Exist
+        // connect success
+        return nil
+    })
+    if e3 != nil {
+        return false, e3
+    }
+    return exist, nil
+}
+
+
+func (client *Client) DownloadFile(path string, writerHandler func(fileLen uint64, writer io.WriteCloser) error) error {
     if mat, _ := regexp.Match(app.PATH_REGEX, []byte(path)); !mat {
         return errors.New("file path format error")
     }
-    conn := getConn()
-    if conn != nil {
-        operation := 6
-        meta := &header.DownloadFileRequestMeta{Path: path}
-        metaSize, bodySize, metaBytes, e2 := lib_common.PrepareMetaData(0, meta)
-        if e2 != nil {
-            closeConn()
-            return e2
-        }
-        e3 := lib_common.WriteMeta(operation, metaSize, bodySize, metaBytes, conn)
-        if e3 != nil {
-            closeConn()
-            return e3
-        }
-
-        _, respMeta, respBodySize, e6 := lib_common.ReadConnMeta(conn)
-        if e6 != nil {
-            return e6
-        }
-        var resp = &header.DownloadFileResponseMeta{}
-        e7 := json.Unmarshal([]byte(respMeta), resp)
-        if e7 != nil {
-            closeConn()
-            return e7
-        }
-        if resp.Status != 0 {
-            if resp.Status == 4 {
-                return errors.New("file not found")
-            }
-            return errors.New("error response status from server:" + strconv.Itoa(resp.Status))
-        } else {
-            // begin download
-            // begin upload file body bytes
-            buff := make([]byte, app.BUFF_SIZE)
-            e4 := lib_common.ReadConnDownloadBody(respBodySize, buff, conn, writer)
-            if e4 != nil {
-                closeConn()
-                return e4
-            }
-            return nil
-        }
-    } else {
-        return errors.New("error connect to storage server")
+    downloadMeta := &bridge.OperationDownloadFileRequest{Path: path}
+    e2 := client.connBridge.SendRequest(bridge.O_DOWNLOAD_FILE, downloadMeta, 0, nil)
+    if e2 != nil {
+        return e2
     }
+
+    // receive response
+    e3 := client.connBridge.ReceiveResponse(func(response *bridge.Meta, in io.Reader) error {
+        if response.Err != nil {
+            return response.Err
+        }
+        var downloadResponse = &bridge.OperationDownloadFileResponse{}
+        e4 := json.Unmarshal(response.MetaBody, downloadResponse)
+        if e4 != nil {
+            return e4
+        }
+        if downloadResponse.Status != 0 {
+            return errors.New("error connect to server, server response status:" + strconv.Itoa(downloadResponse.Status))
+        }
+        return writerHandler(response.BodyLength, client.connBridge.GetConn())
+    })
+    if e3 != nil {
+        return e3
+    }
+    return nil
 }

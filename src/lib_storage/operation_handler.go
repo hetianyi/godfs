@@ -14,6 +14,7 @@ import (
     "lib_common"
     "io"
     "regexp"
+    "util/file"
 )
 
 // validate client handler
@@ -181,7 +182,7 @@ func uploadHandler(request *bridge.Meta, buffer []byte, md hash.Hash, conn io.Re
 
 
 // 处理文件上传请求
-func queryFileHandler(request *bridge.Meta, conn io.ReadCloser, connBridge *bridge.Bridge) error {
+func queryFileHandler(request *bridge.Meta, connBridge *bridge.Bridge) error {
     var queryMeta = &bridge.OperationQueryFileRequest{}
     e1 := json.Unmarshal(request.MetaBody, queryMeta)
     var response = &bridge.OperationQueryFileResponse{}
@@ -222,3 +223,93 @@ func queryFileHandler(request *bridge.Meta, conn io.ReadCloser, connBridge *brid
         }
     }
 }
+
+
+
+// 处理文件下载请求
+func downloadFileHandler(request *bridge.Meta, buffer []byte, connBridge *bridge.Bridge) error {
+    var meta = &bridge.OperationDownloadFileRequest{}
+    e1 := json.Unmarshal(request.MetaBody, meta)
+    var response = &bridge.OperationDownloadFileResponse{}
+    if e1 != nil {
+        response.Status = bridge.STATUS_INTERNAL_SERVER_ERROR
+        // ignore if it write success
+        connBridge.SendResponse(response, 0, nil)
+        return e1
+    }
+    if mat, _ := regexp.Match(app.PATH_REGEX, []byte(meta.Path)); !mat {
+        response.Status = bridge.STATUS_NOT_FOUND
+        // ignore if it write success
+        e2 := connBridge.SendResponse(response, 0, nil)
+        if e2 != nil {
+            return e2
+        }
+        return nil
+    }
+    md5 := regexp.MustCompile(app.PATH_REGEX).ReplaceAllString(meta.Path, "${4}")
+    fullFile, e11 := lib_service.GetFullFile(md5)
+    if e11 != nil {
+        response.Status = bridge.STATUS_INTERNAL_SERVER_ERROR
+        // ignore if it write success
+        e2 := connBridge.SendResponse(response, 0, nil)
+        if e2 != nil {
+            return e2
+        }
+        return nil
+    }
+    if fullFile == nil {
+        response.Status = bridge.STATUS_NOT_FOUND
+        // ignore if it write success
+        e2 := connBridge.SendResponse(response, 0, nil)
+        if e2 != nil {
+            return e2
+        }
+        return nil
+    }
+    if len(fullFile.Parts) == 0 {
+        response.Status = bridge.STATUS_INTERNAL_SERVER_ERROR
+        // ignore if it write success
+        e2 := connBridge.SendResponse(response, 0, nil)
+        if e2 != nil {
+            return e2
+        }
+        return nil
+    }
+    var fileSize int64 = 0
+    for i := range fullFile.Parts {
+        fileSize += fullFile.Parts[i].FileSize
+    }
+
+    response.Status = bridge.STATUS_OK
+    return connBridge.SendResponse(response, uint64(fileSize), func(out io.WriteCloser) error {
+        var read int64 = 0
+        for i := range fullFile.Parts {
+            downFile, e14 := file.GetFile(GetFilePathByMd5(fullFile.Parts[i].Md5))
+            if e14 != nil {
+                return e14
+            }
+            for {
+                len, e2 := downFile.Read(buffer)
+                if e2 == nil || e2 == io.EOF {
+                    logger.Debug("total bytes:", fileSize, ", write:", read)
+                    wl, e5 := out.Write(buffer[0:len])
+                    read+=int64(len)
+                    if e2 == io.EOF {
+                        downFile.Close()
+                        break
+                    }
+                    if e5 != nil || wl != len {
+                        downFile.Close()
+                        return errors.New("error handle download file")
+                    }
+                } else {
+                    downFile.Close()
+                    return e2
+                }
+            }
+        }
+        return nil
+    })
+}
+
+

@@ -7,6 +7,9 @@ import (
     "net"
     "io"
     "bytes"
+    "strconv"
+    "app"
+    "util/logger"
 )
 
 // operation codes const.
@@ -17,6 +20,7 @@ const (
     O_UPLOAD = 2
     O_QUERY_FILE = 3
     O_DOWNLOAD_FILE = 4
+    O_REG_STORAGE = 5
 
 )
 
@@ -35,20 +39,24 @@ func init() {
     operationHeadMap[O_CONNECT] = []byte{1,1}
     operationHeadMap[O_RESPONSE] = []byte{1,2}
     operationHeadMap[O_UPLOAD] = []byte{1,3}
+    operationHeadMap[O_QUERY_FILE] = []byte{1,4}
+    operationHeadMap[O_DOWNLOAD_FILE] = []byte{1,5}
+    operationHeadMap[O_REG_STORAGE] = []byte{1,6}
 }
 
 // SendReceiveCloser
 type SendReceiver interface {
     // client send request.
-    SendRequest(request *Meta, bodyWriterHandler func(out io.WriteCloser) error) error
+    SendRequest(operation int, meta interface{}, bodyLen uint64, bodyWriterHandler func(out io.WriteCloser) error) error
     // server receive request, it will block till get a new request from client.
     ReceiveRequest(requestHandler func(request *Meta, in io.ReadCloser) error) error
     // server send response.
-    SendResponse(response *Meta, bodyWriterHandler func(out io.WriteCloser) error) error
+    SendResponse(meta interface{}, bodyLen uint64, bodyWriterHandler func(out io.WriteCloser) error) error
     // client receive response from server.
     ReceiveResponse(responseHandler func(response *Meta, in io.ReadCloser) error) error
-    // client or server ready body bytes from connection.
-    //ReadBody(readBodyHandler func(request *Meta, in io.ReadCloser) error) error
+    // send validate request
+    ValidateConnection() error
+    GetConn() net.Conn
 }
 
 // include a tcp interact request meta data:
@@ -70,8 +78,16 @@ func (bridge *Bridge) Close() {
     Close(bridge.connection)
 }
 
+func (bridge *Bridge) GetConn() net.Conn {
+    return bridge.connection
+}
 
-func (bridge *Bridge) SendRequest(request *Meta, bodyWriterHandler func(out io.WriteCloser) error) error {
+
+func (bridge *Bridge) SendRequest(operation int, meta interface{}, bodyLen uint64, bodyWriterHandler func(out io.WriteCloser) error) error {
+    request, e2 := CreateMeta(operation, meta, bodyLen)
+    if e2 != nil {
+        return e2
+    }
     metaLenBytes := convertLen2Bytes(request.metaLength)
     bodyLenBytes := convertLen2Bytes(request.BodyLength)
 
@@ -100,7 +116,7 @@ func (bridge *Bridge) SendRequest(request *Meta, bodyWriterHandler func(out io.W
     return nil
 }
 
-func (bridge *Bridge) ReceiveResponse(responseHandler func(response *Meta, in io.ReadCloser) error) error {
+func (bridge *Bridge) ReceiveResponse(responseHandler func(response *Meta, in io.Reader) error) error {
     operation, metaSize, bodySize, metaBodyBytes, e1 := readHeadBytes(bridge.connection)
     if e1 != nil {
         return e1
@@ -132,12 +148,14 @@ func (bridge *Bridge) SendResponse(meta interface{}, bodyLen uint64, bodyWriterH
     if e2 != nil {
         return e2
     }
+    logger.Debug(string(response.MetaBody))
     metaLenBytes := convertLen2Bytes(response.metaLength)
     bodyLenBytes := convertLen2Bytes(response.BodyLength)
     var headerBuff bytes.Buffer
     headerBuff.Write(operationHeadMap[response.Operation])
     headerBuff.Write(metaLenBytes)
     headerBuff.Write(bodyLenBytes)
+    headerBuff.Write(response.MetaBody)
     len1, e1 := bridge.connection.Write(headerBuff.Bytes())
     if e1 != nil {
         Close(bridge.connection)
@@ -158,6 +176,40 @@ func (bridge *Bridge) SendResponse(meta interface{}, bodyLen uint64, bodyWriterH
     return nil
 }
 
+func (bridge *Bridge) ValidateConnection(secret string) error {
+    var sec = app.SECRET
+    if secret != "" {
+        sec = secret
+    }
+    validateMeta := &OperationValidationRequest {
+        Secret: sec,
+    }
+    // send validate request
+    e1 := bridge.SendRequest(O_CONNECT, validateMeta, 0, nil)
+    if e1 != nil {
+        return e1
+    }
+    e4 := bridge.ReceiveResponse(func(response *Meta, in io.Reader) error {
+        if response.Err != nil {
+            return response.Err
+        }
+        var validateResp = &OperationValidationResponse{}
+        logger.Debug(string(response.MetaBody))
+        e3 := json.Unmarshal(response.MetaBody, validateResp)
+        if e3 != nil {
+            return e3
+        }
+        if validateResp.Status != 0 {
+            return errors.New("error connect to server, server response status:" + strconv.Itoa(validateResp.Status))
+        }
+        // connect success
+        return nil
+    })
+    if e4 != nil {
+        return e4
+    }
+    return nil
+}
 
 
 

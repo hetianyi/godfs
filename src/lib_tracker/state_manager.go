@@ -5,10 +5,11 @@ import (
     "util/logger"
     "sync"
     "strconv"
-    "lib_common/header"
     "util/timeutil"
     "container/list"
     "app"
+    "lib_common/bridge"
+    "encoding/json"
 )
 
 var managedStorages = make(map[string] *storageMeta)
@@ -40,7 +41,7 @@ func ExpirationDetection() {
 }
 
 // 添加storage服务器
-func AddStorageServer(meta *header.CommunicationRegisterStorageRequestMeta) {
+func AddStorageServer(meta *bridge.OperationRegisterStorageClientRequest) {
     operationLock.Lock()
     defer operationLock.Unlock()
     key := meta.BindAddr + ":" + strconv.Itoa(meta.Port)
@@ -58,22 +59,26 @@ func AddStorageServer(meta *header.CommunicationRegisterStorageRequestMeta) {
 
 // 执行即将过期storage服务器
 // 通常是storage客户端和tracker服务器断开连接时
-func FutureExpireStorageServer(meta *header.CommunicationRegisterStorageRequestMeta) {
+func FutureExpireStorageServer(meta *bridge.OperationRegisterStorageClientRequest) {
     operationLock.Lock()
     defer operationLock.Unlock()
-    key := meta.BindAddr + ":" + strconv.Itoa(meta.Port)
-    holdMeta := &storageMeta{
-        ExpireTime: timeutil.GetTimestamp(time.Now().Add(time.Second * app.STORAGE_CLIENT_EXPIRE_TIME)),//set to 100 years
-        Group: meta.Group,
-        InstanceId: meta.InstanceId,
-        Host: meta.BindAddr,
-        Port: meta.Port,
+    if meta != nil {
+        s,_ := json.Marshal(meta)
+        logger.Info("expire storage client:", s)
+        key := meta.BindAddr + ":" + strconv.Itoa(meta.Port)
+        holdMeta := &storageMeta{
+            ExpireTime: timeutil.GetTimestamp(time.Now().Add(time.Second * app.STORAGE_CLIENT_EXPIRE_TIME)),//set to 100 years
+            Group: meta.Group,
+            InstanceId: meta.InstanceId,
+            Host: meta.BindAddr,
+            Port: meta.Port,
+        }
+        managedStorages[key] = holdMeta
     }
-    managedStorages[key] = holdMeta
 }
 
 // check if instance if is unique
-func IsInstanceIdUnique(meta *header.CommunicationRegisterStorageRequestMeta) bool {
+func IsInstanceIdUnique(meta *bridge.OperationRegisterStorageClientRequest) bool {
     key := meta.BindAddr + ":" + strconv.Itoa(meta.Port)
     for k, v := range managedStorages {
         if k != key && v.Group == meta.Group && v.InstanceId == meta.InstanceId {
@@ -84,19 +89,19 @@ func IsInstanceIdUnique(meta *header.CommunicationRegisterStorageRequestMeta) bo
 }
 
 // 获取组内成员
-func GetGroupMembers(meta *header.CommunicationRegisterStorageRequestMeta) []header.Member {
+func GetGroupMembers(meta *bridge.OperationRegisterStorageClientRequest) []bridge.Member {
     key := meta.BindAddr + ":" + strconv.Itoa(meta.Port)
     var mList list.List
     for k, v := range managedStorages {
         if k != key && v.Group == meta.Group { // 过期
-            m := header.Member{BindAddr: v.Host, Port: v.Port, InstanceId: v.InstanceId}
+            m := bridge.Member{BindAddr: v.Host, Port: v.Port, InstanceId: v.InstanceId}
             mList.PushBack(m)
         }
     }
-    var members = make([]header.Member, mList.Len())
+    var members = make([]bridge.Member, mList.Len())
     index := 0
     for e := mList.Front(); e != nil; e = e.Next() {
-        members[index] = e.Value.(header.Member)
+        members[index] = e.Value.(bridge.Member)
         index++
     }
     return members

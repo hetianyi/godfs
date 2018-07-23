@@ -14,8 +14,10 @@ var (
     GROUP string
     INSTANCE_ID string
     SECRET string
+    BIND_ADDRESS string
     HTTP_ENABLE bool
     MIME_TYPES_ENABLE bool
+    PORT int
     HTTP_PORT int
     STORAGE_CLIENT_EXPIRE_TIME time.Duration = 60
     REG_STORAGE_INTERVAL       time.Duration = 30

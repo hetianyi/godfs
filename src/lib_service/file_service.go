@@ -4,9 +4,9 @@ import (
     "container/list"
     "database/sql"
     "util/db"
-    "lib_common/header"
     "encoding/json"
     "app"
+    "lib_common/bridge"
 )
 
 const (
@@ -142,7 +142,7 @@ func StorageAddFile(md5 string, parts *list.List) error {
 
 // tracker add file
 // parts is map[md5]partsize
-func TrackerAddFile(meta *header.CommunicationRegisterFileRequestMeta) error {
+func TrackerAddFile(meta *bridge.OperationRegisterFileRequest) error {
     return db.DoTransaction(func(tx *sql.Tx) error {
         fi := meta.File
         parts := fi.Parts
@@ -223,12 +223,12 @@ func GetSyncTask() (*list.List, error) {
                 if e1 != nil {
                     return e1
                 }
-                var parsList []header.FilePart
+                var parsList []bridge.FilePart
                 e2 := json.Unmarshal([]byte(parts), &parsList)
                 if e2 != nil {
                     return e2
                 }
-                ret := &header.File{Id: id, Md5: md5, Instance: instance, PartNum: len(parsList), Parts: parsList}
+                ret := &bridge.File{Id: id, Md5: md5, Instance: instance, PartNum: len(parsList), Parts: parsList}
                 ls.PushBack(ret)
             }
         }
@@ -240,8 +240,8 @@ func GetSyncTask() (*list.List, error) {
     return &ls, nil
 }
 
-func GetFullFile(md5 string) (*header.File, error) {
-    var fi *header.File
+func GetFullFile(md5 string) (*bridge.File, error) {
+    var fi *bridge.File
     // query file
     e1 := db.Query(func(rows *sql.Rows) error {
         if rows != nil {
@@ -252,7 +252,7 @@ func GetFullFile(md5 string) (*header.File, error) {
                 if e1 != nil {
                     return e1
                 } else {
-                    fi = &header.File{Id: id, Md5: md5, Instance: instance}
+                    fi = &bridge.File{Id: id, Md5: md5, Instance: instance}
                 }
             }
         }
@@ -277,14 +277,14 @@ func GetFullFile(md5 string) (*header.File, error) {
                 if e1 != nil {
                     return e1
                 } else {
-                    var part = &header.FilePart{Md5: md5, FileSize: size}
+                    var part = &bridge.FilePart{Md5: md5, FileSize: size}
                     tparsList.PushBack(part)
                 }
             }
-            var parsList = make([]header.FilePart, tparsList.Len())
+            var parsList = make([]bridge.FilePart, tparsList.Len())
             index := 0
             for ele := tparsList.Front(); ele != nil; ele = ele.Next() {
-                parsList[index] = *ele.Value.(*header.FilePart)
+                parsList[index] = *ele.Value.(*bridge.FilePart)
                 index++
             }
             fi.PartNum = tparsList.Len()

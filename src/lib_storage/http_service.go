@@ -10,7 +10,7 @@ import (
     "io"
     "app"
     "time"
-    "lib_common"
+    "lib_common/bridge"
 )
 
 const (
@@ -143,7 +143,7 @@ func DownloadHandler(writer http.ResponseWriter, request *http.Request) {
                 } else {// left bytes less than a buffer
                     nextReadSize = int(readLen - int64(read))
                 }
-                len, e2 := lib_common.ReadBytes(buff, nextReadSize, downFile)
+                len, e2 := bridge.ReadBytes(buff, nextReadSize, downFile)
                 if e2 == nil || e2 == io.EOF {
                     wl, e5 := writer.Write(buff[0:len])
                     if e2 == io.EOF {
