@@ -18,6 +18,7 @@ import (
     "lib_common/bridge"
     "encoding/json"
     "errors"
+    "sync"
 )
 
 
@@ -123,19 +124,30 @@ func startConnTracker(trackers string) {
 func onceConnTracker(tracker string) {
     logger.Info("start tracker conn with tracker server:", tracker)
     retry := 0
+    var taskChan = make(chan func(*bridge.Bridge) error)
     for {//keep trying to connect to tracker server.
         conn, e := net.Dial("tcp", tracker)
         if e == nil {
+            var lock = *new(sync.Mutex)
             // validate client
-            e1 := connectAndValidate(conn)
+            connBridge, e1 := connectAndValidate(conn)
             if e1 != nil {
                 bridge.Close(conn)
                 logger.Error(e1)
             } else {
                 logger.Debug("connect to tracker server success.")
                 for { // keep sending client statistic info to tracker server.
-                    logger.Debug("send info to tracker server.")
-                    time.Sleep(time.Second * 10)
+                // TODO continue......
+                    task := <- taskChan
+                    lock.Lock()
+                    e2 := task(connBridge)
+                    if e2 != nil {
+                        bridge.Close(conn)
+                        lock.Unlock()
+                        close(taskChan)
+                        break
+                    }
+                    lock.Unlock()
                 }
             }
         } else {
@@ -147,14 +159,18 @@ func onceConnTracker(tracker string) {
 }
 
 // connect to tracker server and register client to it.
-func connectAndValidate(conn net.Conn) error {
+func connectAndValidate(conn net.Conn) (*bridge.Bridge, error) {
     // create bridge
     connBridge := bridge.NewBridge(conn)
     // send validate request
     e1 := connBridge.ValidateConnection("")
     if e1 != nil {
-        return e1
+        return nil, e1
     }
+    return connBridge, nil
+}
+
+func registerAndSyncMember() error {
     // register storage client to tracker server
     regClientMeta := &bridge.OperationRegisterStorageClientRequest {
         BindAddr: app.BIND_ADDRESS,
