@@ -34,8 +34,10 @@ var OPERATION_NOT_SUPPORT_ERROR = errors.New("operation not support")
 var SEND_HEAD_BYTES_ERROR = errors.New("error send head bytes")
 var SEND_BODY_BYTES_ERROR = errors.New("error send head bytes")
 var READ_ERROR = errors.New("error read bytes")
-var FILE_NOT_FOUND_ERROR = errors.New("not found")
+var FILE_NOT_FOUND_ERROR = errors.New("file not found")
 var INTERNAL_SERVER_ERROR = errors.New("internal server error")
+var DOWNLOAD_FILE_ERROR = errors.New("error download file")
+
 
 // init operations
 func init() {

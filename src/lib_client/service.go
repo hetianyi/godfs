@@ -200,8 +200,12 @@ func (client *Client) DownloadFile(path string, start int64, offset int64, write
         if e4 != nil {
             return e4
         }
-        if downloadResponse.Status != bridge.STATUS_OK && downloadResponse.Status != bridge.STATUS_NOT_FOUND {
-            return errors.New("error connect to server, server response status:" + strconv.Itoa(downloadResponse.Status))
+        if downloadResponse.Status == bridge.STATUS_NOT_FOUND {
+            return bridge.FILE_NOT_FOUND_ERROR
+        }
+        if downloadResponse.Status != bridge.STATUS_OK {
+            logger.Error("error connect to server, server response status:" + strconv.Itoa(downloadResponse.Status))
+            return bridge.DOWNLOAD_FILE_ERROR
         }
         return writerHandler(response.BodyLength, client.connBridge.GetConn())
     })

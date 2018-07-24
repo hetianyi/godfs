@@ -15,7 +15,7 @@ import (
 
 func Init() *Client {
     logger.SetLogLevel(1)
-   client, e := NewClient("192.168.1.140", 1025, "OASAD834jA97AAQE761==")
+   client, e := NewClient("127.0.0.1", 1024, "OASAD834jA97AAQE761==")
    if e != nil {
        logger.Error(e)
    }
@@ -25,9 +25,9 @@ func Init() *Client {
 
 func Test1(t *testing.T) {
     client := Init()
-    fmt.Println(client.Upload("D:/UltraISO.zip")) // G01/002/M/c445b10edc599617106ae8472c1446fd
+    //fmt.Println(client.Upload("D:/UltraISO.zip")) // G01/002/M/c445b10edc599617106ae8472c1446fd
     //fmt.Println(client.Upload("F:/project.rar"))
-    //fmt.Println(client.Upload("D:/nginx-1.8.1.zip"))
+    fmt.Println(client.Upload("D:/nginx-1.8.1.zip"))
     //fmt.Println(client.Upload("D:/FTP/instantfap-gifs.part8.zip"))
     //fmt.Println(client.Upload("D:/图片/图片.rar"))
     //fmt.Println(client.Upload("D:/IMG_20161207_155837.jpg"))
@@ -48,18 +48,18 @@ func Test3(t *testing.T) {
 
 func Test4(t *testing.T) {
     client := Init()
-    path := "/G01/002/M/c445b10edc599617106ae8472c1446fd"
+    path := "/G01/002/M/d1cd0a197dc6a5a4beb13cf0fe951444"
 
-    client.DownloadFile(path, 0, 1024*1024, func(fileLen uint64, reader io.Reader) error {
-        newFile, _ := file.CreateFile("D:/test2222/123.zip")
+    fmt.Println(client.DownloadFile(path, 0, 1024*1024, func(fileLen uint64, reader io.Reader) error {
+        newFile, _ := file.CreateFile("D:/godfs/123.zip")
         defer newFile.Close()
         d := make([]byte, fileLen)
         io.ReadFull(reader, d)
         newFile.Write(d)
         return nil
-    })
-    client.DownloadFile(path, 1024*1024, -1, func(fileLen uint64, reader io.Reader) error {
-        newFile, _ := file.CreateFile("D:/test2222/123.zip")
+    }))
+    client.DownloadFile(path, 1024*1024, 238225, func(fileLen uint64, reader io.Reader) error {
+        newFile, _ := file.OpenFile4Write("D:/godfs/123.zip")
         defer newFile.Close()
         d := make([]byte, fileLen)
         io.ReadFull(reader, d)

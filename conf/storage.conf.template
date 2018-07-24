@@ -6,7 +6,7 @@
 group=G01
 
 # 实例ID
-instance_id=001
+instance_id=002
 
 
 # 服务器绑定的IP，用于服务之间互通时的地址，如果没有设置，则默认使用socket解析的远程地址
@@ -23,7 +23,7 @@ port=1024
 # -base_path
 #   └logs
 #   └data
-base_path=D:/godfs//
+base_path=E:/godfs-storage/storage1
 
 
 trackers=127.0.0.1:1022
@@ -52,7 +52,7 @@ assign_disk_space=50G
 # 文件分片大小
 # 将大文件拆分为较小的文件分片存储
 # 定义每个小文件的大小，0则不分片，值写法参考规则：assign_disk_space
-slice_size=10M
+slice_size=1M
 
 
 # 是否启用http协议下载服务

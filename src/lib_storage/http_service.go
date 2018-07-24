@@ -2,17 +2,9 @@ package lib_storage
 
 import (
     "net/http"
-    "strings"
     "regexp"
-    "util/logger"
     "strconv"
-    "app"
     "time"
-    "lib_service"
-    "lib_common/bridge"
-    "io"
-    "util/file"
-    "os"
 )
 
 const (
@@ -32,7 +24,7 @@ func init() {
 
 // storage server provide http download service
 func DownloadHandler(writer http.ResponseWriter, request *http.Request) {
-
+/*
     qIndex := strings.Index(request.RequestURI, "?")
     var servletPath = request.RequestURI
     if qIndex != -1 {
@@ -194,7 +186,7 @@ func DownloadHandler(writer http.ResponseWriter, request *http.Request) {
         }
     }
 
-
+*/
 }
 
 

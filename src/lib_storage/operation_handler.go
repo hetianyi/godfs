@@ -15,7 +15,6 @@ import (
     "io"
     "regexp"
     "util/file"
-    "os"
 )
 
 // validate client handler
@@ -286,70 +285,84 @@ func downloadFileHandler(request *bridge.Meta, buffer []byte, connBridge *bridge
     }
 
     response.Status = bridge.STATUS_OK
-
-    return connBridge.SendResponse(response, uint64(fileSize), func(out io.WriteCloser) error {
-        return WriteDownloadStream(fullFile, meta.Start, meta.Offset, buffer, out)
+    startPos, endPos, totalLen := lib_common.GetReadPositions(fullFile, meta.Start, meta.Offset)
+    logger.Debug("下载位置：from：", startPos.PartIndex, ":", startPos.PartStart)
+    logger.Debug("下载位置：to  ：", endPos.PartIndex, ":", endPos.PartStart)
+    logger.Debug("大小：", totalLen)
+    return connBridge.SendResponse(response, uint64(totalLen), func(out io.WriteCloser) error {
+        return WriteDownloadStream(fullFile, startPos, endPos, buffer, out)
     })
 }
 
 
-func WriteDownloadStream(fullFile *bridge.File, startPos *bridge.ReadPos, endPos *bridge.ReadPos, writeLen int64, buffer []byte, out io.Writer) error {
-    startReadPartIndex, startReadByteIndex, totalLen := lib_common.GetReadPositions(fullFile, start, offset)
+func WriteDownloadStream(fullFile *bridge.File, startPos *bridge.ReadPos, endPos *bridge.ReadPos, buffer []byte, out io.Writer) error {
 
-
-    // total read bytes
-    var readBodySize int64 = 0
-    // next time bytes to read
-    var nextReadSize int
     for i := range fullFile.Parts {
-        var downFile *os.File
-        var e14 error
-        if i < startReadPartIndex.PartIndex {
+        var start int64 = 0
+        var offset int64 = 0
+        if i < startPos.PartIndex {
             continue
-        } else if i == startReadPartIndex.PartIndex {
-            downFile, e14 = file.GetFile(lib_common.GetFilePathByMd5(fullFile.Parts[i].Md5))
-            if e14 != nil {
-                return e14
-            }
-            _, e15 := downFile.Seek(startReadByteIndex.PartStart, 0)
-            if e15 != nil {
-                downFile.Close()
-                return e15
-            }
+        } else if i == startPos.PartIndex {
+            start = startPos.PartStart
         } else {
-            downFile, e14 = file.GetFile(lib_common.GetFilePathByMd5(fullFile.Parts[i].Md5))
-            if e14 != nil {
-                return e14
-            }
+            start = 0
         }
-
-
-        for {
-            // left bytes is more than a buffer
-            if (writeLen - readBodySize) / int64(len(buffer)) >= 1 {
-                nextReadSize = len(buffer)
-            } else {// left bytes less than a buffer
-                nextReadSize = int(writeLen - readBodySize)
-            }
-            len, e2 := downFile.Read(buffer[0:nextReadSize])
-            if e2 == nil || e2 == io.EOF {
-                wl, e5 := out.Write(buffer[0:len])
-                read+=int64(len)
-                if e2 == io.EOF {
-                    downFile.Close()
-                    break
-                }
-                if e5 != nil || wl != len {
-                    downFile.Close()
-                    return errors.New("error handle download file")
-                }
-            } else {
-                downFile.Close()
-                return e2
-            }
+        if i > endPos.PartIndex {
+            break
+        } else if i == endPos.PartIndex {
+            offset = endPos.PartStart - start
+        } else {
+            offset = fullFile.Parts[len(fullFile.Parts) - 1].FileSize - start
+        }
+        if e := WriteOut(fullFile.Parts[i].Md5, start, offset, buffer, out); e != nil {
+            return e
         }
     }
     return nil
 }
+
+func WriteOut(md5 string, start int64, offset int64, buffer []byte, out io.Writer) error {
+    fi, e := file.GetFile(lib_common.GetFilePathByMd5(md5))
+    if e != nil {
+        return e
+    }
+    defer fi.Close()
+    // total read bytes
+    var readBodySize int64 = 0
+    // next time bytes to read
+    var nextReadSize int
+    _, e1 := fi.Seek(start, 0)
+    if e1 != nil {
+        return e1
+    }
+    for {
+        // left bytes is more than a buffer
+        if (offset - readBodySize) / int64(len(buffer)) >= 1 {
+            nextReadSize = len(buffer)
+        } else {// left bytes less than a buffer
+            nextReadSize = int(offset - readBodySize)
+        }
+        if nextReadSize == 0 {
+            break
+        }
+        len, e2 := fi.Read(buffer[0:nextReadSize])
+        if e2 == nil || e2 == io.EOF {
+            wl, e5 := out.Write(buffer[0:len])
+            readBodySize += int64(len)
+            logger.Debug("write:", readBodySize)
+            if e2 == io.EOF {
+                break
+            }
+            if e5 != nil || wl != len {
+                return errors.New("error handle download file")
+            }
+        } else {
+            return e2
+        }
+    }
+    return nil
+}
+
+
 
 
