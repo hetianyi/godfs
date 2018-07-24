@@ -92,6 +92,8 @@ func clientHandler(conn net.Conn) {
                     var e error
                     storageClient, e = registerStorageClientHandler(request, conn, connBridge)
                     return e
+                } else if request.Operation == bridge.O_REG_FILE {
+                    return registerFileHandler(request, connBridge)
                 } else {
                     return bridge.OPERATION_NOT_SUPPORT_ERROR
                 }

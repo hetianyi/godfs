@@ -5,16 +5,18 @@ import (
     "strings"
     "regexp"
     "util/logger"
-    "util/file"
     "strconv"
-    "io"
     "app"
     "time"
+    "lib_service"
     "lib_common/bridge"
+    "io"
+    "util/file"
+    "os"
 )
 
 const (
-    pathRegexRestful = "^/download/([0-9a-zA-Z_]+)/([0-9a-zA-Z_]+)/([0-9a-fA-F]{32})(/([^/]*))?$"
+    pathRegexRestful = "^/download/([0-9a-zA-Z_]{1,10})/([0-9a-zA-Z_]{1,10})/([MS])/([0-9a-fA-F]{32})(/([^/]*))?$"
     rangeHeader = "^bytes=([0-9]+)-([0-9]+)?$"
 )
 var (
@@ -46,7 +48,7 @@ func DownloadHandler(writer http.ResponseWriter, request *http.Request) {
 
 
     var md5 string
-    md5 = compiledRegexpRestful.ReplaceAllString(servletPath, "${3}")
+    md5 = compiledRegexpRestful.ReplaceAllString(servletPath, "${4}")
     headers := writer.Header()
     eTag := request.Header["If-None-Match"]
     // 304 Not Modified
@@ -56,7 +58,7 @@ func DownloadHandler(writer http.ResponseWriter, request *http.Request) {
         return
     }
 
-    fn := compiledRegexpRestful.ReplaceAllString(servletPath, "${5}")
+    fn := compiledRegexpRestful.ReplaceAllString(servletPath, "${6}")
     if fn == "" {
         queryValues := request.URL.Query()
         fns := queryValues["fn"]
@@ -68,108 +70,131 @@ func DownloadHandler(writer http.ResponseWriter, request *http.Request) {
     }
     logger.Debug("custom download file name is:", fn)
 
-    finalPath := GetFilePathByMd5(md5)
-    logger.Debug("file path is :", finalPath)
-    if file.Exists(finalPath) {
-        downFile, e := file.GetFile(finalPath)
-        if e != nil {
-            writer.WriteHeader(500)
-            return
-        } else {
-            fInfo, _ := downFile.Stat()
-            ext := file.GetFileExt(fn)
-
-
-            // parse header: range
-            rangeH := request.Header["Range"]
-            var rangeS string
-            if rangeH != nil && len(rangeH) > 0 {
-                rangeS = rangeH[0]
-            }
-            logger.Info(rangeS)
-            start, end := parseHeaderRange(rangeS)
-            if start <= 0 || start > (fInfo.Size() - 1) {
-                start = 0
-            }
-            if start > (fInfo.Size() - 1) {
-                start = fInfo.Size() - 1
-            }
-            if end <= 0 || end > (fInfo.Size() - 1) || end == start {
-                end = fInfo.Size() - 1
-            }
-
-            headers.Set("Content-Type", *app.GetContentTypeHeader(ext))
-            headers.Set("Accept-Ranges", "bytes")
-            headers.Set("Content-Length", strconv.FormatInt(end - start + 1, 10))
-            headers.Set("Content-Range", "bytes " + strconv.FormatInt(start, 10) + "-" + strconv.FormatInt(end, 10) + "/" + strconv.FormatInt(fInfo.Size(), 10))
-
-            logger.Info("range:", start , "-", end)
-            //fn = url.QueryEscape(fn)
-            if !app.MIME_TYPES_ENABLE {
-                headers.Set("Expires", "0")
-                headers.Set("Pragma", "public")
-                //headers.Set("Accept-Ranges", "bytes")
-                headers.Set("Content-Transfer-Encoding", "binary")
-                headers.Set("Cache-Control", "must-revalidate, post-check=0, pre-check=0")
-                headers.Set("Content-Disposition", "attachment;filename=\"" + fn + "\"")
-            } else {
-                gmtLocation, _ := time.LoadLocation("GMT")
-                headers.Set("Last-Modified", fInfo.ModTime().In(gmtLocation).Format(time.RFC1123))
-                headers.Set("Expires", time.Now().Add(time.Hour * 2400).In(gmtLocation).Format(time.RFC1123))
-                setMimeHeaders(md5, &headers)
-            }
-            // adapt different clients
-            // such as chrome needs 200 xunlei needs 206
-            if rangeS == "" {
-                writer.WriteHeader(200)
-            } else {
-                writer.WriteHeader(206)
-            }
-
-            bodyBuffSize := 1024*10
-            var buff = make([]byte, bodyBuffSize)
-            read := 0
-            readLen := end - start + 1
-            var nextReadSize int
-            downFile.Seek(start, 0)
-            for {
-                //read finish
-                if int64(read) == readLen {
-                    break
-                }
-                // left bytes is more than a buffer
-                if (readLen - int64(read)) / int64(bodyBuffSize) >= 1 {
-                    nextReadSize = int(bodyBuffSize)
-                } else {// left bytes less than a buffer
-                    nextReadSize = int(readLen - int64(read))
-                }
-                len, e2 := bridge.ReadBytes(buff, nextReadSize, downFile)
-                if e2 == nil || e2 == io.EOF {
-                    wl, e5 := writer.Write(buff[0:len])
-                    if e2 == io.EOF {
-                        logger.Info("file download success")
-                        downFile.Close()
-                        break
-                    }
-                    if e5 != nil || wl != len {
-                        logger.Error("error write download file:", e5)
-                        downFile.Close()
-                        break
-                    }
-                    read += wl
-                    logger.Debug("write data....:", nextReadSize)
-                } else {
-                    logger.Error("error read download file:", e2)
-                    downFile.Close()
-                    break
-                }
-            }
-        }
-    } else {
+    fullFile, e11 := lib_service.GetFullFileByMd5(md5)
+    if e11 != nil {
+        writer.WriteHeader(500)
+        writer.Write([]byte("Internal server error"))
+        return
+    }
+    if fullFile == nil {
         writer.WriteHeader(404)
         writer.Write([]byte("Not found."))
         return
     }
+    if len(fullFile.Parts) == 0 {
+        writer.WriteHeader(500)
+        writer.Write([]byte("Internal server error"))
+        return
+    }
+
+    var fileSize int64 = 0
+    for i := range fullFile.Parts {
+        fileSize += fullFile.Parts[i].FileSize
+    }
+
+
+    ext := file.GetFileExt(fn)
+
+
+    // parse header: range
+    rangeH := request.Header["Range"]
+    var rangeS string
+    if rangeH != nil && len(rangeH) > 0 {
+        rangeS = rangeH[0]
+    }
+    logger.Info(rangeS)
+    start, end := parseHeaderRange(rangeS)
+    if start <= 0 || start > (fileSize - 1) {
+        start = 0
+    }
+    if start > (fileSize - 1) {
+        start = fileSize - 1
+    }
+    if end <= 0 || end > (fileSize - 1) || end == start {
+        end = fileSize - 1
+    }
+
+    headers.Set("Content-Type", *app.GetContentTypeHeader(ext))
+    headers.Set("Accept-Ranges", "bytes")
+    headers.Set("Content-Length", strconv.FormatInt(end - start + 1, 10))
+    headers.Set("Content-Range", "bytes " + strconv.FormatInt(start, 10) + "-" + strconv.FormatInt(end, 10) + "/" + strconv.FormatInt(fileSize, 10))
+
+    logger.Info("range:", start , "-", end)
+    if !app.MIME_TYPES_ENABLE {
+        headers.Set("Expires", "0")
+        headers.Set("Pragma", "public")
+        //headers.Set("Accept-Ranges", "bytes")
+        headers.Set("Content-Transfer-Encoding", "binary")
+        headers.Set("Cache-Control", "must-revalidate, post-check=0, pre-check=0")
+        headers.Set("Content-Disposition", "attachment;filename=\"" + fn + "\"")
+    } else {
+        gmtLocation, _ := time.LoadLocation("GMT")
+        headers.Set("Last-Modified", fInfo.ModTime().In(gmtLocation).Format(time.RFC1123))
+        headers.Set("Expires", time.Now().Add(time.Hour * 2400).In(gmtLocation).Format(time.RFC1123))
+        setMimeHeaders(md5, &headers)
+    }
+    // adapt different clients
+    // such as chrome needs 200 xunlei needs 206
+    if rangeS == "" {
+        writer.WriteHeader(200)
+    } else {
+        writer.WriteHeader(206)
+    }
+
+    bodyBuffSize := 1024*10
+    var buff = make([]byte, bodyBuffSize)
+    read := 0
+    readLen := end - start + 1
+    var nextReadSize int
+    downFile.Seek(start, 0)
+
+    startReadPartindex := 0
+    var startReadByteIndex int64 = 0
+    for i := range fullFile.Parts {
+        fInfo, _ := os.Stat(GetFilePathByMd5(fullFile.Parts[i].Md5))
+        if start > int64(i) * fInfo.Size() {
+            continue
+        } else {
+            startReadPartindex = i
+            startReadByteIndex = int64(i) * fInfo.Size() - start
+            break
+        }
+    }
+
+    for {
+        //read finish
+        if int64(read) == readLen {
+            break
+        }
+        // left bytes is more than a buffer
+        if (readLen - int64(read)) / int64(bodyBuffSize) >= 1 {
+            nextReadSize = int(bodyBuffSize)
+        } else {// left bytes less than a buffer
+            nextReadSize = int(readLen - int64(read))
+        }
+        len, e2 := bridge.ReadBytes(buff, nextReadSize, downFile)
+        if e2 == nil || e2 == io.EOF {
+            wl, e5 := writer.Write(buff[0:len])
+            if e2 == io.EOF {
+                logger.Info("file download success")
+                downFile.Close()
+                break
+            }
+            if e5 != nil || wl != len {
+                logger.Error("error write download file:", e5)
+                downFile.Close()
+                break
+            }
+            read += wl
+            logger.Debug("write data....:", nextReadSize)
+        } else {
+            logger.Error("error read download file:", e2)
+            downFile.Close()
+            break
+        }
+    }
+
+
 }
 
 

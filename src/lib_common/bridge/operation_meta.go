@@ -30,6 +30,18 @@ type File struct {
     Parts []FilePart            `json:"parts"`   // 实例id
 }
 
+// 映射任务表task中字段
+type Task struct {
+    FileId int  // file表中的id
+    TaskType int // 任务类型，1：上报文件，2：从其他节点下载文件
+    Status int  //任务状态
+}
+
+type ReadPos struct {
+    PartIndex int
+    PartStart int64
+}
+
 // validate operation request.
 type OperationValidationRequest struct {
     Secret string
@@ -82,7 +94,9 @@ type OperationQueryFileResponse struct {
 
 // download file operation request.
 type OperationDownloadFileRequest struct {
-    Path string `json:"path"`
+    Path string `json:"path"`   // path like /G01/002/M/c445b10edc599617106ae8472c1446fd
+    Start int64 `json:"start"` // length of bytes to skip
+    Offset int64 `json:"offset"` // length of bytes to read, if Offset < 0 represents read all bytes left
 }
 // download file response.
 type OperationDownloadFileResponse struct {
@@ -92,7 +106,7 @@ type OperationDownloadFileResponse struct {
 
 // register file operation request.
 type OperationRegisterFileRequest struct {
-    File File `json:"file"`    // 文件md5
+    File *File `json:"file"`    // 文件md5
 }
 // register file response.
 type OperationRegisterFileResponse struct {

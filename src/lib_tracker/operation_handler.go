@@ -10,6 +10,7 @@ import (
     "strings"
     "errors"
     "net"
+    "lib_service"
 )
 
 // validate client handler
@@ -40,6 +41,7 @@ func validateClientHandler(request *bridge.Meta, connBridge *bridge.Bridge) erro
 func registerStorageClientHandler(request *bridge.Meta, conn net.Conn,connBridge *bridge.Bridge) (*bridge.OperationRegisterStorageClientRequest, error) {
     valid := true
     var meta = &bridge.OperationRegisterStorageClientRequest{}
+    logger.Debug(string(request.MetaBody))
     e1 := json.Unmarshal(request.MetaBody, meta)
     if e1 != nil {
         return nil, e1
@@ -78,5 +80,23 @@ func registerStorageClientHandler(request *bridge.Meta, conn net.Conn,connBridge
         return nil, e2
     }
     return meta, nil
+}
+
+
+func registerFileHandler(request *bridge.Meta, connBridge *bridge.Bridge) error {
+    var meta = &bridge.OperationRegisterFileRequest{}
+    e1 := json.Unmarshal(request.MetaBody, meta)
+    if e1 != nil {
+        return e1
+    }
+    var response = &bridge.OperationRegisterFileResponse{}
+    // validate success
+    _, e2 := lib_service.TrackerAddFile(meta)
+    if e2 != nil {
+        response.Status = bridge.STATUS_INTERNAL_SERVER_ERROR
+    } else {
+        response.Status = bridge.STATUS_OK
+    }
+    return connBridge.SendResponse(response, 0, nil)
 }
 

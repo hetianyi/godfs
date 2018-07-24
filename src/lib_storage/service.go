@@ -16,9 +16,6 @@ import (
     "net/http"
     "util/db"
     "lib_common/bridge"
-    "encoding/json"
-    "errors"
-    "sync"
 )
 
 
@@ -45,6 +42,8 @@ func StartService(config map[string] string) {
 
     startHttpDownloadService()
     go startConnTracker(trackers)
+    // start task collector
+    go startTaskCollector()
     startStorageService(port)
 }
 
@@ -124,30 +123,35 @@ func startConnTracker(trackers string) {
 func onceConnTracker(tracker string) {
     logger.Info("start tracker conn with tracker server:", tracker)
     retry := 0
-    var taskChan = make(chan func(*bridge.Bridge) error)
     for {//keep trying to connect to tracker server.
         conn, e := net.Dial("tcp", tracker)
         if e == nil {
-            var lock = *new(sync.Mutex)
             // validate client
             connBridge, e1 := connectAndValidate(conn)
             if e1 != nil {
                 bridge.Close(conn)
                 logger.Error(e1)
             } else {
+                retry = 0
                 logger.Debug("connect to tracker server success.")
                 for { // keep sending client statistic info to tracker server.
-                // TODO continue......
-                    task := <- taskChan
-                    lock.Lock()
-                    e2 := task(connBridge)
+                    task := GetTask()
+                    if task == nil {
+                        time.Sleep(time.Second * 1)
+                        continue
+                    }
+                    forceClosed, e2 := ExecTask(task, connBridge)
                     if e2 != nil {
+                        logger.Debug("task exec error:", e2)
+                        FailReturnTask(task)
+                    } else {
+                        logger.Debug("task exec success:", task.TaskType)
+                    }
+                    if forceClosed {
+                        logger.Debug("connection force closed by client")
                         bridge.Close(conn)
-                        lock.Unlock()
-                        close(taskChan)
                         break
                     }
-                    lock.Unlock()
                 }
             }
         } else {
@@ -170,41 +174,6 @@ func connectAndValidate(conn net.Conn) (*bridge.Bridge, error) {
     return connBridge, nil
 }
 
-func registerAndSyncMember() error {
-    // register storage client to tracker server
-    regClientMeta := &bridge.OperationRegisterStorageClientRequest {
-        BindAddr: app.BIND_ADDRESS,
-        Group: app.GROUP,
-        InstanceId: app.INSTANCE_ID,
-        Port: app.PORT,
-    }
-    // reg client
-    e2 := connBridge.SendRequest(bridge.O_REG_STORAGE, regClientMeta, 0, nil)
-    if e2 != nil {
-        return e2
-    }
-    e5 := connBridge.ReceiveResponse(func(response *bridge.Meta, in io.Reader) error {
-        if response.Err != nil {
-            return response.Err
-        }
-        var validateResp = &bridge.OperationRegisterStorageClientResponse{}
-        e3 := json.Unmarshal(response.MetaBody, validateResp)
-        if e3 != nil {
-            return e3
-        }
-        if validateResp.Status != 0 {
-            return errors.New("error register to tracker server, server response status:" + strconv.Itoa(validateResp.Status))
-        }
-        // connect success
-        return nil
-    })
-    if e5 != nil {
-        return e5
-    }
-    return nil
-}
-
-
 
 
 // accept a new connection for file upload
@@ -220,7 +189,7 @@ func clientHandler(conn net.Conn) {
     }()
     common.Try(func() {
         // body buff
-        bodyBuff := make([]byte, bridge.HeaderSize)
+        bodyBuff := make([]byte, app.BUFF_SIZE)
         // calculate md5
         md := md5.New()
         connBridge := bridge.NewBridge(conn)
@@ -268,12 +237,4 @@ func parseTrackers(tracker string) *list.List {
 
     }
     return ls
-}
-
-
-// return file path using md5
-func GetFilePathByMd5(md5 string) string {
-    dig1 := strings.ToUpper(md5[0:2])
-    dig2 := strings.ToUpper(md5[2:4])
-    return app.BASE_PATH + "/data/" + dig1 + "/" + dig2 + "/" + md5
 }

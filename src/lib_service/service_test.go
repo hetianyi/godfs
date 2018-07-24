@@ -8,11 +8,11 @@ import (
     "container/list"
     "strconv"
     "math"
-    "lib_common/header"
+    "lib_common/bridge"
 )
 
 func initParam() {
-    app.BASE_PATH = "D:/godfs"
+    app.BASE_PATH = "D:/Hetianyi/svn/godfs"
     logger.SetLogLevel(1)
 }
 
@@ -54,19 +54,26 @@ func Test6(t *testing.T) {
 
 func Test7(t *testing.T) {
     initParam()
-    ls, _ := GetSyncTask()
-    for ele := ls.Front(); ele != nil; ele = ele.Next() {
-        m := ele.Value.(*header.File)
-        fmt.Println(m.Id, m.Md5, m.Instance, "(", m.PartNum, ")")
-        for i := 0; i < len(m.Parts); i++ {
-            fmt.Println("->", m.Parts[i].Md5, "(", m.Parts[i].FileSize, ")")
+    ls, e := GetSyncTask()
+    if e != nil {
+        logger.Error(e)
+    } else {
+        for ele := ls.Front(); ele != nil; ele = ele.Next() {
+            m := ele.Value.(*bridge.Task)
+            fmt.Println(m.FileId)
         }
     }
 }
 
 func Test8(t *testing.T) {
     initParam()
-    fmt.Println(GetFullFile("f3d5a643583ed27cf865ade45698e692"))
+    //fmt.Println(GetFullFileByMd5("123123a"))
+    fmt.Println(GetFullFileByFid(1))
+}
+func Test9(t *testing.T) {
+    initParam()
+
+    fmt.Println(FinishSyncTask(1))
 }
 
 

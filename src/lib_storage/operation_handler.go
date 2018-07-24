@@ -15,6 +15,7 @@ import (
     "io"
     "regexp"
     "util/file"
+    "os"
 )
 
 // validate client handler
@@ -73,6 +74,7 @@ func uploadHandler(request *bridge.Meta, buffer []byte, md hash.Hash, conn io.Re
 
             e10 := lib_common.MoveTmpFileTo(sMd5, out)
             if e10 != nil {
+                lib_common.CloseAndDeleteTmpFile(out)
                 return e10
             }
             // save slice info to db
@@ -247,7 +249,9 @@ func downloadFileHandler(request *bridge.Meta, buffer []byte, connBridge *bridge
         return nil
     }
     md5 := regexp.MustCompile(app.PATH_REGEX).ReplaceAllString(meta.Path, "${4}")
-    fullFile, e11 := lib_service.GetFullFile(md5)
+
+    fullFile, e11 := lib_service.GetFullFileByMd5(md5)
+
     if e11 != nil {
         response.Status = bridge.STATUS_INTERNAL_SERVER_ERROR
         // ignore if it write success
@@ -275,41 +279,77 @@ func downloadFileHandler(request *bridge.Meta, buffer []byte, connBridge *bridge
         }
         return nil
     }
+
     var fileSize int64 = 0
     for i := range fullFile.Parts {
         fileSize += fullFile.Parts[i].FileSize
     }
 
     response.Status = bridge.STATUS_OK
+
     return connBridge.SendResponse(response, uint64(fileSize), func(out io.WriteCloser) error {
-        var read int64 = 0
-        for i := range fullFile.Parts {
-            downFile, e14 := file.GetFile(GetFilePathByMd5(fullFile.Parts[i].Md5))
+        return WriteDownloadStream(fullFile, meta.Start, meta.Offset, buffer, out)
+    })
+}
+
+
+func WriteDownloadStream(fullFile *bridge.File, startPos *bridge.ReadPos, endPos *bridge.ReadPos, writeLen int64, buffer []byte, out io.Writer) error {
+    startReadPartIndex, startReadByteIndex, totalLen := lib_common.GetReadPositions(fullFile, start, offset)
+
+
+    // total read bytes
+    var readBodySize int64 = 0
+    // next time bytes to read
+    var nextReadSize int
+    for i := range fullFile.Parts {
+        var downFile *os.File
+        var e14 error
+        if i < startReadPartIndex.PartIndex {
+            continue
+        } else if i == startReadPartIndex.PartIndex {
+            downFile, e14 = file.GetFile(lib_common.GetFilePathByMd5(fullFile.Parts[i].Md5))
             if e14 != nil {
                 return e14
             }
-            for {
-                len, e2 := downFile.Read(buffer)
-                if e2 == nil || e2 == io.EOF {
-                    logger.Debug("total bytes:", fileSize, ", write:", read)
-                    wl, e5 := out.Write(buffer[0:len])
-                    read+=int64(len)
-                    if e2 == io.EOF {
-                        downFile.Close()
-                        break
-                    }
-                    if e5 != nil || wl != len {
-                        downFile.Close()
-                        return errors.New("error handle download file")
-                    }
-                } else {
-                    downFile.Close()
-                    return e2
-                }
+            _, e15 := downFile.Seek(startReadByteIndex.PartStart, 0)
+            if e15 != nil {
+                downFile.Close()
+                return e15
+            }
+        } else {
+            downFile, e14 = file.GetFile(lib_common.GetFilePathByMd5(fullFile.Parts[i].Md5))
+            if e14 != nil {
+                return e14
             }
         }
-        return nil
-    })
+
+
+        for {
+            // left bytes is more than a buffer
+            if (writeLen - readBodySize) / int64(len(buffer)) >= 1 {
+                nextReadSize = len(buffer)
+            } else {// left bytes less than a buffer
+                nextReadSize = int(writeLen - readBodySize)
+            }
+            len, e2 := downFile.Read(buffer[0:nextReadSize])
+            if e2 == nil || e2 == io.EOF {
+                wl, e5 := out.Write(buffer[0:len])
+                read+=int64(len)
+                if e2 == io.EOF {
+                    downFile.Close()
+                    break
+                }
+                if e5 != nil || wl != len {
+                    downFile.Close()
+                    return errors.New("error handle download file")
+                }
+            } else {
+                downFile.Close()
+                return e2
+            }
+        }
+    }
+    return nil
 }
 
 

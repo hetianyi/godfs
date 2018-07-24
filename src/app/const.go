@@ -1,6 +1,8 @@
 package app
 
-import "time"
+import (
+    "time"
+)
 
 const (
     BUFF_SIZE = 1024*30 // byte buffer size set to 30kb
@@ -23,4 +25,11 @@ var (
     REG_STORAGE_INTERVAL       time.Duration = 30
     SYNC_INTERVAL              time.Duration = 5 //每5s取一次同步任务
     PATH_REGEX = "^/([0-9a-zA-Z_]{1,10})/([0-9a-zA-Z_]{1,10})/([MS])/([0-9a-fA-F]{32})$"
+)
+
+const (
+    TASK_SYNC_MEMBER = 1
+    TASK_REPORT_FILE = 2
+    TASK_PULL_NEW_FILE = 3
+    TASK_DOWNLOAD_FILE = 4
 )

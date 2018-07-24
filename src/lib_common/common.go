@@ -9,6 +9,7 @@ import (
     "app"
     "os"
     "strings"
+    "lib_common/bridge"
 )
 
 func CreateTmpFile() (*os.File, error) {
@@ -68,4 +69,48 @@ func ParsePort(port string) int {
         return p
     }
     return 0
+}
+
+
+// return file path using md5
+func GetFilePathByMd5(md5 string) string {
+    dig1 := strings.ToUpper(md5[0:2])
+    dig2 := strings.ToUpper(md5[2:4])
+    return app.BASE_PATH + "/data/" + dig1 + "/" + dig2 + "/" + md5
+}
+
+// get read position from parts of files
+// returns part index, current part start read position and total read bytes length
+func GetReadPositions(fullFile *bridge.File, start int64, offset int64) (*bridge.ReadPos, *bridge.ReadPos, int64) {
+    var fileLen int64
+    for i := range fullFile.Parts {
+        fileLen += fullFile.Parts[i].FileSize
+    }
+    // exceed
+    if start >= fileLen {
+        return nil, nil, 0
+    }
+    var addLen int64 = 0
+    var end = start + offset
+    if end > fileLen {
+        end = fileLen
+    }
+    var startPos *bridge.ReadPos
+    var endPos = &bridge.ReadPos{PartIndex: len(fullFile.Parts), PartStart: fullFile.Parts[len(fullFile.Parts)-1].FileSize}
+    for i := range fullFile.Parts {
+        fInfo, _ := os.Stat(GetFilePathByMd5(fullFile.Parts[i].Md5))
+        if start > addLen + fInfo.Size() {
+            continue
+        } else {
+            startPos = &bridge.ReadPos{PartIndex: i, PartStart: start - addLen}
+            break
+        }
+        if addLen + fInfo.Size() < end {
+            continue
+        } else {
+            endPos = &bridge.ReadPos{PartIndex: i, PartStart: end - addLen}
+        }
+        addLen += fInfo.Size()
+    }
+    return startPos, endPos, end - start
 }

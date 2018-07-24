@@ -8,31 +8,35 @@ import (
     "net/http"
     "strconv"
     "util/timeutil"
-    "lib_common"
     "util/logger"
+    "lib_common/bridge"
+    "io"
 )
 
-func Init() {
+func Init() *Client {
     logger.SetLogLevel(1)
-    NewClient("127.0.0.1", 1024, "OASAD834jA97AAQE761==")
+   client, e := NewClient("192.168.1.140", 1025, "OASAD834jA97AAQE761==")
+   if e != nil {
+       logger.Error(e)
+   }
+   return client
 }
 
 
 func Test1(t *testing.T) {
-    Init()
-    //fmt.Println(Upload("D:/UltraISO.zip"))
-    //fmt.Println(Upload("F:/project.rar"))
-    //fmt.Println(Upload("D:/nginx-1.8.1.zip"))
-    fmt.Println(Upload("D:/FTP/instantfap-gifs.part8.zip"))
-    //fmt.Println(Upload("D:/图片/图片.rar"))
-    //fmt.Println(Upload("D:/IMG_20161207_155837.jpg"))
+    client := Init()
+    fmt.Println(client.Upload("D:/UltraISO.zip")) // G01/002/M/c445b10edc599617106ae8472c1446fd
+    //fmt.Println(client.Upload("F:/project.rar"))
+    //fmt.Println(client.Upload("D:/nginx-1.8.1.zip"))
+    //fmt.Println(client.Upload("D:/FTP/instantfap-gifs.part8.zip"))
+    //fmt.Println(client.Upload("D:/图片/图片.rar"))
+    //fmt.Println(client.Upload("D:/IMG_20161207_155837.jpg"))
 }
 
 
 func Test2(t *testing.T) {
-    Init()
-    fmt.Println(CheckFileExists("f3d5a643583ed27cf865ade45698e699"))
-    fmt.Println(CheckFileExists("f3d5a643583ed27cf865ade45698e698"))
+    client := Init()
+    fmt.Println(client.CheckFileExists("c445b10edc599617106ae8472c1446f1"))
 }
 
 func Test3(t *testing.T) {
@@ -43,10 +47,25 @@ func Test3(t *testing.T) {
 
 
 func Test4(t *testing.T) {
-    Init()
-    path := "/G1/001/M/f3d5a643583ed27cf865ade45698e698"
-    newFile, _ := file.CreateFile("D:/godfs/test_down/123.zip")
-    fmt.Println(DownloadFile(path, newFile))
+    client := Init()
+    path := "/G01/002/M/c445b10edc599617106ae8472c1446fd"
+
+    client.DownloadFile(path, 0, 1024*1024, func(fileLen uint64, reader io.Reader) error {
+        newFile, _ := file.CreateFile("D:/test2222/123.zip")
+        defer newFile.Close()
+        d := make([]byte, fileLen)
+        io.ReadFull(reader, d)
+        newFile.Write(d)
+        return nil
+    })
+    client.DownloadFile(path, 1024*1024, -1, func(fileLen uint64, reader io.Reader) error {
+        newFile, _ := file.CreateFile("D:/test2222/123.zip")
+        defer newFile.Close()
+        d := make([]byte, fileLen)
+        io.ReadFull(reader, d)
+        newFile.Write(d)
+        return nil
+    })
 }
 
 func Test5(t *testing.T) {
@@ -55,7 +74,7 @@ func Test5(t *testing.T) {
         body := conn.Body
         len, _ := strconv.Atoi(conn.Header.Get("Content-Length"))
         var buffer = make([]byte, len)
-        ll,_ := lib_common.ReadBytes(buffer, len, body)
+        ll,_ := bridge.ReadBytes(buffer, len, body)
         fmt.Println(ll)
         fi, _ := file.CreateFile("D:/godfs/data/tmp/" + timeutil.GetUUID() + ".rar")
         fi.Write(buffer)

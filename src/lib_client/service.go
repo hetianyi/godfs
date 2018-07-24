@@ -127,7 +127,7 @@ func (client *Client) Upload(path string) (string, error) {
             if e4 != nil {
                 return e4
             }
-            if uploadResponse.Status != 0 {
+            if uploadResponse.Status != bridge.STATUS_OK {
                 return errors.New("error connect to server, server response status:" + strconv.Itoa(uploadResponse.Status))
             }
             fid = uploadResponse.Path
@@ -162,7 +162,7 @@ func (client *Client) CheckFileExists(pathOrMd5 string) (bool, error) {
         if e4 != nil {
             return e4
         }
-        if queryResponse.Status != 0 {
+        if queryResponse.Status != bridge.STATUS_OK && queryResponse.Status != bridge.STATUS_NOT_FOUND {
             return errors.New("error connect to server, server response status:" + strconv.Itoa(queryResponse.Status))
         }
         exist = queryResponse.Exist
@@ -176,11 +176,15 @@ func (client *Client) CheckFileExists(pathOrMd5 string) (bool, error) {
 }
 
 
-func (client *Client) DownloadFile(path string, writerHandler func(fileLen uint64, writer io.WriteCloser) error) error {
+func (client *Client) DownloadFile(path string, start int64, offset int64, writerHandler func(fileLen uint64, reader io.Reader) error) error {
     if mat, _ := regexp.Match(app.PATH_REGEX, []byte(path)); !mat {
         return errors.New("file path format error")
     }
-    downloadMeta := &bridge.OperationDownloadFileRequest{Path: path}
+    downloadMeta := &bridge.OperationDownloadFileRequest{
+        Path: path,
+        Start: start,
+        Offset: offset,
+    }
     e2 := client.connBridge.SendRequest(bridge.O_DOWNLOAD_FILE, downloadMeta, 0, nil)
     if e2 != nil {
         return e2
@@ -196,7 +200,7 @@ func (client *Client) DownloadFile(path string, writerHandler func(fileLen uint6
         if e4 != nil {
             return e4
         }
-        if downloadResponse.Status != 0 {
+        if downloadResponse.Status != bridge.STATUS_OK && downloadResponse.Status != bridge.STATUS_NOT_FOUND {
             return errors.New("error connect to server, server response status:" + strconv.Itoa(downloadResponse.Status))
         }
         return writerHandler(response.BodyLength, client.connBridge.GetConn())

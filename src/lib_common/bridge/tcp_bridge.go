@@ -21,6 +21,7 @@ const (
     O_QUERY_FILE = 3
     O_DOWNLOAD_FILE = 4
     O_REG_STORAGE = 5
+    O_REG_FILE = 6
 
 )
 
@@ -33,6 +34,8 @@ var OPERATION_NOT_SUPPORT_ERROR = errors.New("operation not support")
 var SEND_HEAD_BYTES_ERROR = errors.New("error send head bytes")
 var SEND_BODY_BYTES_ERROR = errors.New("error send head bytes")
 var READ_ERROR = errors.New("error read bytes")
+var FILE_NOT_FOUND_ERROR = errors.New("not found")
+var INTERNAL_SERVER_ERROR = errors.New("internal server error")
 
 // init operations
 func init() {
@@ -42,6 +45,7 @@ func init() {
     operationHeadMap[O_QUERY_FILE] = []byte{1,4}
     operationHeadMap[O_DOWNLOAD_FILE] = []byte{1,5}
     operationHeadMap[O_REG_STORAGE] = []byte{1,6}
+    operationHeadMap[O_REG_FILE] = []byte{1,7}
 }
 
 // SendReceiveCloser
@@ -199,7 +203,7 @@ func (bridge *Bridge) ValidateConnection(secret string) error {
         if e3 != nil {
             return e3
         }
-        if validateResp.Status != 0 {
+        if validateResp.Status != STATUS_OK {
             return errors.New("error connect to server, server response status:" + strconv.Itoa(validateResp.Status))
         }
         // connect success
