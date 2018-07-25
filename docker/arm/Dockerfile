@@ -6,7 +6,7 @@
 # author : hetianyi(https://github.com/hetianyi)
 # date   : 2018/07/18
 
-FROM arm32v7/golang as builder
+FROM arm32v6/golang:alpine as builder
 RUN apk add git gcc g++ make automake && \
     go get github.com/mattn/go-sqlite3 && \
     go install github.com/mattn/go-sqlite3
