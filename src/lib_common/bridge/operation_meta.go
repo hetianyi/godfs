@@ -99,7 +99,7 @@ type OperationQueryFileRequest struct {
 type OperationQueryFileResponse struct {
     Status int `json:"status"`
     Exist bool `json:"exist"`      // true:the file exists
-    FileSize uint64 `json:"fileSize"` // 文件大小
+    File *File `json:"file"`
 }
 
 // download file operation request.

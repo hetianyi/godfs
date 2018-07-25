@@ -12,6 +12,7 @@ base_path=E:/godfs-storage/client
 
 trackers=127.0.0.1:1022
 
+
 # secret用于服务通信时校验身份
 # 服务之间建立通信时会校验secret
 # 如果校验失败则会拒绝连接

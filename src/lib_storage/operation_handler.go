@@ -181,7 +181,7 @@ func uploadHandler(request *bridge.Meta, buffer []byte, md hash.Hash, conn io.Re
 
 
 // 处理文件上传请求
-func queryFileHandler(request *bridge.Meta, connBridge *bridge.Bridge) error {
+func QueryFileHandler(request *bridge.Meta, connBridge *bridge.Bridge) error {
     var queryMeta = &bridge.OperationQueryFileRequest{}
     e1 := json.Unmarshal(request.MetaBody, queryMeta)
     var response = &bridge.OperationQueryFileResponse{}
@@ -192,9 +192,7 @@ func queryFileHandler(request *bridge.Meta, connBridge *bridge.Bridge) error {
         connBridge.SendResponse(response, 0, nil)
         return e1
     }
-
     var md5 string
-
     if mat1, _ := regexp.Match("[0-9a-f]{32}", []byte(queryMeta.PathOrMd5)); mat1 {
         md5 = queryMeta.PathOrMd5
     } else if mat2, _ := regexp.Match(app.PATH_REGEX, []byte(queryMeta.PathOrMd5)); mat2 {
@@ -205,22 +203,23 @@ func queryFileHandler(request *bridge.Meta, connBridge *bridge.Bridge) error {
         return connBridge.SendResponse(response, 0, nil)
     }
 
-    fid, e4 := lib_service.GetFileId(md5)
-    if e4 != nil {// error query file
+    fi, e6 := lib_service.GetFullFileByMd5(md5)
+    if e6 != nil {
+        response.Status = bridge.STATUS_INTERNAL_SERVER_ERROR
+        response.Exist = false
+        // ignore if it write success
+        connBridge.SendResponse(response, 0, nil)
+        return e6
+    }
+    if fi == nil {
         response.Status = bridge.STATUS_NOT_FOUND
         response.Exist = false
         return connBridge.SendResponse(response, 0, nil)
-    } else {
-        if fid == 0 {//file not found
-            response.Status = bridge.STATUS_NOT_FOUND
-            response.Exist = false
-            return connBridge.SendResponse(response, 0, nil)
-        } else {//file exists
-            response.Status = bridge.STATUS_OK
-            response.Exist = true
-            return connBridge.SendResponse(response, 0, nil)
-        }
     }
+    response.Status = bridge.STATUS_OK
+    response.Exist = true
+    response.File = fi
+    return connBridge.SendResponse(response, 0, nil)
 }
 
 

@@ -10,6 +10,7 @@ import (
     "time"
     "lib_common/bridge"
     "io"
+    "lib_storage"
 )
 
 var p, _ = pool.NewPool(1000, 100000)
@@ -96,6 +97,8 @@ func clientHandler(conn net.Conn) {
                     return registerFileHandler(request, connBridge)
                 } else if request.Operation == bridge.O_SYNC_STORAGE {
                     return syncStorageServerHandler(request, connBridge)
+                } else if request.Operation == bridge.O_QUERY_FILE {
+                    return lib_storage.QueryFileHandler(request, connBridge)
                 } else {
                     return bridge.OPERATION_NOT_SUPPORT_ERROR
                 }
