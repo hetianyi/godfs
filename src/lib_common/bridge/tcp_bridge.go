@@ -10,6 +10,7 @@ import (
     "strconv"
     "app"
     "util/logger"
+    "hash"
 )
 
 // operation codes const.
@@ -240,7 +241,7 @@ func convertLen2Bytes(len uint64) []byte {
 }
 
 // 通用字节读取函数，如果读取结束/失败自动关闭连接
-func ReadBytes(buff []byte, len int, conn io.ReadCloser) (int, error) {
+func ReadBytes(buff []byte, len int, conn io.ReadCloser, md hash.Hash) (int, error) {
     read := 0
     for {
         if read >= len {
@@ -256,6 +257,12 @@ func ReadBytes(buff []byte, len int, conn io.ReadCloser) (int, error) {
             continue
         }
     }
+    if md != nil {
+        _, e1 := md.Write(buff[0:len])
+        if e1 != nil {
+            return 0, e1
+        }
+    }
     return len, nil
 }
 
@@ -263,7 +270,7 @@ func ReadBytes(buff []byte, len int, conn io.ReadCloser) (int, error) {
 func readHeadBytes(reader io.ReadCloser) (int, uint64, uint64, []byte, error) {
     headerBytes := make([]byte, HeaderSize)  // meta header size
     // read header meta data
-    len, e := ReadBytes(headerBytes, HeaderSize, reader)
+    len, e := ReadBytes(headerBytes, HeaderSize, reader, nil)
     if e == nil && len == HeaderSize {
         operation := retrieveOperation(headerBytes[0:2])
         // read meta and body size
@@ -284,7 +291,7 @@ func readHeadBytes(reader io.ReadCloser) (int, uint64, uint64, []byte, error) {
 // 读取meta字节信息
 func readMetaBytes(metaSize int, reader io.ReadCloser) ([]byte, error) {
     tmp := make([]byte, metaSize)
-    len, e := ReadBytes(tmp, metaSize, reader)
+    len, e := ReadBytes(tmp, metaSize, reader, nil)
     if e != nil && e != io.EOF {
         return nil, e
     }

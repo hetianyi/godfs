@@ -131,7 +131,7 @@ func startTaskCollector() {
 
 // 查询本地持久化任务收集器
 func queryPersistTaskCollector() {
-    timer := time.NewTicker(time.Second * 10)
+    timer := time.NewTicker(time.Second * 100)
     for {
         <-timer.C
         logger.Debug("fetch tasks from db")
@@ -147,7 +147,7 @@ func queryPersistTaskCollector() {
 }
 
 func syncMemberTaskCollector() {
-    timer := time.NewTicker(time.Second * 5)
+    timer := time.NewTicker(time.Second * 100)
     for {
         <-timer.C
         logger.Debug("add sync member task")

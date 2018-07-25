@@ -68,7 +68,6 @@ func uploadHandler(request *bridge.Meta, buffer []byte, md hash.Hash, conn io.Re
             md5  := hex.EncodeToString(totalCipherStr)
             sMd5 := hex.EncodeToString(sliceCipherStr)
             out.Close()
-            md.Reset()
             sliceMd5.Reset()
 
             e10 := lib_common.MoveTmpFileTo(sMd5, out)
@@ -113,7 +112,7 @@ func uploadHandler(request *bridge.Meta, buffer []byte, md hash.Hash, conn io.Re
             nextReadSize = int(request.BodyLength - readBodySize)
         }
         logger.Trace("read next bytes:", nextReadSize, "total is:", request.BodyLength)
-        len1, e3 := bridge.ReadBytes(buffer, nextReadSize, conn)
+        len1, e3 := bridge.ReadBytes(buffer, nextReadSize, conn, md)
         if e3 == nil && len1 == nextReadSize {
             // if sliceReadSize > sliceSize then create a new slice file
             if sliceReadSize + int64(len1) > app.SLICE_SIZE {
@@ -160,11 +159,10 @@ func uploadHandler(request *bridge.Meta, buffer []byte, md hash.Hash, conn io.Re
             } else {
                 // write bytes to file
                 len2, e1 := out.Write(buffer[0:len1])
-                len3, e2 := md.Write(buffer[0:len1])
                 len4, e3 := sliceMd5.Write(buffer[0:len1])
                 // write error
-                if e1 != nil || e2 != nil || e3 != nil || len2 != len1 || len3 != len1 || len4 != len1 {
-                    logger.Error("write out error:", e1, "|", e2)
+                if e1 != nil || e3 != nil || len2 != len1 || len4 != len1 {
+                    logger.Error("write out error:", e1)
                     lib_common.CloseAndDeleteTmpFile(out)
                     return errors.New("write out error(0)")
                 }
@@ -312,7 +310,7 @@ func WriteDownloadStream(fullFile *bridge.File, startPos *bridge.ReadPos, endPos
         } else if i == endPos.PartIndex {
             offset = endPos.PartStart - start
         } else {
-            offset = fullFile.Parts[len(fullFile.Parts) - 1].FileSize - start
+            offset = fullFile.Parts[i].FileSize - start
         }
         if e := WriteOut(fullFile.Parts[i].Md5, start, offset, buffer, out); e != nil {
             return e
@@ -346,17 +344,17 @@ func WriteOut(md5 string, start int64, offset int64, buffer []byte, out io.Write
             break
         }
         len, e2 := fi.Read(buffer[0:nextReadSize])
-        if e2 == nil || e2 == io.EOF {
+        if e2 == nil {
             wl, e5 := out.Write(buffer[0:len])
             readBodySize += int64(len)
             logger.Debug("write:", readBodySize)
-            if e2 == io.EOF {
-                break
-            }
             if e5 != nil || wl != len {
                 return errors.New("error handle download file")
             }
         } else {
+            if e2 == io.EOF {
+                return nil
+            }
             return e2
         }
     }
