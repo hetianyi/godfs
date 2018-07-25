@@ -43,7 +43,7 @@ type Client struct {
 }
 
 type TrackerManager struct {
-    broken chan int
+    brokenChan *chan int
     connBridge *bridge.Bridge
 }
 
@@ -62,63 +62,84 @@ func NewClient() (*Client, error) {
 
 
 func manageTracker(connectString string, client *Client) {
+    var ele *list.Element
+    brokenChan := make(chan int)
     for {
-        time.Sleep(time.Second * 5)
-        logger.Debug("connecting to storage server...")
-        con, e := net.Dial("tcp", connectString)
-        if e != nil {
-            logger.Error(e)
-            continue
+        connBridge := initTracker(connectString)
+        if connBridge != nil {
+            tracker := &TrackerManager{connBridge: connBridge, brokenChan: &brokenChan}
+            ele = client.TrackerManagers.PushBack(tracker)
+            break
         }
-        connBridge := bridge.NewBridge(con)
-        e1 := connBridge.ValidateConnection(app.SECRET)
-        if e1 != nil {
-            connBridge.Close()
-            continue
+        time.Sleep(time.Second * 10)
+    }
+    for {
+        // if bridge is broken, it will notify chan here.
+        <- brokenChan
+        connBridge := initTracker(connectString)
+        if connBridge != nil {
+            ele.Value.(*TrackerManager).connBridge = connBridge
         }
-        logger.Debug("successful validate connection:", e1)
-
-        syncMeta := &bridge.OperationGetStorageServerRequest {}
-        // send validate request
-        e5 := connBridge.SendRequest(bridge.O_SYNC_STORAGE, syncMeta, 0, nil)
-        if e5 != nil {
-            connBridge.Close()
-            continue
-        }
-        e6 := connBridge.ReceiveResponse(func(response *bridge.Meta, in io.Reader) error {
-            if response.Err != nil {
-                return response.Err
-            }
-            var validateResp = &bridge.OperationGetStorageServerResponse{}
-            logger.Debug("sync storage server response:", string(response.MetaBody))
-            e3 := json.Unmarshal(response.MetaBody, validateResp)
-            if e3 != nil {
-                return e3
-            }
-            if validateResp.Status != bridge.STATUS_OK {
-                return errors.New("error connect to server, server response status:" + strconv.Itoa(validateResp.Status))
-            }
-            if nil != validateResp.GroupMembers {
-                for i := range validateResp.GroupMembers {
-                    addStorageServer(&validateResp.GroupMembers[i])
-                }
-            }
-            // connect success
-            return nil
-        })
-        if e6 != nil {
-            connBridge.Close()
-            continue
-        }
-        logger.Debug("successful validate connection:", e1)
-
-        var tracker = &TrackerManager{
-            broken: make(chan int),
-            connBridge: connBridge,
-        }
-        client.TrackerManagers.PushBack(tracker)
+        time.Sleep(time.Second * 10)
     }
 }
+
+func initTracker(connectString string) *bridge.Bridge {
+    logger.Debug("connecting to storage server...")
+    con, e := net.Dial("tcp", connectString)
+    if e != nil {
+        logger.Error(e)
+        return nil
+    }
+    connBridge := bridge.NewBridge(con)
+    e1 := connBridge.ValidateConnection(app.SECRET)
+    if e1 != nil {
+        logger.Error(e1)
+        connBridge.Close()
+        return nil
+    }
+    logger.Debug("successful validate connection:", e1)
+
+    syncMeta := &bridge.OperationGetStorageServerRequest {}
+    // send validate request
+    e5 := connBridge.SendRequest(bridge.O_SYNC_STORAGE, syncMeta, 0, nil)
+    if e5 != nil {
+        logger.Error(e5)
+        connBridge.Close()
+        return nil
+    }
+    e6 := connBridge.ReceiveResponse(func(response *bridge.Meta, in io.Reader) error {
+        if response.Err != nil {
+            logger.Error(response.Err)
+            return response.Err
+        }
+        var validateResp = &bridge.OperationGetStorageServerResponse{}
+        logger.Debug("sync storage server response:", string(response.MetaBody))
+        e3 := json.Unmarshal(response.MetaBody, validateResp)
+        if e3 != nil {
+            logger.Error(e3)
+            return e3
+        }
+        if validateResp.Status != bridge.STATUS_OK {
+            return errors.New("error connect to server, server response status:" + strconv.Itoa(validateResp.Status))
+        }
+        if nil != validateResp.GroupMembers {
+            for i := range validateResp.GroupMembers {
+                addStorageServer(&validateResp.GroupMembers[i])
+            }
+        }
+        // connect success
+        return nil
+    })
+    if e6 != nil {
+        logger.Error(e6)
+        connBridge.Close()
+        return nil
+    }
+    logger.Debug("successful validate connection:", e1)
+    return connBridge
+}
+
 
 func addStorageServer(server *bridge.Member) {
     addLock.Lock()
@@ -139,10 +160,10 @@ func addStorageServer(server *bridge.Member) {
 
 
 func (client *Client) Close() {
-    for ele := client.trackersConnBridge.Front(); ele != nil; ele = ele.Next() {
-        b := ele.Value.(*bridge.Bridge)
-        logger.Debug("shutdown bridge ", b.GetConn().RemoteAddr())
-        b.Close()
+    for ele := client.TrackerManagers.Front(); ele != nil; ele = ele.Next() {
+        b := ele.Value.(*TrackerManager)
+        logger.Debug("shutdown bridge ", b.connBridge.GetConn().RemoteAddr())
+        b.connBridge.Close()
     }
 }
 
@@ -231,11 +252,13 @@ func (client *Client) Upload(path string, group string) (string, error) {
 
 func (client *Client) QueryFile(pathOrMd5 string) (*bridge.File, error) {
     var result *bridge.File
-    for ele := client.trackersConnBridge.Front(); ele != nil; ele = ele.Next() {
+    for ele := client.TrackerManagers.Front(); ele != nil; ele = ele.Next() {
         queryMeta := &bridge.OperationQueryFileRequest{PathOrMd5: pathOrMd5}
-        connBridge := ele.Value.(*bridge.Bridge)
+        connBridge := ele.Value.(*TrackerManager).connBridge
         e11 := connBridge.SendRequest(bridge.O_QUERY_FILE, queryMeta, 0, nil);
         if e11 != nil {
+            *ele.Value.(*TrackerManager).brokenChan <- 1
+            connBridge.Close()
             continue
         }
         e12 := connBridge.ReceiveResponse(func(response *bridge.Meta, in io.Reader) error {
@@ -254,11 +277,13 @@ func (client *Client) QueryFile(pathOrMd5 string) (*bridge.File, error) {
             if result != nil {
                 return nil
             }
+            return nil
         })
         if result != nil {
             return result, nil
         }
         if e12 != nil {
+            *ele.Value.(*TrackerManager).brokenChan <- 1
             connBridge.Close()
         }
     }
@@ -266,43 +291,7 @@ func (client *Client) QueryFile(pathOrMd5 string) (*bridge.File, error) {
     if result != nil {
         return result, nil
     }
-    /*mem := selectStorageServer("", "")
-    if mem == nil {
-        return nil, NO_TRACKER_ERROR
-    }
-    connBridge, e12 := GetConnBridge(mem)
-    if e12 != nil {
-        return nil, e12
-    }*/
-
-    queryMeta := &bridge.OperationQueryFileRequest{PathOrMd5: pathOrMd5}
-    e2 := connBridge.SendRequest(bridge.O_QUERY_FILE, queryMeta, 0, nil)
-    if e2 != nil {
-        return false, e2
-    }
-
-    var exist bool
-    // receive response
-    e3 := connBridge.ReceiveResponse(func(response *bridge.Meta, in io.Reader) error {
-        if response.Err != nil {
-            return response.Err
-        }
-        var queryResponse = &bridge.OperationQueryFileResponse{}
-        e4 := json.Unmarshal(response.MetaBody, queryResponse)
-        if e4 != nil {
-            return e4
-        }
-        if queryResponse.Status != bridge.STATUS_OK && queryResponse.Status != bridge.STATUS_NOT_FOUND {
-            return errors.New("error connect to server, server response status:" + strconv.Itoa(queryResponse.Status))
-        }
-        exist = queryResponse.Exist
-        // connect success
-        return nil
-    })
-    if e3 != nil {
-        return false, e3
-    }
-    return exist, nil
+    return nil, nil
 }
 
 
