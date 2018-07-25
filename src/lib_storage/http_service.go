@@ -5,6 +5,13 @@ import (
     "regexp"
     "strconv"
     "time"
+    "strings"
+    "app"
+    "util/logger"
+    "lib_service"
+    "util/file"
+    "os"
+    "lib_common"
 )
 
 const (
@@ -24,7 +31,7 @@ func init() {
 
 // storage server provide http download service
 func DownloadHandler(writer http.ResponseWriter, request *http.Request) {
-/*
+
     qIndex := strings.Index(request.RequestURI, "?")
     var servletPath = request.RequestURI
     if qIndex != -1 {
@@ -84,9 +91,7 @@ func DownloadHandler(writer http.ResponseWriter, request *http.Request) {
         fileSize += fullFile.Parts[i].FileSize
     }
 
-
     ext := file.GetFileExt(fn)
-
 
     // parse header: range
     rangeH := request.Header["Range"]
@@ -96,20 +101,19 @@ func DownloadHandler(writer http.ResponseWriter, request *http.Request) {
     }
     logger.Info(rangeS)
     start, end := parseHeaderRange(rangeS)
-    if start <= 0 || start > (fileSize - 1) {
+    if start <= 0 {
         start = 0
     }
-    if start > (fileSize - 1) {
-        start = fileSize - 1
-    }
+
     if end <= 0 || end > (fileSize - 1) || end == start {
-        end = fileSize - 1
+        end = fileSize
     }
+    startPos, endPos, totalLen := lib_common.GetReadPositions(fullFile, start, end-start)
 
     headers.Set("Content-Type", *app.GetContentTypeHeader(ext))
     headers.Set("Accept-Ranges", "bytes")
-    headers.Set("Content-Length", strconv.FormatInt(end - start + 1, 10))
-    headers.Set("Content-Range", "bytes " + strconv.FormatInt(start, 10) + "-" + strconv.FormatInt(end, 10) + "/" + strconv.FormatInt(fileSize, 10))
+    headers.Set("Content-Length", strconv.FormatInt(totalLen, 10))
+    headers.Set("Content-Range", "bytes " + strconv.FormatInt(start, 10) + "-" + strconv.FormatInt(end - 1, 10) + "/" + strconv.FormatInt(fileSize, 10))
 
     logger.Info("range:", start , "-", end)
     if !app.MIME_TYPES_ENABLE {
@@ -121,6 +125,7 @@ func DownloadHandler(writer http.ResponseWriter, request *http.Request) {
         headers.Set("Content-Disposition", "attachment;filename=\"" + fn + "\"")
     } else {
         gmtLocation, _ := time.LoadLocation("GMT")
+        fInfo, _ := os.Stat(lib_common.GetFilePathByMd5(fullFile.Parts[0].Md5))
         headers.Set("Last-Modified", fInfo.ModTime().In(gmtLocation).Format(time.RFC1123))
         headers.Set("Expires", time.Now().Add(time.Hour * 2400).In(gmtLocation).Format(time.RFC1123))
         setMimeHeaders(md5, &headers)
@@ -133,60 +138,9 @@ func DownloadHandler(writer http.ResponseWriter, request *http.Request) {
         writer.WriteHeader(206)
     }
 
-    bodyBuffSize := 1024*10
-    var buff = make([]byte, bodyBuffSize)
-    read := 0
-    readLen := end - start + 1
-    var nextReadSize int
-    downFile.Seek(start, 0)
-
-    startReadPartindex := 0
-    var startReadByteIndex int64 = 0
-    for i := range fullFile.Parts {
-        fInfo, _ := os.Stat(GetFilePathByMd5(fullFile.Parts[i].Md5))
-        if start > int64(i) * fInfo.Size() {
-            continue
-        } else {
-            startReadPartindex = i
-            startReadByteIndex = int64(i) * fInfo.Size() - start
-            break
-        }
-    }
-
-    for {
-        //read finish
-        if int64(read) == readLen {
-            break
-        }
-        // left bytes is more than a buffer
-        if (readLen - int64(read)) / int64(bodyBuffSize) >= 1 {
-            nextReadSize = int(bodyBuffSize)
-        } else {// left bytes less than a buffer
-            nextReadSize = int(readLen - int64(read))
-        }
-        len, e2 := bridge.ReadBytes(buff, nextReadSize, downFile)
-        if e2 == nil || e2 == io.EOF {
-            wl, e5 := writer.Write(buff[0:len])
-            if e2 == io.EOF {
-                logger.Info("file download success")
-                downFile.Close()
-                break
-            }
-            if e5 != nil || wl != len {
-                logger.Error("error write download file:", e5)
-                downFile.Close()
-                break
-            }
-            read += wl
-            logger.Debug("write data....:", nextReadSize)
-        } else {
-            logger.Error("error read download file:", e2)
-            downFile.Close()
-            break
-        }
-    }
-
-*/
+    bodyBuffSize := app.BUFF_SIZE
+    var buffer = make([]byte, bodyBuffSize)
+    WriteDownloadStream(fullFile, startPos, endPos, buffer, writer)
 }
 
 
