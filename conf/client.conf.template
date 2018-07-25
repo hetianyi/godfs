@@ -1,0 +1,30 @@
+# storage server configuration file.
+
+# 服务基目录，将log和data保存的目录
+# 如果没有设置，默认情况下，
+# 在当前工作目录下创建“godfs”文件夹作为base_path
+# 目录结构如：
+# -base_path
+#   └logs
+#   └data
+base_path=E:/godfs-storage/client
+
+
+trackers=127.0.0.1:1022
+
+# secret用于服务通信时校验身份
+# 服务之间建立通信时会校验secret
+# 如果校验失败则会拒绝连接
+secret=OASAD834jA97AAQE761==
+
+# 日志级别：debug, info, warn, error, fatal
+# 如不设置，默认为info
+log_level=debug
+
+# 轮转日志间隔，支持以小时(h)、天(d)、月(m)、年(y)为周期创建及备份日志文件
+# 日志文件名称格式为：
+# godfsLog-yyyy-MM-dd[-h].log
+# 轮转日志到期之后会自动压缩备份为gz文件
+# 不区分大小写
+log_rotation_interval=d
+

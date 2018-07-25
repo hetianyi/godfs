@@ -1,7 +1,6 @@
 package lib_storage
 
 import (
-    "strings"
     "util/logger"
     "container/list"
     "strconv"
@@ -108,7 +107,7 @@ func startHttpDownloadService() {
 
 // communication with tracker
 func startConnTracker(trackers string) {
-    ls := parseTrackers(trackers)
+    ls := lib_common.ParseTrackers(trackers)
     if ls.Len() == 0 {
         logger.Warn("no trackers set, the storage server will run in stand-alone mode.")
         return
@@ -223,18 +222,3 @@ func clientHandler(conn net.Conn) {
     })
 }
 
-
-
-// parse trackers into a list
-func parseTrackers(tracker string) *list.List {
-    sp := strings.Split(tracker, ",")
-    ls := list.New()
-    for i := range sp {
-        trimS := strings.TrimSpace(sp[i])
-        if len(trimS) > 0 {
-            ls.PushBack(trimS)
-        }
-
-    }
-    return ls
-}

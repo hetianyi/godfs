@@ -10,6 +10,7 @@ import (
     "os"
     "strings"
     "lib_common/bridge"
+    "container/list"
 )
 
 func CreateTmpFile() (*os.File, error) {
@@ -122,3 +123,21 @@ func GetReadPositions(fullFile *bridge.File, start int64, offset int64) (*bridge
     }
     return startPos, endPos, end - start
 }
+
+
+
+// parse trackers into a list
+func ParseTrackers(tracker string) *list.List {
+    sp := strings.Split(tracker, ",")
+    ls := list.New()
+    for i := range sp {
+        trimS := strings.TrimSpace(sp[i])
+        if len(trimS) > 0 {
+            ls.PushBack(trimS)
+        }
+
+    }
+    return ls
+}
+
+

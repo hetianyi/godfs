@@ -12,17 +12,21 @@ import (
     "sync"
     "app"
     "lib_common/bridge"
+    "lib_common"
+    "container/list"
+    "math/rand"
 )
 
 
 // each client has one tcp connection with storage server,
 // once the connection is broken, the client will destroy.
 // one client can only do 1 operation at a time.
-var connection net.Conn
-var operationLock *sync.Mutex
-var secretString string
-var connBridge *bridge.Bridge
+var StorageServers list.List
+var addLock *sync.Mutex
 
+func init() {
+    addLock = new(sync.Mutex)
+}
 
 type IClient interface {
     Close()
@@ -32,26 +36,33 @@ type IClient interface {
 }
 
 type Client struct {
-    connBridge *bridge.Bridge
     buffer []byte
+    //operationLock *sync.Mutex
+    trackersConnBridge list.List
 }
 
-func NewClient(host string, port int, secret string) (*Client, error) {
-    operationLock = new(sync.Mutex)
-    secretString = secret
-    connectString := host + ":" + strconv.Itoa(port)
-    connBridge, e := connect(connectString, secret)
-    if e != nil {
-        return nil, e
+func NewClient() (*Client, error) {
+    ls := lib_common.ParseTrackers(app.TRACKERS)
+    if ls.Len() == 0 {
+        return nil, errors.New("no tracker server configured")
     }
     client := &Client{
-        connBridge: connBridge,
         buffer: make([]byte, app.BUFF_SIZE),
+        //operationLock: new(sync.Mutex),
+    }
+
+    for e := ls.Front(); e != nil; e = e.Next() {
+        trackerConnBridge, err := connectTracker(e.Value.(string))
+        if err != nil {
+            logger.Debug("error connect to tracker server", e.Value.(string), ":", err)
+        } else {
+            client.trackersConnBridge.PushBack(trackerConnBridge)
+        }
     }
     return client, nil
 }
 
-func connect(connectString string, secret string) (*bridge.Bridge, error) {
+func connectTracker(connectString string) (*bridge.Bridge, error) {
     logger.Debug("connecting to storage server...")
     con, e := net.Dial("tcp", connectString)
     if e != nil {
@@ -59,17 +70,71 @@ func connect(connectString string, secret string) (*bridge.Bridge, error) {
         return nil, e
     }
     connBridge := bridge.NewBridge(con)
-    e1 := connBridge.ValidateConnection(secret)
+    e1 := connBridge.ValidateConnection(app.SECRET)
     if e1 != nil {
         return nil, e1
+    }
+    logger.Debug("successful validate connection:", e1)
+
+
+    syncMeta := &bridge.OperationGetStorageServerRequest {}
+    // send validate request
+    e5 := connBridge.SendRequest(bridge.O_SYNC_STORAGE, syncMeta, 0, nil)
+    if e5 != nil {
+        return nil, e5
+    }
+    e6 := connBridge.ReceiveResponse(func(response *bridge.Meta, in io.Reader) error {
+        if response.Err != nil {
+            return response.Err
+        }
+        var validateResp = &bridge.OperationGetStorageServerResponse{}
+        logger.Debug("sync storage server response:", string(response.MetaBody))
+        e3 := json.Unmarshal(response.MetaBody, validateResp)
+        if e3 != nil {
+            return e3
+        }
+        if validateResp.Status != bridge.STATUS_OK {
+            return errors.New("error connect to server, server response status:" + strconv.Itoa(validateResp.Status))
+        }
+        if nil != validateResp.GroupMembers {
+            for i := range validateResp.GroupMembers {
+                addStorageServer(&validateResp.GroupMembers[i])
+            }
+        }
+        // connect success
+        return nil
+    })
+    if e6 != nil {
+        return nil, e6
     }
     logger.Debug("successful validate connection:", e1)
     return connBridge, nil
 }
 
+func addStorageServer(server *bridge.Member) {
+    addLock.Lock()
+    defer addLock.Unlock()
+    s, _ := json.Marshal(server)
+    logger.Debug("add storage server:", s)
+    uid := GetStorageServerUID(server)
+    for ele := StorageServers.Front(); ele != nil; ele = ele.Next() {
+        mem := ele.Value.(*bridge.Member)
+        euid := GetStorageServerUID(mem)
+        if uid == euid {
+            logger.Debug("storage server exists, ignore:", s)
+            return
+        }
+    }
+    StorageServers.PushBack(server)
+}
+
 
 func (client *Client) Close() {
-    client.connBridge.Close()
+    for ele := client.trackersConnBridge.Front(); ele != nil; ele = ele.Next() {
+        b := ele.Value.(*bridge.Bridge)
+        logger.Debug("shutdown bridge ", b.GetConn().RemoteAddr())
+        b.Close()
+    }
 }
 
 
@@ -144,6 +209,8 @@ func (client *Client) Upload(path string) (string, error) {
 }
 
 
+
+
 func (client *Client) CheckFileExists(pathOrMd5 string) (bool, error) {
     queryMeta := &bridge.OperationQueryFileRequest{PathOrMd5: pathOrMd5}
     e2 := client.connBridge.SendRequest(bridge.O_QUERY_FILE, queryMeta, 0, nil)
@@ -214,3 +281,40 @@ func (client *Client) DownloadFile(path string, start int64, offset int64, write
     }
     return nil
 }
+
+
+
+// TODO 新增连接池
+// select a storage server matching given group and instanceId
+func selectStorageServer(group string, instanceId string) *bridge.Member {
+    var pick list.List
+    for ele := StorageServers.Front(); ele != nil; ele = ele.Next() {
+        b := ele.Value.(*bridge.Member)
+        match1 := false
+        match2 := false
+        if group == b.Group {
+            match1 = true
+        }
+        if instanceId == b.InstanceId {
+            match2 = true
+        }
+        if match1 && match2 {
+            pick.PushBack(b)
+        }
+    }
+    rd := rand.Intn(pick.Len())
+    index := 0
+    for ele := pick.Front(); ele != nil; ele = ele.Next() {
+        if index == rd {
+            return ele.Value.(*bridge.Member)
+        }
+        index++
+    }
+    return nil
+}
+
+
+
+
+
+

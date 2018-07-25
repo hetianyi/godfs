@@ -94,9 +94,26 @@ func GetGroupMembers(meta *bridge.OperationRegisterStorageClientRequest) []bridg
     var mList list.List
     for k, v := range managedStorages {
         if k != key && v.Group == meta.Group { // 过期
-            m := bridge.Member{BindAddr: v.Host, Port: v.Port, InstanceId: v.InstanceId}
+            m := bridge.Member{BindAddr: v.Host, Port: v.Port, InstanceId: v.InstanceId, Group: v.Group}
             mList.PushBack(m)
         }
+    }
+    var members = make([]bridge.Member, mList.Len())
+    index := 0
+    for e := mList.Front(); e != nil; e = e.Next() {
+        members[index] = e.Value.(bridge.Member)
+        index++
+    }
+    return members
+}
+
+
+// 获取组内成员
+func GetAllStorages() []bridge.Member {
+    var mList list.List
+    for _, v := range managedStorages {
+        m := bridge.Member{BindAddr: v.Host, Port: v.Port, InstanceId: v.InstanceId, Group: v.Group}
+        mList.PushBack(m)
     }
     var members = make([]bridge.Member, mList.Len())
     index := 0

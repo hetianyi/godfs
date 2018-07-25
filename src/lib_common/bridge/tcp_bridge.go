@@ -23,6 +23,7 @@ const (
     O_DOWNLOAD_FILE = 4
     O_REG_STORAGE = 5
     O_REG_FILE = 6
+    O_SYNC_STORAGE = 7
 
 )
 
@@ -49,6 +50,7 @@ func init() {
     operationHeadMap[O_DOWNLOAD_FILE] = []byte{1,5}
     operationHeadMap[O_REG_STORAGE] = []byte{1,6}
     operationHeadMap[O_REG_FILE] = []byte{1,7}
+    operationHeadMap[O_SYNC_STORAGE] = []byte{1,8}
 }
 
 // SendReceiveCloser
@@ -217,7 +219,6 @@ func (bridge *Bridge) ValidateConnection(secret string) error {
     }
     return nil
 }
-
 
 
 

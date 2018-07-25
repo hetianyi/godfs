@@ -100,3 +100,22 @@ func registerFileHandler(request *bridge.Meta, connBridge *bridge.Bridge) error 
     return connBridge.SendResponse(response, 0, nil)
 }
 
+
+// for client
+func syncStorageServerHandler(request *bridge.Meta, connBridge *bridge.Bridge) error {
+    var meta = &bridge.OperationGetStorageServerRequest{}
+    logger.Debug(string(request.MetaBody))
+    e1 := json.Unmarshal(request.MetaBody, meta)
+    if e1 != nil {
+        return e1
+    }
+    var response = &bridge.OperationGetStorageServerResponse{}
+    response.Status = bridge.STATUS_OK
+    response.GroupMembers = GetAllStorages()
+    e2 := connBridge.SendResponse(response, 0, nil)
+    if e2 != nil{
+        return e2
+    }
+    return nil
+}
+

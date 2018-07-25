@@ -94,6 +94,8 @@ func clientHandler(conn net.Conn) {
                     return e
                 } else if request.Operation == bridge.O_REG_FILE {
                     return registerFileHandler(request, connBridge)
+                } else if request.Operation == bridge.O_SYNC_STORAGE {
+                    return syncStorageServerHandler(request, connBridge)
                 } else {
                     return bridge.OPERATION_NOT_SUPPORT_ERROR
                 }

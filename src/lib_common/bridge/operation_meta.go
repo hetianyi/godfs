@@ -14,6 +14,7 @@ const (
 type Member struct {
     BindAddr string `json:"addr"`
     InstanceId string `json:"instance_id"`
+    Group string `json:"group"`
     Port int `json:"port"`
 }
 
@@ -44,11 +45,11 @@ type ReadPos struct {
 
 // validate operation request.
 type OperationValidationRequest struct {
-    Secret string
+    Secret string `json:"secret"`
 }
 // validate operation response.
 type OperationValidationResponse struct {
-    Status int
+    Status int `json:"status"`
 }
 
 
@@ -61,9 +62,18 @@ type OperationRegisterStorageClientRequest struct {
 }
 // validate operation response.
 type OperationRegisterStorageClientResponse struct {
-    Status int
+    Status int  `json:"status"`
     LookBackAddr string         `json:"backAddr"`   // tracker反视地址
     GroupMembers []Member       `json:"members"`    // 我的组内成员（不包括自己）
+}
+
+// register storage client operation request.
+type OperationGetStorageServerRequest struct {
+}
+// validate operation response.
+type OperationGetStorageServerResponse struct {
+    Status int  `json:"status"`
+    GroupMembers []Member `json:"members"`    // 我的组内成员（不包括自己）
 }
 
 
@@ -76,7 +86,7 @@ type OperationUploadFileRequest struct {
 }
 // upload file response.
 type OperationUploadFileResponse struct {
-    Status int
+    Status int `json:"status"`
     Path string `json:"path"`
 }
 
@@ -87,7 +97,7 @@ type OperationQueryFileRequest struct {
 }
 // query file response.
 type OperationQueryFileResponse struct {
-    Status int
+    Status int `json:"status"`
     Exist bool `json:"exist"`      // true:the file exists
     FileSize uint64 `json:"fileSize"` // 文件大小
 }
@@ -100,7 +110,7 @@ type OperationDownloadFileRequest struct {
 }
 // download file response.
 type OperationDownloadFileResponse struct {
-    Status int
+    Status int `json:"status"`
 }
 
 
@@ -110,7 +120,7 @@ type OperationRegisterFileRequest struct {
 }
 // register file response.
 type OperationRegisterFileResponse struct {
-    Status int
+    Status int `json:"status"`
 }
 
 // register file operation request.
@@ -119,9 +129,9 @@ type OperationPullFileRequest struct {
 }
 // register file response.
 type OperationPullFileResponse struct {
-    Status int
-    File File                    `json:"file"`    // 文件md5
-    Parts []FilePart             `json:"parts"`   // 文件分片
+    Status int `json:"status"`
+    File File `json:"file"`    // 文件md5
+    Parts []FilePart `json:"parts"`   // 文件分片
 }
 
 

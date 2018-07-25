@@ -7,9 +7,9 @@ import (
     "path/filepath"
     "os"
     "util/file"
-    "bytes"
     "regexp"
     "app"
+    "bytes"
 )
 
 
@@ -25,6 +25,7 @@ var (
 // runWith:
 //        1: storage server
 //        2: tracker server
+//        3: client
 func Check(m map[string] string, runWith int) {
 
     replaceParams(m)
@@ -33,16 +34,6 @@ func Check(m map[string] string, runWith int) {
     bind_address := strings.TrimSpace(m["bind_address"])
     app.BIND_ADDRESS = bind_address
 
-    // check port
-    port, e := strconv.Atoi(m["port"])
-    if e == nil {
-        if port <= 0 || port > 65535 {
-            logger.Fatal("invalid port range:", m["port"])
-        }
-        app.PORT = port
-    } else {
-        logger.Fatal("invalid port ", m["port"], ":", e)
-    }
 
     // check base_path
     basePath := strings.TrimSpace(m["base_path"])
@@ -58,9 +49,11 @@ func Check(m map[string] string, runWith int) {
     app.BASE_PATH = m["base_path"]
     prepareDirs(m["base_path"])
 
+
     // check secret
     m["secret"] = strings.TrimSpace(m["secret"])
     app.SECRET = m["secret"]
+
 
     // check log_level
     logLevel := strings.ToLower(strings.TrimSpace(m["log_level"]))
@@ -70,6 +63,7 @@ func Check(m map[string] string, runWith int) {
     }
     m["log_level"] = logLevel
     setSystemLogLevel(logLevel)
+
 
     // check log_rotation_interval
     log_rotation_interval := strings.ToLower(strings.TrimSpace(m["log_rotation_interval"]))
@@ -98,23 +92,6 @@ func Check(m map[string] string, runWith int) {
             logger.Fatal("error parameter 'instance_id'")
         }
         app.INSTANCE_ID = m["instance_id"]
-
-        // check trackers
-        trackers := strings.TrimSpace(m["trackers"])
-        _ts := strings.Split(trackers, ",")
-        var bytebuff bytes.Buffer
-        for i := range _ts {
-            strS := strings.TrimSpace(_ts[i])
-            if strS == "" {
-                continue
-            }
-            bytebuff.WriteString(strS)
-            if i < len(_ts)-1 {
-                bytebuff.WriteString(",")
-            }
-        }
-        m["trackers"] = string(bytebuff.Bytes())
-
 
 
         // check http_port
@@ -188,10 +165,37 @@ func Check(m map[string] string, runWith int) {
         }
 
         //--
+    } else if runWith == 2 {
+
     }
 
-    if runWith == 2 {
+    if runWith == 1 || runWith == 2 {
+        // check port
+        port, e := strconv.Atoi(m["port"])
+        if e == nil {
+            if port <= 0 || port > 65535 {
+                logger.Fatal("invalid port range:", m["port"])
+            }
+            app.PORT = port
+        } else {
+            logger.Fatal("invalid port ", m["port"], ":", e)
+        }
 
+        // check trackers
+        trackers := strings.TrimSpace(m["trackers"])
+        _ts := strings.Split(trackers, ",")
+        var bytebuff bytes.Buffer
+        for i := range _ts {
+            strS := strings.TrimSpace(_ts[i])
+            if strS == "" {
+                continue
+            }
+            bytebuff.WriteString(strS)
+            if i < len(_ts)-1 {
+                bytebuff.WriteString(",")
+            }
+        }
+        m["trackers"] = string(bytebuff.Bytes())
     }
 }
 

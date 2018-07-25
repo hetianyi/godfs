@@ -17,6 +17,7 @@ var (
     INSTANCE_ID string
     SECRET string
     BIND_ADDRESS string
+    TRACKERS string
     HTTP_ENABLE bool
     MIME_TYPES_ENABLE bool
     PORT int
