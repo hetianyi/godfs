@@ -81,7 +81,6 @@ func GetFilePathByMd5(md5 string) string {
 
 // get read position from parts of files
 // returns part index, current part start read position and total read bytes length
-//TODO 临界点位置不准确 20180725
 func GetReadPositions(fullFile *bridge.File, start int64, offset int64) (*bridge.ReadPos, *bridge.ReadPos, int64) {
     var fileLen int64
     for i := range fullFile.Parts {
