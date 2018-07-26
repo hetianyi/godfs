@@ -19,26 +19,29 @@ var statusLock *sync.Mutex
 func init() {
     getLock = new(sync.Mutex)
     statusLock = new(sync.Mutex)
+    connMap = make(map[string]list.List)
+    activeConnCounter = make(map[string]int)
 }
 
 func GetStorageServerUID(server *bridge.Member) string {
     return server.BindAddr + ":" + strconv.Itoa(server.Port) + ":" + server.Group + ":" + server.InstanceId
 }
 
-
+// connection pool has not been implemented.
+// for now, one client only support single connection with each storage.
 func GetConnBridge(server *bridge.Member) (*bridge.Bridge, error) {
     getLock.Lock()
     defer getLock.Unlock()
-    /*list := connMap[GetStorageServerUID(server)]
+    list := connMap[GetStorageServerUID(server)]
     if list.Len() > 0 {
         return list.Remove(list.Front()).(*bridge.Bridge), nil
-    }*/
+    }
     return newConnection(server)
 }
 
 func newConnection(server *bridge.Member)(*bridge.Bridge, error) {
     logger.Debug("connecting to storage server...")
-    con, e := net.Dial("tcp", server.BindAddr + strconv.Itoa(server.Port))
+    con, e := net.Dial("tcp", server.BindAddr + ":" + strconv.Itoa(server.Port))
     if e != nil {
         logger.Error(e)
         return nil, e

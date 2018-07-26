@@ -14,11 +14,15 @@ import (
     "crypto/md5"
     "encoding/hex"
     "time"
+    "app"
 )
 
 func Init() *Client {
     logger.SetLogLevel(1)
-   client, e := NewClient("127.0.0.1", 1024, "OASAD834jA97AAQE761==")
+    app.TRACKERS = "127.0.0.1:1022"
+    app.SECRET = "OASAD834jA97AAQE761=="
+    app.GROUP = "G01"
+   client, e := NewClient()
    if e != nil {
        logger.Error(e)
    }
@@ -28,19 +32,20 @@ func Init() *Client {
 
 func Test1(t *testing.T) {
     client := Init()
-    //fmt.Println(client.Upload("D:/UltraISO.zip")) // G01/002/M/c445b10edc599617106ae8472c1446fd
+    //fmt.Println(client.Upload("D:/UltraISO.zip")) // G01/002/M/432597de0e65eedbc867620e744a35ad
     //fmt.Println(client.Upload("F:/project.rar"))
     //fmt.Println(client.Upload("D:/library.zip"))
     //fmt.Println(client.Upload("D:/FTP/instantfap-gifs.part8.zip"))
     //fmt.Println(client.Upload("D:/图片/图片.rar"))
-    fmt.Println("本地计算Md5：" + FileHash("D:/IMG_20161207_155837.jpg"))
-    fmt.Println(client.Upload("D:/IMG_20161207_155837.jpg"))
+    fmt.Println("本地计算Md5：" + FileHash("D:/UltraISO.zip"))
+    //fmt.Println(client.Upload("D:/UltraISO.zip", app.GROUP))
+    fmt.Println(client.Upload("D:/1114785.jpg", app.GROUP))
 }
 
 
 func Test2(t *testing.T) {
     client := Init()
-    fmt.Println(client.CheckFileExists("c445b10edc599617106ae8472c1446f1"))
+    fmt.Println(client.QueryFile("432597de0e65eedbc867620e744a35ad"))
 }
 
 func Test3(t *testing.T) {
@@ -52,7 +57,7 @@ func Test3(t *testing.T) {
 
 func Test4(t *testing.T) {
     client := Init()
-    path := "/G01/002/M/0d3cc782c3242cf3ce4b2174e1041ed2"
+    path := "/G01/002/M/432597de0e65eedbc867620e744a35ad"
 
     /*fmt.Println(client.DownloadFile(path, 0, 1024*1024, func(fileLen uint64, reader io.Reader) error {
         newFile, _ := file.CreateFile("E:/godfs-storage/123.jpg")
@@ -71,7 +76,7 @@ func Test4(t *testing.T) {
         return nil
     })*/
     client.DownloadFile(path, 0, -1, func(fileLen uint64, reader io.Reader) error {
-        newFile, _ := file.OpenFile4Write("E:/godfs-storage/123.jpg")
+        newFile, _ := file.OpenFile4Write("E:/godfs-storage/123.zip")
         defer newFile.Close()
         d := make([]byte, fileLen)
         io.ReadFull(reader, d)

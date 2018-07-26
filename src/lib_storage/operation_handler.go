@@ -346,7 +346,7 @@ func WriteOut(md5 string, start int64, offset int64, buffer []byte, out io.Write
         if e2 == nil {
             wl, e5 := out.Write(buffer[0:len])
             readBodySize += int64(len)
-            logger.Debug("write:", readBodySize)
+            logger.Trace("write:", readBodySize)
             if e5 != nil || wl != len {
                 return errors.New("error handle download file")
             }

@@ -15,7 +15,7 @@ import (
     "lib_common"
     "container/list"
     "math/rand"
-    "time"
+    "strings"
 )
 
 
@@ -24,7 +24,8 @@ import (
 // one client can only do 1 operation at a time.
 var StorageServers list.List
 var addLock *sync.Mutex
-var NO_TRACKER_ERROR = errors.New("no tracker server configured")
+var NO_TRACKER_ERROR = errors.New("no tracker server available")
+var NO_STORAGE_ERROR = errors.New("no storage server available")
 
 func init() {
     addLock = new(sync.Mutex)
@@ -54,21 +55,32 @@ func NewClient() (*Client, error) {
     }
     client := &Client{}
 
+    var chanList list.List
     for e := ls.Front(); e != nil; e = e.Next() {
-        go manageTracker(e.Value.(string), client)
+        cha := make(chan int)
+        chanList.PushBack(cha)
+        manageTracker(e.Value.(string), client, &cha)
+    }
+    // wait till all tracker storage server info sync finished.
+    /*for e := chanList.Front(); e != nil; e = e.Next() {
+        <- e.Value.(chan int)
+    }*/
+    if client.TrackerManagers.Len() == 0 {
+        logger.Fatal("no tracker available")
     }
     return client, nil
 }
 
 
-func manageTracker(connectString string, client *Client) {
-    var ele *list.Element
+func manageTracker(connectString string, client *Client, cha *chan int) {
+    /*var ele *list.Element
     brokenChan := make(chan int)
     for {
         connBridge := initTracker(connectString)
         if connBridge != nil {
             tracker := &TrackerManager{connBridge: connBridge, brokenChan: &brokenChan}
             ele = client.TrackerManagers.PushBack(tracker)
+            *cha <- 1
             break
         }
         time.Sleep(time.Second * 10)
@@ -76,11 +88,19 @@ func manageTracker(connectString string, client *Client) {
     for {
         // if bridge is broken, it will notify chan here.
         <- brokenChan
+        ele.Value.(*TrackerManager).connBridge = nil
         connBridge := initTracker(connectString)
         if connBridge != nil {
             ele.Value.(*TrackerManager).connBridge = connBridge
         }
         time.Sleep(time.Second * 10)
+    }*/
+
+    connBridge := initTracker(connectString)
+    if connBridge != nil {
+        brokenChan := make(chan int)
+        tracker := &TrackerManager{connBridge: connBridge, brokenChan: &brokenChan}
+        client.TrackerManagers.PushBack(tracker)
     }
 }
 
@@ -145,7 +165,7 @@ func addStorageServer(server *bridge.Member) {
     addLock.Lock()
     defer addLock.Unlock()
     s, _ := json.Marshal(server)
-    logger.Debug("add storage server:", s)
+    logger.Debug("add storage server:", string(s))
     uid := GetStorageServerUID(server)
     for ele := StorageServers.Front(); ele != nil; ele = ele.Next() {
         mem := ele.Value.(*bridge.Member)
@@ -181,14 +201,25 @@ func (client *Client) Upload(path string, group string) (string, error) {
             Md5: "",
         }
 
-        mem := selectStorageServer(group, "")
-        if mem == nil {
-            return "", NO_TRACKER_ERROR
+        var excludes list.List
+        var connBridge *bridge.Bridge
+        var member *bridge.Member
+        for {
+            mem := selectStorageServer(group, "", &excludes)
+            // no available storage
+            if mem == nil {
+                return "", NO_STORAGE_ERROR
+            }
+            cb, e12 := GetConnBridge(mem)
+            if e12 != nil {
+                excludes.PushBack(mem)
+                continue
+            }
+            connBridge = cb
+            member = mem
+            break
         }
-        connBridge, e12 := GetConnBridge(mem)
-        if e12 != nil {
-            return "", e12
-        }
+
         e2 := connBridge.SendRequest(bridge.O_UPLOAD, uploadMeta, uint64(fInfo.Size()), func(out io.WriteCloser) error {
             // begin upload file body bytes
             buff := make([]byte, app.BUFF_SIZE)
@@ -217,6 +248,7 @@ func (client *Client) Upload(path string, group string) (string, error) {
             return nil
         })
         if e2 != nil {
+            connBridge.Close()
             return "", e2
         }
 
@@ -239,8 +271,10 @@ func (client *Client) Upload(path string, group string) (string, error) {
             return nil
         })
         if e3 != nil {
+            connBridge.Close()
             return "", e3
         }
+        ReturnConnBridge(member, connBridge)
         return fid, nil
     } else {
         return "", e
@@ -251,14 +285,15 @@ func (client *Client) Upload(path string, group string) (string, error) {
 
 
 func (client *Client) QueryFile(pathOrMd5 string) (*bridge.File, error) {
+
     var result *bridge.File
     for ele := client.TrackerManagers.Front(); ele != nil; ele = ele.Next() {
         queryMeta := &bridge.OperationQueryFileRequest{PathOrMd5: pathOrMd5}
         connBridge := ele.Value.(*TrackerManager).connBridge
-        e11 := connBridge.SendRequest(bridge.O_QUERY_FILE, queryMeta, 0, nil);
+        e11 := connBridge.SendRequest(bridge.O_QUERY_FILE, queryMeta, 0, nil)
         if e11 != nil {
-            *ele.Value.(*TrackerManager).brokenChan <- 1
             connBridge.Close()
+            *ele.Value.(*TrackerManager).brokenChan <- 1
             continue
         }
         e12 := connBridge.ReceiveResponse(func(response *bridge.Meta, in io.Reader) error {
@@ -271,53 +306,74 @@ func (client *Client) QueryFile(pathOrMd5 string) (*bridge.File, error) {
                 return e4
             }
             if queryResponse.Status != bridge.STATUS_OK && queryResponse.Status != bridge.STATUS_NOT_FOUND {
-                return nil
+                return errors.New("error connect to server, server response status:" + strconv.Itoa(queryResponse.Status))
             }
             result = queryResponse.File
-            if result != nil {
-                return nil
-            }
             return nil
         })
+        if e12 != nil {
+            connBridge.Close()
+            *ele.Value.(*TrackerManager).brokenChan <- 1
+            continue
+        }
         if result != nil {
             return result, nil
         }
-        if e12 != nil {
-            *ele.Value.(*TrackerManager).brokenChan <- 1
-            connBridge.Close()
-        }
     }
-
-    if result != nil {
-        return result, nil
-    }
-    return nil, nil
+    return result, nil
 }
 
 
 func (client *Client) DownloadFile(path string, start int64, offset int64, writerHandler func(fileLen uint64, reader io.Reader) error) error {
+    path = strings.TrimSpace(path)
+    if strings.Index(path, "/") != 0 {
+        path = "/" + path
+    }
     if mat, _ := regexp.Match(app.PATH_REGEX, []byte(path)); !mat {
         return errors.New("file path format error")
     }
+    return download(path, start, offset, false, writerHandler)
+}
+
+func download(path string, start int64, offset int64, fromSrc bool, writerHandler func(fileLen uint64, reader io.Reader) error) error {
     downloadMeta := &bridge.OperationDownloadFileRequest{
         Path: path,
         Start: start,
         Offset: offset,
     }
-    mem := selectStorageServer(group, "")
-    connBridge, e12 := GetConnBridge(mem)
-    if e12 != nil {
-        return false, e12
+    group := regexp.MustCompile(app.PATH_REGEX).ReplaceAllString(path, "${1}")
+    instanceId := regexp.MustCompile(app.PATH_REGEX).ReplaceAllString(path, "${2}")
+
+    var excludes list.List
+    var connBridge *bridge.Bridge
+    var member *bridge.Member
+    for {
+        mem := selectStorageServer(group, "", &excludes)
+        // no available storage
+        if mem == nil {
+            return NO_TRACKER_ERROR
+        }
+        cb, e12 := GetConnBridge(mem)
+        if e12 != nil {
+            excludes.PushBack(mem)
+            continue
+        }
+        connBridge = cb
+        member = mem
+        break
     }
 
-
-    e2 := client.connBridge.SendRequest(bridge.O_DOWNLOAD_FILE, downloadMeta, 0, nil)
+    e2 := connBridge.SendRequest(bridge.O_DOWNLOAD_FILE, downloadMeta, 0, nil)
     if e2 != nil {
+        // if download fail, try to download from file source server
+        if !fromSrc && member.InstanceId != instanceId {
+            return download(path, start, offset, true, writerHandler)
+        }
         return e2
     }
 
     // receive response
-    e3 := client.connBridge.ReceiveResponse(func(response *bridge.Meta, in io.Reader) error {
+    e3 := connBridge.ReceiveResponse(func(response *bridge.Meta, in io.Reader) error {
         if response.Err != nil {
             return response.Err
         }
@@ -333,9 +389,13 @@ func (client *Client) DownloadFile(path string, start int64, offset int64, write
             logger.Error("error connect to server, server response status:" + strconv.Itoa(downloadResponse.Status))
             return bridge.DOWNLOAD_FILE_ERROR
         }
-        return writerHandler(response.BodyLength, client.connBridge.GetConn())
+        return writerHandler(response.BodyLength, connBridge.GetConn())
     })
     if e3 != nil {
+        // if download fail, try to download from file source server
+        if !fromSrc && member.InstanceId != instanceId {
+            return download(path, start, offset, true, writerHandler)
+        }
         return e3
     }
     return nil
@@ -345,21 +405,28 @@ func (client *Client) DownloadFile(path string, start int64, offset int64, write
 
 // TODO 新增连接池
 // select a storage server matching given group and instanceId
-func selectStorageServer(group string, instanceId string) *bridge.Member {
+// excludes contains fail storage and not gonna use this time.
+func selectStorageServer(group string, instanceId string, excludes *list.List) *bridge.Member {
     var pick list.List
     for ele := StorageServers.Front(); ele != nil; ele = ele.Next() {
         b := ele.Value.(*bridge.Member)
+        if containsMember(b, excludes) {
+            continue
+        }
         match1 := false
         match2 := false
-        if group == b.Group {
+        if group == "" || group == b.Group {
             match1 = true
         }
-        if instanceId == b.InstanceId {
+        if instanceId =="" || instanceId == b.InstanceId {
             match2 = true
         }
         if match1 && match2 {
             pick.PushBack(b)
         }
+    }
+    if pick.Len() == 0 {
+        return nil
     }
     rd := rand.Intn(pick.Len())
     index := 0
@@ -370,6 +437,19 @@ func selectStorageServer(group string, instanceId string) *bridge.Member {
         index++
     }
     return nil
+}
+
+func containsMember(mem *bridge.Member, excludes *list.List) bool {
+    if excludes == nil {
+        return false
+    }
+    uid := GetStorageServerUID(mem)
+    for ele := excludes.Front(); ele != nil; ele = ele.Next() {
+        if GetStorageServerUID(ele.Value.(*bridge.Member)) == uid {
+            return true
+        }
+    }
+    return false
 }
 
 

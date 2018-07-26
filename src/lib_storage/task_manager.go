@@ -149,10 +149,10 @@ func queryPersistTaskCollector() {
 func syncMemberTaskCollector() {
     timer := time.NewTicker(time.Second * 100)
     for {
-        <-timer.C
         logger.Debug("add sync member task")
         task := &bridge.Task{TaskType: app.TASK_SYNC_MEMBER}
         AddTask(task)
+        <-timer.C
     }
 }
 

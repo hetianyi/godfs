@@ -17,7 +17,9 @@ import (
 var client *lib_client.Client
 
 
-
+// 对于客户端，只提供类似于mysql的客户端，每个client与所有的tracker建立单个连接进行数据同步
+// client和每个storage server最多建立一个连接
+// 三方客户端可以开发成为一个连接池
 
 func main() {
     var uploadFile = flag.String("u", "", "the file to be uploaded")

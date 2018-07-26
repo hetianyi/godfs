@@ -52,6 +52,7 @@ func AddStorageServer(meta *bridge.OperationRegisterStorageClientRequest) {
         Host: meta.BindAddr,
         Port: meta.Port,
     }
+    logger.Debug("register storage server:", key)
     managedStorages[key] = holdMeta
     //js, _ := json.Marshal(*managedStorages[key])
     //fmt.Println(string(js))
