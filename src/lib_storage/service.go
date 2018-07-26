@@ -41,8 +41,6 @@ func StartService(config map[string] string) {
 
     startHttpDownloadService()
     go startConnTracker(trackers)
-    // start task collector
-    go startTaskCollector()
     startStorageService(port)
 }
 
@@ -133,16 +131,19 @@ func onceConnTracker(tracker string) {
             } else {
                 retry = 0
                 logger.Debug("connect to tracker server success.")
+
+                trackerInstance := TrackerInstance{}
+                trackerInstance.Init(connBridge)
+                trackerInstance.StartTaskCollector()
                 for { // keep sending client statistic info to tracker server.
-                    task := GetTask()
+                    task := trackerInstance.GetTask()
                     if task == nil {
                         time.Sleep(time.Second * 1)
                         continue
                     }
-                    forceClosed, e2 := ExecTask(task, connBridge)
+                    forceClosed, e2 := trackerInstance.ExecTask(task)
                     if e2 != nil {
                         logger.Debug("task exec error:", e2)
-                        FailReturnTask(task)
                     } else {
                         logger.Debug("task exec success:", task.TaskType)
                     }

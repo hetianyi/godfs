@@ -13,6 +13,7 @@ import (
 
 const (
     insertFileSQL  = "insert into files(md5, parts_num, instance, finish) values(?,?,?,?)"
+    updateFileStatusSQL  = "update files set finish=1 where id=?"
     insertPartSQL  = "insert into parts(md5, size) values(?,?)"
     insertRelationSQL  = "insert into parts_relation(fid, pid) values(?, ?)"
     fileExistsSQL  = "select id from files a where a.md5 = ? "
@@ -304,13 +305,9 @@ func FinishSyncTask(taskId int) error {
         if e2 != nil {
             return e2
         }
-        ret, e3 := state.Exec(taskId)
+        _, e3 := state.Exec(taskId)
         if e3 != nil {
             return e3
-        }
-        _, e4 := ret.LastInsertId()
-        if e4 != nil {
-            return e4
         }
         return nil
     })
@@ -567,6 +564,31 @@ func UpdateSyncId(newId int, tx *sql.Tx) error {
         return e3
     }
     return nil
+}
+
+// 文件同步到本地修改状态
+func UpdateFileStatus(fid int) error {
+    return db.DoTransaction(func(tx *sql.Tx) error {
+
+        state, e2 := tx.Prepare(updateFileStatusSQL)
+        if e2 != nil {
+            return e2
+        }
+        _, e3 := state.Exec(fid)
+        if e3 != nil {
+            return e3
+        }
+
+        state1, e3 := tx.Prepare(finishSyncTaskSQL)
+        if e3 != nil {
+            return e3
+        }
+        _, e4 := state1.Exec(fid)
+        if e4 != nil {
+            return e4
+        }
+        return nil
+    })
 }
 
 

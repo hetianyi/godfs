@@ -41,6 +41,7 @@ type IClient interface {
 type Client struct {
     //operationLock *sync.Mutex
     TrackerManagers list.List
+    connPool *ClientConnectionPool
 }
 
 type TrackerManager struct {
@@ -53,7 +54,9 @@ func NewClient() (*Client, error) {
     if ls.Len() == 0 {
         return nil, NO_TRACKER_ERROR
     }
-    client := &Client{}
+    connPool := &ClientConnectionPool{}
+    connPool.Init(10)
+    client := &Client{connPool: connPool}
 
     var chanList list.List
     for e := ls.Front(); e != nil; e = e.Next() {
@@ -210,7 +213,7 @@ func (client *Client) Upload(path string, group string) (string, error) {
             if mem == nil {
                 return "", NO_STORAGE_ERROR
             }
-            cb, e12 := GetConnBridge(mem)
+            cb, e12 := client.connPool.GetConnBridge(mem)
             if e12 != nil {
                 excludes.PushBack(mem)
                 continue
@@ -248,7 +251,7 @@ func (client *Client) Upload(path string, group string) (string, error) {
             return nil
         })
         if e2 != nil {
-            connBridge.Close()
+            client.connPool.ReturnBrokenConnBridge(member, connBridge)
             return "", e2
         }
 
@@ -271,10 +274,10 @@ func (client *Client) Upload(path string, group string) (string, error) {
             return nil
         })
         if e3 != nil {
-            connBridge.Close()
+            client.connPool.ReturnBrokenConnBridge(member, connBridge)
             return "", e3
         }
-        ReturnConnBridge(member, connBridge)
+        client.connPool.ReturnConnBridge(member, connBridge)
         return fid, nil
     } else {
         return "", e
@@ -332,10 +335,10 @@ func (client *Client) DownloadFile(path string, start int64, offset int64, write
     if mat, _ := regexp.Match(app.PATH_REGEX, []byte(path)); !mat {
         return errors.New("file path format error")
     }
-    return download(path, start, offset, false, writerHandler)
+    return download(path, start, offset, false, client, writerHandler)
 }
 
-func download(path string, start int64, offset int64, fromSrc bool, writerHandler func(fileLen uint64, reader io.Reader) error) error {
+func download(path string, start int64, offset int64, fromSrc bool, client *Client, writerHandler func(fileLen uint64, reader io.Reader) error) error {
     downloadMeta := &bridge.OperationDownloadFileRequest{
         Path: path,
         Start: start,
@@ -353,7 +356,7 @@ func download(path string, start int64, offset int64, fromSrc bool, writerHandle
         if mem == nil {
             return NO_TRACKER_ERROR
         }
-        cb, e12 := GetConnBridge(mem)
+        cb, e12 := client.connPool.GetConnBridge(mem)
         if e12 != nil {
             excludes.PushBack(mem)
             continue
@@ -366,9 +369,10 @@ func download(path string, start int64, offset int64, fromSrc bool, writerHandle
 
     e2 := connBridge.SendRequest(bridge.O_DOWNLOAD_FILE, downloadMeta, 0, nil)
     if e2 != nil {
+        client.connPool.ReturnBrokenConnBridge(member, connBridge)
         // if download fail, try to download from file source server
         if !fromSrc && member.InstanceId != instanceId {
-            return download(path, start, offset, true, writerHandler)
+            return download(path, start, offset, true, client, writerHandler)
         }
         return e2
     }
@@ -393,9 +397,10 @@ func download(path string, start int64, offset int64, fromSrc bool, writerHandle
         return writerHandler(response.BodyLength, connBridge.GetConn())
     })
     if e3 != nil {
+        client.connPool.ReturnBrokenConnBridge(member, connBridge)
         // if download fail, try to download from file source server
         if !fromSrc && member.InstanceId != instanceId {
-            return download(path, start, offset, true, writerHandler)
+            return download(path, start, offset, true, client, writerHandler)
         }
         return e3
     }

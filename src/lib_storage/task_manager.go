@@ -12,6 +12,10 @@ import (
     "encoding/json"
     "errors"
     "strconv"
+    "math/rand"
+    "lib_common"
+    "util/file"
+    "lib_client"
 )
 
 // storage 的任务分为：
@@ -19,102 +23,138 @@ import (
 // type 2: 上报文件给tracker（定时任务，持久化任务，插队任务，高优先级）
 // type 3: 定期向tracker服务器查询最新文件列表（定时任务，非持久化任务，插队任务，高优先级，任务列表中只能存在一条此类型的任务）
 // type 4: 从其他group节点下载文件（定时任务，持久化任务，最低优先级，goroutine执行）
-var taskList list.List
-var listIteLock *sync.Mutex
 const ParallelDownload = 10
-var GroupMembers []bridge.Member
+var GroupMembers list.List
+var memberIteLock *sync.Mutex
+
+var clientPool *lib_client.ClientConnectionPool
 
 func init() {
-    listIteLock = new(sync.Mutex)
+    memberIteLock = new(sync.Mutex)
+    clientPool = &lib_client.ClientConnectionPool{}
+    clientPool.Init(10)
+}
+
+type ITracker interface {
+    Init()
+    GetTaskSize() int
+    GetTask() *bridge.Task
+    AddTask(task *bridge.Task)
+    //FailReturnTask(task *bridge.Task)
+    CheckTaskTypeCount(taskType int)
+    StartTaskCollector()
+    QueryPersistTaskCollector()
+    SyncMemberTaskCollector()
+    QueryNewFileTaskCollector()
+    ExecTask(task *bridge.Task, connBridge *bridge.Bridge) (bool, error)
+}
+
+type TrackerInstance struct {
+    taskList list.List
+    listIteLock *sync.Mutex
+    connBridge *bridge.Bridge
+}
+
+
+
+func (tracker *TrackerInstance) Init(connBridge *bridge.Bridge) {
+    tracker.listIteLock = new(sync.Mutex)
+    tracker.connBridge = connBridge
 }
 
 // get task size in waiting list
-func GetTaskSize() int {
-    return taskList.Len()
+func (tracker *TrackerInstance) GetTaskSize() int {
+    return tracker.taskList.Len()
+}
+
+func addMember(members []bridge.Member) {
+    memberIteLock.Lock()
+    defer memberIteLock.Unlock()
+    if members != nil {
+        return
+    }
+    for i := range members {
+        a := members[i]
+        for e := GroupMembers.Front(); e != nil; e = e.Next() {
+            m := e.Value.(*bridge.Member)
+            if a.InstanceId == m.InstanceId {
+                break
+            }
+        }
+        GroupMembers.PushBack(a)
+    }
 }
 
 
-func GetTask() *bridge.Task {
-    listIteLock.Lock()
-    defer listIteLock.Unlock()
-    if GetTaskSize() > 0 {
-        return taskList.Remove(taskList.Front()).(*bridge.Task)
+func (tracker *TrackerInstance) GetTask() *bridge.Task {
+    tracker.listIteLock.Lock()
+    defer tracker.listIteLock.Unlock()
+    if tracker.GetTaskSize() > 0 {
+        return tracker.taskList.Remove(tracker.taskList.Front()).(*bridge.Task)
     }
     return nil
 }
 
-func AddTask(task *bridge.Task) {
+func (tracker *TrackerInstance) AddTask(task *bridge.Task) {
     if task == nil {
         logger.Debug("can't push nil task")
         return
     }
     if task.TaskType == app.TASK_SYNC_MEMBER {
-        if checkTaskTypeCount(task.TaskType) == 0 {
+        if tracker.CheckTaskTypeCount(task.TaskType) == 0 {
             logger.Debug("push task type 1")
-            taskList.PushFront(task)
+            tracker.taskList.PushFront(task)
         } else {
             logger.Debug("can't push task type 1: task type exists")
         }
     } else if task.TaskType == app.TASK_REPORT_FILE {
-        listIteLock.Lock()
-        defer listIteLock.Unlock()
-        for e := taskList.Front(); e != nil; e = e.Next() {
+        tracker.listIteLock.Lock()
+        defer tracker.listIteLock.Unlock()
+        for e := tracker.taskList.Front(); e != nil; e = e.Next() {
             if e.Value.(*bridge.Task).FileId == task.FileId {
                 return
             }
         }
         logger.Debug("push task type 2")
-        if taskList.Front() != nil && taskList.Front().Value.(*bridge.Task).TaskType == app.TASK_SYNC_MEMBER {
-            taskList.InsertAfter(task, taskList.Front())
+        if tracker.taskList.Front() != nil && tracker.taskList.Front().Value.(*bridge.Task).TaskType == app.TASK_SYNC_MEMBER {
+            tracker.taskList.InsertAfter(task, tracker.taskList.Front())
         } else {
-            taskList.PushFront(task)
+            tracker.taskList.PushFront(task)
         }
     } else if task.TaskType == app.TASK_PULL_NEW_FILE {
-        if checkTaskTypeCount(task.TaskType) == 0 {
+        if tracker.CheckTaskTypeCount(task.TaskType) == 0 {
             logger.Debug("push task type 3")
-            taskList.PushBack(task)
+            tracker.taskList.PushBack(task)
         } else {
             logger.Debug("can't push task type 3: task type exists")
         }
     } else if task.TaskType == app.TASK_DOWNLOAD_FILE {
-        listIteLock.Lock()
-        defer listIteLock.Unlock()
+        tracker.listIteLock.Lock()
+        defer tracker.listIteLock.Unlock()
         total := 0
-        for e := taskList.Front(); e != nil; e = e.Next() {
+        for e := tracker.taskList.Front(); e != nil; e = e.Next() {
             if e.Value.(*bridge.Task).FileId == task.FileId {
                 total++
             }
         }
         if total <= ParallelDownload {// 限制最大并行下载任务数
             logger.Debug("push task type 4")
-            taskList.PushBack(task)
+            tracker.taskList.PushBack(task)
         } else {
             logger.Debug("can't push task type 4: task list full")
         }
     }
 }
 
-// 持久化任务失败，将任务放回到任务队列尾部
-func FailReturnTask(task *bridge.Task) {
-    listIteLock.Lock()
-    defer listIteLock.Unlock()
-    if task != nil {
-        return
-    }
-    if task.TaskType == app.TASK_PULL_NEW_FILE || task.TaskType == app.TASK_DOWNLOAD_FILE {
-        logger.Debug("push back task:", task.TaskType)
-        taskList.PushBack(task)
-    }
-}
 
 
 
 // check task count of this type
-func checkTaskTypeCount(taskType int) int {
-    listIteLock.Lock()
-    defer listIteLock.Unlock()
+func (tracker *TrackerInstance) CheckTaskTypeCount(taskType int) int {
+    tracker.listIteLock.Lock()
+    defer tracker.listIteLock.Unlock()
     count := 0
-    for e := taskList.Front(); e != nil; e = e.Next() {
+    for e := tracker.taskList.Front(); e != nil; e = e.Next() {
         if e.Value.(*bridge.Task).TaskType == taskType {
             count++
         }
@@ -123,14 +163,14 @@ func checkTaskTypeCount(taskType int) int {
 }
 
 // 启动任务收集器
-func startTaskCollector() {
-    go queryPersistTaskCollector()
-    go syncMemberTaskCollector()
-    go queryNewFileTaskCollector()
+func (tracker *TrackerInstance) StartTaskCollector() {
+    go tracker.QueryPersistTaskCollector()
+    go tracker.SyncMemberTaskCollector()
+    go tracker.QueryNewFileTaskCollector()
 }
 
 // 查询本地持久化任务收集器
-func queryPersistTaskCollector() {
+func (tracker *TrackerInstance) QueryPersistTaskCollector() {
     timer := time.NewTicker(time.Second * 10)
     for {
         <-timer.C
@@ -141,34 +181,35 @@ func queryPersistTaskCollector() {
             continue
         }
         for e := taskList.Front(); e != nil; e = e.Next() {
-            AddTask(e.Value.(*bridge.Task))
+            tracker.AddTask(e.Value.(*bridge.Task))
         }
     }
 }
 
-func syncMemberTaskCollector() {
+func (tracker *TrackerInstance) SyncMemberTaskCollector() {
     timer := time.NewTicker(time.Second * 20)
     for {
         logger.Debug("add task: sync storage member")
         task := &bridge.Task{TaskType: app.TASK_SYNC_MEMBER}
-        AddTask(task)
+        tracker.AddTask(task)
         <-timer.C
     }
 }
 
-func queryNewFileTaskCollector() {
+func (tracker *TrackerInstance) QueryNewFileTaskCollector() {
     timer := time.NewTicker(time.Second * 5)
     for {
         <-timer.C
         logger.Debug("add task: pull files from tracker")
         task := &bridge.Task{TaskType: app.TASK_PULL_NEW_FILE}
-        AddTask(task)
+        tracker.AddTask(task)
     }
 }
 
 // exec task
 // return bool if the connection is forced close and need reconnect
-func ExecTask(task *bridge.Task, connBridge *bridge.Bridge) (bool, error) {
+func (tracker *TrackerInstance) ExecTask(task *bridge.Task) (bool, error) {
+    connBridge := *tracker.connBridge
     logger.Debug("exec task:", task.TaskType)
     if task.TaskType == app.TASK_SYNC_MEMBER {
         // register storage client to tracker server
@@ -197,7 +238,7 @@ func ExecTask(task *bridge.Task, connBridge *bridge.Bridge) (bool, error) {
                 return errors.New("error register to tracker server, server response status:" + strconv.Itoa(validateResp.Status))
             }
             // connect success
-            GroupMembers = validateResp.GroupMembers
+            addMember(validateResp.GroupMembers)
             return nil
         })
         if e5 != nil {
@@ -282,17 +323,56 @@ func ExecTask(task *bridge.Task, connBridge *bridge.Bridge) (bool, error) {
             return true, e5
         }
         return false, nil
-    } else if task.TaskType == app.TASK_PULL_NEW_FILE {
+    } else if task.TaskType == app.TASK_DOWNLOAD_FILE {
         fi, e1 := lib_service.GetFullFileByFid(task.FileId, 0)
-        if e1
-        downloadFile()
-        logger.Debug("downloading file from other storage server...")
+        if e1 != nil {
+            return false, e1
+        }
+        if fi != nil || len(fi.Parts) == 0 {
+            return false, nil
+        }
+        e2 := downloadFile(fi)
+        if e2 != nil {
+            return false, e2
+        }
+        e3 := lib_service.UpdateFileStatus(fi.Id)
+        return false, e3
     }
     return false, nil
 }
 
 
-func downloadFile(fi *bridge.File) {
+func downloadFile(fi *bridge.File) error {
+    logger.Debug("downloading file from other storage server...")
+    for i := range fi.Parts {
+        part := fi.Parts[i]
+        pFile, e1 := file.GetFile(lib_common.GetFilePathByMd5(part.Md5))
+        if e1 != nil {
+            return e1
+        }
+        // TODO 复用lib_client 作为下载客户端
+        lib_cli
 
+    }
 }
 
+
+func groupFiles(fi *bridge.File) map[string]list.List {
+    var group = make(map[string]list.List)
+    for i := range fi.Parts {
+        key := fi.Instance
+    }
+}
+
+
+// select a storage server matching given group and instanceId
+// excludes contains fail storage and not gonna use this time.
+func selectStorageServer(instanceId string) *bridge.Member {
+    for i := range GroupMembers {
+        b := GroupMembers[i]
+        if instanceId == b.InstanceId {
+            return &b
+        }
+    }
+    return nil
+}
