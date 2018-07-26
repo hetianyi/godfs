@@ -362,6 +362,7 @@ func download(path string, start int64, offset int64, fromSrc bool, writerHandle
         member = mem
         break
     }
+    logger.Debug("download from:", *member)
 
     e2 := connBridge.SendRequest(bridge.O_DOWNLOAD_FILE, downloadMeta, 0, nil)
     if e2 != nil {

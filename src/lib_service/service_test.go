@@ -9,10 +9,11 @@ import (
     "strconv"
     "math"
     "lib_common/bridge"
+    "encoding/json"
 )
 
 func initParam() {
-    app.BASE_PATH = "D:/Hetianyi/svn/godfs"
+    app.BASE_PATH = "E:/godfs-storage/tracker"
     logger.SetLogLevel(1)
 }
 
@@ -68,12 +69,20 @@ func Test7(t *testing.T) {
 func Test8(t *testing.T) {
     initParam()
     //fmt.Println(GetFullFileByMd5("123123a"))
-    fmt.Println(GetFullFileByFid(1))
+    fmt.Println(GetFullFileByFid(1, 1))
 }
 func Test9(t *testing.T) {
     initParam()
 
     fmt.Println(FinishSyncTask(1))
+}
+
+func Test10(t *testing.T) {
+    initParam()
+    ret, _ := GetFilesBasedOnId(0)
+    fmt.Println(ret.Len())
+    s, _ := json.Marshal(*ret)
+    fmt.Println(string(s))
 }
 
 

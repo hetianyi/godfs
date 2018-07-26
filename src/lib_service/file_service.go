@@ -6,29 +6,39 @@ import (
     "util/db"
     "app"
     "lib_common/bridge"
+    "strconv"
+    "bytes"
+    "util/logger"
 )
 
 const (
     insertFileSQL  = "insert into files(md5, parts_num, instance, finish) values(?,?,?,?)"
     insertPartSQL  = "insert into parts(md5, size) values(?,?)"
     insertRelationSQL  = "insert into parts_relation(fid, pid) values(?, ?)"
-    fileExistsSQL  = "select id from files a where a.md5 = ?"
+    fileExistsSQL  = "select id from files a where a.md5 = ? "
     partExistsSQL  = "select id from parts a where a.md5 = ?"
 
     addSyncTaskSQL  = "insert into task(fid, type, status) values(?,?,?)"
     finishSyncTaskSQL  = "update task set status=0 where fid=?"
     getSyncTaskSQL  = `select fid, type from task where status=1 limit ?`
-    getFullFileSQL1  = `select b.id, b.md5, b.instance from files b where b.md5=? `
-    getFullFileSQL11  = `select b.id, b.md5, b.instance from files b where b.id=? `
+    getFullFileSQL1  = `select b.id, b.md5, b.instance, parts_num from files b where b.md5=? `
+    getFullFileSQL11  = `select b.id, b.md5, b.instance, parts_num from files b where b.id=? `
+    getFullFileSQL12  = `select b.id, b.md5, b.instance, parts_num from files b where b.id > ? limit 10`
     getFullFileSQL2  = `select d.md5, d.size
                         from files b
                         left join parts_relation c on b.id = c.fid
-                        left join parts d on c.pid = d.id where b.md5=? order by d.id`
+                        left join parts d on c.pid = d.id where b.md5=?`
     getFullFileSQL21  = `select d.md5, d.size
                         from files b
                         left join parts_relation c on b.id = c.fid
-                        left join parts d on c.pid = d.id where b.id=? order by d.id`
+                        left join parts d on c.pid = d.id where b.id=?`
+    getFullFileSQL22  = `select b.id, d.md5, d.size
+                        from files b
+                        left join parts_relation c on b.id = c.fid
+                        left join parts d on c.pid = d.id where b.id in(`
 
+    updateSyncId  = `replace into sys(id, master_sync_id) values(1, ?)`
+    getSyncId  = `select master_sync_id from sys where id=1`
 )
 
 
@@ -143,6 +153,62 @@ func StorageAddFile(md5 string, parts *list.List) error {
             }
         }
         return AddSyncTask(fid, app.TASK_REPORT_FILE, tx)
+    })
+}
+
+
+
+// storage add file which is not exist at local
+func StorageAddRemoteFile(fi *bridge.File) error {
+    fid, ee := GetFileId(fi.Md5)
+    if ee != nil {
+        return ee
+    }
+    // file exists, will skip
+    if fid != 0 {
+        return nil
+    }
+    return db.DoTransaction(func(tx *sql.Tx) error {
+        state, e2 := tx.Prepare(insertFileSQL)
+        if e2 != nil {
+            return e2
+        }
+        ret, e3 := state.Exec(fi.Md5, fi.PartNum, fi.Instance, 0)
+        if e3 != nil {
+            return e3
+        }
+        lastId, e4 := ret.LastInsertId()
+        if e4 != nil {
+            return e4
+        }
+        fid := int(lastId)
+        for i := range fi.Parts {
+            state1, e4 := tx.Prepare(insertPartSQL)
+            if e4 != nil {
+                return e4
+            }
+            ret1, e5 := state1.Exec(fi.Parts[i].Md5, fi.Parts[i].FileSize)
+            if e5 != nil {
+                return e5
+            }
+            lastPartId, e6 := ret1.LastInsertId()
+            if e6 != nil {
+                return e6
+            }
+            pid := int(lastPartId)
+            state2, e2 := tx.Prepare(insertRelationSQL)
+            if e2 != nil {
+                return e2
+            }
+            _, e3 := state2.Exec(fid, pid)
+            if e3 != nil {
+                return e3
+            }
+        }
+        if ee := UpdateSyncId(fi.Id, tx); ee != nil {
+            return ee
+        }
+        return AddSyncTask(fid, app.TASK_DOWNLOAD_FILE, tx)
     })
 }
 
@@ -272,24 +338,32 @@ func GetSyncTask() (*list.List, error) {
     return &ls, nil
 }
 
-func GetFullFileByMd5(md5 string) (*bridge.File, error) {
+// finishSync=1 只查已在本地同步完成的文件
+func GetFullFileByMd5(md5 string, finishFlag int) (*bridge.File, error) {
+
+    var addOn = ""
+    if finishFlag == 1 {
+        addOn = " and finish=1"
+    } else if finishFlag == 0 {
+        addOn = " and finish=0"
+    }
     var fi *bridge.File
     // query file
     e1 := db.Query(func(rows *sql.Rows) error {
         if rows != nil {
             for rows.Next() {
-                var id int
+                var id, partNu int
                 var md5, instance string
-                e1 := rows.Scan(&id, &md5, &instance)
+                e1 := rows.Scan(&id, &md5, &instance, &partNu)
                 if e1 != nil {
                     return e1
                 } else {
-                    fi = &bridge.File{Id: id, Md5: md5, Instance: instance}
+                    fi = &bridge.File{Id: id, Md5: md5, Instance: instance, PartNum: partNu}
                 }
             }
         }
         return nil
-    }, getFullFileSQL1, md5)
+    }, getFullFileSQL1 + addOn, md5)
 
     if e1 != nil {
         return nil, e1
@@ -323,7 +397,7 @@ func GetFullFileByMd5(md5 string) (*bridge.File, error) {
             fi.Parts = parsList
         }
         return nil
-    }, getFullFileSQL2, md5)
+    }, getFullFileSQL2 + addOn, md5)
 
     if e2 != nil {
         return nil, e2
@@ -332,24 +406,30 @@ func GetFullFileByMd5(md5 string) (*bridge.File, error) {
 }
 
 
-func GetFullFileByFid(fid int) (*bridge.File, error) {
+func GetFullFileByFid(fid int, finishFlag int) (*bridge.File, error) {
+    var addOn = ""
+    if finishFlag == 1 {
+        addOn = " and finish=1"
+    } else if finishFlag == 0 {
+        addOn = " and finish=0"
+    }
     var fi *bridge.File
     // query file
     e1 := db.Query(func(rows *sql.Rows) error {
         if rows != nil {
             for rows.Next() {
-                var id int
+                var id, partNu int
                 var md5, instance string
-                e1 := rows.Scan(&id, &md5, &instance)
+                e1 := rows.Scan(&id, &md5, &instance, &partNu)
                 if e1 != nil {
                     return e1
                 } else {
-                    fi = &bridge.File{Id: id, Md5: md5, Instance: instance}
+                    fi = &bridge.File{Id: id, Md5: md5, Instance: instance, PartNum: partNu}
                 }
             }
         }
         return nil
-    }, getFullFileSQL11, fid)
+    }, getFullFileSQL11 + addOn, fid)
 
     if e1 != nil {
         return nil, e1
@@ -361,7 +441,7 @@ func GetFullFileByFid(fid int) (*bridge.File, error) {
 
     e2 := db.Query(func(rows *sql.Rows) error {
         if rows != nil {
-            var tparsList list.List
+            var partsList list.List
             for rows.Next() {
                 var size int64
                 var md5 string
@@ -370,20 +450,20 @@ func GetFullFileByFid(fid int) (*bridge.File, error) {
                     return e1
                 } else {
                     var part = &bridge.FilePart{Md5: md5, FileSize: size}
-                    tparsList.PushBack(part)
+                    partsList.PushBack(part)
                 }
             }
-            var parsList = make([]bridge.FilePart, tparsList.Len())
+            var parsList = make([]bridge.FilePart, partsList.Len())
             index := 0
-            for ele := tparsList.Front(); ele != nil; ele = ele.Next() {
+            for ele := partsList.Front(); ele != nil; ele = ele.Next() {
                 parsList[index] = *ele.Value.(*bridge.FilePart)
                 index++
             }
-            fi.PartNum = tparsList.Len()
+            fi.PartNum = partsList.Len()
             fi.Parts = parsList
         }
         return nil
-    }, getFullFileSQL21, fid)
+    }, getFullFileSQL21 + addOn, fid)
 
     if e2 != nil {
         return nil, e2
@@ -392,5 +472,194 @@ func GetFullFileByFid(fid int) (*bridge.File, error) {
 }
 
 
+// finishSync=1 只查已在本地同步完成的文件
+func GetFileByMd5(md5 string, finishFlag int) (*bridge.File, error) {
+    var addOn = ""
+    if finishFlag == 1 {
+        addOn = " and finish=1"
+    } else if finishFlag == 0 {
+        addOn = " and finish=0"
+    }
+    var fi *bridge.File
+    // query file
+    e1 := db.Query(func(rows *sql.Rows) error {
+        if rows != nil {
+            for rows.Next() {
+                var id, partNu int
+                var md5, instance string
+                e1 := rows.Scan(&id, &md5, &instance, &partNu)
+                if e1 != nil {
+                    return e1
+                } else {
+                    fi = &bridge.File{Id: id, Md5: md5, Instance: instance, PartNum: partNu}
+                }
+            }
+        }
+        return nil
+    }, getFullFileSQL1 + addOn, md5)
+
+    if e1 != nil {
+        return nil, e1
+    }
+    return fi, nil
+}
 
 
+func GetFileByFid(fid int, finishFlag int) (*bridge.File, error) {
+    var addOn = ""
+    if finishFlag == 1 {
+        addOn = " and finish=1"
+    } else if finishFlag == 0 {
+        addOn = " and finish=0"
+    }
+    var fi *bridge.File
+    // query file
+    e1 := db.Query(func(rows *sql.Rows) error {
+        if rows != nil {
+            for rows.Next() {
+                var id, partNu int
+                var md5, instance string
+                e1 := rows.Scan(&id, &md5, &instance, &partNu)
+                if e1 != nil {
+                    return e1
+                } else {
+                    fi = &bridge.File{Id: id, Md5: md5, Instance: instance, PartNum: partNu}
+                }
+            }
+        }
+        return nil
+    }, getFullFileSQL11 + addOn, fid)
+
+    if e1 != nil {
+        return nil, e1
+    }
+    return fi, nil
+}
+
+
+
+func GetSyncId() (int, error) {
+    var id = 0
+    e := db.Query(func(rows *sql.Rows) error {
+        if rows != nil {
+            for rows.Next() {
+                e := rows.Scan(&id)
+                if e != nil {
+                    return e
+                }
+            }
+        }
+        return nil
+    }, getSyncId)
+    if e != nil {
+        return 0, e
+    }
+    return id, nil
+}
+
+func UpdateSyncId(newId int, tx *sql.Tx) error {
+    state, e2 := tx.Prepare(updateSyncId)
+    if e2 != nil {
+        return e2
+    }
+    _, e3 := state.Exec(newId)
+    if e3 != nil {
+        return e3
+    }
+    return nil
+}
+
+
+// storage查询tracker新文件，基于tracker服务器的Id作为起始
+func GetFilesBasedOnId(fid int) (*list.List, error) {
+    var files list.List
+    // query file
+    e1 := db.Query(func(rows *sql.Rows) error {
+        if rows != nil {
+            for rows.Next() {
+                var id, partNu int
+                var md5, instance string
+                e1 := rows.Scan(&id, &md5, &instance, &partNu)
+                if e1 != nil {
+                    return e1
+                } else {
+                    fi := &bridge.File{Id: id, Md5: md5, Instance: instance, PartNum: partNu}
+                    files.PushBack(fi)
+                }
+            }
+        }
+        return nil
+    }, getFullFileSQL12, fid)
+
+    if e1 != nil {
+        return nil, e1
+    }
+
+    var addOn bytes.Buffer
+    index := 0
+    for ele := files.Front(); ele != nil; ele = ele.Next() {
+        addOn.Write([]byte(strconv.Itoa(ele.Value.(*bridge.File).Id)))
+        if index != files.Len() - 1 {
+            addOn.Write([]byte(","))
+        }
+        index++
+    }
+    addOn.Write([]byte(") order by d.id"))
+    logger.Debug("exec SQL:\n\t" + getFullFileSQL22 + string(addOn.Bytes()))
+
+    e2 := db.Query(func(rows *sql.Rows) error {
+        if rows != nil {
+            var tparsList list.List
+            for rows.Next() {
+                var fid int
+                var size int64
+                var md5 string
+                e1 := rows.Scan(&fid, &md5, &size)
+                if e1 != nil {
+                    return e1
+                } else {
+                    var part = &bridge.FilePart{Fid: fid, Md5: md5, FileSize: size}
+                    tparsList.PushBack(part)
+                }
+            }
+            for ele1 := files.Front(); ele1 != nil; ele1 = ele1.Next() {
+                fi := ele1.Value.(*bridge.File)
+                var parsList = make([]bridge.FilePart, fi.PartNum)
+                index := 0
+                for ele2 := tparsList.Front(); ele2 != nil; ele2 = ele2.Next() {
+                    p := *ele2.Value.(*bridge.FilePart)
+                    if fi.Id == p.Fid {
+                        parsList[index] = p
+                        index++
+                    }
+                }
+                fi.Parts = parsList
+            }
+
+        }
+        return nil
+    }, getFullFileSQL22 + string(addOn.Bytes()))
+    if e2 != nil {
+        return nil, e2
+    }
+    return &files, nil
+}
+
+
+func createBatchPartSQL(parts []bridge.FilePart) string {
+    var sql bytes.Buffer
+    sql.Write([]byte("insert into parts(md5, size) values"))
+    index := 0
+    for i := range parts {
+        sql.Write([]byte("('"))
+        sql.Write([]byte(parts[i].Md5))
+        sql.Write([]byte("',"))
+        sql.Write([]byte(strconv.FormatInt(parts[i].FileSize, 10)))
+        sql.Write([]byte(")"))
+        if index != len(parts) - 1 {
+            sql.Write([]byte("',"))
+        }
+        index++
+    }
+    return string(sql.Bytes())
+}

@@ -21,7 +21,7 @@ import (
 // type 4: 从其他group节点下载文件（定时任务，持久化任务，最低优先级，goroutine执行）
 var taskList list.List
 var listIteLock *sync.Mutex
-const MaxTaskSize = 1000
+const ParallelDownload = 10
 var GroupMembers []bridge.Member
 
 func init() {
@@ -63,12 +63,11 @@ func AddTask(task *bridge.Task) {
                 return
             }
         }
-        for e := taskList.Front(); e != nil; e = e.Next() {
-            if e.Value.(*bridge.Task).TaskType == 1 {
-                logger.Debug("push task type 2")
-                taskList.InsertAfter(task, e)
-                break
-            }
+        logger.Debug("push task type 2")
+        if taskList.Front() != nil && taskList.Front().Value.(*bridge.Task).TaskType == app.TASK_SYNC_MEMBER {
+            taskList.InsertAfter(task, taskList.Front())
+        } else {
+            taskList.PushFront(task)
         }
     } else if task.TaskType == app.TASK_PULL_NEW_FILE {
         if checkTaskTypeCount(task.TaskType) == 0 {
@@ -80,12 +79,13 @@ func AddTask(task *bridge.Task) {
     } else if task.TaskType == app.TASK_DOWNLOAD_FILE {
         listIteLock.Lock()
         defer listIteLock.Unlock()
+        total := 0
         for e := taskList.Front(); e != nil; e = e.Next() {
             if e.Value.(*bridge.Task).FileId == task.FileId {
-                return
+                total++
             }
         }
-        if taskList.Len() < MaxTaskSize {// temporary set to 1000
+        if total <= ParallelDownload {// 限制最大并行下载任务数
             logger.Debug("push task type 4")
             taskList.PushBack(task)
         } else {
@@ -126,15 +126,15 @@ func checkTaskTypeCount(taskType int) int {
 func startTaskCollector() {
     go queryPersistTaskCollector()
     go syncMemberTaskCollector()
-    //go queryNewFileTaskCollector()
+    go queryNewFileTaskCollector()
 }
 
 // 查询本地持久化任务收集器
 func queryPersistTaskCollector() {
-    timer := time.NewTicker(time.Second * 100)
+    timer := time.NewTicker(time.Second * 10)
     for {
         <-timer.C
-        logger.Debug("fetch tasks from db")
+        logger.Debug("add task: fetch tasks from db")
         taskList, e1 := lib_service.GetSyncTask()
         if e1 != nil {
             logger.Error(e1)
@@ -147,9 +147,9 @@ func queryPersistTaskCollector() {
 }
 
 func syncMemberTaskCollector() {
-    timer := time.NewTicker(time.Second * 100)
+    timer := time.NewTicker(time.Second * 20)
     for {
-        logger.Debug("add sync member task")
+        logger.Debug("add task: sync storage member")
         task := &bridge.Task{TaskType: app.TASK_SYNC_MEMBER}
         AddTask(task)
         <-timer.C
@@ -157,17 +157,17 @@ func syncMemberTaskCollector() {
 }
 
 func queryNewFileTaskCollector() {
-    timer := time.NewTicker(time.Second * 30)
+    timer := time.NewTicker(time.Second * 5)
     for {
         <-timer.C
-        logger.Debug("fetch tasks")
+        logger.Debug("add task: pull files from tracker")
         task := &bridge.Task{TaskType: app.TASK_PULL_NEW_FILE}
         AddTask(task)
     }
 }
 
 // exec task
-// return bool as if the connection is forced close and need reconnect
+// return bool if the connection is forced close and need reconnect
 func ExecTask(task *bridge.Task, connBridge *bridge.Bridge) (bool, error) {
     logger.Debug("exec task:", task.TaskType)
     if task.TaskType == app.TASK_SYNC_MEMBER {
@@ -205,7 +205,7 @@ func ExecTask(task *bridge.Task, connBridge *bridge.Bridge) (bool, error) {
         }
         return false, nil
     } else if task.TaskType == app.TASK_REPORT_FILE {
-        fi, e1 := lib_service.GetFullFileByFid(task.FileId)
+        fi, e1 := lib_service.GetFullFileByFid(task.FileId, 2)
         if e1 != nil {
             return false, e1
         }
@@ -240,19 +240,59 @@ func ExecTask(task *bridge.Task, connBridge *bridge.Bridge) (bool, error) {
             return true, e5
         }
         return false, nil
+    } else if task.TaskType == app.TASK_PULL_NEW_FILE {
+        logger.Debug("trying pull new file from tracker...")
+        baseId, e1 := lib_service.GetSyncId()
+        if e1 != nil {
+            return false, e1
+        }
+        // register storage client to tracker server
+        pullMeta := &bridge.OperationPullFileRequest {
+            BaseId: baseId,
+        }
+        // reg client
+        e2 := connBridge.SendRequest(bridge.O_PULL_NEW_FILES, pullMeta, 0, nil)
+        if e2 != nil {
+            return true, e2
+        }
+        e5 := connBridge.ReceiveResponse(func(response *bridge.Meta, in io.Reader) error {
+            if response.Err != nil {
+                return response.Err
+            }
+            var pullResp = &bridge.OperationPullFileResponse{}
+            e3 := json.Unmarshal(response.MetaBody, pullResp)
+            if e3 != nil {
+                return e3
+            }
+            if pullResp.Status != bridge.STATUS_OK {
+                return errors.New("error register file "+ strconv.Itoa(task.FileId) +" to tracker server, server response status:" + strconv.Itoa(pullResp.Status))
+            }
+
+            files := pullResp.Files
+            logger.Debug("got", len(files), "new files")
+            for i := range files {
+                eee := lib_service.StorageAddRemoteFile(&files[i])
+                if eee != nil {
+                    return nil
+                }
+            }
+            return nil
+        })
+        if e5 != nil {
+            return true, e5
+        }
+        return false, nil
+    } else if task.TaskType == app.TASK_PULL_NEW_FILE {
+        fi, e1 := lib_service.GetFullFileByFid(task.FileId, 0)
+        if e1
+        downloadFile()
+        logger.Debug("downloading file from other storage server...")
     }
     return false, nil
 }
 
 
+func downloadFile(fi *bridge.File) {
 
+}
 
-/*
-func start() {
-    timer := time.NewTicker(time.Second * app.SYNC_INTERVAL)
-    for {
-        <-timer.C
-        logger.Debug("fetch sync tasks")
-
-    }
-}*/

@@ -119,3 +119,39 @@ func syncStorageServerHandler(request *bridge.Meta, connBridge *bridge.Bridge) e
     return nil
 }
 
+
+
+func pullNewFile(request *bridge.Meta, connBridge *bridge.Bridge) error {
+    var queryMeta = &bridge.OperationPullFileRequest{}
+    e1 := json.Unmarshal(request.MetaBody, queryMeta)
+    var response = &bridge.OperationPullFileResponse{}
+    if e1 != nil {
+        response.Status = bridge.STATUS_INTERNAL_SERVER_ERROR
+        // ignore if it write success
+        connBridge.SendResponse(response, 0, nil)
+        return e1
+    }
+    ret, e2 := lib_service.GetFilesBasedOnId(queryMeta.BaseId)
+    if e2 != nil {
+        response.Status = bridge.STATUS_INTERNAL_SERVER_ERROR
+        // ignore if it write success
+        connBridge.SendResponse(response, 0, nil)
+        return nil
+    }
+    response.Status = bridge.STATUS_OK
+    files := make([]bridge.File, ret.Len())
+    i := 0
+    for ele := ret.Front(); ele != nil; ele = ele.Next() {
+        files[i] = *ele.Value.(*bridge.File)
+        i++
+    }
+    response.Files = files
+    s, e3 := json.Marshal(response)
+    if e3 != nil {
+        return e3
+    } else {
+        logger.Debug(string(s))
+    }
+    return connBridge.SendResponse(response, 0, nil)
+}
+

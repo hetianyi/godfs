@@ -180,8 +180,8 @@ func uploadHandler(request *bridge.Meta, buffer []byte, md hash.Hash, conn io.Re
 
 
 
-// 处理文件上传请求
-func QueryFileHandler(request *bridge.Meta, connBridge *bridge.Bridge) error {
+// 查询文件
+func QueryFileHandler(request *bridge.Meta, connBridge *bridge.Bridge, finishFlag int) error {
     var queryMeta = &bridge.OperationQueryFileRequest{}
     e1 := json.Unmarshal(request.MetaBody, queryMeta)
     var response = &bridge.OperationQueryFileResponse{}
@@ -202,8 +202,7 @@ func QueryFileHandler(request *bridge.Meta, connBridge *bridge.Bridge) error {
         response.Exist = false
         return connBridge.SendResponse(response, 0, nil)
     }
-
-    fi, e6 := lib_service.GetFullFileByMd5(md5)
+    fi, e6 := lib_service.GetFullFileByMd5(md5, finishFlag)
     if e6 != nil {
         response.Status = bridge.STATUS_INTERNAL_SERVER_ERROR
         response.Exist = false
@@ -246,7 +245,7 @@ func downloadFileHandler(request *bridge.Meta, buffer []byte, connBridge *bridge
     }
     md5 := regexp.MustCompile(app.PATH_REGEX).ReplaceAllString(meta.Path, "${4}")
 
-    fullFile, e11 := lib_service.GetFullFileByMd5(md5)
+    fullFile, e11 := lib_service.GetFullFileByMd5(md5, 1)
 
     if e11 != nil {
         response.Status = bridge.STATUS_INTERNAL_SERVER_ERROR
@@ -290,6 +289,7 @@ func downloadFileHandler(request *bridge.Meta, buffer []byte, connBridge *bridge
         return WriteDownloadStream(fullFile, startPos, endPos, buffer, out)
     })
 }
+
 
 
 func WriteDownloadStream(fullFile *bridge.File, startPos *bridge.ReadPos, endPos *bridge.ReadPos, buffer []byte, out io.Writer) error {

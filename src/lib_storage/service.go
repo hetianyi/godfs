@@ -204,7 +204,7 @@ func clientHandler(conn net.Conn) {
                 } else if request.Operation == bridge.O_UPLOAD {
                     return uploadHandler(request, bodyBuff, md, conn, connBridge)
                 } else if request.Operation == bridge.O_QUERY_FILE {
-                    return QueryFileHandler(request, connBridge)
+                    return QueryFileHandler(request, connBridge, 1)
                 } else if request.Operation == bridge.O_DOWNLOAD_FILE {
                     return downloadFileHandler(request, bodyBuff, connBridge)
                 } else {

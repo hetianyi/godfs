@@ -69,7 +69,7 @@ func DownloadHandler(writer http.ResponseWriter, request *http.Request) {
     }
     logger.Debug("custom download file name is:", fn)
 
-    fullFile, e11 := lib_service.GetFullFileByMd5(md5)
+    fullFile, e11 := lib_service.GetFullFileByMd5(md5, 1)
     if e11 != nil {
         writer.WriteHeader(500)
         writer.Write([]byte("Internal server error"))

@@ -1,6 +1,5 @@
 package bridge
 
-
 const (
     STATUS_OK = 0
     STATUS_BAD_SECRET = 1
@@ -19,6 +18,8 @@ type Member struct {
 }
 
 type FilePart struct {
+    Fid int                     `json:"fid"`     // 分片所属文件的id
+    Id int                      `json:"id"`      // 分片md5
     Md5 string                  `json:"md5"`     // 分片md5
     FileSize int64              `json:"size"`    // 文件大小
 }
@@ -125,13 +126,12 @@ type OperationRegisterFileResponse struct {
 
 // register file operation request.
 type OperationPullFileRequest struct {
-    LastId string `json:"lastId"`   // 上次同步的ID位置（tracker端的ID）
+    BaseId int `json:"baseId"`   // 上次同步的ID位置（tracker端的ID）
 }
 // register file response.
 type OperationPullFileResponse struct {
     Status int `json:"status"`
-    File File `json:"file"`    // 文件md5
-    Parts []FilePart `json:"parts"`   // 文件分片
+    Files []File
 }
 
 

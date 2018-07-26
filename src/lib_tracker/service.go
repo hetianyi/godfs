@@ -98,7 +98,9 @@ func clientHandler(conn net.Conn) {
                 } else if request.Operation == bridge.O_SYNC_STORAGE {
                     return syncStorageServerHandler(request, connBridge)
                 } else if request.Operation == bridge.O_QUERY_FILE {
-                    return lib_storage.QueryFileHandler(request, connBridge)
+                    return lib_storage.QueryFileHandler(request, connBridge, 2)
+                } else if request.Operation == bridge.O_PULL_NEW_FILES {
+                    return pullNewFile(request, connBridge)
                 } else {
                     return bridge.OPERATION_NOT_SUPPORT_ERROR
                 }

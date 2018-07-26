@@ -76,7 +76,7 @@ func Test4(t *testing.T) {
         return nil
     })*/
     client.DownloadFile(path, 0, -1, func(fileLen uint64, reader io.Reader) error {
-        newFile, _ := file.OpenFile4Write("E:/godfs-storage/123.zip")
+        newFile, _ := file.CreateFile("E:/godfs-storage/123.zip")
         defer newFile.Close()
         d := make([]byte, fileLen)
         io.ReadFull(reader, d)
