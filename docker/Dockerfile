@@ -13,7 +13,7 @@ RUN apk add git gcc g++ make automake && \
 WORKDIR /tmp
 RUN rm -rf godfs && git clone https://github.com/hetianyi/godfs.git && \
     cd godfs && mkdir data && cp conf/storage.db data/ && \
-    rm -rf dev_tool && ./docker_build.sh && rm -rf docker && rm -rf src && cd ..\
+    rm -rf dev_tool && ./docker_build.sh && rm -rf docker && rm -rf src && cd .. && \
     tar czvf godfs.tar.gz godfs
 
 
