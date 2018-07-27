@@ -2,10 +2,10 @@
 
 case $1 in
     tracker)
-        /bin/tracker $*
+        bin/tracker $*
     ;;
     storage)
-        /bin/storage $*
+        bin/storage $*
     ;;
     *)
         echo "unsupport command: $1"
