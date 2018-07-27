@@ -12,12 +12,13 @@ RUN apk add git gcc g++ make automake && \
     go install github.com/mattn/go-sqlite3
 WORKDIR /tmp
 RUN rm -rf godfs && git clone https://github.com/hetianyi/godfs.git && \
-    cd godfs && ./docker_build.sh
-CMD ["/tmp/godfs/bin/storage"]
+    cd godfs && mkdir data && cp conf/storage.db data/ && \
+    rm -rf dev_tool && ./docker_build.sh && rm -rf docker && rm -rf src && cd ..\
+    tar czvf godfs.tar.gz godfs
 
 
 FROM alpine:latest
-WORKDIR /tmp
-COPY --from=0 /tmp/godfs/bin/storage .
-COPY --from=0 /tmp/godfs/conf/storage.conf .
-CMD ["/tmp/storage", "-c", "storage.conf"]
+COPY --from=0 /tmp/godfs.tar.gz /
+RUN tar -xzf /godfs.tar.gz
+WORKDIR /godfs
+CMD ["run.sh"]
