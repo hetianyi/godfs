@@ -15,6 +15,7 @@ import (
     "net/http"
     "util/db"
     "lib_common/bridge"
+    "lib_client"
 )
 
 
@@ -40,10 +41,45 @@ func StartService(config map[string] string) {
     db.InitDB()
 
     startHttpDownloadService()
-    go startConnTracker(trackers)
+    go startTrackerMaintainer(trackers)
     startStorageService(port)
 }
 
+
+func startTrackerMaintainer(trackers string) {
+    collector1 := lib_client.TaskCollector {
+        Interval: time.Second * 30,
+        Name: "推送本地新文件到tracker",
+        Single: false,
+        Job: lib_client.QueryPushFileTaskCollector,//TODO 多tracker如何保证全部tracker成功？
+    }
+    collector2 := lib_client.TaskCollector {
+        Interval: time.Second * 30,
+        Name: "推送本地新文件到tracker",
+        Single: true,
+        Job: lib_client.QueryDownloadFileTaskCollector,
+    }
+    collector3 := lib_client.TaskCollector {
+        Interval: time.Second * 30,
+        Name: "拉取tracker新文件",
+        Single: false,
+        Job: lib_client.QueryNewFileTaskCollector,
+    }
+    collector4 := lib_client.TaskCollector {
+        Interval: time.Second * 30,
+        Name: "同步storage成员",
+        Single: false,
+        Job: lib_client.SyncMemberTaskCollector,
+    }
+    collectors := *new(list.List)
+    collectors.PushBack(&collector1)
+    collectors.PushBack(&collector2)
+    collectors.PushBack(&collector3)
+    collectors.PushBack(&collector4)
+
+    maintainer := &lib_client.TrackerMaintainer{Collectors: collectors}
+    maintainer.Maintain(trackers)
+}
 
 // upload listen
 func startStorageService(port string) {
@@ -103,76 +139,6 @@ func startHttpDownloadService() {
     go s.ListenAndServe()
 }
 
-// communication with tracker
-func startConnTracker(trackers string) {
-    ls := lib_common.ParseTrackers(trackers)
-    if ls.Len() == 0 {
-        logger.Warn("no trackers set, the storage server will run in stand-alone mode.")
-        return
-    }
-
-    for e := ls.Front(); e != nil; e = e.Next() {
-        go onceConnTracker(e.Value.(string))
-    }
-}
-
-// connect to each tracker
-func onceConnTracker(tracker string) {
-    logger.Info("start tracker conn with tracker server:", tracker)
-    retry := 0
-    for {//keep trying to connect to tracker server.
-        conn, e := net.Dial("tcp", tracker)
-        if e == nil {
-            // validate client
-            connBridge, e1 := connectAndValidate(conn)
-            if e1 != nil {
-                bridge.Close(conn)
-                logger.Error(e1)
-            } else {
-                retry = 0
-                logger.Debug("connect to tracker server success.")
-
-                trackerInstance := TrackerInstance{}
-                trackerInstance.Init(connBridge)
-                trackerInstance.StartTaskCollector()
-                for { // keep sending client statistic info to tracker server.
-                    task := trackerInstance.GetTask()
-                    if task == nil {
-                        time.Sleep(time.Second * 1)
-                        continue
-                    }
-                    forceClosed, e2 := trackerInstance.ExecTask(task)
-                    if e2 != nil {
-                        logger.Debug("task exec error:", e2)
-                    } else {
-                        logger.Debug("task exec success:", task.TaskType)
-                    }
-                    if forceClosed {
-                        logger.Debug("connection force closed by client")
-                        bridge.Close(conn)
-                        break
-                    }
-                }
-            }
-        } else {
-            logger.Error("(" + strconv.Itoa(retry) + ")error connect to tracker server:", tracker)
-        }
-        retry++
-        time.Sleep(time.Second * 1)
-    }
-}
-
-// connect to tracker server and register client to it.
-func connectAndValidate(conn net.Conn) (*bridge.Bridge, error) {
-    // create bridge
-    connBridge := bridge.NewBridge(conn)
-    // send validate request
-    e1 := connBridge.ValidateConnection("")
-    if e1 != nil {
-        return nil, e1
-    }
-    return connBridge, nil
-}
 
 
 

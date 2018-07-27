@@ -11,6 +11,8 @@ import (
     "strings"
     "lib_common/bridge"
     "container/list"
+    "errors"
+    "io"
 )
 
 func CreateTmpFile() (*os.File, error) {
@@ -141,3 +143,73 @@ func ParseTrackers(tracker string) *list.List {
 }
 
 
+
+func SeekWriteOut(in io.ReadSeeker, start int64, offset int64, buffer []byte, out io.Writer) error {
+    // total read bytes
+    var readBodySize int64 = 0
+    // next time bytes to read
+    var nextReadSize int
+    _, e1 := in.Seek(start, 0)
+    if e1 != nil {
+        return e1
+    }
+    for {
+        // left bytes is more than a buffer
+        if (offset - readBodySize) / int64(len(buffer)) >= 1 {
+            nextReadSize = len(buffer)
+        } else {// left bytes less than a buffer
+            nextReadSize = int(offset - readBodySize)
+        }
+        if nextReadSize == 0 {
+            break
+        }
+        len, e2 := in.Read(buffer[0:nextReadSize])
+        if e2 == nil {
+            wl, e5 := out.Write(buffer[0:len])
+            readBodySize += int64(len)
+            logger.Trace("write:", readBodySize)
+            if e5 != nil || wl != len {
+                return errors.New("error handle download file")
+            }
+        } else {
+            if e2 == io.EOF {
+                return nil
+            }
+            return e2
+        }
+    }
+    return nil
+}
+
+func WriteOut(in io.Reader, offset int64, buffer []byte, out io.Writer) error {
+    // total read bytes
+    var readBodySize int64 = 0
+    // next time bytes to read
+    var nextReadSize int
+    for {
+        // left bytes is more than a buffer
+        if (offset - readBodySize) / int64(len(buffer)) >= 1 {
+            nextReadSize = len(buffer)
+        } else {// left bytes less than a buffer
+            nextReadSize = int(offset - readBodySize)
+        }
+        if nextReadSize == 0 {
+            break
+        }
+        len, e2 := in.Read(buffer[0:nextReadSize])
+        if e2 == nil {
+            wl, e5 := out.Write(buffer[0:len])
+            readBodySize += int64(len)
+            logger.Trace("write:", readBodySize)
+            if e5 != nil || wl != len {
+                return errors.New("error handle download file")
+            }
+        } else {
+            if e2 == io.EOF {
+                return nil
+            }
+            return e2
+        }
+    }
+    return nil
+}

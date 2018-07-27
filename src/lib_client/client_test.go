@@ -15,6 +15,7 @@ import (
     "encoding/hex"
     "time"
     "app"
+    "container/list"
 )
 
 func Init() *Client {
@@ -22,11 +23,18 @@ func Init() *Client {
     app.TRACKERS = "127.0.0.1:1022"
     app.SECRET = "OASAD834jA97AAQE761=="
     app.GROUP = "G01"
-   client, e := NewClient()
-   if e != nil {
-       logger.Error(e)
-   }
-   return client
+    client:= NewClient(10)
+    collector := TaskCollector{
+        Interval: time.Second * 30,
+        FirstDelay: 0,
+        Name: "同步storage server",
+        Job: SyncAllStorageServersTaskCollector,
+    }
+    collectors := *new(list.List)
+    collectors.PushBack(&collector)
+    maintainer := &TrackerMaintainer{Collectors: collectors}
+    maintainer.Maintain(app.TRACKERS)
+    return client
 }
 
 
@@ -38,8 +46,11 @@ func Test1(t *testing.T) {
     //fmt.Println(client.Upload("D:/FTP/instantfap-gifs.part8.zip"))
     //fmt.Println(client.Upload("D:/图片/图片.rar"))
     fmt.Println("本地计算Md5：" + FileHash("D:/UltraISO.zip"))
+    time.Sleep(time.Second)
     //fmt.Println(client.Upload("D:/UltraISO.zip", app.GROUP))
-    fmt.Println(client.Upload("D:/1114785.jpg", app.GROUP))
+    //fmt.Println(client.Upload("D:/1114785.jpg", app.GROUP))
+    //fmt.Println(client.Upload("F:/project.rar", app.GROUP))
+    fmt.Println(client.Upload("F:/Software/AtomSetup-1.18.0_x64.exe", app.GROUP))
 }
 
 

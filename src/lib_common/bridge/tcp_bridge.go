@@ -205,7 +205,7 @@ func (bridge *Bridge) ValidateConnection(secret string) error {
             return response.Err
         }
         var validateResp = &OperationValidationResponse{}
-        logger.Debug(string(response.MetaBody))
+        //logger.Debug(string(response.MetaBody))
         e3 := json.Unmarshal(response.MetaBody, validateResp)
         if e3 != nil {
             return e3
@@ -344,5 +344,4 @@ func CreateMeta(operation int, meta interface{}, bodyLen uint64) (*Meta, error) 
         nil,
     }, nil
 }
-
 

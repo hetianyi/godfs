@@ -19,10 +19,11 @@ type ConnPool interface {
     newConnection(server *bridge.Member)(*bridge.Bridge, error)
     ReturnConnBridge(server *bridge.Member, connBridge *bridge.Bridge)
     IncreaseActiveConnection(server *bridge.Member, value int)
+    getConnMap(server *bridge.Member) *list.List
 }
 
 type ClientConnectionPool struct {
-    connMap map[string]list.List
+    connMap map[string]*list.List
     activeConnCounter map[string]int
     getLock *sync.Mutex
     statusLock *sync.Mutex
@@ -33,7 +34,7 @@ type ClientConnectionPool struct {
 func (pool *ClientConnectionPool) Init(maxConnPerServer int) {
     pool.getLock = new(sync.Mutex)
     pool.statusLock = new(sync.Mutex)
-    pool.connMap = make(map[string]list.List)
+    pool.connMap = make(map[string]*list.List)
     pool.activeConnCounter = make(map[string]int)
     if maxConnPerServer <= 0 || maxConnPerServer > 100 {
         maxConnPerServer = 10
@@ -50,7 +51,7 @@ func GetStorageServerUID(server *bridge.Member) string {
 func (pool *ClientConnectionPool) GetConnBridge(server *bridge.Member) (*bridge.Bridge, error) {
     pool.getLock.Lock()
     defer pool.getLock.Unlock()
-    list := pool.connMap[GetStorageServerUID(server)]
+    list := pool.getConnMap(server)
     if list.Len() > 0 {
         return list.Remove(list.Front()).(*bridge.Bridge), nil
     }
@@ -82,8 +83,9 @@ func (pool *ClientConnectionPool) newConnection(server *bridge.Member)(*bridge.B
 func (pool *ClientConnectionPool) ReturnConnBridge(server *bridge.Member, connBridge *bridge.Bridge) {
     pool.getLock.Lock()
     defer pool.getLock.Unlock()
-    list := pool.connMap[GetStorageServerUID(server)]
-    list.PushBack(connBridge)
+    connList := pool.getConnMap(server)
+    connList.PushBack(connBridge)
+    logger.Debug("return health connection:", connList.Len())
 }
 // finish using tcp connection bridge and return it to connection pool.
 func (pool *ClientConnectionPool) ReturnBrokenConnBridge(server *bridge.Member, connBridge *bridge.Bridge) {
@@ -91,6 +93,7 @@ func (pool *ClientConnectionPool) ReturnBrokenConnBridge(server *bridge.Member, 
     defer pool.getLock.Unlock()
     connBridge.Close()
     pool.IncreaseActiveConnection(server, -1)
+    logger.Debug("return broken connection:", pool.connMap[GetStorageServerUID(server)].Len())
 }
 
 func (pool *ClientConnectionPool) IncreaseActiveConnection(server *bridge.Member, value int) int {
@@ -102,6 +105,15 @@ func (pool *ClientConnectionPool) IncreaseActiveConnection(server *bridge.Member
 }
 
 
+func (pool *ClientConnectionPool) getConnMap(server *bridge.Member) *list.List {
+    uid := GetStorageServerUID(server)
+    connList := pool.connMap[uid]
+    if connList == nil {
+        connList = new(list.List)
+    }
+    pool.connMap[uid] = connList
+    return connList
+}
 
 
 

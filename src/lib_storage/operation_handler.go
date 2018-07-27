@@ -311,54 +311,19 @@ func WriteDownloadStream(fullFile *bridge.File, startPos *bridge.ReadPos, endPos
         } else {
             offset = fullFile.Parts[i].FileSize - start
         }
-        if e := WriteOut(fullFile.Parts[i].Md5, start, offset, buffer, out); e != nil {
+        fi, e := file.GetFile(lib_common.GetFilePathByMd5(fullFile.Parts[i].Md5))
+        if e != nil {
             return e
         }
+        if e := lib_common.SeekWriteOut(fi, start, offset, buffer, out); e != nil {
+            fi.Close()
+            return e
+        }
+        fi.Close()
     }
     return nil
 }
 
-func WriteOut(md5 string, start int64, offset int64, buffer []byte, out io.Writer) error {
-    fi, e := file.GetFile(lib_common.GetFilePathByMd5(md5))
-    if e != nil {
-        return e
-    }
-    defer fi.Close()
-    // total read bytes
-    var readBodySize int64 = 0
-    // next time bytes to read
-    var nextReadSize int
-    _, e1 := fi.Seek(start, 0)
-    if e1 != nil {
-        return e1
-    }
-    for {
-        // left bytes is more than a buffer
-        if (offset - readBodySize) / int64(len(buffer)) >= 1 {
-            nextReadSize = len(buffer)
-        } else {// left bytes less than a buffer
-            nextReadSize = int(offset - readBodySize)
-        }
-        if nextReadSize == 0 {
-            break
-        }
-        len, e2 := fi.Read(buffer[0:nextReadSize])
-        if e2 == nil {
-            wl, e5 := out.Write(buffer[0:len])
-            readBodySize += int64(len)
-            logger.Trace("write:", readBodySize)
-            if e5 != nil || wl != len {
-                return errors.New("error handle download file")
-            }
-        } else {
-            if e2 == io.EOF {
-                return nil
-            }
-            return e2
-        }
-    }
-    return nil
-}
 
 
 

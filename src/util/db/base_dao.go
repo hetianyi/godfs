@@ -71,6 +71,7 @@ func Query(handler func(rows *sql.Rows) error, sqlString string, args ...interfa
     verifyConn()
     var rs *sql.Rows
     var e error
+    logger.Debug("exec SQL:\n\t" + sqlString)
     if args == nil || len(args) == 0 {
         rs, e = db.Query(sqlString)
     } else {

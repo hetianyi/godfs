@@ -5,14 +5,12 @@ import (
     "encoding/json"
     "util/file"
     "io"
-    "net"
     "regexp"
     "errors"
     "strconv"
     "sync"
     "app"
     "lib_common/bridge"
-    "lib_common"
     "container/list"
     "math/rand"
     "strings"
@@ -22,7 +20,6 @@ import (
 // each client has one tcp connection with storage server,
 // once the connection is broken, the client will destroy.
 // one client can only do 1 operation at a time.
-var StorageServers list.List
 var addLock *sync.Mutex
 var NO_TRACKER_ERROR = errors.New("no tracker server available")
 var NO_STORAGE_ERROR = errors.New("no storage server available")
@@ -42,6 +39,7 @@ type Client struct {
     //operationLock *sync.Mutex
     TrackerManagers list.List
     connPool *ClientConnectionPool
+    MaxConnPerServer int // 客户端和每个服务建立的最大连接数，web项目中建议设置为和最大线程相同的数量
 }
 
 type TrackerManager struct {
@@ -49,138 +47,12 @@ type TrackerManager struct {
     connBridge *bridge.Bridge
 }
 
-func NewClient() (*Client, error) {
-    ls := lib_common.ParseTrackers(app.TRACKERS)
-    if ls.Len() == 0 {
-        return nil, NO_TRACKER_ERROR
-    }
+func NewClient(MaxConnPerServer int) *Client {
+    logger.Debug("init godfs client.")
     connPool := &ClientConnectionPool{}
-    connPool.Init(10)
-    client := &Client{connPool: connPool}
-
-    var chanList list.List
-    for e := ls.Front(); e != nil; e = e.Next() {
-        cha := make(chan int)
-        chanList.PushBack(cha)
-        manageTracker(e.Value.(string), client, &cha)
-    }
-    // wait till all tracker storage server info sync finished.
-    /*for e := chanList.Front(); e != nil; e = e.Next() {
-        <- e.Value.(chan int)
-    }*/
-    if client.TrackerManagers.Len() == 0 {
-        logger.Fatal("no tracker available")
-    }
-    return client, nil
+    connPool.Init(MaxConnPerServer)
+    return &Client{connPool: connPool}
 }
-
-
-func manageTracker(connectString string, client *Client, cha *chan int) {
-    /*var ele *list.Element
-    brokenChan := make(chan int)
-    for {
-        connBridge := initTracker(connectString)
-        if connBridge != nil {
-            tracker := &TrackerManager{connBridge: connBridge, brokenChan: &brokenChan}
-            ele = client.TrackerManagers.PushBack(tracker)
-            *cha <- 1
-            break
-        }
-        time.Sleep(time.Second * 10)
-    }
-    for {
-        // if bridge is broken, it will notify chan here.
-        <- brokenChan
-        ele.Value.(*TrackerManager).connBridge = nil
-        connBridge := initTracker(connectString)
-        if connBridge != nil {
-            ele.Value.(*TrackerManager).connBridge = connBridge
-        }
-        time.Sleep(time.Second * 10)
-    }*/
-
-    connBridge := initTracker(connectString)
-    if connBridge != nil {
-        brokenChan := make(chan int)
-        tracker := &TrackerManager{connBridge: connBridge, brokenChan: &brokenChan}
-        client.TrackerManagers.PushBack(tracker)
-    }
-}
-
-func initTracker(connectString string) *bridge.Bridge {
-    logger.Debug("connecting to storage server...")
-    con, e := net.Dial("tcp", connectString)
-    if e != nil {
-        logger.Error(e)
-        return nil
-    }
-    connBridge := bridge.NewBridge(con)
-    e1 := connBridge.ValidateConnection(app.SECRET)
-    if e1 != nil {
-        logger.Error(e1)
-        connBridge.Close()
-        return nil
-    }
-    logger.Debug("successful validate connection:", e1)
-
-    syncMeta := &bridge.OperationGetStorageServerRequest {}
-    // send validate request
-    e5 := connBridge.SendRequest(bridge.O_SYNC_STORAGE, syncMeta, 0, nil)
-    if e5 != nil {
-        logger.Error(e5)
-        connBridge.Close()
-        return nil
-    }
-    e6 := connBridge.ReceiveResponse(func(response *bridge.Meta, in io.Reader) error {
-        if response.Err != nil {
-            logger.Error(response.Err)
-            return response.Err
-        }
-        var validateResp = &bridge.OperationGetStorageServerResponse{}
-        logger.Debug("sync storage server response:", string(response.MetaBody))
-        e3 := json.Unmarshal(response.MetaBody, validateResp)
-        if e3 != nil {
-            logger.Error(e3)
-            return e3
-        }
-        if validateResp.Status != bridge.STATUS_OK {
-            return errors.New("error connect to server, server response status:" + strconv.Itoa(validateResp.Status))
-        }
-        if nil != validateResp.GroupMembers {
-            for i := range validateResp.GroupMembers {
-                addStorageServer(&validateResp.GroupMembers[i])
-            }
-        }
-        // connect success
-        return nil
-    })
-    if e6 != nil {
-        logger.Error(e6)
-        connBridge.Close()
-        return nil
-    }
-    logger.Debug("successful validate connection:", e1)
-    return connBridge
-}
-
-
-func addStorageServer(server *bridge.Member) {
-    addLock.Lock()
-    defer addLock.Unlock()
-    s, _ := json.Marshal(server)
-    logger.Debug("add storage server:", string(s))
-    uid := GetStorageServerUID(server)
-    for ele := StorageServers.Front(); ele != nil; ele = ele.Next() {
-        mem := ele.Value.(*bridge.Member)
-        euid := GetStorageServerUID(mem)
-        if uid == euid {
-            logger.Debug("storage server exists, ignore:", s)
-            return
-        }
-    }
-    StorageServers.PushBack(server)
-}
-
 
 func (client *Client) Close() {
     for ele := client.TrackerManagers.Front(); ele != nil; ele = ele.Next() {
@@ -339,7 +211,7 @@ func (client *Client) DownloadFile(path string, start int64, offset int64, write
 }
 
 func download(path string, start int64, offset int64, fromSrc bool, client *Client, writerHandler func(fileLen uint64, reader io.Reader) error) error {
-    downloadMeta := &bridge.OperationDownloadFileRequest{
+    downloadMeta := &bridge.OperationDownloadFileRequest {
         Path: path,
         Start: start,
         Offset: offset,
@@ -354,11 +226,14 @@ func download(path string, start int64, offset int64, fromSrc bool, client *Clie
         mem := selectStorageServer(group, "", &excludes)
         // no available storage
         if mem == nil {
-            return NO_TRACKER_ERROR
+            return NO_STORAGE_ERROR
         }
         cb, e12 := client.connPool.GetConnBridge(mem)
         if e12 != nil {
-            excludes.PushBack(mem)
+            logger.Error(e12)
+            if e12 != MAX_CONN_EXCEED_ERROR {
+                excludes.PushBack(mem)
+            }
             continue
         }
         connBridge = cb
@@ -403,6 +278,8 @@ func download(path string, start int64, offset int64, fromSrc bool, client *Clie
             return download(path, start, offset, true, client, writerHandler)
         }
         return e3
+    } else {
+        client.connPool.ReturnConnBridge(member, connBridge)
     }
     return nil
 }
@@ -414,7 +291,7 @@ func download(path string, start int64, offset int64, fromSrc bool, client *Clie
 // excludes contains fail storage and not gonna use this time.
 func selectStorageServer(group string, instanceId string, excludes *list.List) *bridge.Member {
     var pick list.List
-    for ele := StorageServers.Front(); ele != nil; ele = ele.Next() {
+    for ele := GroupMembers.Front(); ele != nil; ele = ele.Next() {
         b := ele.Value.(*bridge.Member)
         if containsMember(b, excludes) {
             continue

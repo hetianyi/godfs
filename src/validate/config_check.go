@@ -47,8 +47,8 @@ func Check(m map[string] string, runWith int) {
         m["base_path"] = file.FixPath(basePath)
     }
     app.BASE_PATH = m["base_path"]
+    cleanTmpdir()
     prepareDirs(m["base_path"])
-
 
     // check secret
     m["secret"] = strings.TrimSpace(m["secret"])
@@ -344,4 +344,11 @@ func prepareDirs(finalPath string) {
         }
     }
     createDirs(finalPath)
+}
+
+
+// 每次启动前尝试清理tmp目录
+func cleanTmpdir() {
+    logger.Info("clean tmp path:" + app.BASE_PATH + "/data/tmp")
+    file.DeleteAll(app.BASE_PATH + "/data/tmp")
 }
