@@ -16,6 +16,7 @@ import (
 // exp: /G001(组)/M01(原始服务器实例ID)/M[S](单片or多片)/{MD5}[.ext]
 // 文件的原始名称需要客户端自行记录（可能未来加上服务端记录功能）
 // TODO 2018-07-23 增加:web-upload-handler
+// TODO 上传结束后一次性将parts插入数据库或分批插入数据库，提高上传速度
 func main() {
     abs, _ := filepath.Abs(os.Args[0])
     s, _ := filepath.Split(abs)

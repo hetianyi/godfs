@@ -14,6 +14,9 @@ import (
     "errors"
     "io"
     "fmt"
+    "bytes"
+    "math"
+    "time"
 )
 
 func CreateTmpFile() (*os.File, error) {
@@ -219,9 +222,44 @@ func WriteOut(in io.Reader, offset int64, buffer []byte, out io.Writer) error {
 
 func ShowPercent(total *int64, finish *int64, stop *bool) {
     //int(math.Floor(12312300000*100*1.0/91231231234))
+    timer := time.NewTicker(time.Millisecond * 100)
+    var buffer bytes.Buffer
+    shine := true
     for !*stop {
-        fmt.Printf("total:%d, finish:%d\r", total, finish)
+        buffer.Reset()
+        <-timer.C
+        tot := *total
+        fini := *finish
+        percent := int(math.Floor(float64(fini*100*1.0/tot)))
+        percent1 := int(math.Floor(float64(fini*10*1.0/tot)))
+        buffer.WriteString("[")
+
+        for i := 0; i < percent1; i++ {
+            buffer.WriteString("=")
+        }
+        if percent1 < 10 {
+            if shine {
+                buffer.WriteString(">")
+            } else {
+                buffer.WriteString(" ")
+            }
+        } else {
+            buffer.WriteString("=")
+        }
+        for i := 0; i < 10-percent1-1; i++ {
+            buffer.WriteString(" ")
+        }
+
+        shine = !shine
+
+        buffer.WriteString("]")
+        buffer.WriteString(FixLength(percent, 3, " "))
+        buffer.WriteString("%")
+        fmt.Print(buffer.String() + "\r")
     }
+
+    buffer.Reset()
+    timer.Stop()
 }
 
 //将数字补齐为固定宽度，不足宽度在前补齐

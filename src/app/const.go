@@ -20,6 +20,7 @@ var (
     TRACKERS string
     HTTP_ENABLE bool
     MIME_TYPES_ENABLE bool
+    LOG_ENABLE bool
     PORT int
     HTTP_PORT int
     STORAGE_CLIENT_EXPIRE_TIME time.Duration = 60

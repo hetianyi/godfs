@@ -100,6 +100,7 @@ func SetLogLevel(level int) {
     logLevel = level
 }
 
+// enable log
 func SetEnable(e bool) {
     now := time.Now()
     resetLogFile(now)

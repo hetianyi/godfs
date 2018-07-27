@@ -27,13 +27,10 @@ var (
 //        2: tracker server
 //        3: client
 func Check(m map[string] string, runWith int) {
-
     replaceParams(m)
-
     // check: bind_address
     bind_address := strings.TrimSpace(m["bind_address"])
     app.BIND_ADDRESS = bind_address
-
 
     // check base_path
     basePath := strings.TrimSpace(m["base_path"])
@@ -62,7 +59,7 @@ func Check(m map[string] string, runWith int) {
         logLevel = "info"
     }
     m["log_level"] = logLevel
-    setSystemLogLevel(logLevel)
+    SetSystemLogLevel(logLevel)
 
 
     // check log_rotation_interval
@@ -75,7 +72,17 @@ func Check(m map[string] string, runWith int) {
     app.LOG_INTERVAL = log_rotation_interval
 
     //enable log config
-    logger.SetEnable(true)
+    logEnable := strings.ToLower(strings.TrimSpace(m["log_enable"]))
+    if logEnable == "" || (logEnable != "true" && logEnable != "false") {
+        logEnable = "true"
+    }
+    if logEnable == "true" {
+        app.LOG_ENABLE = true
+        logger.SetEnable(true)
+    } else {
+        app.LOG_ENABLE = false
+        logger.SetEnable(false)
+    }
 
 
     if runWith == 1 {
@@ -180,6 +187,8 @@ func Check(m map[string] string, runWith int) {
         } else {
             logger.Fatal("invalid port ", m["port"], ":", e)
         }
+    }
+    if runWith == 1 || runWith == 3 {
 
         // check trackers
         trackers := strings.TrimSpace(m["trackers"])
@@ -196,6 +205,7 @@ func Check(m map[string] string, runWith int) {
             }
         }
         m["trackers"] = string(bytebuff.Bytes())
+        app.TRACKERS = m["trackers"]
     }
 }
 
@@ -316,8 +326,8 @@ func GetUnitVal(unit string) int64 {
 }
 
 
-func setSystemLogLevel(logLevel string) {
-    logger.Info("log level set to", logLevel)
+func SetSystemLogLevel(logLevel string) {
+    logger.Debug("log level set to", logLevel)
     if logLevel == "debug" {
         logger.SetLogLevel(1)
     } else if logLevel == "info" {
@@ -328,6 +338,8 @@ func setSystemLogLevel(logLevel string) {
         logger.SetLogLevel(4)
     } else if logLevel == "fatal" {
         logger.SetLogLevel(5)
+    } else if logLevel == "trace" {
+        logger.SetLogLevel(0)
     }
 }
 
@@ -349,6 +361,6 @@ func prepareDirs(finalPath string) {
 
 // 每次启动前尝试清理tmp目录
 func cleanTmpdir() {
-    logger.Info("clean tmp path:" + app.BASE_PATH + "/data/tmp")
+    logger.Debug("clean tmp path:" + app.BASE_PATH + "/data/tmp")
     file.DeleteAll(app.BASE_PATH + "/data/tmp")
 }

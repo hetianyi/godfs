@@ -113,6 +113,7 @@ func (client *Client) Upload(path string, group string) (string, error) {
                 }
                 if len5 > 0 {
                     len3, e5 := out.Write(buff[0:len5])
+                    finish += int64(len5)
                     if e5 != nil || len3 != len(buff[0:len5]) {
                         return e5
                     }

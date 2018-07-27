@@ -72,9 +72,10 @@ type TaskCollector struct {
     startLock sync.Mutex //if the timer is already started
     Interval time.Duration    // time in Milliseconds, task exec interval.
     FirstDelay time.Duration    // time in Milliseconds, task exec first time delay.
+    ExecTimes int    // the collector execute times, ExecTimes<=0 means never stop
     Name string    // collector name
     Single bool    // 是否是能一个实例运行
-    Job func(tracker *TrackerInstance)      // timer task
+    Job func(tracker *TrackerInstance) // timer task
 }
 
 // 类型为TASK_DOWNLOAD_FILE的任务只能在一个trackerInstance里面执行
@@ -83,11 +84,12 @@ func trackTaskFilter(allCollectors *list.List, index int) *list.List {
         return allCollectors
     }
     var ret list.List
-    if allCollectors != nil {
-        for ele := allCollectors.Front(); ele != nil; ele = ele.Next() {
-            if !ele.Value.(*TaskCollector).Single {
-                ret.PushBack(ele.Value)
-            }
+    if allCollectors == nil {
+        return nil
+    }
+    for ele := allCollectors.Front(); ele != nil; ele = ele.Next() {
+        if !ele.Value.(*TaskCollector).Single {
+            ret.PushBack(ele.Value)
         }
     }
     return &ret
@@ -138,6 +140,9 @@ func (maintainer *TrackerMaintainer) track(tracker string, index int) {
                     } else {
                         logger.Trace("task exec success:", task.TaskType)
                     }
+                    if task.Callback != nil {
+                        task.Callback(task, e2)
+                    }
                     if forceClosed {
                         logger.Debug("connection force closed by client")
                         bridge.Close(conn)
@@ -180,7 +185,12 @@ func (collector *TaskCollector) Start(tracker *TrackerInstance) {
         collector.FirstDelay = time.Millisecond * 0
     }
     timer := time.NewTicker(collector.Interval)
+    execTimes := 0
     for {
+        if collector.ExecTimes > 0 && execTimes >= collector.ExecTimes  {
+            timer.Stop()
+            break
+        }
         time.Sleep(collector.FirstDelay)
         if collector.Name != "" {
             logger.Debug("exec task collector:", collector.Name)
@@ -190,6 +200,7 @@ func (collector *TaskCollector) Start(tracker *TrackerInstance) {
         }, func(i interface{}) {
             logger.Error("task collector return error:", i)
         })
+        execTimes++
         <-timer.C
     }
 }
@@ -241,24 +252,26 @@ func (tracker *TrackerInstance) GetTask() *bridge.Task {
 }
 
 // 某些任务不能多个tracker instance重复执行，只能选择其中一个予以执行
-func AddTask(task *bridge.Task, tracker *TrackerInstance) {
+func AddTask(task *bridge.Task, tracker *TrackerInstance) bool {
     if task == nil {
         logger.Debug("can't push nil task")
-        return
+        return false
     }
     if task.TaskType == app.TASK_SYNC_MEMBER || task.TaskType == app.TASK_SYNC_ALL_STORAGES {
         if tracker.checkTaskTypeCount(task.TaskType) == 0 {
             logger.Trace("push task type:", strconv.Itoa(task.TaskType))
             tracker.taskList.PushFront(task)
+            return true
         } else {
             logger.Debug("can't push task type "+ strconv.Itoa(task.TaskType) +": task type exists")
+            return false
         }
     } else if task.TaskType == app.TASK_REPORT_FILE {
         tracker.listIteLock.Lock()
         defer tracker.listIteLock.Unlock()
         for e := tracker.taskList.Front(); e != nil; e = e.Next() {
             if e.Value.(*bridge.Task).FileId == task.FileId {
-                return
+                return false
             }
         }
         logger.Trace("push task type 2")
@@ -267,12 +280,15 @@ func AddTask(task *bridge.Task, tracker *TrackerInstance) {
         } else {
             tracker.taskList.PushFront(task)
         }
+        return true
     } else if task.TaskType == app.TASK_PULL_NEW_FILE {
         if tracker.checkTaskTypeCount(task.TaskType) == 0 {
             logger.Trace("push task type 3")
             tracker.taskList.PushBack(task)
+            return true
         } else {
             logger.Debug("can't push task type 3: task type exists")
+            return false
         }
     } else if task.TaskType == app.TASK_DOWNLOAD_FILE {
         tracker.listIteLock.Lock()
@@ -286,10 +302,13 @@ func AddTask(task *bridge.Task, tracker *TrackerInstance) {
         if total < MaxWaitDownload {// 限制最大并行下载任务数
             logger.Trace("push task type 4")
             tracker.taskList.PushBack(task)
+            return true
         } else {
             logger.Debug("can't push task type 4: task list full")
+            return false
         }
     }
+    return false
 }
 
 
