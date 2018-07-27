@@ -18,13 +18,13 @@ const (
     O_CONNECT = 1
     O_RESPONSE = 2
 
-    O_UPLOAD = 2
     O_QUERY_FILE = 3
     O_DOWNLOAD_FILE = 4
     O_REG_STORAGE = 5
     O_REG_FILE = 6
     O_SYNC_STORAGE = 7
     O_PULL_NEW_FILES = 8
+    O_UPLOAD = 9
 
 )
 
