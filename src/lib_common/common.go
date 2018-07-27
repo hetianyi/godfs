@@ -13,6 +13,7 @@ import (
     "container/list"
     "errors"
     "io"
+    "fmt"
 )
 
 func CreateTmpFile() (*os.File, error) {
@@ -212,4 +213,26 @@ func WriteOut(in io.Reader, offset int64, buffer []byte, out io.Writer) error {
         }
     }
     return nil
+}
+
+
+
+func ShowPercent(total *int64, finish *int64, stop *bool) {
+    //int(math.Floor(12312300000*100*1.0/91231231234))
+    for !*stop {
+        fmt.Printf("total:%d, finish:%d\r", total, finish)
+    }
+}
+
+//将数字补齐为固定宽度，不足宽度在前补齐
+func FixLength(num int, width int, fixChar string) string {
+    snum := strconv.Itoa(num)
+    curLen := len(snum)
+    if curLen < width {
+        for i := curLen; i < width; i++ {
+            snum = fixChar + snum
+        }
+
+    }
+    return snum
 }

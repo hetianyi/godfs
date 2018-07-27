@@ -14,6 +14,7 @@ import (
     "container/list"
     "math/rand"
     "strings"
+    "lib_common"
 )
 
 
@@ -68,6 +69,7 @@ func (client *Client) Upload(path string, group string) (string, error) {
     fi, e := file.GetFile(path)
     if e == nil {
         defer fi.Close()
+        logger.Info("upload file:", fi.Name())
         fInfo, _ := fi.Stat()
 
         uploadMeta := &bridge.OperationUploadFileRequest{
@@ -98,6 +100,12 @@ func (client *Client) Upload(path string, group string) (string, error) {
         e2 := connBridge.SendRequest(bridge.O_UPLOAD, uploadMeta, uint64(fInfo.Size()), func(out io.WriteCloser) error {
             // begin upload file body bytes
             buff := make([]byte, app.BUFF_SIZE)
+            var finish, total int64
+            var stopFlag = false
+            defer func() {stopFlag = true}()
+            total = fInfo.Size()
+            finish = 0
+            go lib_common.ShowPercent(&total, &finish, &stopFlag)
             for {
                 len5, e4 := fi.Read(buff)
                 if e4 != nil && e4 != io.EOF {
