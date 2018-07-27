@@ -19,6 +19,6 @@ RUN rm -rf godfs && git clone https://github.com/hetianyi/godfs.git && \
 
 FROM alpine:latest
 COPY --from=0 /tmp/godfs.tar.gz /
-RUN tar -xzf /godfs.tar.gz
+RUN tar -xzf /godfs.tar.gz -C /
 WORKDIR /godfs
 CMD ["run.sh"]
