@@ -11,7 +11,8 @@ RUN apk add git gcc g++ make automake && \
     go get github.com/mattn/go-sqlite3 && \
     go install github.com/mattn/go-sqlite3
 WORKDIR /tmp
-RUN rm -rf godfs && git clone https://github.com/hetianyi/godfs.git && \
+RUN echo "http://mirrors.aliyun.com/alpine/v3.8/main/" > /etc/apk/repositories && \
+    rm -rf godfs && git clone https://github.com/hetianyi/godfs.git && \
     cd godfs && mkdir data && cp conf/storage.db data/ && \
     rm -rf dev_tool && ./docker_build.sh && rm -rf docker && rm -rf src && cd .. && \
     tar czvf godfs.tar.gz godfs
