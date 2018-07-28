@@ -4,7 +4,6 @@ import (
     "os"
     "syscall"
     "io"
-    "log"
     "errors"
     "fmt"
     "path"
@@ -70,29 +69,21 @@ func CopyFileTo(src string, dir string) (s bool, e error) {
     if err1 == nil {
         // create or truncate dest file
         fileInfo, _ := srcfile.Stat()
-        destfile, err2 := os.OpenFile(dir + string(os.PathSeparator) + fileInfo.Name(), syscall.O_CREAT|syscall.O_TRUNC, 0660)
+        destfile, err2 := os.OpenFile(FixPath(dir) + string(os.PathSeparator) + fileInfo.Name(), syscall.O_CREAT|syscall.O_TRUNC, 0660)
         // ensure close files finally
         defer func() {
-            log.Print("close src and dest files")
             srcfile.Close()
             destfile.Close()
         }()
         // if "create or truncate dest file" succeed then start copying
         if err2 == nil {
-            common.Try(func() {
-                bs := make([]byte, app.BUFF_SIZE)
-                for {
-                    len, e1 := srcfile.Read(bs)
-                    if e1 == io.EOF {
-                        break
-                    }
-                    destfile.Write(bs[0:len])
-                }
-                s = true
-            }, func(i interface{}) {
+            len, e1 := io.Copy(destfile, srcfile)
+            if len != fileInfo.Size() || e1 != nil {
                 s = false
-                e = errors.New(fmt.Sprint(i))
-            })
+                e = e1
+            } else {
+                s = true
+            }
         } else {
             s = false
             e = errors.New(fmt.Sprint(err2))

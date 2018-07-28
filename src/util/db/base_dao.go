@@ -35,6 +35,7 @@ func connect() (*sql.DB, error) {
     // if db not exists, copy template db file to data path.
     if fInfo == nil || e != nil {
         logger.Info("no db file found, init db file from template.")
+        logger.Debug("copy from", app.BASE_PATH + "/conf/storage.db to", app.BASE_PATH + "/data")
         s, e1 := file.CopyFileTo(app.BASE_PATH + "/conf/storage.db", app.BASE_PATH + "/data")
         if !s || e1 != nil {
             logger.Fatal("error prepare db file:", e1)
