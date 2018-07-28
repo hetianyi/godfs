@@ -1,6 +1,6 @@
 #!/bin/sh
 GOROOT="/usr/local/go"
-GOPATH="$PWD:/go";
+GOPATH="$PWD:/go:/go/src";
 export GOROOT
 export GOPATH
 
