@@ -18,7 +18,7 @@ RUN rm -rf godfs && git clone https://github.com/hetianyi/godfs.git && \
     tar czvf godfs.tar.gz godfs
 
 
-FROM alpine:latest
+FROM arm32v6/alpine
 COPY --from=0 /tmp/godfs.tar.gz /
 RUN tar -xzf /godfs.tar.gz -C / && rm -f /godfs.tar.gz
 WORKDIR /godfs
