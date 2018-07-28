@@ -11,6 +11,8 @@ import (
     "app"
     "time"
     "util/common"
+    "os"
+    "util/file"
 )
 
 // download sqlite3 studio @
@@ -26,9 +28,18 @@ func InitDB() {
     checkDb()
 }
 
-
+// TODO db connection pool
 func connect() (*sql.DB, error) {
     logger.Debug("connect db file:", app.BASE_PATH + "/data/storage.db")
+    fInfo, e := os.Stat(app.BASE_PATH + "/data/storage.db")
+    // if db not exists, copy template db file to data path.
+    if fInfo == nil || e != nil {
+        logger.Info("no db file found, init db file from template.")
+        s, e1 := file.CopyFileTo(app.BASE_PATH + "/conf/storage.db", app.BASE_PATH + "/data")
+        if !s || e1 != nil {
+            logger.Fatal("error prepare db file:", e1)
+        }
+    }
     return sql.Open("sqlite3", app.BASE_PATH + "/data/storage.db")
 }
 
