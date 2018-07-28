@@ -22,4 +22,4 @@ FROM alpine:latest
 COPY --from=0 /tmp/godfs.tar.gz /
 RUN tar -xzf /godfs.tar.gz
 WORKDIR /godfs
-CMD ["sh", "run.sh"]
+ENTRYPOINT ["sh", "run.sh"]
