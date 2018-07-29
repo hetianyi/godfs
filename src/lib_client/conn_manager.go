@@ -65,7 +65,6 @@ func (pool *ClientConnectionPool) newConnection(server *bridge.Member)(*bridge.B
     logger.Debug("connecting to storage server...")
     con, e := net.Dial("tcp", server.BindAddr + ":" + strconv.Itoa(server.Port))
     if e != nil {
-        logger.Error(e)
         return nil, e
     }
     connBridge := bridge.NewBridge(con)

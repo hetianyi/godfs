@@ -48,6 +48,7 @@ type TrackerMaintainer struct {
 
 type ITracker interface {
     Init()
+    SetConnBridge()
     GetTaskSize() int
     GetTask() *bridge.Task
     //FailReturnTask(task *bridge.Task)
@@ -113,6 +114,8 @@ func (maintainer *TrackerMaintainer) Maintain(trackers string) {
 func (maintainer *TrackerMaintainer) track(tracker string, index int) {
     logger.Info("start tracker conn with tracker server:", tracker)
     retry := 0
+    trackerInstance := TrackerInstance{Collectors: *trackTaskFilter(&maintainer.Collectors, index)}
+    trackerInstance.Init()
     for {//keep trying to connect to tracker server.
         conn, e := net.Dial("tcp", tracker)
         if e == nil {
@@ -124,10 +127,7 @@ func (maintainer *TrackerMaintainer) track(tracker string, index int) {
             } else {
                 retry = 0
                 logger.Debug("connect to tracker server success.")
-
-                trackerInstance := TrackerInstance{Collectors: *trackTaskFilter(&maintainer.Collectors, index)}
-                trackerInstance.Init(connBridge)
-
+                trackerInstance.SetConnBridge(connBridge)
                 for { // keep sending client statistic info to tracker server.
                     task := trackerInstance.GetTask()
                     if task == nil {
@@ -154,7 +154,7 @@ func (maintainer *TrackerMaintainer) track(tracker string, index int) {
             logger.Error("(" + strconv.Itoa(retry) + ")error connect to tracker server:", tracker)
         }
         retry++
-        time.Sleep(time.Second * 1)
+        time.Sleep(time.Second * 10)
     }
 }
 
@@ -207,10 +207,13 @@ func (collector *TaskCollector) Start(tracker *TrackerInstance) {
 
 
 
-func (tracker *TrackerInstance) Init(connBridge *bridge.Bridge) {
+func (tracker *TrackerInstance) Init() {
     tracker.listIteLock = new(sync.Mutex)
-    tracker.connBridge = connBridge
     tracker.startTaskCollector()
+}
+
+func (tracker *TrackerInstance) SetConnBridge(connBridge *bridge.Bridge) {
+    tracker.connBridge = connBridge
 }
 
 // get task size in waiting list
@@ -456,9 +459,10 @@ func (tracker *TrackerInstance) ExecTask(task *bridge.Task) (bool, error) {
         }
         return false, nil
     } else if task.TaskType == app.TASK_DOWNLOAD_FILE {
-        if increateActiveDownload(0) >= ParallelDownload {
+        logger.Debug("trying download file from other storage server...")
+        if increaseActiveDownload(0) >= ParallelDownload {
             logger.Debug("ParallelDownload reached")
-            AddTask(task, tracker)
+            //AddTask(task, tracker)
             return false, nil
         }
         fi, e1 := lib_service.GetFullFileByFid(task.FileId, 0)
@@ -523,6 +527,7 @@ func QueryPushFileTaskCollector(tracker *TrackerInstance) {
     }
 }
 // 查询本地持久化任务收集器
+// TODO 只查询存活的member列表中instance的file
 func QueryDownloadFileTaskCollector(tracker *TrackerInstance) {
     taskList, e1 := lib_service.GetTask(app.TASK_DOWNLOAD_FILE)
     if e1 != nil {
@@ -571,15 +576,12 @@ func getDownloadClient() *Client {
     return downloadClient
 }
 
+// TODO check file part md5
 func downloadFile(fi *bridge.File) {
-    increateActiveDownload(1)
-    defer increateActiveDownload(-1)
+    increaseActiveDownload(1)
+    defer increaseActiveDownload(-1)
     common.Try(func() {
-        logger.Debug("downloading file from other storage server, current download:", increateActiveDownload(0))
-        member := selectStorageServerByInstance(fi.Instance)
-        if member == nil {
-            logger.Error(NO_STORAGE_ERROR)
-        }
+        logger.Debug("downloading file from other storage server, current download thread:", increaseActiveDownload(0))
         dirty := 0
         var start int64 = 0
         buffer := make([]byte, app.BUFF_SIZE)
@@ -627,7 +629,7 @@ func downloadFile(fi *bridge.File) {
             start += part.FileSize
         }
         if dirty > 0 {
-            logger.Error("error download full file, broken parts:" +strconv.Itoa(dirty))
+            logger.Error("error download full file, broken parts:" + strconv.Itoa(dirty) + "/" + strconv.Itoa(len(fi.Parts)))
         } else {
             ee := lib_service.UpdateFileStatus(fi.Id)
             if ee != nil {
@@ -655,9 +657,9 @@ func selectStorageServerByInstance(instanceId string) *bridge.Member {
     return nil
 }
 
-func increateActiveDownload(value int) int {
+func increaseActiveDownload(value int) int {
     activeDownloadLock.Lock()
     defer activeDownloadLock.Unlock()
-    activeDownload++
+    activeDownload += value
     return activeDownload
 }
