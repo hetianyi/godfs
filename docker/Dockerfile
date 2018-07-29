@@ -6,12 +6,11 @@
 # author : hetianyi(https://github.com/hetianyi)
 # date   : 2018/07/18
 
-FROM golang:alpine as builder
+FROM golang:alpine
 RUN echo "http://mirrors.aliyun.com/alpine/v3.8/main/" > /etc/apk/repositories && \
-    apk add git gcc make automake && \
+    apk add git tzdata gcc && \
     go get github.com/mattn/go-sqlite3
-WORKDIR /tmp
-RUN rm -rf godfs && git clone https://github.com/hetianyi/godfs.git && \
+RUN cd /tmp && rm -rf godfs && git clone https://github.com/hetianyi/godfs.git && \
     cd godfs && mkdir data && cp conf/storage.db data/ && \
     rm -rf dev_tool && ./docker_build.sh && rm -rf docker && rm -rf src && cd .. && \
     tar czvf godfs.tar.gz godfs
