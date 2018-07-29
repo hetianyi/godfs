@@ -25,7 +25,7 @@ func CopyFile(src string, dest string) (s bool, e error) {
     srcfile, err1 := os.Open(src)
     if err1 == nil {
         // create or truncate dest file
-        destfile, err2 := os.OpenFile(dest, syscall.O_CREAT|syscall.O_TRUNC, 0660)
+        destfile, err2 := os.OpenFile(dest, syscall.O_CREAT|os.O_WRONLY|syscall.O_TRUNC, 0660)
         // ensure close files finally
         defer func() {
             //log.Print("close src and dest files")
@@ -69,7 +69,7 @@ func CopyFileTo(src string, dir string) (s bool, e error) {
     if err1 == nil {
         // create or truncate dest file
         fileInfo, _ := srcfile.Stat()
-        destfile, err2 := os.OpenFile(FixPath(dir) + string(os.PathSeparator) + fileInfo.Name(), syscall.O_CREAT|syscall.O_TRUNC, 0660)
+        destfile, err2 := os.OpenFile(FixPath(dir) + string(os.PathSeparator) + fileInfo.Name(), syscall.O_CREAT|os.O_WRONLY|syscall.O_TRUNC, 0660)
         // ensure close files finally
         defer func() {
             srcfile.Close()
