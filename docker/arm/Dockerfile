@@ -9,8 +9,7 @@
 FROM arm32v6/golang:alpine as builder
 RUN echo "http://mirrors.aliyun.com/alpine/v3.8/main/" > /etc/apk/repositories && \
     apk add git gcc g++ make automake && \
-    mkdir /go/src/github.com && mkdir /go/src/github.com/mattn && \
-    git clone https://github.com/mattn/go-sqlite3.git /go/src/github.com/mattn
+    go get github.com/mattn/go-sqlite3
 RUN cd /tmp && rm -rf godfs && git clone https://github.com/hetianyi/godfs.git && \
     cd godfs && mkdir data && cp conf/storage.db data/ && \
     rm -rf dev_tool && ./docker_build.sh && rm -rf docker && rm -rf src && cd .. && \
