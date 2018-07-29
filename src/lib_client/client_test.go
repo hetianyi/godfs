@@ -20,7 +20,7 @@ import (
 
 func Init() *Client {
     logger.SetLogLevel(1)
-    app.TRACKERS = "127.0.0.1:1022"
+    app.TRACKERS = "192.168.0.104:1022"
     app.SECRET = "OASAD834jA97AAQE761=="
     app.GROUP = "G01"
     client:= NewClient(10)
@@ -147,6 +147,7 @@ func Test6(t *testing.T) {
     fmt.Println([]byte{1,2,3,4,5,6}[1:3])
 }
 
+
 func Test7(t *testing.T) {
 
     out := make(chan int)
@@ -181,4 +182,26 @@ func Test7(t *testing.T) {
     for i := 0; i < 50; i++ {
         <-out
     }
+}
+
+func Test8(t *testing.T) {
+    client := Init()
+    path := "/G01/001/S/061af19e7aebbf4a159664a8b96a13cd"
+    for i := 0; i < 10 ; i++ {
+        go func() {
+            for  {
+                client.DownloadFile(path, 0, -1, func(fileLen uint64, reader io.Reader) error {
+                    newFile, _ := file.CreateFile("C:/Users/Tisnyi/Downloads/123/" + timeutil.GetUUID() + ".jpg")
+                    d := make([]byte, fileLen)
+                    io.ReadFull(reader, d)
+                    newFile.Write(d)
+                    newFile.Close()
+                    logger.Info("finish")
+                    return nil
+                })
+            }
+        }()
+    }
+    cha := make(chan int)
+    <- cha
 }
