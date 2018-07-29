@@ -46,7 +46,7 @@ func main() {
     // the download file name
     var logLevel = flag.String("l", "", "custom logging level: trace, debug, info, warning, error, and fatal")
     // config file path
-    var confPath = flag.String("c", s + string(filepath.Separator) + ".." + string(filepath.Separator) + "conf" + string(filepath.Separator) + "client.conf.template", "custom config file")
+    var confPath = flag.String("c", s + string(filepath.Separator) + ".." + string(filepath.Separator) + "conf" + string(filepath.Separator) + "client.conf", "custom config file")
     flag.Parse()
 
     *logLevel = strings.ToLower(strings.TrimSpace(*logLevel))

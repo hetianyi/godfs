@@ -15,7 +15,7 @@ func main() {
     abs, _ := filepath.Abs(os.Args[0])
     s, _ := filepath.Split(abs)
     s = file.FixPath(s)
-    var confPath = flag.String("c", s + string(filepath.Separator) + ".." + string(filepath.Separator) + "conf" + string(filepath.Separator) + "tracker.conf.template", "custom config file")
+    var confPath = flag.String("c", s + string(filepath.Separator) + ".." + string(filepath.Separator) + "conf" + string(filepath.Separator) + "tracker.conf", "custom config file")
     flag.Parse()
     logger.Info("using config file:", *confPath)
     m, e := file.ReadPropFile(*confPath)
