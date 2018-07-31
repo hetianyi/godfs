@@ -17,6 +17,7 @@ import (
     "errors"
     "os"
     "util/file"
+    "bytes"
 )
 
 // storage 的任务分为：
@@ -517,7 +518,7 @@ func (tracker *TrackerInstance) ExecTask(task *bridge.Task) (bool, error) {
 
 // 查询本地持久化任务收集器
 func QueryPushFileTaskCollector(tracker *TrackerInstance) {
-    taskList, e1 := lib_service.GetTask(app.TASK_REPORT_FILE)
+    taskList, e1 := lib_service.GetTask(app.TASK_REPORT_FILE, app.INSTANCE_ID)
     if e1 != nil {
         logger.Error(e1)
         return
@@ -529,7 +530,7 @@ func QueryPushFileTaskCollector(tracker *TrackerInstance) {
 // 查询本地持久化任务收集器
 // TODO 只查询存活的member列表中instance的file
 func QueryDownloadFileTaskCollector(tracker *TrackerInstance) {
-    taskList, e1 := lib_service.GetTask(app.TASK_DOWNLOAD_FILE)
+    taskList, e1 := lib_service.GetTask(app.TASK_DOWNLOAD_FILE, collectMemberInstanceId())
     if e1 != nil {
         logger.Error(e1)
         return
@@ -662,4 +663,16 @@ func increaseActiveDownload(value int) int {
     defer activeDownloadLock.Unlock()
     activeDownload += value
     return activeDownload
+}
+
+func collectMemberInstanceId() string {
+    var buffer bytes.Buffer
+    index := 0
+    for ele := GroupMembers.Front(); ele != nil; ele = ele.Next() {
+        buffer.WriteString(ele.Value.(*bridge.Member).InstanceId)
+        if index != GroupMembers.Len() {
+            buffer.WriteString(",")
+        }
+    }
+    return string(buffer.Bytes())
 }

@@ -21,7 +21,8 @@ const (
 
     addSyncTaskSQL  = "insert into task(fid, type, status) values(?,?,?)"
     finishSyncTaskSQL  = "update task set status=0 where fid=?"
-    getSyncTaskSQL  = `select fid, type from task where status=1 and type=? limit ?`
+    getSyncTaskSQL  = `select fid, type from task a
+                        left join files b on a.fid=b.id where status=1 and type=? and b.instance in (?) limit ?`
     getFullFileSQL1  = `select b.id, b.md5, b.instance, parts_num from files b where b.md5=? `
     getFullFileSQL11  = `select b.id, b.md5, b.instance, parts_num from files b where b.id=? `
     getFullFileSQL12  = `select b.id, b.md5, b.instance, parts_num from files b where b.id > ? limit 10`
@@ -316,7 +317,7 @@ func FinishSyncTask(taskId int) error {
     })
 }
 
-func GetTask(tasType int) (*list.List, error) {
+func GetTask(tasType int, instanceIds string) (*list.List, error) {
     var ls list.List
     e := db.Query(func(rows *sql.Rows) error {
         if rows != nil {
@@ -331,7 +332,7 @@ func GetTask(tasType int) (*list.List, error) {
             }
         }
         return nil
-    }, getSyncTaskSQL, tasType, 10)
+    }, getSyncTaskSQL, tasType, instanceIds, 10)
     if e != nil {
         return nil, e
     }
