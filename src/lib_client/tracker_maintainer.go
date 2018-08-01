@@ -530,6 +530,11 @@ func QueryPushFileTaskCollector(tracker *TrackerInstance) {
 // 查询本地持久化任务收集器
 // TODO 只查询存活的member列表中instance的file
 func QueryDownloadFileTaskCollector(tracker *TrackerInstance) {
+    members := collectMemberInstanceId()
+    // no member, no server for download.
+    if members == "" {
+        return
+    }
     taskList, e1 := lib_service.GetTask(app.TASK_DOWNLOAD_FILE, collectMemberInstanceId())
     if e1 != nil {
         logger.Error(e1)
@@ -670,9 +675,10 @@ func collectMemberInstanceId() string {
     index := 0
     for ele := GroupMembers.Front(); ele != nil; ele = ele.Next() {
         buffer.WriteString(ele.Value.(*bridge.Member).InstanceId)
-        if index != GroupMembers.Len() {
+        if index != GroupMembers.Len() - 1 {
             buffer.WriteString(",")
         }
     }
+    logger.Debug("select download task file in members(" + string(buffer.Bytes()) + ")")
     return string(buffer.Bytes())
 }
