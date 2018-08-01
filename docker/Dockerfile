@@ -9,7 +9,7 @@
 FROM golang:alpine
 RUN echo "http://mirrors.aliyun.com/alpine/v3.8/main/" > /etc/apk/repositories && \
     echo "http://mirrors.aliyun.com/alpine/v3.8/community/" >> /etc/apk/repositories && \
-    apk add git tzdata gcc gcc-g++ && \
+    apk add git tzdata gcc make automake && \
     go get github.com/mattn/go-sqlite3
 RUN cd /tmp && rm -rf godfs && git clone https://github.com/hetianyi/godfs.git && \
     cd godfs && mkdir data && cp conf/storage.db data/ && \
