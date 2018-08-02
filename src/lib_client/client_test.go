@@ -205,3 +205,35 @@ func Test8(t *testing.T) {
     cha := make(chan int)
     <- cha
 }
+
+
+
+func paramT(a *[]byte) {
+    println(a)
+}
+func paramS(s *S) {
+    println(s)
+}
+
+type S struct {
+    Name string
+}
+
+func Test9(t *testing.T) {
+    a := make([]byte, 1024)
+    a[0] = 2
+    a[1] = 3
+    a[2] = 4
+    a[3] = 5
+    a[4] = 6
+
+    s := S{
+       Name: "lisi" ,
+    }
+
+
+    println(&a)
+    println(&s)
+    paramT(&a)
+    paramS(&s)
+}

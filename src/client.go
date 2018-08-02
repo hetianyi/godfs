@@ -116,7 +116,7 @@ func download(path string, customDownloadFileName string) error {
         }
         defer fi.Close()
         buffer := make([]byte, app.BUFF_SIZE)
-        return lib_common.WriteOut(reader, int64(fileLen), buffer, fi)
+        return lib_common.WriteOut(reader, int64(fileLen), buffer, fi, nil)
     })
     if e != nil {
         logger.Error(e)

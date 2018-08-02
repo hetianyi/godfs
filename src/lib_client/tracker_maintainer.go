@@ -18,6 +18,8 @@ import (
     "os"
     "util/file"
     "bytes"
+    "crypto/md5"
+    "encoding/hex"
 )
 
 // storage 的任务分为：
@@ -589,9 +591,12 @@ func downloadFile(fi *bridge.File) {
     common.Try(func() {
         logger.Debug("downloading file from other storage server, current download thread:", increaseActiveDownload(0))
         dirty := 0
+        // calculate md5
+        md := md5.New()
         var start int64 = 0
         buffer := make([]byte, app.BUFF_SIZE)
         for i := range fi.Parts {
+            md.Reset()
             part := fi.Parts[i]
             // check if file part exists
             fInfo, e1 := os.Stat(lib_common.GetFilePathByMd5(part.Md5))
@@ -615,11 +620,17 @@ func downloadFile(fi *bridge.File) {
                     if e3 != nil {
                         return e3
                     }
-                    e4 := lib_common.WriteOut(reader, int64(fileLen), buffer, fi)
+                    e4 := lib_common.WriteOut(reader, int64(fileLen), buffer, fi, md)
                     fi.Close()
                     if e4 != nil {
                         file.Delete(fi.Name())
                         return e4
+                    }
+                    // check whether file md5 is correct.
+                    md5 := hex.EncodeToString(md.Sum(nil))
+                    if md5 != part.Md5 {
+                        file.Delete(fi.Name())
+                        return errors.New("download error: file fingerprint confirmation failed")
                     }
                     e5 := lib_common.MoveTmpFileTo(part.Md5, fi)
                     if e5 != nil {

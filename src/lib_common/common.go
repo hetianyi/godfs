@@ -17,6 +17,7 @@ import (
     "bytes"
     "math"
     "time"
+    "hash"
 )
 
 func CreateTmpFile() (*os.File, error) {
@@ -185,7 +186,7 @@ func SeekWriteOut(in io.ReadSeeker, start int64, offset int64, buffer []byte, ou
     return nil
 }
 
-func WriteOut(in io.Reader, offset int64, buffer []byte, out io.Writer) error {
+func WriteOut(in io.Reader, offset int64, buffer []byte, out io.Writer, md hash.Hash) error {
     // total read bytes
     var readBodySize int64 = 0
     // next time bytes to read
@@ -203,11 +204,17 @@ func WriteOut(in io.Reader, offset int64, buffer []byte, out io.Writer) error {
         len, e2 := in.Read(buffer[0:nextReadSize])
         if e2 == nil {
             wl, e5 := out.Write(buffer[0:len])
+            if md != nil {
+                mdwl, e6 := md.Write(buffer[0:len])
+                if e6 != nil || mdwl != len {
+                    return errors.New("error write md")
+                }
+            }
+            if e5 != nil || wl != len {
+                return errors.New("error write out")
+            }
             readBodySize += int64(len)
             logger.Trace("write:", readBodySize)
-            if e5 != nil || wl != len {
-                return errors.New("error handle download file")
-            }
         } else {
             if e2 == io.EOF {
                 return nil
