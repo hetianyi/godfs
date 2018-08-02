@@ -15,6 +15,8 @@ import (
     "io"
     "regexp"
     "util/file"
+    "bytes"
+    "strconv"
 )
 
 // validate client handler
@@ -41,6 +43,36 @@ func validateClientHandler(request *bridge.Meta, connBridge *bridge.Bridge) erro
     return nil
 }
 
+
+
+
+
+func stageSaveFileParts(parts *list.List) error {
+    var buff bytes.Buffer
+    buff.WriteString("insert into parts(md5, size) values")
+    index := 0
+    for ele := parts.Front(); ele != nil; ele = ele.Next() {
+        buff.WriteString("(")
+        buff.WriteString(ele.Value.(*bridge.FilePart).Md5)
+        buff.WriteString(",")
+        buff.WriteString(strconv.FormatInt(ele.Value.(*bridge.FilePart).FileSize, 10))
+        buff.WriteString(")")
+
+        if index != parts.Len() - 1 {
+            buff.WriteString(",")
+        }
+        index++
+    }
+    var sliceIds list.List
+    pid, e8 := lib_service.AddPart(sMd5, app.SLICE_SIZE)
+    if e8 != nil {
+        return e8
+    }
+    sliceIds.PushBack(pid)
+
+}
+
+
 // 处理文件上传请求
 func uploadHandler(request *bridge.Meta, buffer []byte, md hash.Hash, conn io.ReadCloser, connBridge *bridge.Bridge) error {
     logger.Info("begin read file body, file len is ", request.BodyLength/1024, "KB")
@@ -59,6 +91,8 @@ func uploadHandler(request *bridge.Meta, buffer []byte, md hash.Hash, conn io.Re
     var sliceReadSize int64 = 0
     var sliceMd5 = md5.New()
     var sliceIds list.List
+
+    var parts list.List
 
     for {
         //read finish
@@ -137,11 +171,14 @@ func uploadHandler(request *bridge.Meta, buffer []byte, md hash.Hash, conn io.Re
                     return e10
                 }
                 // save slice info to db
-                pid, e8 := lib_service.AddPart(sMd5, app.SLICE_SIZE)
+                /*pid, e8 := lib_service.AddPart(sMd5, app.SLICE_SIZE)
                 if e8 != nil {
                     return e8
                 }
-                sliceIds.PushBack(pid)
+                sliceIds.PushBack(pid)*/
+                //replaced by here
+                par := bridge.FilePart{Md5: sMd5, FileSize: app.SLICE_SIZE}
+                parts.PushBack(&par) // push till list len is big enough
 
                 out12, e12 := lib_common.CreateTmpFile()
                 if e12 != nil {

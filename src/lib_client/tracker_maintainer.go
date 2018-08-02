@@ -626,7 +626,7 @@ func downloadFile(fi *bridge.File) {
                         file.Delete(fi.Name())
                         return e4
                     }
-                    // check whether file md5 is correct.
+                    // check whether file md5 is correct. TODO need to test
                     md5 := hex.EncodeToString(md.Sum(nil))
                     if md5 != part.Md5 {
                         file.Delete(fi.Name())
