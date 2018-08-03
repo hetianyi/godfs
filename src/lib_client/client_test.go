@@ -20,7 +20,7 @@ import (
 
 func Init() *Client {
     logger.SetLogLevel(1)
-    app.TRACKERS = "192.168.0.104:1022"
+    app.TRACKERS = "192.168.0.106:1022"
     app.SECRET = "OASAD834jA97AAQE761=="
     app.GROUP = "G01"
     client:= NewClient(10)

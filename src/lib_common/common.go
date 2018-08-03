@@ -229,16 +229,19 @@ func WriteOut(in io.Reader, offset int64, buffer []byte, out io.Writer, md hash.
 
 func ShowPercent(total *int64, finish *int64, stop *bool) {
     //int(math.Floor(12312300000*100*1.0/91231231234))
-    timer := time.NewTicker(time.Millisecond * 100)
+    timer := time.NewTicker(time.Millisecond * 1000)
     var buffer bytes.Buffer
     shine := true
+    var lastRead int64 = 0
+    var lastFinish int64 = 0
     for !*stop {
         buffer.Reset()
         <-timer.C
         tot := *total
-        fini := *finish
-        percent := int(math.Floor(float64(fini*100*1.0/tot)))
-        percent1 := int(math.Floor(float64(fini*10*1.0/tot)))
+        lastRead = *finish - lastFinish // total read bytes during last 100ms.
+        lastFinish = *finish
+        percent := int(math.Floor(float64(lastFinish*100*1.0/tot)))
+        percent1 := int(math.Floor(float64(lastFinish*10*1.0/tot)))
         buffer.WriteString("[")
 
         for i := 0; i < percent1; i++ {
@@ -262,6 +265,8 @@ func ShowPercent(total *int64, finish *int64, stop *bool) {
         buffer.WriteString("]")
         buffer.WriteString(FixLength(percent, 3, " "))
         buffer.WriteString("%")
+        buffer.WriteString(" - ")
+        buffer.WriteString(HumanReadable(lastRead, 1000))
         fmt.Print(buffer.String() + "\r")
     }
 
@@ -280,4 +285,17 @@ func FixLength(num int, width int, fixChar string) string {
 
     }
     return snum
+}
+
+// at 'during' ms read total 'len' bytes
+func HumanReadable(len int64, during int64) string {
+    if len < 1024 {
+        return strconv.FormatInt(len * 1000 / during, 10) + "B/s       "
+    } else if len < 1048576 {
+        return strconv.FormatInt(len*1.0 / 1024 * 1000 / during, 10) + "KB/s       "
+    } else if len < 1073741824 {
+        return fmt.Sprintf("%.2f", float64(len) / 1048576 * 1000 / float64(during)) + "MB/s       "
+    } else {
+        return fmt.Sprintf("%.2f", float64(len)/1073741824 * 1000 / float64(during)) + "GB/s       "
+    }
 }

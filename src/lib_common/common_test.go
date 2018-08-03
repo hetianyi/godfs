@@ -13,9 +13,9 @@ func Test1(t *testing.T) {
 
 
 func Test2(t *testing.T) {
-    for {
-        fmt.Print("11111111111111\r")
-    }
+    var a int64 = 9819391231
+    println(fmt.Sprintf("%.2f", 2.345345))
+    println(fmt.Sprintf("%.2f", float64(a)*1.0  * 1000))
 }
 
 
