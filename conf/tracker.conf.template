@@ -8,8 +8,8 @@ port=1022
 # -base_path
 #   └logs
 #   └data
-base_path=E:/godfs-storage/tracker
-
+#base_path=E:/godfs-storage/tracker
+base_path=/godfs
 
 
 # secret用于服务通信时校验身份
