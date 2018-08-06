@@ -43,12 +43,19 @@ const (
     getSyncId  = `select master_sync_id from sys where id=1`
 )
 
+var dbPool *db.DbConnPool
+
+func SetPool(pool *db.DbConnPool) {
+    dbPool = pool
+}
 
 
 // get file id by md5
 func GetFileId(md5 string) (int, error) {
     var id = 0
-    e := db.Query(func(rows *sql.Rows) error {
+    dao := dbPool.GetDB()
+    defer dbPool.ReturnDB(dao)
+    e := dao.Query(func(rows *sql.Rows) error {
         if rows != nil {
             for rows.Next() {
                 e := rows.Scan(&id)
@@ -70,7 +77,9 @@ func GetFileId(md5 string) (int, error) {
 // get part id by md5
 func GetPartId(md5 string) (int, error) {
     var id = 0
-    e := db.Query(func(rows *sql.Rows) error {
+    dao := dbPool.GetDB()
+    defer dbPool.ReturnDB(dao)
+    e := dao.Query(func(rows *sql.Rows) error {
         if rows != nil {
             for rows.Next() {
                 e := rows.Scan(&id)
@@ -99,7 +108,9 @@ func AddPart(md5 string, size int64) (int, error) {
         return pid, nil
     }
     var id int
-    err := db.DoTransaction(func(tx *sql.Tx) error {
+    dao := dbPool.GetDB()
+    defer dbPool.ReturnDB(dao)
+    err := dao.DoTransaction(func(tx *sql.Tx) error {
         state, e2 := tx.Prepare(insertPartSQL)
         if e2 != nil {
             return e2
@@ -130,7 +141,9 @@ func StorageAddFile(md5 string, parts *list.List) error {
     if fid != 0 {
         return nil
     }
-    return db.DoTransaction(func(tx *sql.Tx) error {
+    dao := dbPool.GetDB()
+    defer dbPool.ReturnDB(dao)
+    return dao.DoTransaction(func(tx *sql.Tx) error {
         state, e2 := tx.Prepare(insertFileSQL)
         if e2 != nil {
             return e2
@@ -166,14 +179,16 @@ func StorageAddRemoteFile(fi *bridge.File) error {
     if ee != nil {
         return ee
     }
+    dao := dbPool.GetDB()
+    defer dbPool.ReturnDB(dao)
     // file exists, will skip
     if fid != 0 {
-        return db.DoTransaction(func(tx *sql.Tx) error {
+        return dao.DoTransaction(func(tx *sql.Tx) error {
             return UpdateSyncId(fi.Id, tx)
         })
     }
 
-    return db.DoTransaction(func(tx *sql.Tx) error {
+    return dao.DoTransaction(func(tx *sql.Tx) error {
         state, e2 := tx.Prepare(insertFileSQL)
         if e2 != nil {
             return e2
@@ -230,7 +245,9 @@ func TrackerAddFile(meta *bridge.OperationRegisterFileRequest) (int, error) {
     if fid > 0 {
         return fid, nil
     }
-    err := db.DoTransaction(func(tx *sql.Tx) error {
+    dao := dbPool.GetDB()
+    defer dbPool.ReturnDB(dao)
+    err := dao.DoTransaction(func(tx *sql.Tx) error {
         fi := meta.File
         parts := fi.Parts
         instance := fi.Instance
@@ -304,7 +321,9 @@ func AddSyncTask(fid int, taskType int, tx *sql.Tx) error {
 }
 
 func FinishSyncTask(taskId int) error {
-    return db.DoTransaction(func(tx *sql.Tx) error {
+    dao := dbPool.GetDB()
+    defer dbPool.ReturnDB(dao)
+    return dao.DoTransaction(func(tx *sql.Tx) error {
         state, e2 := tx.Prepare(finishSyncTaskSQL)
         if e2 != nil {
             return e2
@@ -319,7 +338,9 @@ func FinishSyncTask(taskId int) error {
 
 func GetTask(tasType int, instanceIds string) (*list.List, error) {
     var ls list.List
-    e := db.Query(func(rows *sql.Rows) error {
+    dao := dbPool.GetDB()
+    defer dbPool.ReturnDB(dao)
+    e := dao.Query(func(rows *sql.Rows) error {
         if rows != nil {
             for rows.Next() {
                 var fid, taskType int
@@ -349,8 +370,10 @@ func GetFullFileByMd5(md5 string, finishFlag int) (*bridge.File, error) {
         addOn = " and finish=0"
     }
     var fi *bridge.File
+    dao := dbPool.GetDB()
+    defer dbPool.ReturnDB(dao)
     // query file
-    e1 := db.Query(func(rows *sql.Rows) error {
+    e1 := dao.Query(func(rows *sql.Rows) error {
         if rows != nil {
             for rows.Next() {
                 var id, partNu int
@@ -374,7 +397,7 @@ func GetFullFileByMd5(md5 string, finishFlag int) (*bridge.File, error) {
         return nil, nil
     }
 
-    e2 := db.Query(func(rows *sql.Rows) error {
+    e2 := dao.Query(func(rows *sql.Rows) error {
         if rows != nil {
             var tparsList list.List
             for rows.Next() {
@@ -415,8 +438,10 @@ func GetFullFileByFid(fid int, finishFlag int) (*bridge.File, error) {
         addOn = " and finish=0"
     }
     var fi *bridge.File
+    dao := dbPool.GetDB()
+    defer dbPool.ReturnDB(dao)
     // query file
-    e1 := db.Query(func(rows *sql.Rows) error {
+    e1 := dao.Query(func(rows *sql.Rows) error {
         if rows != nil {
             for rows.Next() {
                 var id, partNu int
@@ -440,7 +465,7 @@ func GetFullFileByFid(fid int, finishFlag int) (*bridge.File, error) {
         return nil, nil
     }
 
-    e2 := db.Query(func(rows *sql.Rows) error {
+    e2 := dao.Query(func(rows *sql.Rows) error {
         if rows != nil {
             var partsList list.List
             for rows.Next() {
@@ -482,8 +507,10 @@ func GetFileByMd5(md5 string, finishFlag int) (*bridge.File, error) {
         addOn = " and finish=0"
     }
     var fi *bridge.File
+    dao := dbPool.GetDB()
+    defer dbPool.ReturnDB(dao)
     // query file
-    e1 := db.Query(func(rows *sql.Rows) error {
+    e1 := dao.Query(func(rows *sql.Rows) error {
         if rows != nil {
             for rows.Next() {
                 var id, partNu int
@@ -514,8 +541,10 @@ func GetFileByFid(fid int, finishFlag int) (*bridge.File, error) {
         addOn = " and finish=0"
     }
     var fi *bridge.File
+    dao := dbPool.GetDB()
+    defer dbPool.ReturnDB(dao)
     // query file
-    e1 := db.Query(func(rows *sql.Rows) error {
+    e1 := dao.Query(func(rows *sql.Rows) error {
         if rows != nil {
             for rows.Next() {
                 var id, partNu int
@@ -541,7 +570,9 @@ func GetFileByFid(fid int, finishFlag int) (*bridge.File, error) {
 
 func GetSyncId() (int, error) {
     var id = -1
-    e := db.Query(func(rows *sql.Rows) error {
+    dao := dbPool.GetDB()
+    defer dbPool.ReturnDB(dao)
+    e := dao.Query(func(rows *sql.Rows) error {
         if rows != nil {
             for rows.Next() {
                 e := rows.Scan(&id)
@@ -553,7 +584,7 @@ func GetSyncId() (int, error) {
         // consider there is no record in db.
         if id == -1 {
             id = 0
-            db.DoTransaction(func(tx *sql.Tx) error {
+            dao.DoTransaction(func(tx *sql.Tx) error {
                 return UpdateSyncId(0, tx)
             })
         }
@@ -581,7 +612,9 @@ func UpdateSyncId(newId int, tx *sql.Tx) error {
 
 // 文件同步到本地修改状态
 func UpdateFileStatus(fid int) error {
-    return db.DoTransaction(func(tx *sql.Tx) error {
+    dao := dbPool.GetDB()
+    defer dbPool.ReturnDB(dao)
+    return dao.DoTransaction(func(tx *sql.Tx) error {
 
         state, e2 := tx.Prepare(updateFileStatusSQL)
         if e2 != nil {
@@ -608,8 +641,10 @@ func UpdateFileStatus(fid int) error {
 // storage查询tracker新文件，基于tracker服务器的Id作为起始
 func GetFilesBasedOnId(fid int) (*list.List, error) {
     var files list.List
+    dao := dbPool.GetDB()
+    defer dbPool.ReturnDB(dao)
     // query file
-    e1 := db.Query(func(rows *sql.Rows) error {
+    e1 := dao.Query(func(rows *sql.Rows) error {
         if rows != nil {
             for rows.Next() {
                 var id, partNu int
@@ -642,7 +677,7 @@ func GetFilesBasedOnId(fid int) (*list.List, error) {
     addOn.Write([]byte(") order by d.id"))
     logger.Debug("exec SQL:\n\t" + getFullFileSQL22 + string(addOn.Bytes()))
 
-    e2 := db.Query(func(rows *sql.Rows) error {
+    e2 := dao.Query(func(rows *sql.Rows) error {
         if rows != nil {
             var tparsList list.List
             for rows.Next() {

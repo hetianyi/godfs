@@ -16,6 +16,7 @@ import (
     "util/db"
     "lib_common/bridge"
     "lib_client"
+    "lib_service"
 )
 
 
@@ -38,7 +39,7 @@ func StartService(config map[string] string) {
     secret = config["secret"]
 
     // 连接数据库
-    db.InitDB()
+    lib_service.SetPool(db.NewPool(app.DB_Pool_SIZE))
 
     startHttpDownloadService()
     go startTrackerMaintainer(trackers)

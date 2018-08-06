@@ -11,6 +11,9 @@ import (
     "lib_common/bridge"
     "io"
     "lib_storage"
+    "lib_service"
+    "util/db"
+    "app"
 )
 
 var p, _ = pool.NewPool(1000, 100000)
@@ -24,6 +27,8 @@ var secret string
 func StartService(config map[string] string) {
     port := config["port"]
     secret = config["secret"]
+    // 连接数据库
+    lib_service.SetPool(db.NewPool(app.DB_Pool_SIZE))
     go ExpirationDetection()
     startTrackerService(port)
 }

@@ -17,19 +17,31 @@ import (
 
 // download sqlite3 studio @
 // https://sqlitestudio.pl/index.rvt?act=download
+type IDAO interface {
+    InitDB()
+    connect() (*sql.DB, error)
+    checkDb() error
+    verifyConn()
+    Query(handler func(rows *sql.Rows) error, sqlString string, args ...interface{}) error
+    DoTransaction(works func(tx *sql.Tx) error) error
+}
+
+type DAO struct {
+    db *sql.DB
+    connMutex *sync.Mutex
+    index int
+}
 
 
-var db *sql.DB
-var connMutex sync.Mutex
-
-func InitDB() {
-    logger.Debug("initial db connection")
-    connMutex = *new(sync.Mutex)
-    checkDb()
+func (dao *DAO) InitDB(index int) {
+    logger.Debug("initial db connection with index:", index)
+    dao.connMutex = new(sync.Mutex)
+    dao.checkDb()
+    dao.index = index
 }
 
 // TODO db connection pool
-func connect() (*sql.DB, error) {
+func (dao *DAO) connect() (*sql.DB, error) {
     logger.Debug("connect db file:", app.BASE_PATH + "/data/storage.db")
     fInfo, e := os.Stat(app.BASE_PATH + "/data/storage.db")
     // if db not exists, copy template db file to data path.
@@ -44,30 +56,30 @@ func connect() (*sql.DB, error) {
     return sql.Open("sqlite3", app.BASE_PATH + "/data/storage.db")
 }
 
-func checkDb() error {
-    connMutex.Lock()
-    defer connMutex.Unlock()
+func (dao *DAO) checkDb() error {
+    dao.connMutex.Lock()
+    defer dao.connMutex.Unlock()
     for {
-        if db == nil {
-            tdb, e := connect()
+        if dao.db == nil {
+            tdb, e := dao.connect()
             if e != nil {
                 logger.Error("error connect db, wait...:", app.BASE_PATH + "/data/storage.db")
                 time.Sleep(time.Second * 5)
                 continue
             }
-            db = tdb
+            dao.db = tdb
             logger.Debug("connect db success")
             return nil
         } else {
-            return db.Ping()
+            return dao.db.Ping()
         }
     }
 }
 
-func verifyConn() {
+func (dao *DAO) verifyConn() {
     for {
-        if e := checkDb(); e != nil {
-            db = nil
+        if e := dao.checkDb(); e != nil {
+            dao.db = nil
             logger.Error(e)
             time.Sleep(time.Second * 2)
         } else {
@@ -79,15 +91,15 @@ func verifyConn() {
 
 
 // db db query
-func Query(handler func(rows *sql.Rows) error, sqlString string, args ...interface{}) error {
-    verifyConn()
+func (dao *DAO) Query(handler func(rows *sql.Rows) error, sqlString string, args ...interface{}) error {
+    dao.verifyConn()
     var rs *sql.Rows
     var e error
     logger.Debug("exec SQL:\n\t" + sqlString)
     if args == nil || len(args) == 0 {
-        rs, e = db.Query(sqlString)
+        rs, e = dao.db.Query(sqlString)
     } else {
-        rs, e = db.Query(sqlString, args...)
+        rs, e = dao.db.Query(sqlString, args...)
     }
     if e != nil {
         return e
@@ -96,9 +108,9 @@ func Query(handler func(rows *sql.Rows) error, sqlString string, args ...interfa
 }
 
 
-func DoTransaction(works func(tx *sql.Tx) error) error {
-    verifyConn()
-    tx, e1 := db.Begin()
+func (dao *DAO) DoTransaction(works func(tx *sql.Tx) error) error {
+    dao.verifyConn()
+    tx, e1 := dao.db.Begin()
     if e1 != nil {
         return e1
     }
