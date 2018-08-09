@@ -8,13 +8,16 @@ import (
     "container/list"
     "strconv"
     "math"
-    "lib_common/bridge"
     "encoding/json"
+    "util/db"
 )
 
 func initParam() {
     app.BASE_PATH = "E:/godfs-storage/tracker"
     logger.SetLogLevel(1)
+
+    // 连接数据库
+    SetPool(db.NewPool(app.DB_Pool_SIZE))
 }
 
 func Test1(t *testing.T) {
@@ -53,18 +56,6 @@ func Test6(t *testing.T) {
     //fmt.Println(AddSyncTask(6))
 }
 
-func Test7(t *testing.T) {
-    initParam()
-    ls, e := GetSyncTask()
-    if e != nil {
-        logger.Error(e)
-    } else {
-        for ele := ls.Front(); ele != nil; ele = ele.Next() {
-            m := ele.Value.(*bridge.Task)
-            fmt.Println(m.FileId)
-        }
-    }
-}
 
 func Test8(t *testing.T) {
     initParam()
@@ -83,6 +74,27 @@ func Test10(t *testing.T) {
     fmt.Println(ret.Len())
     s, _ := json.Marshal(*ret)
     fmt.Println(string(s))
+}
+
+func Test11(t *testing.T) {
+    initParam()
+    config, e := GetTrackerConfig("xxxx")
+    if e != nil {
+        logger.Error(e)
+        return
+    }
+    fmt.Println(config)
+}
+
+
+func Test12(t *testing.T) {
+    initParam()
+    UpdateTrackerSyncId("xxxxxxxxx", 111)
+}
+
+func Test13(t *testing.T) {
+    initParam()
+    UpdateLocalPushId("xxxxxxxxx", 222)
 }
 
 

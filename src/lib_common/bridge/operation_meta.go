@@ -135,7 +135,11 @@ type OperationPullFileResponse struct {
     Files []File
 }
 
-
+type TrackerConfig struct {
+    UUID string
+    MasterSyncId int
+    LocalPushId int
+}
 
 
 

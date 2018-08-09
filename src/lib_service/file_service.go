@@ -41,6 +41,17 @@ const (
 
     updateSyncId  = `replace into sys(id, master_sync_id) values(1, ?)`
     getSyncId  = `select master_sync_id from sys where id=1`
+
+
+    updateTrackerSyncId = `replace into trackers(uuid, master_sync_id, last_reg_time, local_push_id)
+                            values(?, ?, datetime('now','localtime'), (select local_push_id from trackers where uuid = ?))`
+    updateLocalPushId = `replace into trackers(uuid, master_sync_id, last_reg_time, local_push_id)
+                            values(?, 
+                            (select master_sync_id from trackers where uuid = ?),
+                            (select last_reg_time from trackers where uuid = ?), ?)`
+
+    getTrackerConfig = `select master_sync_id, local_push_id from trackers where uuid=?`
+
 )
 
 var dbPool *db.DbConnPool
@@ -48,7 +59,6 @@ var dbPool *db.DbConnPool
 func SetPool(pool *db.DbConnPool) {
     dbPool = pool
 }
-
 
 // get file id by md5
 func GetFileId(md5 string) (int, error) {
@@ -715,6 +725,67 @@ func GetFilesBasedOnId(fid int) (*list.List, error) {
     return &files, nil
 }
 
+// 更新一个tracker的同步ID
+func UpdateTrackerSyncId(trackerUUID string, id int) error {
+    dao := dbPool.GetDB()
+    defer dbPool.ReturnDB(dao)
+    return dao.DoTransaction(func(tx *sql.Tx) error {
+        state, e2 := tx.Prepare(updateTrackerSyncId)
+        if e2 != nil {
+            return e2
+        }
+        _, e3 := state.Exec(trackerUUID, id, trackerUUID)
+        if e3 != nil {
+            return e3
+        }
+        return nil
+    })
+}
+
+
+// 更新一个tracker的本地ID
+func UpdateLocalPushId(trackerUUID string, id int) error {
+    dao := dbPool.GetDB()
+    defer dbPool.ReturnDB(dao)
+    return dao.DoTransaction(func(tx *sql.Tx) error {
+        state, e2 := tx.Prepare(updateLocalPushId)
+        if e2 != nil {
+            return e2
+        }
+        _, e3 := state.Exec(trackerUUID, trackerUUID, trackerUUID, id)
+        if e3 != nil {
+            return e3
+        }
+        return nil
+    })
+}
+
+// 获取tracker的config
+func GetTrackerConfig(trackerUUID string) (*bridge.TrackerConfig, error) {
+    dao := dbPool.GetDB()
+    defer dbPool.ReturnDB(dao)
+
+    var config *bridge.TrackerConfig
+    err := dao.Query(func(rows *sql.Rows) error {
+        if rows != nil {
+            for rows.Next() {
+                config = &bridge.TrackerConfig{}
+                var trackerSyncId, localPushId int
+                e := rows.Scan(&trackerSyncId, &localPushId)
+                if e != nil {
+                    return e
+                }
+                config.MasterSyncId = trackerSyncId
+                config.LocalPushId = localPushId
+            }
+        }
+        return nil
+    }, getTrackerConfig, trackerUUID)
+    if err != nil {
+        return nil, err
+    }
+    return config, nil
+}
 
 func createBatchPartSQL(parts []bridge.FilePart) string {
     var sql bytes.Buffer
