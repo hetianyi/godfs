@@ -48,10 +48,13 @@ type ReadPos struct {
 // validate operation request.
 type OperationValidationRequest struct {
     Secret string `json:"secret"`
+    UUID string `json:"uuid"`
 }
 // validate operation response.
 type OperationValidationResponse struct {
     Status int `json:"status"`
+    UUID string `json:"uuid"`
+    IsNew bool `json:"isnew"`// tracker是否标志新client
 }
 
 

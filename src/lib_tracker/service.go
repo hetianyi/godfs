@@ -29,6 +29,19 @@ func StartService(config map[string] string) {
     secret = config["secret"]
     // 连接数据库
     lib_service.SetPool(db.NewPool(app.DB_Pool_SIZE))
+
+    e1 := lib_service.ConfirmLocalInstanceUUID(common.UUID())
+    if e1 != nil {
+        logger.Fatal("error persist local instance uuid:", e1)
+    }
+
+    uuid, e2 := lib_service.GetLocalInstanceUUID()
+    if e2 != nil {
+        logger.Fatal("error fetch local instance uuid:", e2)
+    }
+    app.UUID = uuid
+    logger.Info("instance start with uuid:", app.UUID)
+
     go ExpirationDetection()
     startTrackerService(port)
 }

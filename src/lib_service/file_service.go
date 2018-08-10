@@ -52,6 +52,18 @@ const (
 
     getTrackerConfig = `select master_sync_id, local_push_id from trackers where uuid=?`
 
+    confirmLocalInstanceUUID = `replace into sys(key, value) values(
+                'uuid',
+                (select case when 
+                (select count(*) from sys where key = 'uuid') = 0 then ? 
+                else (select value from sys where key = 'uuid') end))`
+
+    getLocalInstanceUUID = `select value from sys where key = uuid`
+
+    regStorageClient = `replace into clients(uuid, last_reg_time) values(?, datetime('now','localtime'))`
+
+    existsStorageClient = `select count(*) from clients a where a.uuid = ?`
+
 )
 
 var dbPool *db.DbConnPool
@@ -786,6 +798,88 @@ func GetTrackerConfig(trackerUUID string) (*bridge.TrackerConfig, error) {
     }
     return config, nil
 }
+
+
+
+// 更新一个tracker的本地ID
+func ConfirmLocalInstanceUUID(uuid string) error {
+    dao := dbPool.GetDB()
+    defer dbPool.ReturnDB(dao)
+    return dao.DoTransaction(func(tx *sql.Tx) error {
+        state, e2 := tx.Prepare(confirmLocalInstanceUUID)
+        if e2 != nil {
+            return e2
+        }
+        _, e3 := state.Exec(uuid)
+        if e3 != nil {
+            return e3
+        }
+        return nil
+    })
+}
+
+//
+func GetLocalInstanceUUID() (string, error) {
+    dao := dbPool.GetDB()
+    defer dbPool.ReturnDB(dao)
+    var uuid string
+    err := dao.Query(func(rows *sql.Rows) error {
+        if rows != nil {
+            for rows.Next() {
+                e := rows.Scan(&uuid)
+                if e != nil {
+                    return e
+                }
+            }
+        }
+        return nil
+    }, getLocalInstanceUUID)
+    if err != nil {
+        return "", err
+    }
+    return uuid, nil
+}
+
+
+
+func QueryExistsStorageClient(uuid string) bool {
+    dao := dbPool.GetDB()
+    defer dbPool.ReturnDB(dao)
+    var count int
+    dao.Query(func(rows *sql.Rows) error {
+        if rows != nil {
+            for rows.Next() {
+                e := rows.Scan(&count)
+                if e != nil {
+                    return e
+                }
+            }
+        }
+        return nil
+    }, existsStorageClient)
+    if count > 0 {
+        return true
+    }
+    return false
+}
+
+// 更新一个tracker的本地ID
+func RegisterStorageClient(uuid string) error {
+    dao := dbPool.GetDB()
+    defer dbPool.ReturnDB(dao)
+    return dao.DoTransaction(func(tx *sql.Tx) error {
+        state, e2 := tx.Prepare(regStorageClient)
+        if e2 != nil {
+            return e2
+        }
+        _, e3 := state.Exec(uuid)
+        if e3 != nil {
+            return e3
+        }
+        return nil
+    })
+}
+
 
 func createBatchPartSQL(parts []bridge.FilePart) string {
     var sql bytes.Buffer

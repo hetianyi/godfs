@@ -34,6 +34,8 @@ func main() {
     s, _ := filepath.Split(abs)
     s = file.FixPath(s) // client executor parent path
 
+    // set client type
+    app.CLIENT_TYPE = 2
     //for test
     //a := "D:/nginx-1.8.1.zip"
 

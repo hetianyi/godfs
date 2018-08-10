@@ -30,6 +30,7 @@ func init() {
 }
 
 // storage server provide http download service
+// TODO 加可选http验证
 func DownloadHandler(writer http.ResponseWriter, request *http.Request) {
 
     qIndex := strings.Index(request.RequestURI, "?")

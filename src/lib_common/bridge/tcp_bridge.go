@@ -11,6 +11,7 @@ import (
     "app"
     "util/logger"
     "hash"
+    "lib_service"
 )
 
 // operation codes const.
@@ -194,6 +195,7 @@ func (bridge *Bridge) ValidateConnection(secret string) error {
     }
     validateMeta := &OperationValidationRequest {
         Secret: sec,
+        UUID: app.UUID,
     }
     // send validate request
     e1 := bridge.SendRequest(O_CONNECT, validateMeta, 0, nil)
@@ -212,6 +214,9 @@ func (bridge *Bridge) ValidateConnection(secret string) error {
         }
         if validateResp.Status != STATUS_OK {
             return errors.New("error connect to server, server response status:" + strconv.Itoa(validateResp.Status))
+        }
+        if validateResp.IsNew {
+            lib_service.UpdateTrackerSyncId(validateResp.UUID, 0)
         }
         // connect success
         return nil

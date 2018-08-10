@@ -21,12 +21,20 @@ func validateClientHandler(request *bridge.Meta, connBridge *bridge.Bridge) erro
     if e1 == nil {
         if head.Secret == app.SECRET {
             response.Status = bridge.STATUS_OK
+            response.UUID = app.UUID
+            if lib_service.QueryExistsStorageClient(head.UUID) {
+                response.IsNew = false
+            } else {
+                response.IsNew = true
+            }
+            e1 = lib_service.RegisterStorageClient(head.UUID)
         } else {
             response.Status = bridge.STATUS_BAD_SECRET
         }
     } else {
         response.Status = bridge.STATUS_INTERNAL_SERVER_ERROR
     }
+    logger.Info("register storage client:", head.UUID)
     e3 := connBridge.SendResponse(response, 0, nil)
     if e1 != nil {
         return e1

@@ -19,6 +19,8 @@ import (
 )
 
 func Init() *Client {
+    // set client type
+    app.CLIENT_TYPE = 2
     logger.SetLogLevel(1)
     app.TRACKERS = "192.168.0.106:1022"
     app.SECRET = "OASAD834jA97AAQE761=="
