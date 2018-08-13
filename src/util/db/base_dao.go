@@ -40,7 +40,6 @@ func (dao *DAO) InitDB(index int) {
     dao.index = index
 }
 
-// TODO db connection pool
 func (dao *DAO) connect() (*sql.DB, error) {
     logger.Debug("connect db file:", app.BASE_PATH + "/data/storage.db")
     fInfo, e := os.Stat(app.BASE_PATH + "/data/storage.db")

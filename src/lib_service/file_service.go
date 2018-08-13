@@ -21,8 +21,12 @@ const (
 
     addSyncTaskSQL  = "insert into task(fid, type, status) values(?,?,?)"
     finishSyncTaskSQL  = "update task set status=0 where fid=?"
-    getSyncTaskSQL  = `select fid, type from task a
-                        left join files b on a.fid=b.id where status=1 and type=? and b.instance in (?) limit ?`
+    getLocalPushFiles  = `select f.id from files f where f.id > (
+                            select a.local_push_id from trackers a where a.uuid=?
+                        ) and f.instance = ? limit ?`
+    getDownloadFiles   = `select fid from files a where a.id >(
+                            select value from sys where key='download_pos'
+                        ) and a.finish=0 limit ?`
     getFullFileSQL1  = `select b.id, b.md5, b.instance, parts_num from files b where b.md5=? `
     getFullFileSQL11  = `select b.id, b.md5, b.instance, parts_num from files b where b.id=? `
     getFullFileSQL12  = `select b.id, b.md5, b.instance, parts_num from files b where b.id > ? limit 10`
@@ -194,7 +198,7 @@ func StorageAddFile(md5 string, parts *list.List) error {
 }
 
 
-
+// TODO continue here
 // storage add file which is not exist at local
 func StorageAddRemoteFile(fi *bridge.File) error {
     fid, ee := GetFileId(fi.Md5)
@@ -342,15 +346,15 @@ func AddSyncTask(fid int, taskType int, tx *sql.Tx) error {
     return nil
 }
 
-func FinishSyncTask(taskId int) error {
+func FinishLocalFilePushTask(fid int, trackerUUID string) error {
     dao := dbPool.GetDB()
     defer dbPool.ReturnDB(dao)
     return dao.DoTransaction(func(tx *sql.Tx) error {
-        state, e2 := tx.Prepare(finishSyncTaskSQL)
+        state, e2 := tx.Prepare(updateLocalPushId)
         if e2 != nil {
             return e2
         }
-        _, e3 := state.Exec(taskId)
+        _, e3 := state.Exec(trackerUUID, trackerUUID, trackerUUID, fid)
         if e3 != nil {
             return e3
         }
@@ -358,7 +362,8 @@ func FinishSyncTask(taskId int) error {
     })
 }
 
-func GetTask(tasType int, instanceIds string) (*list.List, error) {
+// 获取推送到tracker的文件
+func GetLocalPushFileTask(tasType int, trackerUUID string) (*list.List, error) {
     var ls list.List
     dao := dbPool.GetDB()
     defer dbPool.ReturnDB(dao)
@@ -370,12 +375,37 @@ func GetTask(tasType int, instanceIds string) (*list.List, error) {
                 if e1 != nil {
                     return e1
                 }
-                ret := &bridge.Task{FileId: fid, TaskType: taskType}
+                ret := &bridge.Task{FileId: fid, TaskType: tasType}
                 ls.PushBack(ret)
             }
         }
         return nil
-    }, getSyncTaskSQL, tasType, instanceIds, 10)
+    }, getLocalPushFiles, trackerUUID, 10)
+    if e != nil {
+        return nil, e
+    }
+    return &ls, nil
+}
+
+// 获取下载任务文件
+func GetDownloadFileTask(tasType int) (*list.List, error) {
+    var ls list.List
+    dao := dbPool.GetDB()
+    defer dbPool.ReturnDB(dao)
+    e := dao.Query(func(rows *sql.Rows) error {
+        if rows != nil {
+            for rows.Next() {
+                var fid, taskType int
+                e1 := rows.Scan(&fid, &taskType)
+                if e1 != nil {
+                    return e1
+                }
+                ret := &bridge.Task{FileId: fid, TaskType: tasType}
+                ls.PushBack(ret)
+            }
+        }
+        return nil
+    }, getDownloadFiles, 10)
     if e != nil {
         return nil, e
     }

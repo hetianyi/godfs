@@ -84,6 +84,7 @@ type Meta struct {
 
 type Bridge struct {
     connection net.Conn
+    UUID string
 }
 
 func (bridge *Bridge) Close() {
@@ -215,8 +216,10 @@ func (bridge *Bridge) ValidateConnection(secret string) error {
         if validateResp.Status != STATUS_OK {
             return errors.New("error connect to server, server response status:" + strconv.Itoa(validateResp.Status))
         }
+        bridge.UUID = validateResp.UUID
+        // if the client is new to tracker server, then update the client master_sync_id from 0.
         if validateResp.IsNew {
-            lib_service.UpdateTrackerSyncId(validateResp.UUID, 0)
+            return lib_service.UpdateTrackerSyncId(validateResp.UUID, 0)
         }
         // connect success
         return nil

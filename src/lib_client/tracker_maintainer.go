@@ -128,6 +128,16 @@ func (maintainer *TrackerMaintainer) track(tracker string, index int) {
                 bridge.Close(conn)
                 logger.Error(e1)
             } else {
+                /*trackerConfig, te := lib_service.GetTrackerConfig(connBridge.UUID)
+                if te != nil {
+                    logger.Error(te)
+                    time.Sleep(time.Second * 10)
+                    continue
+                }
+                if trackerConfig == nil {
+                    trackerConfig = &bridge.TrackerConfig{UUID: connBridge.UUID, MasterSyncId: 0, LocalPushId: 0}
+                }*/
+
                 retry = 0
                 logger.Debug("connect to tracker server success.")
                 trackerInstance.SetConnBridge(connBridge)
@@ -409,7 +419,8 @@ func (tracker *TrackerInstance) ExecTask(task *bridge.Task) (bool, error) {
             if regResp.Status != bridge.STATUS_OK {
                 return errors.New("error register file "+ strconv.Itoa(task.FileId) +" to tracker server, server response status:" + strconv.Itoa(regResp.Status))
             }
-            e7 := lib_service.FinishSyncTask(task.FileId)
+            // update table trackers and set local_push_fid to new id
+            e7 := lib_service.FinishLocalFilePushTask(task.FileId, tracker.connBridge.UUID)
             if e7 != nil {
                 return e7
             }
@@ -518,9 +529,9 @@ func (tracker *TrackerInstance) ExecTask(task *bridge.Task) (bool, error) {
 // ------------------------------------------------
 
 
-// 查询本地持久化任务收集器
+// 查询推送文件到tracker的任务收集器
 func QueryPushFileTaskCollector(tracker *TrackerInstance) {
-    taskList, e1 := lib_service.GetTask(app.TASK_REPORT_FILE, app.INSTANCE_ID)
+    taskList, e1 := lib_service.GetLocalPushFileTask(app.TASK_REPORT_FILE, tracker.connBridge.UUID)
     if e1 != nil {
         logger.Error(e1)
         return
@@ -529,15 +540,15 @@ func QueryPushFileTaskCollector(tracker *TrackerInstance) {
         AddTask(e.Value.(*bridge.Task), tracker)
     }
 }
+// TODO 标记多次下载失败的任务文件
 // 查询本地持久化任务收集器
-// TODO 只查询存活的member列表中instance的file
 func QueryDownloadFileTaskCollector(tracker *TrackerInstance) {
     members := collectMemberInstanceId()
     // no member, no server for download.
     if members == "" {
         return
     }
-    taskList, e1 := lib_service.GetTask(app.TASK_DOWNLOAD_FILE, collectMemberInstanceId())
+    taskList, e1 := lib_service.GetDownloadFileTask(app.TASK_DOWNLOAD_FILE)
     if e1 != nil {
         logger.Error(e1)
         return
@@ -630,7 +641,7 @@ func downloadFile(fi *bridge.File) {
                     md5 := hex.EncodeToString(md.Sum(nil))
                     if md5 != part.Md5 {
                         file.Delete(fi.Name())
-                        return errors.New("download error: file fingerprint confirmation failed")
+                        return errors.New("download error: file fingerprint confirm failed")
                     }
                     e5 := lib_common.MoveTmpFileTo(part.Md5, fi)
                     if e5 != nil {
