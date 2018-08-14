@@ -43,13 +43,13 @@ func (pool *ClientConnectionPool) Init(maxConnPerServer int) {
     pool.maxConnPerServer = maxConnPerServer
 }
 
-func GetStorageServerUID(server *bridge.Member) string {
+func GetStorageServerUID(server *bridge.ExpireMember) string {
     return server.BindAddr + ":" + strconv.Itoa(server.Port) + ":" + server.Group + ":" + server.InstanceId
 }
 
 // connection pool has not been implemented.
 // for now, one client only support single connection with each storage.
-func (pool *ClientConnectionPool) GetConnBridge(server *bridge.Member) (*bridge.Bridge, error) {
+func (pool *ClientConnectionPool) GetConnBridge(server *bridge.ExpireMember) (*bridge.Bridge, error) {
     pool.getLock.Lock()
     defer pool.getLock.Unlock()
     list := pool.getConnMap(server)
@@ -62,7 +62,7 @@ func (pool *ClientConnectionPool) GetConnBridge(server *bridge.Member) (*bridge.
     return nil, MAX_CONN_EXCEED_ERROR
 }
 
-func (pool *ClientConnectionPool) newConnection(server *bridge.Member) (*bridge.Bridge, error) {
+func (pool *ClientConnectionPool) newConnection(server *bridge.ExpireMember) (*bridge.Bridge, error) {
     logger.Debug("connecting to storage server...")
     con, e := net.Dial("tcp", server.BindAddr + ":" + strconv.Itoa(server.Port))
     if e != nil {
@@ -76,7 +76,7 @@ func (pool *ClientConnectionPool) newConnection(server *bridge.Member) (*bridge.
     }
 
     // if the client is new to tracker server, then update the client master_sync_id from 0.
-    if isNew {
+    if isNew && app.CLIENT_TYPE == 1  {
         e2 := lib_service.UpdateTrackerSyncId(connBridge.UUID, 0, nil)
         if e2 != nil {
             connBridge.Close()
@@ -89,7 +89,7 @@ func (pool *ClientConnectionPool) newConnection(server *bridge.Member) (*bridge.
 }
 
 // finish using tcp connection bridge and return it to connection pool.
-func (pool *ClientConnectionPool) ReturnConnBridge(server *bridge.Member, connBridge *bridge.Bridge) {
+func (pool *ClientConnectionPool) ReturnConnBridge(server *bridge.ExpireMember, connBridge *bridge.Bridge) {
     pool.getLock.Lock()
     defer pool.getLock.Unlock()
     connList := pool.getConnMap(server)
@@ -97,7 +97,7 @@ func (pool *ClientConnectionPool) ReturnConnBridge(server *bridge.Member, connBr
     logger.Debug("return health connection:", connList.Len())
 }
 // finish using tcp connection bridge and return it to connection pool.
-func (pool *ClientConnectionPool) ReturnBrokenConnBridge(server *bridge.Member, connBridge *bridge.Bridge) {
+func (pool *ClientConnectionPool) ReturnBrokenConnBridge(server *bridge.ExpireMember, connBridge *bridge.Bridge) {
     pool.getLock.Lock()
     defer pool.getLock.Unlock()
     connBridge.Close()
@@ -105,7 +105,7 @@ func (pool *ClientConnectionPool) ReturnBrokenConnBridge(server *bridge.Member, 
     logger.Debug("return broken connection:", pool.connMap[GetStorageServerUID(server)].Len())
 }
 
-func (pool *ClientConnectionPool) IncreaseActiveConnection(server *bridge.Member, value int) int {
+func (pool *ClientConnectionPool) IncreaseActiveConnection(server *bridge.ExpireMember, value int) int {
     pool.statusLock.Lock()
     defer pool.statusLock.Unlock()
     oldVal := pool.activeConnCounter[GetStorageServerUID(server)]
@@ -114,7 +114,7 @@ func (pool *ClientConnectionPool) IncreaseActiveConnection(server *bridge.Member
 }
 
 
-func (pool *ClientConnectionPool) getConnMap(server *bridge.Member) *list.List {
+func (pool *ClientConnectionPool) getConnMap(server *bridge.ExpireMember) *list.List {
     uid := GetStorageServerUID(server)
     connList := pool.connMap[uid]
     if connList == nil {

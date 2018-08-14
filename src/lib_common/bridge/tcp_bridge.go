@@ -9,7 +9,6 @@ import (
     "bytes"
     "strconv"
     "app"
-    "util/logger"
     "hash"
 )
 
@@ -25,6 +24,7 @@ const (
     O_SYNC_STORAGE = 7
     O_PULL_NEW_FILES = 8
     O_UPLOAD = 9
+    O_SYNC_MEMBERS = 10
 
 )
 
@@ -53,6 +53,7 @@ func init() {
     operationHeadMap[O_REG_FILE] = []byte{1,7}
     operationHeadMap[O_SYNC_STORAGE] = []byte{1,8}
     operationHeadMap[O_PULL_NEW_FILES] = []byte{1,9}
+    operationHeadMap[O_SYNC_MEMBERS] = []byte{1,10}
 }
 
 // SendReceiveCloser
@@ -160,7 +161,7 @@ func (bridge *Bridge) SendResponse(meta interface{}, bodyLen uint64, bodyWriterH
     if e2 != nil {
         return e2
     }
-    logger.Debug(string(response.MetaBody))
+    //logger.Debug(string(response.MetaBody))
     metaLenBytes := convertLen2Bytes(response.metaLength)
     bodyLenBytes := convertLen2Bytes(response.BodyLength)
     var headerBuff bytes.Buffer

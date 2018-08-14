@@ -52,7 +52,9 @@ func AddStorageServer(meta *bridge.OperationRegisterStorageClientRequest) {
         Host: meta.BindAddr,
         Port: meta.Port,
     }
-    logger.Debug("register storage server:", key)
+    if managedStorages[key] == nil {
+        logger.Debug("register storage server:", key)
+    }
     managedStorages[key] = holdMeta
     //js, _ := json.Marshal(*managedStorages[key])
     //fmt.Println(string(js))
@@ -65,7 +67,7 @@ func FutureExpireStorageServer(meta *bridge.OperationRegisterStorageClientReques
     defer operationLock.Unlock()
     if meta != nil {
         s,_ := json.Marshal(meta)
-        logger.Info("expire storage client:", s)
+        logger.Info("expire storage client:", string(s))
         key := meta.BindAddr + ":" + strconv.Itoa(meta.Port)
         holdMeta := &storageMeta{
             ExpireTime: timeutil.GetTimestamp(time.Now().Add(time.Second * app.STORAGE_CLIENT_EXPIRE_TIME)),//set to 100 years

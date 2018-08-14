@@ -183,7 +183,7 @@ func connectAndValidate(conn net.Conn) (*bridge.Bridge, error) {
         connBridge.Close()
         return nil, e1
     }
-    if isNew {
+    if isNew && app.CLIENT_TYPE == 1 {
         e2 := lib_service.UpdateTrackerSyncId(connBridge.UUID, 0, nil)
         if e2 != nil {
             connBridge.Close()
@@ -387,7 +387,7 @@ func (tracker *TrackerInstance) ExecTask(task *bridge.Task) (bool, error) {
             Port: app.PORT,
         }
         // reg client
-        e2 := connBridge.SendRequest(bridge.O_REG_STORAGE, regClientMeta, 0, nil)
+        e2 := connBridge.SendRequest(bridge.O_SYNC_MEMBERS, regClientMeta, 0, nil)
         if e2 != nil {
             return true, e2
         }
@@ -425,10 +425,10 @@ func (tracker *TrackerInstance) ExecTask(task *bridge.Task) (bool, error) {
         maxId := 0
         for ele := files.Front(); ele != nil; ele = ele.Next() {
             fs[i] = *ele.Value.(*bridge.File)
-            i++
             if maxId < fs[i].Id {
                 maxId = fs[i].Id
             }
+            i++
         }
         // register storage client to tracker server
         regFileMeta := &bridge.OperationRegisterFileRequest {

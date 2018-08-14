@@ -107,13 +107,13 @@ func clientHandler(conn net.Conn) {
                 // route
                 if request.Operation == bridge.O_CONNECT {
                     return validateClientHandler(request, connBridge)
-                } else if request.Operation == bridge.O_REG_STORAGE {
+                } else if request.Operation == bridge.O_SYNC_MEMBERS {// for now it used to storage sync it's members.
                     var e error
-                    storageClient, e = registerStorageClientHandler(request, conn, connBridge)
+                    storageClient, e = syncStorageMemberHandler(request, conn, connBridge)
                     return e
                 } else if request.Operation == bridge.O_REG_FILE {
                     return registerFileHandler(request, connBridge)
-                } else if request.Operation == bridge.O_SYNC_STORAGE {
+                } else if request.Operation == bridge.O_SYNC_STORAGE {//for download or upload client  getting all storages.
                     return syncStorageServerHandler(request, connBridge)
                 } else if request.Operation == bridge.O_QUERY_FILE {
                     return lib_storage.QueryFileHandler(request, connBridge, 2)

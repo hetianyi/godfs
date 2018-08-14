@@ -46,10 +46,10 @@ const (
                             values(?, ?, datetime('now','localtime'), (select local_push_id from trackers where uuid = ?))`
     updateLocalPushId = `replace into trackers(uuid, tracker_sync_id, last_reg_time, local_push_id)
                             values(?, 
-                            (select master_sync_id from trackers where uuid = ?),
+                            (select tracker_sync_id from trackers where uuid = ?),
                             (select last_reg_time from trackers where uuid = ?), ?)`
 
-    getTrackerConfig = `select master_sync_id, local_push_id from trackers where uuid=?`
+    getTrackerConfig = `select tracker_sync_id, local_push_id from trackers where uuid=?`
 
     confirmLocalInstanceUUID = `replace into sys(key, value) values(
                 'uuid',
@@ -171,7 +171,7 @@ func StorageAddFile(md5 string, parts *list.List) error {
         if e2 != nil {
             return e2
         }
-        ret, e3 := state.Exec(md5, parts.Len(), app.INSTANCE_ID, 1, 0)
+        ret, e3 := state.Exec(md5, parts.Len(), app.INSTANCE_ID, 1)
         if e3 != nil {
             return e3
         }
@@ -226,7 +226,7 @@ func StorageAddTrackerPulledFile(fis []bridge.File, trackerUUID string) error {
             if e2 != nil {
                 return e2
             }
-            ret, e3 := state.Exec(fi.Md5, fi.PartNum, fi.Instance, 0, 1)
+            ret, e3 := state.Exec(fi.Md5, fi.PartNum, fi.Instance, 0)
             if e3 != nil {
                 return e3
             }
@@ -297,7 +297,7 @@ func TrackerAddFile(meta *bridge.OperationRegisterFileRequest) error {
             if e2 != nil {
                 return e2
             }
-            ret, e3 := state.Exec(fi.Md5, fi.PartNum, instance, 1, 1)
+            ret, e3 := state.Exec(fi.Md5, fi.PartNum, instance, 1)
             if e3 != nil {
                 return e3
             }
@@ -794,15 +794,29 @@ func GetFilesBasedOnId(fid int) (*list.List, error) {
 
 // 更新一个tracker的同步ID
 func UpdateTrackerSyncId(trackerUUID string, id int, tx *sql.Tx) error {
-    dao := dbPool.GetDB()
-    defer dbPool.ReturnDB(dao)
-    state, e2 := tx.Prepare(updateTrackerSyncId)
-    if e2 != nil {
-        return e2
-    }
-    _, e3 := state.Exec(trackerUUID, id, trackerUUID)
-    if e3 != nil {
-        return e3
+    if tx == nil {
+        dao := dbPool.GetDB()
+        defer dbPool.ReturnDB(dao)
+        return dao.DoTransaction(func(tx *sql.Tx) error {
+            state, e2 := tx.Prepare(updateTrackerSyncId)
+            if e2 != nil {
+                return e2
+            }
+            _, e3 := state.Exec(trackerUUID, id, trackerUUID)
+            if e3 != nil {
+                return e3
+            }
+            return nil
+        })
+    } else {
+        state, e2 := tx.Prepare(updateTrackerSyncId)
+        if e2 != nil {
+            return e2
+        }
+        _, e3 := state.Exec(trackerUUID, id, trackerUUID)
+        if e3 != nil {
+            return e3
+        }
     }
     return nil
 }

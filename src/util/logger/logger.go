@@ -74,13 +74,11 @@ func Fatal(o ...interface{}) {
 func write(levelPrefix string, o ...interface{}) {
     line := fmt.Sprint(o)
     ts := timeutil.GetLongLongDateString(time.Now())
-
     var buff bytes.Buffer
-
-    getCaller(&buff)
-
     buff.WriteString(levelPrefix)
     buff.WriteString(ts)
+    buff.WriteString(" ")
+    getCaller(&buff)
     buff.WriteString(" ")
     buff.WriteString(strings.TrimRight(strings.TrimLeft(line, "["), "]"))
     //buff.WriteString(line)

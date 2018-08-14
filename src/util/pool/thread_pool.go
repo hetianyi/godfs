@@ -43,7 +43,7 @@ type Pool struct {
 
 
 func initPool(ThreadSize int, MaxWaitSize int) (*Pool, error) {
-    logger.Debug("initial thread pool...")
+    logger.Trace("initial thread pool...")
     if ThreadSize <= 0 {
         return nil, errors.New("ThreadSize must be positive")
     }
@@ -61,10 +61,10 @@ func initPool(ThreadSize int, MaxWaitSize int) (*Pool, error) {
 
 
 func (pool *Pool) Exec(t func()) error {
-    logger.Debug("pool get new task")
+    logger.Trace("pool get new task")
     // if no free thread found then put the task in 'pool.WaitingList'.
     if *pool.modifyActiveCount(0) >= pool.ThreadSize {
-        logger.Debug("push task into waiting list")
+        logger.Trace("push task into waiting list")
         if pool.WaitingTaskList.Len() >= pool.MaxWaitSize {
             return errors.New("wait list full, can not take any more")
         }
@@ -86,7 +86,7 @@ func (pool *Pool) taskFinish() {
     pool.reassignTaskMutex.Lock()
     defer pool.reassignTaskMutex.Unlock()
     waitList := pool.WaitingTaskList
-    logger.Debug("thread free")
+    logger.Trace("thread free")
     if e := waitList.Front(); e != nil {
         f := waitList.Remove(e).(func())
         pool.RunTask(f)
@@ -102,7 +102,7 @@ func (pool *Pool) RunTask(f func()) {
 
 
 func (t *Task) Run(pool *Pool) {
-    logger.Debug("get a new task")
+    logger.Trace("get a new task")
     // set task to nil and notice finally
     defer func() {
         pool.taskFinish()

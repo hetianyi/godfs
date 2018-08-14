@@ -80,7 +80,7 @@ func (client *Client) Upload(path string, group string) (string, error) {
 
         var excludes list.List
         var connBridge *bridge.Bridge
-        var member *bridge.Member
+        var member *bridge.ExpireMember
         for {
             mem := selectStorageServer(group, "", &excludes)
             // no available storage
@@ -230,7 +230,7 @@ func download(path string, start int64, offset int64, fromSrc bool, client *Clie
 
     var excludes list.List
     var connBridge *bridge.Bridge
-    var member *bridge.Member
+    var member *bridge.ExpireMember
     for {
         mem := selectStorageServer(group, "", &excludes)
         // no available storage
@@ -298,10 +298,12 @@ func download(path string, start int64, offset int64, fromSrc bool, client *Clie
 // TODO 新增连接池
 // select a storage server matching given group and instanceId
 // excludes contains fail storage and not gonna use this time.
-func selectStorageServer(group string, instanceId string, excludes *list.List) *bridge.Member {
+func selectStorageServer(group string, instanceId string, excludes *list.List) *bridge.ExpireMember {
+    memberIteLock.Lock()
+    defer memberIteLock.Unlock()
     var pick list.List
     for ele := GroupMembers.Front(); ele != nil; ele = ele.Next() {
-        b := ele.Value.(*bridge.Member)
+        b := ele.Value.(*bridge.ExpireMember)
         if containsMember(b, excludes) {
             continue
         }
@@ -324,20 +326,20 @@ func selectStorageServer(group string, instanceId string, excludes *list.List) *
     index := 0
     for ele := pick.Front(); ele != nil; ele = ele.Next() {
         if index == rd {
-            return ele.Value.(*bridge.Member)
+            return ele.Value.(*bridge.ExpireMember)
         }
         index++
     }
     return nil
 }
 
-func containsMember(mem *bridge.Member, excludes *list.List) bool {
+func containsMember(mem *bridge.ExpireMember, excludes *list.List) bool {
     if excludes == nil {
         return false
     }
     uid := GetStorageServerUID(mem)
     for ele := excludes.Front(); ele != nil; ele = ele.Next() {
-        if GetStorageServerUID(ele.Value.(*bridge.Member)) == uid {
+        if GetStorageServerUID(ele.Value.(*bridge.ExpireMember)) == uid {
             return true
         }
     }

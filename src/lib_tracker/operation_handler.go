@@ -46,10 +46,10 @@ func validateClientHandler(request *bridge.Meta, connBridge *bridge.Bridge) erro
 }
 
 
-func registerStorageClientHandler(request *bridge.Meta, conn net.Conn,connBridge *bridge.Bridge) (*bridge.OperationRegisterStorageClientRequest, error) {
+func syncStorageMemberHandler(request *bridge.Meta, conn net.Conn,connBridge *bridge.Bridge) (*bridge.OperationRegisterStorageClientRequest, error) {
     valid := true
     var meta = &bridge.OperationRegisterStorageClientRequest{}
-    logger.Debug(string(request.MetaBody))
+    //logger.Debug(string(request.MetaBody))
     e1 := json.Unmarshal(request.MetaBody, meta)
     if e1 != nil {
         return nil, e1
@@ -66,7 +66,7 @@ func registerStorageClientHandler(request *bridge.Meta, conn net.Conn,connBridge
     }
     remoteAddr := strings.Split(conn.RemoteAddr().String(), ":")[0]
     if meta.BindAddr == "" {
-        logger.Warn("storage server not send bind address, using", remoteAddr)
+        logger.Debug("storage server not send bind address, using", remoteAddr)
         meta.BindAddr = remoteAddr
     }
     if !IsInstanceIdUnique(meta) {
@@ -154,12 +154,12 @@ func pullNewFile(request *bridge.Meta, connBridge *bridge.Bridge) error {
         i++
     }
     response.Files = files
-    s, e3 := json.Marshal(response)
+    _, e3 := json.Marshal(response)
     if e3 != nil {
         return e3
-    } else {
+    }/* else {
         logger.Debug(string(s))
-    }
+    }*/
     return connBridge.SendResponse(response, 0, nil)
 }
 
