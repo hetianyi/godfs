@@ -7,6 +7,8 @@ import (
     "util/timeutil"
     "bytes"
     "strings"
+    "runtime"
+    "strconv"
 )
 
 const (
@@ -74,6 +76,9 @@ func write(levelPrefix string, o ...interface{}) {
     ts := timeutil.GetLongLongDateString(time.Now())
 
     var buff bytes.Buffer
+
+    getCaller(&buff)
+
     buff.WriteString(levelPrefix)
     buff.WriteString(ts)
     buff.WriteString(" ")
@@ -88,3 +93,14 @@ func write(levelPrefix string, o ...interface{}) {
     }
 }
 
+
+func getCaller(buff *bytes.Buffer) {
+    _, file, line, success := runtime.Caller(3)
+    if success {
+        buff.WriteString("[")
+        buff.WriteString(file[strings.LastIndex(file, "/") + 1:])
+        buff.WriteString(":")
+        buff.WriteString(strconv.Itoa(line))
+        buff.WriteString("] ")
+    }
+}

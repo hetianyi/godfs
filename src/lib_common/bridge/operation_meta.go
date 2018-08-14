@@ -1,5 +1,7 @@
 package bridge
 
+import "time"
+
 const (
     STATUS_OK = 0
     STATUS_BAD_SECRET = 1
@@ -15,6 +17,21 @@ type Member struct {
     InstanceId string `json:"instance_id"`
     Group string `json:"group"`
     Port int `json:"port"`
+}
+
+type ExpireMember struct {
+    BindAddr string
+    InstanceId string
+    Group string
+    Port int
+    ExpireTime time.Time
+}
+
+func (expireMember *ExpireMember) From(member *Member) {
+    expireMember.BindAddr = member.BindAddr
+    expireMember.InstanceId = member.InstanceId
+    expireMember.Group = member.Group
+    expireMember.Port = member.Port
 }
 
 type FilePart struct {
@@ -121,7 +138,7 @@ type OperationDownloadFileResponse struct {
 
 // register file operation request.
 type OperationRegisterFileRequest struct {
-    File *File `json:"file"`    // 文件md5
+    Files []File `json:"files"`    // 文件md5
 }
 // register file response.
 type OperationRegisterFileResponse struct {

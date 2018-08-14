@@ -43,7 +43,9 @@ func StartService(config map[string] string) {
 
     // 连接数据库
     lib_service.SetPool(db.NewPool(app.DB_Pool_SIZE))
-    e1 := lib_service.ConfirmLocalInstanceUUID(common.UUID())
+    newUUID := common.UUID()
+    logger.Debug("generate UUID:", newUUID)
+    e1 := lib_service.ConfirmLocalInstanceUUID(newUUID)
     if e1 != nil {
         logger.Fatal("error persist local instance uuid:", e1)
     }

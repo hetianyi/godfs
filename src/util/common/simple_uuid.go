@@ -2,9 +2,15 @@ package common
 
 import (
     "math/rand"
+    "time"
 )
 
 var seeds = []rune("abcdefghijklmnopqrstuvwxyz1234567890")
+
+
+func init() {
+    rand.Seed(time.Now().UnixNano())
+}
 
 // create simple uuid from rand seed
 func UUID() string {

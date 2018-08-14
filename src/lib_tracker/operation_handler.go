@@ -99,7 +99,7 @@ func registerFileHandler(request *bridge.Meta, connBridge *bridge.Bridge) error 
     }
     var response = &bridge.OperationRegisterFileResponse{}
     // validate success
-    _, e2 := lib_service.TrackerAddFile(meta)
+    e2 := lib_service.TrackerAddFile(meta)
     if e2 != nil {
         response.Status = bridge.STATUS_INTERNAL_SERVER_ERROR
     } else {

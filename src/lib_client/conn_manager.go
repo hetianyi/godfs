@@ -9,6 +9,7 @@ import (
     "container/list"
     "sync"
     "errors"
+    "lib_service"
 )
 
 var MAX_CONN_EXCEED_ERROR = errors.New("max client connection reached")
@@ -61,17 +62,26 @@ func (pool *ClientConnectionPool) GetConnBridge(server *bridge.Member) (*bridge.
     return nil, MAX_CONN_EXCEED_ERROR
 }
 
-func (pool *ClientConnectionPool) newConnection(server *bridge.Member)(*bridge.Bridge, error) {
+func (pool *ClientConnectionPool) newConnection(server *bridge.Member) (*bridge.Bridge, error) {
     logger.Debug("connecting to storage server...")
     con, e := net.Dial("tcp", server.BindAddr + ":" + strconv.Itoa(server.Port))
     if e != nil {
         return nil, e
     }
     connBridge := bridge.NewBridge(con)
-    e1 := connBridge.ValidateConnection(app.SECRET)
+    isNew, e1 := connBridge.ValidateConnection(app.SECRET)
     if e1 != nil {
         connBridge.Close()
         return nil, e1
+    }
+
+    // if the client is new to tracker server, then update the client master_sync_id from 0.
+    if isNew {
+        e2 := lib_service.UpdateTrackerSyncId(connBridge.UUID, 0, nil)
+        if e2 != nil {
+            connBridge.Close()
+            return nil, e2
+        }
     }
     logger.Debug("successful validate connection:", e1)
     pool.IncreaseActiveConnection(server, 1)

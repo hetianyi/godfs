@@ -19,17 +19,12 @@ const (
     fileExistsSQL  = "select id from files a where a.md5 = ? "
     partExistsSQL  = "select id from parts a where a.md5 = ?"
 
-    addSyncTaskSQL  = "insert into task(fid, type, status) values(?,?,?)"
-    finishSyncTaskSQL  = "update task set status=0 where fid=?"
-    getLocalPushFiles  = `select f.id from files f where f.id > (
-                            select a.local_push_id from trackers a where a.uuid=?
-                        ) and f.instance = ? limit ?`
-    getDownloadFiles   = `select fid from files a where a.id >(
-                            select value from sys where key='download_pos'
-                        ) and a.finish=0 limit ?`
+    getLocalPushFiles  = `select a.local_push_id from trackers a where a.uuid=?`
+    getDownloadFiles   = `select id from files a where a.finish=0 limit ?`
     getFullFileSQL1  = `select b.id, b.md5, b.instance, parts_num from files b where b.md5=? `
     getFullFileSQL11  = `select b.id, b.md5, b.instance, parts_num from files b where b.id=? `
     getFullFileSQL12  = `select b.id, b.md5, b.instance, parts_num from files b where b.id > ? limit 10`
+    getFullFileSQL13  = `select b.id, b.md5, b.instance, parts_num from files b where b.id in`
     getFullFileSQL2  = `select d.md5, d.size
                         from files b
                         left join parts_relation c on b.id = c.fid
@@ -42,14 +37,14 @@ const (
                         from files b
                         left join parts_relation c on b.id = c.fid
                         left join parts d on c.pid = d.id where b.id in(`
+    getFullFileSQL23  = `select b.id, d.md5, d.size
+                        from files b
+                        left join parts_relation c on b.id = c.fid
+                        left join parts d on c.pid = d.id where b.id in`
 
-    updateSyncId  = `replace into sys(id, master_sync_id) values(1, ?)`
-    getSyncId  = `select master_sync_id from sys where id=1`
-
-
-    updateTrackerSyncId = `replace into trackers(uuid, master_sync_id, last_reg_time, local_push_id)
+    updateTrackerSyncId = `replace into trackers(uuid, tracker_sync_id, last_reg_time, local_push_id)
                             values(?, ?, datetime('now','localtime'), (select local_push_id from trackers where uuid = ?))`
-    updateLocalPushId = `replace into trackers(uuid, master_sync_id, last_reg_time, local_push_id)
+    updateLocalPushId = `replace into trackers(uuid, tracker_sync_id, last_reg_time, local_push_id)
                             values(?, 
                             (select master_sync_id from trackers where uuid = ?),
                             (select last_reg_time from trackers where uuid = ?), ?)`
@@ -62,7 +57,7 @@ const (
                 (select count(*) from sys where key = 'uuid') = 0 then ? 
                 else (select value from sys where key = 'uuid') end))`
 
-    getLocalInstanceUUID = `select value from sys where key = uuid`
+    getLocalInstanceUUID = `select value from sys where key = 'uuid'`
 
     regStorageClient = `replace into clients(uuid, last_reg_time) values(?, datetime('now','localtime'))`
 
@@ -77,10 +72,12 @@ func SetPool(pool *db.DbConnPool) {
 }
 
 // get file id by md5
-func GetFileId(md5 string) (int, error) {
+func GetFileId(md5 string, dao *db.DAO) (int, error) {
     var id = 0
-    dao := dbPool.GetDB()
-    defer dbPool.ReturnDB(dao)
+    if dao == nil {
+        dao = dbPool.GetDB()
+        defer dbPool.ReturnDB(dao)
+    }
     e := dao.Query(func(rows *sql.Rows) error {
         if rows != nil {
             for rows.Next() {
@@ -159,7 +156,9 @@ func AddPart(md5 string, size int64) (int, error) {
 // storage add file and add new sync task
 // parts is part id list
 func StorageAddFile(md5 string, parts *list.List) error {
-    fid, ee := GetFileId(md5)
+    dao := dbPool.GetDB()
+    defer dbPool.ReturnDB(dao)
+    fid, ee := GetFileId(md5, dao)
     if ee != nil {
         return ee
     }
@@ -167,14 +166,12 @@ func StorageAddFile(md5 string, parts *list.List) error {
     if fid != 0 {
         return nil
     }
-    dao := dbPool.GetDB()
-    defer dbPool.ReturnDB(dao)
     return dao.DoTransaction(func(tx *sql.Tx) error {
         state, e2 := tx.Prepare(insertFileSQL)
         if e2 != nil {
             return e2
         }
-        ret, e3 := state.Exec(md5, parts.Len(), app.INSTANCE_ID, 1)
+        ret, e3 := state.Exec(md5, parts.Len(), app.INSTANCE_ID, 1, 0)
         if e3 != nil {
             return e3
         }
@@ -193,159 +190,161 @@ func StorageAddFile(md5 string, parts *list.List) error {
                 return e3
             }
         }
-        return AddSyncTask(fid, app.TASK_REPORT_FILE, tx)
+        return nil
     })
 }
 
 
 // TODO continue here
-// storage add file which is not exist at local
-func StorageAddRemoteFile(fi *bridge.File) error {
-    fid, ee := GetFileId(fi.Md5)
-    if ee != nil {
-        return ee
+// store file info which pulled from tracker server.
+// return immediate if error occurs
+func StorageAddTrackerPulledFile(fis []bridge.File, trackerUUID string) error {
+    if fis == nil || len(fis) == 0 {
+        return nil
     }
     dao := dbPool.GetDB()
     defer dbPool.ReturnDB(dao)
-    // file exists, will skip
-    if fid != 0 {
-        return dao.DoTransaction(func(tx *sql.Tx) error {
-            return UpdateSyncId(fi.Id, tx)
-        })
-    }
+    for i := range fis {
+        fi := fis[i]
+        fid, ee := GetFileId(fi.Md5, dao)
+        if ee != nil {
+            return ee
+        }
+        // skip if file exists
+        if fid != 0 {
+            e1 := dao.DoTransaction(func(tx *sql.Tx) error {
+                return UpdateTrackerSyncId(trackerUUID, fi.Id, tx)
+            })
+            if e1 != nil {
+                return e1
+            }
+            continue
+        }
 
-    return dao.DoTransaction(func(tx *sql.Tx) error {
-        state, e2 := tx.Prepare(insertFileSQL)
-        if e2 != nil {
-            return e2
-        }
-        ret, e3 := state.Exec(fi.Md5, fi.PartNum, fi.Instance, 0)
-        if e3 != nil {
-            return e3
-        }
-        lastId, e4 := ret.LastInsertId()
-        if e4 != nil {
-            return e4
-        }
-        fid := int(lastId)
-        for i := range fi.Parts {
-            state1, e4 := tx.Prepare(insertPartSQL)
-            if e4 != nil {
-                return e4
-            }
-            ret1, e5 := state1.Exec(fi.Parts[i].Md5, fi.Parts[i].FileSize)
-            if e5 != nil {
-                return e5
-            }
-            lastPartId, e6 := ret1.LastInsertId()
-            if e6 != nil {
-                return e6
-            }
-            pid := int(lastPartId)
-            state2, e2 := tx.Prepare(insertRelationSQL)
+        e8 := dao.DoTransaction(func(tx *sql.Tx) error {
+            state, e2 := tx.Prepare(insertFileSQL)
             if e2 != nil {
                 return e2
             }
-            _, e3 := state2.Exec(fid, pid)
+            ret, e3 := state.Exec(fi.Md5, fi.PartNum, fi.Instance, 0, 1)
             if e3 != nil {
                 return e3
             }
+            lastId, e4 := ret.LastInsertId()
+            if e4 != nil {
+                return e4
+            }
+            fid := int(lastId)
+            for i := range fi.Parts {
+                state1, e4 := tx.Prepare(insertPartSQL)
+                if e4 != nil {
+                    return e4
+                }
+                ret1, e5 := state1.Exec(fi.Parts[i].Md5, fi.Parts[i].FileSize)
+                if e5 != nil {
+                    return e5
+                }
+                lastPartId, e6 := ret1.LastInsertId()
+                if e6 != nil {
+                    return e6
+                }
+                pid := int(lastPartId)
+                state2, e2 := tx.Prepare(insertRelationSQL)
+                if e2 != nil {
+                    return e2
+                }
+                _, e3 := state2.Exec(fid, pid)
+                if e3 != nil {
+                    return e3
+                }
+            }
+            if ee := UpdateTrackerSyncId(trackerUUID, fi.Id, tx); ee != nil {
+                return ee
+            }
+            // no need any more.
+            //return AddSyncTask(fid, app.TASK_DOWNLOAD_FILE, tx)
+            return nil
+        })
+        if e8 != nil {
+            return e8
         }
-        if ee := UpdateSyncId(fi.Id, tx); ee != nil {
-            return ee
-        }
-        return AddSyncTask(fid, app.TASK_DOWNLOAD_FILE, tx)
-    })
+    }
+    return nil
 }
 
 
 // tracker add file
 // parts is map[md5]partsize
-func TrackerAddFile(meta *bridge.OperationRegisterFileRequest) (int, error) {
+func TrackerAddFile(meta *bridge.OperationRegisterFileRequest) error {
     var fid int
     var e error
-    fid, e = GetFileId(meta.File.Md5)
-    if e != nil {
-        return 0, e
-    }
-    if fid > 0 {
-        return fid, nil
-    }
     dao := dbPool.GetDB()
     defer dbPool.ReturnDB(dao)
-    err := dao.DoTransaction(func(tx *sql.Tx) error {
-        fi := meta.File
-        parts := fi.Parts
-        instance := fi.Instance
-        state, e2 := tx.Prepare(insertFileSQL)
-        if e2 != nil {
-            return e2
+
+    for i := range meta.Files {
+        fi := meta.Files[i]
+        fid, e = GetFileId(fi.Md5, dao)
+        if e != nil {
+            return e
         }
-        ret, e3 := state.Exec(fi.Md5, fi.PartNum, instance, 1)
-        if e3 != nil {
-            return e3
+        if fid > 0 {
+            continue
         }
-        lastId, e4 := ret.LastInsertId()
-        if e4 != nil {
-            return e4
-        }
-        id := int(lastId)
-        fid = id
-        for i := range parts {
-            state, e2 := tx.Prepare(insertPartSQL)
+        err := dao.DoTransaction(func(tx *sql.Tx) error {
+            parts := fi.Parts
+            instance := fi.Instance
+            state, e2 := tx.Prepare(insertFileSQL)
             if e2 != nil {
                 return e2
             }
-            ret, e3 := state.Exec(parts[i].Md5, parts[i].FileSize)
+            ret, e3 := state.Exec(fi.Md5, fi.PartNum, instance, 1, 1)
             if e3 != nil {
                 return e3
             }
-            lastPid, e5 := ret.LastInsertId()
-            if e5 != nil {
-                return e5
+            lastId, e4 := ret.LastInsertId()
+            if e4 != nil {
+                return e4
             }
+            id := int(lastId)
+            fid = id
+            for i := range parts {
+                state, e2 := tx.Prepare(insertPartSQL)
+                if e2 != nil {
+                    return e2
+                }
+                ret, e3 := state.Exec(parts[i].Md5, parts[i].FileSize)
+                if e3 != nil {
+                    return e3
+                }
+                lastPid, e5 := ret.LastInsertId()
+                if e5 != nil {
+                    return e5
+                }
 
-            state1, e6 := tx.Prepare(insertRelationSQL)
-            if e6 != nil {
-                return e6
+                state1, e6 := tx.Prepare(insertRelationSQL)
+                if e6 != nil {
+                    return e6
+                }
+                ret1, e7 := state1.Exec(id, lastPid)
+                if e7 != nil {
+                    return e7
+                }
+                _, e8 := ret1.LastInsertId()
+                if e8 != nil {
+                    return e8
+                }
             }
-            ret1, e7 := state1.Exec(id, lastPid)
-            if e7 != nil {
-                return e7
-            }
-            _, e8 := ret1.LastInsertId()
-            if e8 != nil {
-                return e8
-            }
+            return nil
+        })
+        if err != nil {
+            return err
         }
-        return nil
-    })
-    if err != nil {
-        return 0, err
     }
-    return fid, nil
-}
 
-
-// 将同步任务写到task表中，然后由定时任务读取，同步给tracker，再由tracker服务器广播
-// task的type暂定位1，标识要同步到tracker服务器
-// status, 1:有效，0:无效
-func AddSyncTask(fid int, taskType int, tx *sql.Tx) error {
-    state, e2 := tx.Prepare(addSyncTaskSQL)
-    if e2 != nil {
-        return e2
-    }
-    ret, e3 := state.Exec(fid, taskType, 1)
-    if e3 != nil {
-        return e3
-    }
-    _, e4 := ret.LastInsertId()
-    if e4 != nil {
-        return e4
-    }
     return nil
 }
 
+// mark that a file successfully pushed to tracker.
 func FinishLocalFilePushTask(fid int, trackerUUID string) error {
     dao := dbPool.GetDB()
     defer dbPool.ReturnDB(dao)
@@ -363,28 +362,27 @@ func FinishLocalFilePushTask(fid int, trackerUUID string) error {
 }
 
 // 获取推送到tracker的文件
-func GetLocalPushFileTask(tasType int, trackerUUID string) (*list.List, error) {
-    var ls list.List
+func GetLocalPushFileTask(tasType int, trackerUUID string) (*bridge.Task, error) {
+    var ret = &bridge.Task{FileId: 0, TaskType: tasType}
     dao := dbPool.GetDB()
     defer dbPool.ReturnDB(dao)
     e := dao.Query(func(rows *sql.Rows) error {
         if rows != nil {
             for rows.Next() {
-                var fid, taskType int
-                e1 := rows.Scan(&fid, &taskType)
+                var fid int
+                e1 := rows.Scan(&fid)
                 if e1 != nil {
                     return e1
                 }
-                ret := &bridge.Task{FileId: fid, TaskType: tasType}
-                ls.PushBack(ret)
+                ret.FileId = fid
             }
         }
         return nil
-    }, getLocalPushFiles, trackerUUID, 10)
+    }, getLocalPushFiles, trackerUUID)
     if e != nil {
         return nil, e
     }
-    return &ls, nil
+    return ret, nil
 }
 
 // 获取下载任务文件
@@ -550,6 +548,85 @@ func GetFullFileByFid(fid int, finishFlag int) (*bridge.File, error) {
 }
 
 
+
+func GetFullFileByFids(fids ...int) (*bridge.File, error) {
+    if fids == nil || len(fids) == 0 {
+        return nil, nil
+    }
+    dao := dbPool.GetDB()
+    defer dbPool.ReturnDB(dao)
+    var fi *bridge.File
+
+    // create params
+    var buffer bytes.Buffer
+    buffer.WriteString("(")
+    for i := range fids {
+        if i == len(fids) - 1 {
+            buffer.WriteString(strconv.Itoa(i))
+        } else {
+            buffer.WriteString(strconv.Itoa(i))
+            buffer.WriteString(",")
+        }
+    }
+    buffer.WriteString(")")
+
+    // query file
+    e1 := dao.Query(func(rows *sql.Rows) error {
+        if rows != nil {
+            for rows.Next() {
+                var id, partNu int
+                var md5, instance string
+                e1 := rows.Scan(&id, &md5, &instance, &partNu)
+                if e1 != nil {
+                    return e1
+                } else {
+                    fi = &bridge.File{Id: id, Md5: md5, Instance: instance, PartNum: partNu}
+                }
+            }
+        }
+        return nil
+    }, getFullFileSQL13 + buffer.String())
+
+    if e1 != nil {
+        return nil, e1
+    }
+    // not exists
+    if fi == nil {
+        return nil, nil
+    }
+
+    e2 := dao.Query(func(rows *sql.Rows) error {
+        if rows != nil {
+            var partsList list.List
+            for rows.Next() {
+                var size int64
+                var md5 string
+                e1 := rows.Scan(&md5, &size)
+                if e1 != nil {
+                    return e1
+                } else {
+                    var part = &bridge.FilePart{Md5: md5, FileSize: size}
+                    partsList.PushBack(part)
+                }
+            }
+            var parsList = make([]bridge.FilePart, partsList.Len())
+            index := 0
+            for ele := partsList.Front(); ele != nil; ele = ele.Next() {
+                parsList[index] = *ele.Value.(*bridge.FilePart)
+                index++
+            }
+            fi.PartNum = partsList.Len()
+            fi.Parts = parsList
+        }
+        return nil
+    }, getFullFileSQL23 + buffer.String())
+
+    if e2 != nil {
+        return nil, e2
+    }
+    return fi, nil
+}
+
 // finishSync=1 只查已在本地同步完成的文件
 func GetFileByMd5(md5 string, finishFlag int) (*bridge.File, error) {
     var addOn = ""
@@ -619,50 +696,7 @@ func GetFileByFid(fid int, finishFlag int) (*bridge.File, error) {
 }
 
 
-
-func GetSyncId() (int, error) {
-    var id = -1
-    dao := dbPool.GetDB()
-    defer dbPool.ReturnDB(dao)
-    e := dao.Query(func(rows *sql.Rows) error {
-        if rows != nil {
-            for rows.Next() {
-                e := rows.Scan(&id)
-                if e != nil {
-                    return e
-                }
-            }
-        }
-        // consider there is no record in db.
-        if id == -1 {
-            id = 0
-            dao.DoTransaction(func(tx *sql.Tx) error {
-                return UpdateSyncId(0, tx)
-            })
-        }
-        return nil
-    }, getSyncId)
-    if e != nil {
-        return 0, e
-    }
-    return id, nil
-}
-
-func UpdateSyncId(newId int, tx *sql.Tx) error {
-    state, e2 := tx.Prepare(updateSyncId)
-    if e2 != nil {
-        return e2
-    }
-    ret, e3 := state.Exec(newId)
-    if e3 != nil {
-        return e3
-    }
-    a, _ := ret.RowsAffected()
-    logger.Debug("affect:", a)
-    return nil
-}
-
-// 文件同步到本地修改状态
+// if file download finish update finish status.
 func UpdateFileStatus(fid int) error {
     dao := dbPool.GetDB()
     defer dbPool.ReturnDB(dao)
@@ -675,15 +709,6 @@ func UpdateFileStatus(fid int) error {
         _, e3 := state.Exec(fid)
         if e3 != nil {
             return e3
-        }
-
-        state1, e3 := tx.Prepare(finishSyncTaskSQL)
-        if e3 != nil {
-            return e3
-        }
-        _, e4 := state1.Exec(fid)
-        if e4 != nil {
-            return e4
         }
         return nil
     })
@@ -768,20 +793,18 @@ func GetFilesBasedOnId(fid int) (*list.List, error) {
 }
 
 // 更新一个tracker的同步ID
-func UpdateTrackerSyncId(trackerUUID string, id int) error {
+func UpdateTrackerSyncId(trackerUUID string, id int, tx *sql.Tx) error {
     dao := dbPool.GetDB()
     defer dbPool.ReturnDB(dao)
-    return dao.DoTransaction(func(tx *sql.Tx) error {
-        state, e2 := tx.Prepare(updateTrackerSyncId)
-        if e2 != nil {
-            return e2
-        }
-        _, e3 := state.Exec(trackerUUID, id, trackerUUID)
-        if e3 != nil {
-            return e3
-        }
-        return nil
-    })
+    state, e2 := tx.Prepare(updateTrackerSyncId)
+    if e2 != nil {
+        return e2
+    }
+    _, e3 := state.Exec(trackerUUID, id, trackerUUID)
+    if e3 != nil {
+        return e3
+    }
+    return nil
 }
 
 

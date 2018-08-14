@@ -11,7 +11,6 @@ import (
     "app"
     "util/logger"
     "hash"
-    "lib_service"
 )
 
 // operation codes const.
@@ -189,8 +188,9 @@ func (bridge *Bridge) SendResponse(meta interface{}, bodyLen uint64, bodyWriterH
     return nil
 }
 
-func (bridge *Bridge) ValidateConnection(secret string) error {
+func (bridge *Bridge) ValidateConnection(secret string) (bool, error) {
     var sec = app.SECRET
+    var isNew = false
     if secret != "" {
         sec = secret
     }
@@ -201,7 +201,7 @@ func (bridge *Bridge) ValidateConnection(secret string) error {
     // send validate request
     e1 := bridge.SendRequest(O_CONNECT, validateMeta, 0, nil)
     if e1 != nil {
-        return e1
+        return isNew, e1
     }
     e4 := bridge.ReceiveResponse(func(response *Meta, in io.Reader) error {
         if response.Err != nil {
@@ -217,17 +217,16 @@ func (bridge *Bridge) ValidateConnection(secret string) error {
             return errors.New("error connect to server, server response status:" + strconv.Itoa(validateResp.Status))
         }
         bridge.UUID = validateResp.UUID
-        // if the client is new to tracker server, then update the client master_sync_id from 0.
         if validateResp.IsNew {
-            return lib_service.UpdateTrackerSyncId(validateResp.UUID, 0)
+            isNew = true
         }
         // connect success
         return nil
     })
     if e4 != nil {
-        return e4
+        return isNew, e4
     }
-    return nil
+    return isNew, nil
 }
 
 

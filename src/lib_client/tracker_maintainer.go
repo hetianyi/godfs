@@ -20,6 +20,7 @@ import (
     "bytes"
     "crypto/md5"
     "encoding/hex"
+    "util/timeutil"
 )
 
 // storage 的任务分为：
@@ -177,9 +178,17 @@ func connectAndValidate(conn net.Conn) (*bridge.Bridge, error) {
     // create bridge
     connBridge := bridge.NewBridge(conn)
     // send validate request
-    e1 := connBridge.ValidateConnection("")
+    isNew, e1 := connBridge.ValidateConnection("")
     if e1 != nil {
+        connBridge.Close()
         return nil, e1
+    }
+    if isNew {
+        e2 := lib_service.UpdateTrackerSyncId(connBridge.UUID, 0, nil)
+        if e2 != nil {
+            connBridge.Close()
+            return nil, e2
+        }
     }
     return connBridge, nil
 }
@@ -211,7 +220,7 @@ func (collector *TaskCollector) Start(tracker *TrackerInstance) {
         common.Try(func() {
             collector.Job(tracker)
         }, func(i interface{}) {
-            logger.Error("task collector return error:", i)
+            logger.Error("task collector \""+ collector.Name +"\" return error:", i)
         })
         execTimes++
         <-timer.C
@@ -237,6 +246,15 @@ func (tracker *TrackerInstance) GetTaskSize() int {
 func addMember(members []bridge.Member) {
     memberIteLock.Lock()
     defer memberIteLock.Unlock()
+    now := timeutil.GetTimestamp(time.Now())
+    for e := GroupMembers.Front(); e != nil; {
+        next := e.Next()
+        m := e.Value.(*bridge.ExpireMember)
+        if timeutil.GetTimestamp(m.ExpireTime) <= now {
+            GroupMembers.Remove(e)
+        }
+        e = next
+    }
     if members == nil {
         return
     }
@@ -244,15 +262,18 @@ func addMember(members []bridge.Member) {
         a := members[i]
         exists := false
         for e := GroupMembers.Front(); e != nil; e = e.Next() {
-            m := e.Value.(*bridge.Member)
+            m := e.Value.(*bridge.ExpireMember)
             if a.InstanceId == m.InstanceId {
                 exists = true
-                break
+                m.ExpireTime = time.Now().Add(time.Second * 61)
             }
         }
         if !exists {
             logger.Debug("add storage member server:", a)
-            GroupMembers.PushBack(&a)
+            b := &bridge.ExpireMember{}
+            b.From(&a)
+            b.ExpireTime = time.Now().Add(time.Second * 61)
+            GroupMembers.PushBack(b)
         }
     }
 }
@@ -283,20 +304,18 @@ func AddTask(task *bridge.Task, tracker *TrackerInstance) bool {
             return false
         }
     } else if task.TaskType == app.TASK_REPORT_FILE {
-        tracker.listIteLock.Lock()
-        defer tracker.listIteLock.Unlock()
-        for e := tracker.taskList.Front(); e != nil; e = e.Next() {
-            if e.Value.(*bridge.Task).FileId == task.FileId {
-                return false
+        if tracker.checkTaskTypeCount(task.TaskType) == 0 {
+            logger.Trace("push task type 2")
+            if tracker.taskList.Front() != nil && tracker.taskList.Front().Value.(*bridge.Task).TaskType == app.TASK_SYNC_MEMBER {
+                tracker.taskList.InsertAfter(task, tracker.taskList.Front())
+            } else {
+                tracker.taskList.PushFront(task)
             }
-        }
-        logger.Trace("push task type 2")
-        if tracker.taskList.Front() != nil && tracker.taskList.Front().Value.(*bridge.Task).TaskType == app.TASK_SYNC_MEMBER {
-            tracker.taskList.InsertAfter(task, tracker.taskList.Front())
+            return true
         } else {
-            tracker.taskList.PushFront(task)
+            logger.Debug("can't push task type "+ strconv.Itoa(task.TaskType) +": task type exists")
+            return false
         }
-        return true
     } else if task.TaskType == app.TASK_PULL_NEW_FILE {
         if tracker.checkTaskTypeCount(task.TaskType) == 0 {
             logger.Trace("push task type 3")
@@ -394,13 +413,26 @@ func (tracker *TrackerInstance) ExecTask(task *bridge.Task) (bool, error) {
         }
         return false, nil
     } else if task.TaskType == app.TASK_REPORT_FILE {
-        fi, e1 := lib_service.GetFullFileByFid(task.FileId, 2)
+        files, e1 := lib_service.GetFilesBasedOnId(task.FileId)
         if e1 != nil {
             return false, e1
         }
+        if files == nil || files.Len() == 0 {
+            return false, nil
+        }
+        fs := make([]bridge.File, files.Len())
+        i := 0
+        maxId := 0
+        for ele := files.Front(); ele != nil; ele = ele.Next() {
+            fs[i] = *ele.Value.(*bridge.File)
+            i++
+            if maxId < fs[i].Id {
+                maxId = fs[i].Id
+            }
+        }
         // register storage client to tracker server
         regFileMeta := &bridge.OperationRegisterFileRequest {
-            File: fi,
+            Files: fs,
         }
         // reg client
         e2 := connBridge.SendRequest(bridge.O_REG_FILE, regFileMeta, 0, nil)
@@ -420,7 +452,7 @@ func (tracker *TrackerInstance) ExecTask(task *bridge.Task) (bool, error) {
                 return errors.New("error register file "+ strconv.Itoa(task.FileId) +" to tracker server, server response status:" + strconv.Itoa(regResp.Status))
             }
             // update table trackers and set local_push_fid to new id
-            e7 := lib_service.FinishLocalFilePushTask(task.FileId, tracker.connBridge.UUID)
+            e7 := lib_service.FinishLocalFilePushTask(maxId, tracker.connBridge.UUID)
             if e7 != nil {
                 return e7
             }
@@ -432,13 +464,16 @@ func (tracker *TrackerInstance) ExecTask(task *bridge.Task) (bool, error) {
         return false, nil
     } else if task.TaskType == app.TASK_PULL_NEW_FILE {
         logger.Debug("trying pull new file from tracker...")
-        baseId, e1 := lib_service.GetSyncId()
+        config, e1 := lib_service.GetTrackerConfig(tracker.connBridge.UUID)
         if e1 != nil {
             return false, e1
         }
+        if config == nil {
+            config = &bridge.TrackerConfig{MasterSyncId: 0}
+        }
         // register storage client to tracker server
         pullMeta := &bridge.OperationPullFileRequest {
-            BaseId: baseId,
+            BaseId: config.MasterSyncId,
         }
         // reg client
         e2 := connBridge.SendRequest(bridge.O_PULL_NEW_FILES, pullMeta, 0, nil)
@@ -459,14 +494,10 @@ func (tracker *TrackerInstance) ExecTask(task *bridge.Task) (bool, error) {
             }
 
             files := pullResp.Files
-            logger.Debug("got", len(files), "new files")
-            for i := range files {
-                eee := lib_service.StorageAddRemoteFile(&files[i])
-                if eee != nil {
-                    return nil
-                }
+            if len(files) > 0 {
+                logger.Info("got", len(files), "new files from tracker server:", tracker.connBridge.GetConn().RemoteAddr().String())
             }
-            return nil
+            return lib_service.StorageAddTrackerPulledFile(files, tracker.connBridge.UUID)
         })
         if e5 != nil {
             return true, e5
@@ -531,15 +562,17 @@ func (tracker *TrackerInstance) ExecTask(task *bridge.Task) (bool, error) {
 
 // 查询推送文件到tracker的任务收集器
 func QueryPushFileTaskCollector(tracker *TrackerInstance) {
-    taskList, e1 := lib_service.GetLocalPushFileTask(app.TASK_REPORT_FILE, tracker.connBridge.UUID)
+    if tracker.connBridge == nil {
+        return
+    }
+    task, e1 := lib_service.GetLocalPushFileTask(app.TASK_REPORT_FILE, tracker.connBridge.UUID)
     if e1 != nil {
         logger.Error(e1)
         return
     }
-    for e := taskList.Front(); e != nil; e = e.Next() {
-        AddTask(e.Value.(*bridge.Task), tracker)
-    }
+    AddTask(task, tracker)
 }
+
 // TODO 标记多次下载失败的任务文件
 // 查询本地持久化任务收集器
 func QueryDownloadFileTaskCollector(tracker *TrackerInstance) {
@@ -672,18 +705,6 @@ func downloadFile(fi *bridge.File) {
 
 }
 
-// TODO consider expire storage members
-// select a storage server matching given group and instanceId
-// excludes contains fail storage and not gonna use this time.
-func selectStorageServerByInstance(instanceId string) *bridge.Member {
-    for ele := GroupMembers.Front(); ele != nil; ele = ele.Next() {
-        b := ele.Value.(*bridge.Member)
-        if instanceId == b.InstanceId {
-            return b
-        }
-    }
-    return nil
-}
 
 func increaseActiveDownload(value int) int {
     activeDownloadLock.Lock()
@@ -693,6 +714,8 @@ func increaseActiveDownload(value int) int {
 }
 
 func collectMemberInstanceId() string {
+    memberIteLock.Lock()
+    defer memberIteLock.Unlock()
     var buffer bytes.Buffer
     index := 0
     for ele := GroupMembers.Front(); ele != nil; ele = ele.Next() {
@@ -701,6 +724,6 @@ func collectMemberInstanceId() string {
             buffer.WriteString(",")
         }
     }
-    logger.Debug("select download task file in members(" + string(buffer.Bytes()) + ")")
+    logger.Debug("select download task file in members(" + buffer.String() + ")")
     return string(buffer.Bytes())
 }

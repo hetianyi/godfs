@@ -22,7 +22,7 @@ func initParam() {
 
 func Test1(t *testing.T) {
     initParam()
-    fmt.Println(GetFileId("asd1231"))
+    fmt.Println(GetFileId("asd1231", nil))
 }
 func Test2(t *testing.T) {
     initParam()
