@@ -77,6 +77,7 @@ func (pool *ClientConnectionPool) newConnection(server *bridge.ExpireMember) (*b
 
     // if the client is new to tracker server, then update the client master_sync_id from 0.
     if isNew && app.CLIENT_TYPE == 1  {
+        logger.Info("I'm new to tracker:", connBridge.GetConn().RemoteAddr().String(), "[", connBridge.UUID, "]")
         e2 := lib_service.UpdateTrackerSyncId(connBridge.UUID, 0, nil)
         if e2 != nil {
             connBridge.Close()

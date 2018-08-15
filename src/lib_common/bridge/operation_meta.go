@@ -157,7 +157,7 @@ type OperationPullFileResponse struct {
 
 type TrackerConfig struct {
     UUID string
-    MasterSyncId int
+    TrackerSyncId int
     LocalPushId int
 }
 

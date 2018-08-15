@@ -5,6 +5,7 @@ import "strings"
 // mime types for browser download header 'Content-Type'
 var (
     mimeTypes = make(map[string] string)
+    webMimeTypes = make(map[string] string)
     enable = false
     defaultMimeType = "application/octet-stream"
 )
@@ -17,7 +18,6 @@ func SetMimeTypesEnable() {
     enable = true
 
     mimeTypes["html"] = "text/html"
-    mimeTypes["shtml"] = "text/html"
     mimeTypes["shtml"] = "text/html"
     mimeTypes["css"] = "text/css"
     mimeTypes["xml"] = "text/xml"
@@ -129,3 +129,19 @@ func GetContentTypeHeader(fileFormat string) *string {
     }
     return &defaultMimeType
 }
+
+// add web content file format based on mimeTypes
+func AddWebMimeType(format string) {
+    webMimeTypes[format] = mimeTypes[format]
+}
+
+func SupportWebContent(ext string) bool {
+    ret := webMimeTypes[strings.TrimLeft(ext, ".")]
+    if ret == "" {
+        return false
+    }
+    return true
+}
+
+
+

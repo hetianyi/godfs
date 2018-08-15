@@ -116,7 +116,7 @@ func (maintainer *TrackerMaintainer) Maintain(trackers string) {
 
 // connect to each tracker
 func (maintainer *TrackerMaintainer) track(tracker string, index int) {
-    logger.Info("start tracker conn with tracker server:", tracker)
+    logger.Debug("start tracker conn with tracker server:", tracker)
     retry := 0
     trackerInstance := TrackerInstance{Collectors: *trackTaskFilter(&maintainer.Collectors, index)}
     trackerInstance.Init()
@@ -184,6 +184,7 @@ func connectAndValidate(conn net.Conn) (*bridge.Bridge, error) {
         return nil, e1
     }
     if isNew && app.CLIENT_TYPE == 1 {
+        logger.Info("I'm new to tracker:", connBridge.GetConn().RemoteAddr().String(), "[", connBridge.UUID, "]")
         e2 := lib_service.UpdateTrackerSyncId(connBridge.UUID, 0, nil)
         if e2 != nil {
             connBridge.Close()
@@ -463,18 +464,18 @@ func (tracker *TrackerInstance) ExecTask(task *bridge.Task) (bool, error) {
         }
         return false, nil
     } else if task.TaskType == app.TASK_PULL_NEW_FILE {
-        logger.Debug("trying pull new file from tracker...")
         config, e1 := lib_service.GetTrackerConfig(tracker.connBridge.UUID)
         if e1 != nil {
             return false, e1
         }
         if config == nil {
-            config = &bridge.TrackerConfig{MasterSyncId: 0}
+            config = &bridge.TrackerConfig{TrackerSyncId: 0}
         }
         // register storage client to tracker server
         pullMeta := &bridge.OperationPullFileRequest {
-            BaseId: config.MasterSyncId,
+            BaseId: config.TrackerSyncId,
         }
+        logger.Debug("try to pull new file from tracker server:", tracker.connBridge.GetConn().RemoteAddr().String(), ", base id is", config.TrackerSyncId)
         // reg client
         e2 := connBridge.SendRequest(bridge.O_PULL_NEW_FILES, pullMeta, 0, nil)
         if e2 != nil {
@@ -495,7 +496,9 @@ func (tracker *TrackerInstance) ExecTask(task *bridge.Task) (bool, error) {
 
             files := pullResp.Files
             if len(files) > 0 {
-                logger.Info("got", len(files), "new files from tracker server:", tracker.connBridge.GetConn().RemoteAddr().String())
+                logger.Info("pull", len(files), "files from tracker server:", tracker.connBridge.GetConn().RemoteAddr().String())
+            } else {
+                logger.Debug("no file pull from tracker server:", tracker.connBridge.GetConn().RemoteAddr().String())
             }
             return lib_service.StorageAddTrackerPulledFile(files, tracker.connBridge.UUID)
         })

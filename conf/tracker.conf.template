@@ -20,7 +20,7 @@ secret=OASAD834jA97AAQE761==
 log_enable=true
 
 # 日志级别：debug, info, warn, error, fatal
-# 如不设置，默认为info
-log_level=debug
+# 如不设置，默认为 info
+log_level=info
 
 secret=OASAD834jA97AAQE761==

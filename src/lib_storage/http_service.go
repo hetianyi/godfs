@@ -100,7 +100,7 @@ func DownloadHandler(writer http.ResponseWriter, request *http.Request) {
     if rangeH != nil && len(rangeH) > 0 {
         rangeS = rangeH[0]
     }
-    logger.Info(rangeS)
+    logger.Trace(rangeS)
     start, end := parseHeaderRange(rangeS)
     if start <= 0 {
         start = 0
@@ -116,20 +116,20 @@ func DownloadHandler(writer http.ResponseWriter, request *http.Request) {
     headers.Set("Content-Length", strconv.FormatInt(totalLen, 10))
     headers.Set("Content-Range", "bytes " + strconv.FormatInt(start, 10) + "-" + strconv.FormatInt(end - 1, 10) + "/" + strconv.FormatInt(fileSize, 10))
 
-    logger.Info("range:", start , "-", end)
-    if !app.MIME_TYPES_ENABLE {
+    logger.Trace("range:", start , "-", end)
+    if app.MIME_TYPES_ENABLE && app.SupportWebContent(ext) {
+        gmtLocation, _ := time.LoadLocation("GMT")
+        fInfo, _ := os.Stat(lib_common.GetFilePathByMd5(fullFile.Parts[0].Md5))
+        headers.Set("Last-Modified", fInfo.ModTime().In(gmtLocation).Format(time.RFC1123))
+        headers.Set("Expires", time.Now().Add(time.Hour * 2400).In(gmtLocation).Format(time.RFC1123))
+        setMimeHeaders(md5, &headers)
+    } else {
         headers.Set("Expires", "0")
         headers.Set("Pragma", "public")
         //headers.Set("Accept-Ranges", "bytes")
         headers.Set("Content-Transfer-Encoding", "binary")
         headers.Set("Cache-Control", "must-revalidate, post-check=0, pre-check=0")
         headers.Set("Content-Disposition", "attachment;filename=\"" + fn + "\"")
-    } else {
-        gmtLocation, _ := time.LoadLocation("GMT")
-        fInfo, _ := os.Stat(lib_common.GetFilePathByMd5(fullFile.Parts[0].Md5))
-        headers.Set("Last-Modified", fInfo.ModTime().In(gmtLocation).Format(time.RFC1123))
-        headers.Set("Expires", time.Now().Add(time.Hour * 2400).In(gmtLocation).Format(time.RFC1123))
-        setMimeHeaders(md5, &headers)
     }
     // adapt different clients
     // such as chrome needs 200 xunlei needs 206

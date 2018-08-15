@@ -138,6 +138,7 @@ func AddPart(md5 string, size int64) (int, error) {
         if e2 != nil {
             return e2
         }
+        logger.Debug("exec SQL:\n\t" + insertPartSQL)
         ret, e3 := state.Exec(md5, size)
         if e3 != nil {
             return e3
@@ -171,6 +172,7 @@ func StorageAddFile(md5 string, parts *list.List) error {
         if e2 != nil {
             return e2
         }
+        logger.Debug("exec SQL:\n\t" + insertFileSQL)
         ret, e3 := state.Exec(md5, parts.Len(), app.INSTANCE_ID, 1)
         if e3 != nil {
             return e3
@@ -185,6 +187,7 @@ func StorageAddFile(md5 string, parts *list.List) error {
             if e2 != nil {
                 return e2
             }
+            logger.Debug("exec SQL:\n\t" + insertRelationSQL)
             _, e3 := state.Exec(fid, ele.Value)
             if e3 != nil {
                 return e3
@@ -226,6 +229,7 @@ func StorageAddTrackerPulledFile(fis []bridge.File, trackerUUID string) error {
             if e2 != nil {
                 return e2
             }
+            logger.Debug("exec SQL:\n\t" + insertFileSQL)
             ret, e3 := state.Exec(fi.Md5, fi.PartNum, fi.Instance, 0)
             if e3 != nil {
                 return e3
@@ -240,6 +244,7 @@ func StorageAddTrackerPulledFile(fis []bridge.File, trackerUUID string) error {
                 if e4 != nil {
                     return e4
                 }
+                logger.Debug("exec SQL:\n\t" + insertPartSQL)
                 ret1, e5 := state1.Exec(fi.Parts[i].Md5, fi.Parts[i].FileSize)
                 if e5 != nil {
                     return e5
@@ -253,6 +258,7 @@ func StorageAddTrackerPulledFile(fis []bridge.File, trackerUUID string) error {
                 if e2 != nil {
                     return e2
                 }
+                logger.Debug("exec SQL:\n\t" + insertRelationSQL)
                 _, e3 := state2.Exec(fid, pid)
                 if e3 != nil {
                     return e3
@@ -297,6 +303,7 @@ func TrackerAddFile(meta *bridge.OperationRegisterFileRequest) error {
             if e2 != nil {
                 return e2
             }
+            logger.Debug("exec SQL:\n\t" + insertFileSQL)
             ret, e3 := state.Exec(fi.Md5, fi.PartNum, instance, 1)
             if e3 != nil {
                 return e3
@@ -312,6 +319,7 @@ func TrackerAddFile(meta *bridge.OperationRegisterFileRequest) error {
                 if e2 != nil {
                     return e2
                 }
+                logger.Debug("exec SQL:\n\t" + insertPartSQL)
                 ret, e3 := state.Exec(parts[i].Md5, parts[i].FileSize)
                 if e3 != nil {
                     return e3
@@ -325,6 +333,7 @@ func TrackerAddFile(meta *bridge.OperationRegisterFileRequest) error {
                 if e6 != nil {
                     return e6
                 }
+                logger.Debug("exec SQL:\n\t" + insertRelationSQL)
                 ret1, e7 := state1.Exec(id, lastPid)
                 if e7 != nil {
                     return e7
@@ -353,6 +362,7 @@ func FinishLocalFilePushTask(fid int, trackerUUID string) error {
         if e2 != nil {
             return e2
         }
+        logger.Debug("exec SQL:\n\t" + updateLocalPushId)
         _, e3 := state.Exec(trackerUUID, trackerUUID, trackerUUID, fid)
         if e3 != nil {
             return e3
@@ -706,6 +716,7 @@ func UpdateFileStatus(fid int) error {
         if e2 != nil {
             return e2
         }
+        logger.Debug("exec SQL:\n\t" + updateFileStatusSQL)
         _, e3 := state.Exec(fid)
         if e3 != nil {
             return e3
@@ -752,7 +763,6 @@ func GetFilesBasedOnId(fid int) (*list.List, error) {
         index++
     }
     addOn.Write([]byte(") order by d.id"))
-    logger.Debug("exec SQL:\n\t" + getFullFileSQL22 + string(addOn.Bytes()))
 
     e2 := dao.Query(func(rows *sql.Rows) error {
         if rows != nil {
@@ -794,6 +804,7 @@ func GetFilesBasedOnId(fid int) (*list.List, error) {
 
 // 更新一个tracker的同步ID
 func UpdateTrackerSyncId(trackerUUID string, id int, tx *sql.Tx) error {
+    logger.Debug("update Tracker Sync Id to", id)
     if tx == nil {
         dao := dbPool.GetDB()
         defer dbPool.ReturnDB(dao)
@@ -802,6 +813,7 @@ func UpdateTrackerSyncId(trackerUUID string, id int, tx *sql.Tx) error {
             if e2 != nil {
                 return e2
             }
+            logger.Debug("exec SQL:\n\t" + updateTrackerSyncId)
             _, e3 := state.Exec(trackerUUID, id, trackerUUID)
             if e3 != nil {
                 return e3
@@ -813,6 +825,7 @@ func UpdateTrackerSyncId(trackerUUID string, id int, tx *sql.Tx) error {
         if e2 != nil {
             return e2
         }
+        logger.Debug("exec SQL:\n\t" + updateTrackerSyncId)
         _, e3 := state.Exec(trackerUUID, id, trackerUUID)
         if e3 != nil {
             return e3
@@ -824,6 +837,7 @@ func UpdateTrackerSyncId(trackerUUID string, id int, tx *sql.Tx) error {
 
 // 更新一个tracker的本地ID
 func UpdateLocalPushId(trackerUUID string, id int) error {
+    logger.Debug("update local push id to", id)
     dao := dbPool.GetDB()
     defer dbPool.ReturnDB(dao)
     return dao.DoTransaction(func(tx *sql.Tx) error {
@@ -831,6 +845,7 @@ func UpdateLocalPushId(trackerUUID string, id int) error {
         if e2 != nil {
             return e2
         }
+        logger.Debug("exec SQL:\n\t" + updateLocalPushId)
         _, e3 := state.Exec(trackerUUID, trackerUUID, trackerUUID, id)
         if e3 != nil {
             return e3
@@ -854,7 +869,7 @@ func GetTrackerConfig(trackerUUID string) (*bridge.TrackerConfig, error) {
                 if e != nil {
                     return e
                 }
-                config.MasterSyncId = trackerSyncId
+                config.TrackerSyncId = trackerSyncId
                 config.LocalPushId = localPushId
             }
         }
@@ -877,6 +892,7 @@ func ConfirmLocalInstanceUUID(uuid string) error {
         if e2 != nil {
             return e2
         }
+        logger.Debug("exec SQL:\n\t" + confirmLocalInstanceUUID)
         _, e3 := state.Exec(uuid)
         if e3 != nil {
             return e3
@@ -923,7 +939,7 @@ func QueryExistsStorageClient(uuid string) bool {
             }
         }
         return nil
-    }, existsStorageClient)
+    }, existsStorageClient, uuid)
     if count > 0 {
         return true
     }

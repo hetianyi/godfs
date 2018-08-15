@@ -171,6 +171,17 @@ func Check(m map[string] string, runWith int) {
             app.SetMimeTypesEnable()
         }
 
+        // check web_content_mime_types
+        m["web_content_mime_types"] = strings.TrimSpace(m["web_content_mime_types"])
+        wcmt := strings.Split(m["web_content_mime_types"], ",")
+        for i := range wcmt {
+            strS := strings.TrimSpace(wcmt[i])
+            if strS == "" {
+                continue
+            }
+            app.AddWebMimeType(strS)
+        }
+
         //--
     } else if runWith == 2 {
 
