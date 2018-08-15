@@ -96,9 +96,9 @@ func upload(path string) error {
     } else {
         now := time.Now()
         fmt.Println("[==========] 100% ["+ timeutil.GetHumanReadableDuration(startTime, now) +"]\nupload success, file id:")
-        fmt.Println("+--------------------------------------------+")
-        fmt.Println("| "+ fid +" |")
-        fmt.Println("+--------------------------------------------+")
+        fmt.Println("+-------------------------------------------+")
+        fmt.Println(fid)
+        fmt.Println("+-------------------------------------------+")
     }
     return nil
 }
@@ -137,9 +137,9 @@ func download(path string, customDownloadFileName string) error {
     } else {
         now := time.Now()
         fmt.Println("[==========] 100% ["+ timeutil.GetHumanReadableDuration(startTime, now) +"]\ndownload success, file save as:")
-        fmt.Println("+--------------------------------------------+")
-        fmt.Println("| "+ filePath)
-        fmt.Println("+--------------------------------------------+")
+        fmt.Println("+-------------------------------------------+")
+        fmt.Println(filePath)
+        fmt.Println("+-------------------------------------------+")
     }
     return nil
 }
