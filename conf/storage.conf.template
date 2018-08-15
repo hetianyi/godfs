@@ -14,7 +14,7 @@ instance_id=002
 bind_address=
 
 # 服务监听端口
-port=1024
+port=1025
 
 # 服务基目录，将log和data保存的目录
 # 如果没有设置，默认情况下，
@@ -23,7 +23,7 @@ port=1024
 # -base_path
 #   └logs
 #   └data
-base_path=E:/godfs-storage/storage1
+base_path=E:/godfs-storage/storage2
 
 
 trackers=127.0.0.1:1022
@@ -37,8 +37,8 @@ secret=OASAD834jA97AAQE761==
 log_enable=true
 
 # 日志级别：debug, info, warn, error, fatal
-# 如不设置，默认为info
-log_level=info
+# 如不设置，默认为 info
+log_level=debug
 
 # 轮转日志间隔，支持以小时(h)、天(d)、月(m)、年(y)为周期创建及备份日志文件
 # 日志文件名称格式为：

@@ -403,8 +403,8 @@ func GetDownloadFileTask(tasType int) (*list.List, error) {
     e := dao.Query(func(rows *sql.Rows) error {
         if rows != nil {
             for rows.Next() {
-                var fid, taskType int
-                e1 := rows.Scan(&fid, &taskType)
+                var fid int
+                e1 := rows.Scan(&fid)
                 if e1 != nil {
                     return e1
                 }

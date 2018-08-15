@@ -656,7 +656,7 @@ func downloadFile(fi *bridge.File) {
             if len(fi.Parts) > 1 {
                 som = "M"
             }
-            logger.Debug("download part of " + strconv.Itoa(i) + "/" + strconv.Itoa(len(fi.Parts)) + ": /" + app.GROUP + "/" + fi.Instance + "/" + som + "/" + fi.Md5)
+            logger.Debug("download part of ", strconv.Itoa(i+1) + "/" + strconv.Itoa(len(fi.Parts)), ": /" + app.GROUP + "/" + fi.Instance + "/" + som + "/" + fi.Md5, " -> ", part.Md5)
             e2 := download("/" + app.GROUP + "/" + fi.Instance + "/" + som + "/" + fi.Md5,
                 start, part.FileSize, true, getDownloadClient(),
                 func(fileLen uint64, reader io.Reader) error {
@@ -677,7 +677,7 @@ func downloadFile(fi *bridge.File) {
                     md5 := hex.EncodeToString(md.Sum(nil))
                     if md5 != part.Md5 {
                         file.Delete(fi.Name())
-                        return errors.New("download error: file fingerprint confirm failed")
+                        return errors.New("download error: file fingerprint confirm failed ->" + part.Md5)
                     }
                     e5 := lib_common.MoveTmpFileTo(part.Md5, fi)
                     if e5 != nil {
@@ -722,7 +722,7 @@ func collectMemberInstanceId() string {
     var buffer bytes.Buffer
     index := 0
     for ele := GroupMembers.Front(); ele != nil; ele = ele.Next() {
-        buffer.WriteString(ele.Value.(*bridge.Member).InstanceId)
+        buffer.WriteString(ele.Value.(*bridge.ExpireMember).InstanceId)
         if index != GroupMembers.Len() - 1 {
             buffer.WriteString(",")
         }
