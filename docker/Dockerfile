@@ -18,7 +18,7 @@ RUN echo "http://mirrors.aliyun.com/alpine/v3.8/main/" > /etc/apk/repositories &
     cp /etc/hosts /etc/hosts.bak && \
     echo "192.30.253.112 github.com" >> /etc/hosts && echo "151.101.113.194 github.global.ssl.fastly.net" >> /etc/hosts && \
     apk add git gcc g++ cmake make automake && \
-    go get github.com/mattn/go-sqlite3 && cat /etc/hosts.bak > /etc/hosts && \
+    go get github.com/mattn/go-sqlite3 && \
     cd /tmp && rm -rf godfs && git clone https://github.com/hetianyi/godfs.git && \
     cd godfs && mkdir data && cp conf/storage.db data/ && \
     rm -rf dev_tool && ./docker_build.sh && rm -rf docker && rm -rf src && cd .. && \
