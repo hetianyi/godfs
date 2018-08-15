@@ -15,6 +15,7 @@ import (
     "math/rand"
     "strings"
     "lib_common"
+    "time"
 )
 
 
@@ -105,7 +106,7 @@ func (client *Client) Upload(path string, group string) (string, error) {
             defer func() {stopFlag = true}()
             total = fInfo.Size()
             finish = 0
-            go lib_common.ShowPercent(&total, &finish, &stopFlag)
+            go lib_common.ShowPercent(&total, &finish, &stopFlag, time.Now())
             for {
                 len5, e4 := fi.Read(buff)
                 if e4 != nil && e4 != io.EOF {

@@ -227,7 +227,7 @@ func WriteOut(in io.Reader, offset int64, buffer []byte, out io.Writer, md hash.
 
 
 
-func ShowPercent(total *int64, finish *int64, stop *bool) {
+func ShowPercent(total *int64, finish *int64, stop *bool, startTime time.Time) {
     //int(math.Floor(12312300000*100*1.0/91231231234))
     timer := time.NewTicker(time.Millisecond * 1000)
     var buffer bytes.Buffer
@@ -261,10 +261,14 @@ func ShowPercent(total *int64, finish *int64, stop *bool) {
         }
 
         shine = !shine
+        now := time.Now()
 
         buffer.WriteString("]")
         buffer.WriteString(FixLength(percent, 3, " "))
         buffer.WriteString("%")
+        buffer.WriteString(" [")
+        buffer.WriteString(timeutil.GetHumanReadableDuration(startTime, now))
+        buffer.WriteString("]")
         buffer.WriteString(" - ")
         buffer.WriteString(HumanReadable(lastRead, 1000))
         fmt.Print(buffer.String() + "\r")

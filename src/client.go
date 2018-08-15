@@ -17,6 +17,8 @@ import (
     "strings"
     "regexp"
     "fmt"
+    "errors"
+    "util/timeutil"
 )
 
 
@@ -87,20 +89,25 @@ func main() {
 }
 
 func upload(path string) error {
+    var startTime time.Time
     fid, e := client.Upload(path, "")
     if e != nil {
         logger.Error(e)
+    } else {
+        now := time.Now()
+        fmt.Println("[==========] 100% ["+ timeutil.GetHumanReadableDuration(startTime, now) +"]\nupload success, file id:")
+        fmt.Println("+--------------------------------------------+")
+        fmt.Println("| "+ fid +" |")
+        fmt.Println("+--------------------------------------------+")
     }
-    fmt.Println("[==========] 100%\nupload success, file id:")
-    fmt.Println("+--------------------------------------------+")
-    fmt.Println("| "+ fid +" |")
-    fmt.Println("+--------------------------------------------+")
     return nil
 }
 
 
 
 func download(path string, customDownloadFileName string) error {
+    filePath := ""
+    var startTime time.Time
     e := client.DownloadFile(path, 0, -1, func(fileLen uint64, reader io.Reader) error {
         var fi *os.File
         if customDownloadFileName == "" {
@@ -120,13 +127,20 @@ func download(path string, customDownloadFileName string) error {
         }
         defer fi.Close()
         buffer := make([]byte, app.BUFF_SIZE)
-        return lib_common.WriteOut(reader, int64(fileLen), buffer, fi, nil)
+        filePath = fi.Name()
+        startTime = time.Now()
+        return writeOut(reader, int64(fileLen), buffer, fi, startTime)
     })
     if e != nil {
-        logger.Error(e)
+        logger.Error("download failed:", e)
         return e
+    } else {
+        now := time.Now()
+        fmt.Println("[==========] 100% ["+ timeutil.GetHumanReadableDuration(startTime, now) +"]\ndownload success, file save as:")
+        fmt.Println("+--------------------------------------------+")
+        fmt.Println("| "+ filePath)
+        fmt.Println("+--------------------------------------------+")
     }
-    logger.Info("download success")
     return nil
 }
 
@@ -162,3 +176,43 @@ func clientMonitorCollector(tracker *lib_client.TrackerInstance) {
 
 
 
+func writeOut(in io.Reader, offset int64, buffer []byte, out io.Writer, startTime time.Time) error {
+    var finish, total int64
+    var stopFlag = false
+    defer func() {stopFlag = true}()
+    total = offset
+    finish = 0
+    go lib_common.ShowPercent(&total, &finish, &stopFlag, startTime)
+
+    // total read bytes
+    var readBodySize int64 = 0
+    // next time bytes to read
+    var nextReadSize int
+    for {
+        // left bytes is more than a buffer
+        if (offset - readBodySize) / int64(len(buffer)) >= 1 {
+            nextReadSize = len(buffer)
+        } else {// left bytes less than a buffer
+            nextReadSize = int(offset - readBodySize)
+        }
+        if nextReadSize == 0 {
+            break
+        }
+        len, e2 := in.Read(buffer[0:nextReadSize])
+        if e2 == nil {
+            wl, e5 := out.Write(buffer[0:len])
+            if e5 != nil || wl != len {
+                return errors.New("error write out")
+            }
+            finish += int64(len)
+            readBodySize += int64(len)
+            logger.Trace("write:", readBodySize)
+        } else {
+            if e2 == io.EOF {
+                return nil
+            }
+            return e2
+        }
+    }
+    return nil
+}

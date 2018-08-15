@@ -159,3 +159,11 @@ func format3(input int) string {
     return strconv.Itoa(input)
 }
 
+
+func GetHumanReadableDuration(start time.Time, end time.Time) string {
+    v := GetTimestamp(end) / 1000 - GetTimestamp(start) / 1000 // seconds
+    h := v / 3600
+    m := v % 3600 / 60
+    s := v % 60
+    return format2(int(h)) + ":" + format2(int(m)) + ":" + format2(int(s))
+}

@@ -52,3 +52,9 @@ func Test4(t *testing.T) {
     }
     fmt.Println(ls.Len())
 }
+
+func Test5(t *testing.T) {
+    start := time.Now()
+    time.Sleep(time.Second * 5)
+    fmt.Println(GetHumanReadableDuration(start, time.Now()))
+}
