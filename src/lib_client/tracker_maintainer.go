@@ -216,7 +216,7 @@ func (collector *TaskCollector) Start(tracker *TrackerInstance) {
         }
         time.Sleep(collector.FirstDelay)
         if collector.Name != "" {
-            logger.Debug("exec task collector:", collector.Name)
+            logger.Trace("exec task collector:", collector.Name)
         }
         common.Try(func() {
             collector.Job(tracker)
@@ -301,7 +301,7 @@ func AddTask(task *bridge.Task, tracker *TrackerInstance) bool {
             tracker.taskList.PushFront(task)
             return true
         } else {
-            logger.Debug("can't push task type "+ strconv.Itoa(task.TaskType) +": task type exists")
+            logger.Trace("can't push task type "+ strconv.Itoa(task.TaskType) +": task type exists")
             return false
         }
     } else if task.TaskType == app.TASK_REPORT_FILE {
@@ -632,7 +632,7 @@ func getDownloadClient() *Client {
 }
 
 // TODO check file part md5
-func downloadFile(fi *bridge.File) {
+func downloadFile(fullFi *bridge.File) {
     increaseActiveDownload(1)
     defer increaseActiveDownload(-1)
     common.Try(func() {
@@ -642,22 +642,23 @@ func downloadFile(fi *bridge.File) {
         md := md5.New()
         var start int64 = 0
         buffer := make([]byte, app.BUFF_SIZE)
-        for i := range fi.Parts {
+        for i := range fullFi.Parts {
             md.Reset()
-            part := fi.Parts[i]
+            part := fullFi.Parts[i]
             // check if file part exists
             fInfo, e1 := os.Stat(lib_common.GetFilePathByMd5(part.Md5))
             // file part exists, skip download
             if e1 == nil || fInfo != nil {
+                start += part.FileSize
                 continue
             }
             // begin download
             som := "S"
-            if len(fi.Parts) > 1 {
+            if len(fullFi.Parts) > 1 {
                 som = "M"
             }
-            logger.Debug("download part of ", strconv.Itoa(i+1) + "/" + strconv.Itoa(len(fi.Parts)), ": /" + app.GROUP + "/" + fi.Instance + "/" + som + "/" + fi.Md5, " -> ", part.Md5)
-            e2 := download("/" + app.GROUP + "/" + fi.Instance + "/" + som + "/" + fi.Md5,
+            logger.Debug("download part of ", strconv.Itoa(i+1) + "/" + strconv.Itoa(len(fullFi.Parts)), ": /" + app.GROUP + "/" + fullFi.Instance + "/" + som + "/" + fullFi.Md5, " -> ", part.Md5)
+            e2 := download("/" + app.GROUP + "/" + fullFi.Instance + "/" + som + "/" + fullFi.Md5,
                 start, part.FileSize, true, getDownloadClient(),
                 func(fileLen uint64, reader io.Reader) error {
                     if uint64(part.FileSize) != fileLen {
@@ -677,13 +678,14 @@ func downloadFile(fi *bridge.File) {
                     md5 := hex.EncodeToString(md.Sum(nil))
                     if md5 != part.Md5 {
                         file.Delete(fi.Name())
-                        return errors.New("download error: file fingerprint confirm failed ->" + part.Md5)
+                        return errors.New("part "+ strconv.Itoa(i+1) +"download error: file fingerprint confirm failed: "+ md5 +" but true is " + part.Md5)
                     }
                     e5 := lib_common.MoveTmpFileTo(part.Md5, fi)
                     if e5 != nil {
                         file.Delete(fi.Name())
                         return e5
                     }
+                    logger.Debug("download part success", strconv.Itoa(i+1) + "/" + strconv.Itoa(len(fullFi.Parts)) + " ->" + part.Md5)
                     return nil
                 })
             if e2 != nil {
@@ -693,9 +695,9 @@ func downloadFile(fi *bridge.File) {
             start += part.FileSize
         }
         if dirty > 0 {
-            logger.Error("error download full file, broken parts:" + strconv.Itoa(dirty) + "/" + strconv.Itoa(len(fi.Parts)))
+            logger.Error("error download full file, broken parts:" + strconv.Itoa(dirty) + "/" + strconv.Itoa(len(fullFi.Parts)))
         } else {
-            ee := lib_service.UpdateFileStatus(fi.Id)
+            ee := lib_service.UpdateFileStatus(fullFi.Id)
             if ee != nil {
                 logger.Error(ee)
             } else {

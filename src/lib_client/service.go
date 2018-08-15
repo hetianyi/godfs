@@ -237,6 +237,7 @@ func download(path string, start int64, offset int64, fromSrc bool, client *Clie
         if mem == nil {
             return NO_STORAGE_ERROR
         }
+        logger.Info("using storage server:", *mem)
         cb, e12 := client.connPool.GetConnBridge(mem)
         if e12 != nil {
             logger.Error(e12)

@@ -103,7 +103,7 @@ func (pool *ClientConnectionPool) ReturnBrokenConnBridge(server *bridge.ExpireMe
     defer pool.getLock.Unlock()
     connBridge.Close()
     pool.IncreaseActiveConnection(server, -1)
-    logger.Debug("return broken connection:", pool.connMap[GetStorageServerUID(server)].Len())
+    logger.Trace("return broken connection:", pool.connMap[GetStorageServerUID(server)].Len())
 }
 
 func (pool *ClientConnectionPool) IncreaseActiveConnection(server *bridge.ExpireMember, value int) int {

@@ -44,7 +44,7 @@ func main() {
     // the file to download
     var downFile = flag.String("d", "", "the file to be download")
     // the download file name
-    var customDownloadFileName = flag.String("-name", "", "custom download file name")
+    var customDownloadFileName = flag.String("n", "", "custom download file name")
     // the download file name
     var logLevel = flag.String("l", "", "custom logging level: trace, debug, info, warning, error, and fatal")
     // config file path
@@ -53,14 +53,16 @@ func main() {
 
     *logLevel = strings.ToLower(strings.TrimSpace(*logLevel))
     if *logLevel != "trace" && *logLevel != "debug" && *logLevel != "info" && *logLevel != "warning" && *logLevel != "error" && *logLevel != "fatal" {
-        *logLevel = "info"
+        *logLevel = ""
     }
     validate.SetSystemLogLevel(*logLevel)
 
     logger.Info("using config file:", *confPath)
     m, e := file.ReadPropFile(*confPath)
     if e == nil {
-        m["log_level"] = *logLevel
+        if m["log_level"] == "" {
+            m["log_level"] = *logLevel
+        }
         app.RUN_WITH = 3
         validate.Check(m, 3)
         if *uploadFile != "" || *downFile != "" {
@@ -77,7 +79,7 @@ func main() {
             fmt.Println("\t-u \n\t\tthe file to be upload")
             fmt.Println("\t-d \n\t\tthe file to be download")
             fmt.Println("\t-l \n\t\tcustom logging level: trace, debug, info, warning, error, and fatal")
-            fmt.Println("\t--name \n\t\tcustom download file name")
+            fmt.Println("\t-n \n\t\tcustom download file name")
         }
     } else {
         logger.Fatal("error read file:", e)
