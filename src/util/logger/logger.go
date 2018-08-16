@@ -99,6 +99,6 @@ func getCaller(buff *bytes.Buffer) {
         buff.WriteString(file[strings.LastIndex(file, "/") + 1:])
         buff.WriteString(":")
         buff.WriteString(strconv.Itoa(line))
-        buff.WriteString("] ")
+        buff.WriteString("]")
     }
 }
