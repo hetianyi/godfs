@@ -171,7 +171,6 @@ func (client *Client) Upload(path string, group string, startTime time.Time) (st
 
 
 func (client *Client) QueryFile(pathOrMd5 string) (*bridge.File, error) {
-
     var result *bridge.File
     for ele := client.TrackerManagers.Front(); ele != nil; ele = ele.Next() {
         queryMeta := &bridge.OperationQueryFileRequest{PathOrMd5: pathOrMd5}

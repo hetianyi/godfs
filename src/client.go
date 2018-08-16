@@ -51,6 +51,9 @@ func main() {
     var logLevel = flag.String("l", "", "custom logging level: trace, debug, info, warning, error, and fatal")
     // config file path
     var confPath = flag.String("c", s + string(filepath.Separator) + ".." + string(filepath.Separator) + "conf" + string(filepath.Separator) + "client.conf", "custom config file")
+    // whether check file md5 before upload
+    //var beforeCheck = flag.String("p", "", "whether check file md5 before upload")
+
     flag.Parse()
 
     *logLevel = strings.ToLower(strings.TrimSpace(*logLevel))
@@ -107,6 +110,18 @@ func upload(paths string) error {
     }
     for ele := pickList.Front(); ele != nil; ele = ele.Next() {
         var startTime = time.Now()
+        checkFile, ce := client.QueryFile(paths)
+        if ce != nil {
+            logger.Error("error check file")
+        }
+        if checkFile != nil {
+            now := time.Now()
+            fmt.Println("[==========] 100% ["+ timeutil.GetHumanReadableDuration(startTime, now) +"]\nupload success, file id:")
+            fmt.Println("+-------------------------------------------+")
+            fmt.Println(fid)
+            fmt.Println("+-------------------------------------------+")
+            continue
+        }
         fid, e := client.Upload(ele.Value.(string), "", startTime)
         if e != nil {
             logger.Error(e)
@@ -234,3 +249,6 @@ func writeOut(in io.Reader, offset int64, buffer []byte, out io.Writer, startTim
     }
     return nil
 }
+
+
+

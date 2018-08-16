@@ -12,7 +12,26 @@ import (
     "bytes"
     "util/common"
     "app"
+    "crypto/md5"
+    "encoding/hex"
 )
+
+
+func GetFileMd5(fi string) (string, error) {
+    md := md5.New()
+    f, e := GetFile(fi)
+    if e != nil {
+        return "", e
+    } else {
+        defer f.Close()
+        _, e1 := io.Copy(md, f)
+        if e1 != nil {
+            return "", e1
+        }
+        md5 := hex.EncodeToString(md.Sum(nil))
+        return md5, nil
+    }
+}
 
 // GetFile return a File for read.
 func GetFile(path string) (*os.File, error) {
