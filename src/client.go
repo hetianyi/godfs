@@ -92,6 +92,8 @@ func main() {
     }
 }
 
+// upload files
+//TODO support md5 check before upload
 func upload(paths string) error {
     uploadFiles := strings.Split(paths, ",")
     var pickList list.List
