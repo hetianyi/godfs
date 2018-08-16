@@ -29,7 +29,7 @@ var checkChan chan int
 // 对于客户端，只提供类似于mysql的客户端，每个client与所有的tracker建立单个连接进行数据同步
 // client和每个storage server最多建立一个连接
 // 三方客户端可以开发成为一个连接池
-
+// echo \"$(ls -m /f/Software)\" |xargs /e/godfs-storage/client/bin/go_build_client_go -u
 func main() {
     checkChan = make(chan int)
     abs, _ := filepath.Abs(os.Args[0])
@@ -42,12 +42,12 @@ func main() {
     //a := "D:/nginx-1.8.1.zip"
 
     // the file to be upload
-    var uploadFile = flag.String("u", "", "the file to be upload")
+    var uploadFile = flag.String("u", "", "the file to be upload, if you want upload many file once, quote file paths using \"\"\" and split with \",\"")
     // the file to download
     var downFile = flag.String("d", "", "the file to be download")
     // the download file name
     var customDownloadFileName = flag.String("n", "", "custom download file name")
-    // the download file name
+    // custom override log level
     var logLevel = flag.String("l", "", "custom logging level: trace, debug, info, warning, error, and fatal")
     // config file path
     var confPath = flag.String("c", s + string(filepath.Separator) + ".." + string(filepath.Separator) + "conf" + string(filepath.Separator) + "client.conf", "custom config file")
@@ -57,16 +57,19 @@ func main() {
     if *logLevel != "trace" && *logLevel != "debug" && *logLevel != "info" && *logLevel != "warning" && *logLevel != "error" && *logLevel != "fatal" {
         *logLevel = ""
     }
-    validate.SetSystemLogLevel(*logLevel)
 
     logger.Info("using config file:", *confPath)
     m, e := file.ReadPropFile(*confPath)
     if e == nil {
-        if m["log_level"] == "" {
+        if *logLevel != "" {
             m["log_level"] = *logLevel
         }
+        logger.Debug("uploadFile=" + *uploadFile)
         app.RUN_WITH = 3
         validate.Check(m, 3)
+        for k, v := range m {
+            logger.Debug(k, "=", v)
+        }
         if *uploadFile != "" || *downFile != "" {
             client = Init()
         }
@@ -77,28 +80,41 @@ func main() {
             download(*downFile, strings.TrimSpace(*customDownloadFileName))
         }
         if *uploadFile == "" && *downFile == "" {
-            fmt.Println("godfs usage:")
-            fmt.Println("\t-u \n\t\tthe file to be upload")
-            fmt.Println("\t-d \n\t\tthe file to be download")
-            fmt.Println("\t-l \n\t\tcustom logging level: trace, debug, info, warning, error, and fatal")
-            fmt.Println("\t-n \n\t\tcustom download file name")
+            fmt.Println("godfs client usage:")
+            fmt.Println("\t-u \n\t    the file to be upload, if you want upload many file once, quote file paths using \"\"\" and split with \",\"" +
+                "\n\t    example:\n\t\tclient -u \"/home/foo/bar1.tar.gz, /home/foo/bar1.tar.gz\"")
+            fmt.Println("\t-d \n\t    the file to be download")
+            fmt.Println("\t-l \n\t    custom logging level: trace, debug, info, warning, error, and fatal")
+            fmt.Println("\t-n \n\t    custom download file name")
         }
     } else {
         logger.Fatal("error read file:", e)
     }
 }
 
-func upload(path string) error {
-    var startTime time.Time
-    fid, e := client.Upload(path, "")
-    if e != nil {
-        logger.Error(e)
-    } else {
-        now := time.Now()
-        fmt.Println("[==========] 100% ["+ timeutil.GetHumanReadableDuration(startTime, now) +"]\nupload success, file id:")
-        fmt.Println("+-------------------------------------------+")
-        fmt.Println(fid)
-        fmt.Println("+-------------------------------------------+")
+func upload(paths string) error {
+    uploadFiles := strings.Split(paths, ",")
+    var pickList list.List
+    for i := range uploadFiles {
+        uploadFiles[i] = strings.TrimSpace(uploadFiles[i])
+        if file.Exists(uploadFiles[i]) && file.IsFile(uploadFiles[i]) {
+            pickList.PushBack(uploadFiles[i])
+        } else {
+            logger.Warn("file", uploadFiles[i], "not exists or not a file, skip.")
+        }
+    }
+    for ele := pickList.Front(); ele != nil; ele = ele.Next() {
+        var startTime = time.Now()
+        fid, e := client.Upload(ele.Value.(string), "", startTime)
+        if e != nil {
+            logger.Error(e)
+        } else {
+            now := time.Now()
+            fmt.Println("[==========] 100% ["+ timeutil.GetHumanReadableDuration(startTime, now) +"]\nupload success, file id:")
+            fmt.Println("+-------------------------------------------+")
+            fmt.Println(fid)
+            fmt.Println("+-------------------------------------------+")
+        }
     }
     return nil
 }
@@ -127,7 +143,7 @@ func download(path string, customDownloadFileName string) error {
         }
         defer fi.Close()
         buffer := make([]byte, app.BUFF_SIZE)
-        filePath = fi.Name()
+        filePath, _ = filepath.Abs(fi.Name())
         startTime = time.Now()
         return writeOut(reader, int64(fileLen), buffer, fi, startTime)
     })

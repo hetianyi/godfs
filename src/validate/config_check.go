@@ -54,7 +54,7 @@ func Check(m map[string] string, runWith int) {
 
     // check log_level
     logLevel := strings.ToLower(strings.TrimSpace(m["log_level"]))
-    if logLevel != "debug" && logLevel != "info" && logLevel != "warn" &&
+    if logLevel != "trace" && logLevel != "debug" && logLevel != "info" && logLevel != "warn" &&
         logLevel != "error" && logLevel != "fatal" {
         logLevel = "info"
     }

@@ -66,7 +66,7 @@ func (client *Client) Close() {
 
 
 //client demo for upload file to storage server.
-func (client *Client) Upload(path string, group string) (string, error) {
+func (client *Client) Upload(path string, group string, startTime time.Time) (string, error) {
     fi, e := file.GetFile(path)
     if e == nil {
         defer fi.Close()
@@ -88,6 +88,7 @@ func (client *Client) Upload(path string, group string) (string, error) {
             if mem == nil {
                 return "", NO_STORAGE_ERROR
             }
+            logger.Info("using storage server:", mem.BindAddr + ":" + strconv.Itoa(mem.Port))
             cb, e12 := client.connPool.GetConnBridge(mem)
             if e12 != nil {
                 excludes.PushBack(mem)
@@ -106,7 +107,7 @@ func (client *Client) Upload(path string, group string) (string, error) {
             defer func() {stopFlag = true}()
             total = fInfo.Size()
             finish = 0
-            go lib_common.ShowPercent(&total, &finish, &stopFlag, time.Now())
+            go lib_common.ShowPercent(&total, &finish, &stopFlag, startTime)
             for {
                 len5, e4 := fi.Read(buff)
                 if e4 != nil && e4 != io.EOF {
@@ -238,7 +239,7 @@ func download(path string, start int64, offset int64, fromSrc bool, client *Clie
         if mem == nil {
             return NO_STORAGE_ERROR
         }
-        logger.Info("using storage server:", *mem)
+        logger.Info("using storage server:", mem.BindAddr + ":" + strconv.Itoa(mem.Port))
         cb, e12 := client.connPool.GetConnBridge(mem)
         if e12 != nil {
             logger.Error(e12)
