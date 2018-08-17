@@ -637,7 +637,7 @@ func getDownloadClient() *Client {
     return downloadClient
 }
 
-// TODO check file part md5
+// TODO download from source first
 func downloadFile(fullFi *bridge.File) {
     increaseActiveDownload(1)
     defer increaseActiveDownload(-1)
@@ -665,7 +665,7 @@ func downloadFile(fullFi *bridge.File) {
             }
             logger.Debug("download part of ", strconv.Itoa(i+1) + "/" + strconv.Itoa(len(fullFi.Parts)), ": /" + app.GROUP + "/" + fullFi.Instance + "/" + som + "/" + fullFi.Md5, " -> ", part.Md5)
             e2 := download("/" + app.GROUP + "/" + fullFi.Instance + "/" + som + "/" + fullFi.Md5,
-                start, part.FileSize, true, getDownloadClient(),
+                start, part.FileSize, true, new(list.List), getDownloadClient(),
                 func(fileLen uint64, reader io.Reader) error {
                     if uint64(part.FileSize) != fileLen {
                         return errors.New("download return wrong file length")

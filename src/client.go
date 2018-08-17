@@ -52,8 +52,7 @@ func main() {
     // config file path
     var confPath = flag.String("c", s + string(filepath.Separator) + ".." + string(filepath.Separator) + "conf" + string(filepath.Separator) + "client.conf", "custom config file")
     // whether check file md5 before upload
-    //var beforeCheck = flag.String("p", "", "whether check file md5 before upload")
-
+    var beforeCheck = false//flag.Bool("-skip-check", true, "whether check file md5 before upload, true|false")
     flag.Parse()
 
     *logLevel = strings.ToLower(strings.TrimSpace(*logLevel))
@@ -61,7 +60,7 @@ func main() {
         *logLevel = ""
     }
 
-    logger.Info("using config file:", *confPath)
+    logger.Info("Usage of godfs client:", *confPath)
     m, e := file.ReadPropFile(*confPath)
     if e == nil {
         if *logLevel != "" {
@@ -77,18 +76,19 @@ func main() {
             client = Init()
         }
         if *uploadFile != "" {
-            upload(*uploadFile)
+            upload(*uploadFile, beforeCheck)
         }
         if *downFile != "" {
             download(*downFile, strings.TrimSpace(*customDownloadFileName))
         }
         if *uploadFile == "" && *downFile == "" {
             fmt.Println("godfs client usage:")
-            fmt.Println("\t-u \n\t    the file to be upload, if you want upload many file once, quote file paths using \"\"\" and split with \",\"" +
+            fmt.Println("\t-u string \n\t    the file to be upload, if you want upload many file once, quote file paths using \"\"\" and split with \",\"" +
                 "\n\t    example:\n\t\tclient -u \"/home/foo/bar1.tar.gz, /home/foo/bar1.tar.gz\"")
-            fmt.Println("\t-d \n\t    the file to be download")
-            fmt.Println("\t-l \n\t    custom logging level: trace, debug, info, warning, error, and fatal")
-            fmt.Println("\t-n \n\t    custom download file name")
+            fmt.Println("\t-d string \n\t    the file to be download")
+            fmt.Println("\t-l string \n\t    custom logging level: trace, debug, info, warning, error, and fatal")
+            fmt.Println("\t-n string \n\t    custom download file name")
+            fmt.Println("\t--skip-check bool \n\t    whether check file md5 before upload, true|false")
         }
     } else {
         logger.Fatal("error read file:", e)
@@ -97,7 +97,7 @@ func main() {
 
 // upload files
 //TODO support md5 check before upload
-func upload(paths string) error {
+func upload(paths string, beforeCheck bool) error {
     uploadFiles := strings.Split(paths, ",")
     var pickList list.List
     for i := range uploadFiles {
@@ -110,7 +110,7 @@ func upload(paths string) error {
     }
     for ele := pickList.Front(); ele != nil; ele = ele.Next() {
         var startTime = time.Now()
-        fid, e := client.Upload(ele.Value.(string), "", startTime)
+        fid, e := client.Upload(ele.Value.(string), "", startTime, beforeCheck)
         if e != nil {
             logger.Error(e)
         } else {

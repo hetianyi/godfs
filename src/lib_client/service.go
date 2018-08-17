@@ -54,27 +54,31 @@ func NewClient(MaxConnPerServer int) *Client {
 
 
 //client demo for upload file to storage server.
-func (client *Client) Upload(path string, group string, startTime time.Time) (string, error) {
+func (client *Client) Upload(path string, group string, startTime time.Time, beforeCheck bool) (string, error) {
     fi, e := file.GetFile(path)
     if e == nil {
         defer fi.Close()
         logger.Info("upload file:", fi.Name())
-        logger.Debug("pre check file md5:", fi.Name())
-        md5, ee := file.GetFileMd5(path)
-        if ee == nil {
-            qfi, ee1 := client.QueryFile(md5)
-            if qfi != nil {
-                sm := "S"
-                if qfi.PartNum > 1 {
-                    sm = "M"
+        if !beforeCheck {
+            logger.Debug("pre check file md5:", fi.Name())
+            md5, ee := file.GetFileMd5(path)
+            if ee == nil {
+                qfi, ee1 := client.QueryFile(md5)
+                if qfi != nil {
+                    sm := "S"
+                    if qfi.PartNum > 1 {
+                        sm = "M"
+                    }
+                    logger.Debug("file already exists, skip upload.")
+                    return qfi.Group + "/" + qfi.Instance + "/" + sm + "/" + qfi.Md5, nil
+                } else {
+                    logger.Debug("error query file info from tracker server:", ee1)
                 }
-                return qfi.Group + "/" + qfi.Instance + "/" + sm + "/" + qfi.Md5, nil
             } else {
-                logger.Debug("error query file info from tracker server:", ee1)
+                logger.Debug("error check file md5:", ee,", skip pre check.")
             }
-        } else {
-            logger.Debug("error check file md5:", ee,", skip pre check.")
         }
+
         fInfo, _ := fi.Stat()
         uploadMeta := &bridge.OperationUploadFileRequest{
             FileSize: uint64(fInfo.Size()),
@@ -219,10 +223,10 @@ func (client *Client) DownloadFile(path string, start int64, offset int64, write
     if mat, _ := regexp.Match(app.PATH_REGEX, []byte(path)); !mat {
         return errors.New("file path format error")
     }
-    return download(path, start, offset, false, client, writerHandler)
+    return download(path, start, offset, false, new(list.List), client, writerHandler)
 }
 
-func download(path string, start int64, offset int64, fromSrc bool, client *Client, writerHandler func(fileLen uint64, reader io.Reader) error) error {
+func download(path string, start int64, offset int64, fromSrc bool, excludes *list.List, client *Client, writerHandler func(fileLen uint64, reader io.Reader) error) error {
     downloadMeta := &bridge.OperationDownloadFileRequest {
         Path: path,
         Start: start,
@@ -231,11 +235,16 @@ func download(path string, start int64, offset int64, fromSrc bool, client *Clie
     group := regexp.MustCompile(app.PATH_REGEX).ReplaceAllString(path, "${1}")
     instanceId := regexp.MustCompile(app.PATH_REGEX).ReplaceAllString(path, "${2}")
 
-    var excludes list.List
     var connBridge *bridge.Bridge
     var member *bridge.ExpireMember
     for {
-        mem := selectStorageServer(group, "", &excludes)
+        var mem *bridge.ExpireMember
+        if fromSrc {
+            mem = selectStorageServer(group, instanceId, excludes)
+        } else {
+            mem = selectStorageServer(group, "", excludes)
+        }
+        excludes.PushBack(mem)
         // no available storage
         if mem == nil {
             return NO_STORAGE_ERROR
@@ -244,9 +253,11 @@ func download(path string, start int64, offset int64, fromSrc bool, client *Clie
         cb, e12 := client.connPool.GetConnBridge(mem)
         if e12 != nil {
             logger.Error(e12)
-            if e12 != MAX_CONN_EXCEED_ERROR {
-                excludes.PushBack(mem)
-            }
+            /*if e12 != MAX_CONN_EXCEED_ERROR {
+                if !srcInstanceFail {
+                    srcInstanceFail = true
+                }
+            }*/
             continue
         }
         connBridge = cb
@@ -258,11 +269,8 @@ func download(path string, start int64, offset int64, fromSrc bool, client *Clie
     e2 := connBridge.SendRequest(bridge.O_DOWNLOAD_FILE, downloadMeta, 0, nil)
     if e2 != nil {
         client.connPool.ReturnBrokenConnBridge(member, connBridge)
-        // if download fail, try to download from file source server
-        if !fromSrc && member.InstanceId != instanceId {
-            return download(path, start, offset, true, client, writerHandler)
-        }
-        return e2
+        // if download fail, try to download from other storage server
+        return download(path, start, offset, false, excludes, client, writerHandler)
     }
 
     // receive response
@@ -286,11 +294,8 @@ func download(path string, start int64, offset int64, fromSrc bool, client *Clie
     })
     if e3 != nil {
         client.connPool.ReturnBrokenConnBridge(member, connBridge)
-        // if download fail, try to download from file source server
-        if !fromSrc && member.InstanceId != instanceId {
-            return download(path, start, offset, true, client, writerHandler)
-        }
-        return e3
+        // if download fail, try to download from other storage server
+        return download(path, start, offset, false, excludes, client, writerHandler)
     } else {
         client.connPool.ReturnConnBridge(member, connBridge)
     }
