@@ -48,6 +48,7 @@ type IMaintainer interface {
 
 type TrackerMaintainer struct {
     Collectors list.List
+    TrackerInstances list.List
 }
 
 type ITracker interface {
@@ -66,6 +67,7 @@ type TrackerInstance struct {
     listIteLock *sync.Mutex
     connBridge *bridge.Bridge
     Collectors list.List
+    Ready bool
 }
 
 
@@ -101,25 +103,27 @@ func trackTaskFilter(allCollectors *list.List, index int) *list.List {
 }
 
 // communication with tracker
-func (maintainer *TrackerMaintainer) Maintain(trackers string) {
+func (maintainer *TrackerMaintainer) Maintain(trackers string) *list.List {
     ls := lib_common.ParseTrackers(trackers)
     if ls.Len() == 0 {
         logger.Warn("no trackers set, the storage server will run in stand-alone mode.")
-        return
+        return ls
     }
     index := 0
     for e := ls.Front(); e != nil; e = e.Next() {
         go maintainer.track(e.Value.(string), index)
         index++
     }
+    return ls
 }
 
 // connect to each tracker
 func (maintainer *TrackerMaintainer) track(tracker string, index int) {
     logger.Debug("start tracker conn with tracker server:", tracker)
     retry := 0
-    trackerInstance := TrackerInstance{Collectors: *trackTaskFilter(&maintainer.Collectors, index)}
+    trackerInstance := &TrackerInstance{Collectors: *trackTaskFilter(&maintainer.Collectors, index)}
     trackerInstance.Init()
+    initDownloadClient(maintainer)
     for {//keep trying to connect to tracker server.
         conn, e := net.Dial("tcp", tracker)
         if e == nil {
@@ -138,7 +142,8 @@ func (maintainer *TrackerMaintainer) track(tracker string, index int) {
                 if trackerConfig == nil {
                     trackerConfig = &bridge.TrackerConfig{UUID: connBridge.UUID, MasterSyncId: 0, LocalPushId: 0}
                 }*/
-
+                ele := maintainer.TrackerInstances.PushBack(trackerInstance)
+                trackerInstance.Ready = true
                 retry = 0
                 logger.Debug("connect to tracker server success.")
                 trackerInstance.SetConnBridge(connBridge)
@@ -163,6 +168,8 @@ func (maintainer *TrackerMaintainer) track(tracker string, index int) {
                         break
                     }
                 }
+                maintainer.TrackerInstances.Remove(ele)
+                trackerInstance.Ready = false
             }
         } else {
             logger.Error("(" + strconv.Itoa(retry) + ")error connect to tracker server:", tracker)
@@ -211,6 +218,7 @@ func (collector *TaskCollector) Start(tracker *TrackerInstance) {
     execTimes := 0
     for {
         if collector.ExecTimes > 0 && execTimes >= collector.ExecTimes  {
+            logger.Debug("stop collector \""+ collector.Name +"\" because of max execute times reached.")
             timer.Stop()
             break
         }
@@ -614,7 +622,7 @@ func SyncAllStorageServersTaskCollector(tracker *TrackerInstance) {
 
 
 var lockInitDownloadClient sync.Mutex
-func initDownloadClient() {
+func initDownloadClient(maintainer *TrackerMaintainer) {
     lockInitDownloadClient.Lock()
     defer lockInitDownloadClient.Unlock()
     if downloadClient != nil {
@@ -622,12 +630,10 @@ func initDownloadClient() {
     }
     // TODO MaxConnPerServer
     downloadClient = NewClient(10)
+    downloadClient.TrackerMaintainer = maintainer
 }
 
 func getDownloadClient() *Client {
-    if downloadClient == nil {
-        initDownloadClient()
-    }
     return downloadClient
 }
 

@@ -42,7 +42,7 @@ func Test4(t *testing.T) {
         ls.PushBack(id)
     }
 
-    fmt.Println(StorageAddFile("0d3cc782c3242cf3ce4b2174e1041ed2", &ls))
+    fmt.Println(StorageAddFile("0d3cc782c3242cf3ce4b2174e1041ed2", "G001",  &ls))
 }
 
 func Test5(t *testing.T) {

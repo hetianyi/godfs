@@ -45,6 +45,7 @@ type File struct {
     Id int                      `json:"id"`      // 分片md5
     Md5 string                  `json:"md5"`     // 分片md5
     PartNum int                 `json:"partNum"` // 文件分片数量
+    Group string                `json:"group"`// 组id
     Instance string             `json:"instance"`// 实例id
     Parts []FilePart            `json:"parts"`   // 实例id
 }

@@ -110,18 +110,6 @@ func upload(paths string) error {
     }
     for ele := pickList.Front(); ele != nil; ele = ele.Next() {
         var startTime = time.Now()
-        checkFile, ce := client.QueryFile(paths)
-        if ce != nil {
-            logger.Error("error check file")
-        }
-        if checkFile != nil {
-            now := time.Now()
-            fmt.Println("[==========] 100% ["+ timeutil.GetHumanReadableDuration(startTime, now) +"]\nupload success, file id:")
-            fmt.Println("+-------------------------------------------+")
-            fmt.Println(fid)
-            fmt.Println("+-------------------------------------------+")
-            continue
-        }
         fid, e := client.Upload(ele.Value.(string), "", startTime)
         if e != nil {
             logger.Error(e)
@@ -182,14 +170,15 @@ func Init() *lib_client.Client {
     collector := lib_client.TaskCollector {
         Interval: time.Millisecond * 30,
         FirstDelay: 0,
+        ExecTimes: 1,
         Name: "::: synchronize storage server instances :::",
         Job: clientMonitorCollector,
     }
-    collectors := *new(list.List)
+    collectors := new(list.List)
     collectors.PushBack(&collector)
-    maintainer := &lib_client.TrackerMaintainer{Collectors: collectors}
-    maintainer.Maintain(app.TRACKERS)
-    trackerList = lib_common.ParseTrackers(app.TRACKERS)
+    maintainer := &lib_client.TrackerMaintainer{Collectors: *collectors}
+    client.TrackerMaintainer = maintainer
+    trackerList = maintainer.Maintain(app.TRACKERS)
     logger.Info("synchronize with trackers...")
     for i := 0; i < trackerList.Len(); i++ {
         <- checkChan

@@ -12,7 +12,7 @@ import (
 )
 
 const (
-    insertFileSQL  = "insert into files(md5, parts_num, instance, finish) values(?,?,?,?)"
+    insertFileSQL  = "insert into files(md5, parts_num, grop, instance, finish) values(?,?,?,?,?)"
     updateFileStatusSQL  = "update files set finish=1 where id=?"
     insertPartSQL  = "insert into parts(md5, size) values(?,?)"
     insertRelationSQL  = "insert into parts_relation(fid, pid) values(?, ?)"
@@ -21,10 +21,10 @@ const (
 
     getLocalPushFiles  = `select a.local_push_id from trackers a where a.uuid=?`
     getDownloadFiles   = `select id from files a where a.finish=0 limit ?`
-    getFullFileSQL1  = `select b.id, b.md5, b.instance, parts_num from files b where b.md5=? `
-    getFullFileSQL11  = `select b.id, b.md5, b.instance, parts_num from files b where b.id=? `
-    getFullFileSQL12  = `select b.id, b.md5, b.instance, parts_num from files b where b.id > ? limit 10`
-    getFullFileSQL13  = `select b.id, b.md5, b.instance, parts_num from files b where b.id in`
+    getFullFileSQL1  = `select b.id, b.md5, grop, b.instance, parts_num from files b where b.md5=? `
+    getFullFileSQL11  = `select b.id, b.md5, grop, b.instance, parts_num from files b where b.id=? `
+    getFullFileSQL12  = `select b.id, b.md5, grop, b.instance, parts_num from files b where b.id > ? limit 10`
+    getFullFileSQL13  = `select b.id, b.md5, grop, b.instance, parts_num from files b where b.id in`
     getFullFileSQL2  = `select d.md5, d.size
                         from files b
                         left join parts_relation c on b.id = c.fid
@@ -156,7 +156,7 @@ func AddPart(md5 string, size int64) (int, error) {
 
 // storage add file and add new sync task
 // parts is part id list
-func StorageAddFile(md5 string, parts *list.List) error {
+func StorageAddFile(md5 string, group string, parts *list.List) error {
     dao := dbPool.GetDB()
     defer dbPool.ReturnDB(dao)
     fid, ee := GetFileId(md5, dao)
@@ -173,7 +173,7 @@ func StorageAddFile(md5 string, parts *list.List) error {
             return e2
         }
         logger.Debug("exec SQL:\n\t" + insertFileSQL)
-        ret, e3 := state.Exec(md5, parts.Len(), app.INSTANCE_ID, 1)
+        ret, e3 := state.Exec(md5, parts.Len(), group, app.INSTANCE_ID, 1)
         if e3 != nil {
             return e3
         }
@@ -230,7 +230,7 @@ func StorageAddTrackerPulledFile(fis []bridge.File, trackerUUID string) error {
                 return e2
             }
             logger.Debug("exec SQL:\n\t" + insertFileSQL)
-            ret, e3 := state.Exec(fi.Md5, fi.PartNum, fi.Instance, 0)
+            ret, e3 := state.Exec(fi.Md5, fi.PartNum, fi.Group, fi.Instance, 0)
             if e3 != nil {
                 return e3
             }
@@ -304,7 +304,7 @@ func TrackerAddFile(meta *bridge.OperationRegisterFileRequest) error {
                 return e2
             }
             logger.Debug("exec SQL:\n\t" + insertFileSQL)
-            ret, e3 := state.Exec(fi.Md5, fi.PartNum, instance, 1)
+            ret, e3 := state.Exec(fi.Md5, fi.PartNum, fi.Group, instance, 1)
             if e3 != nil {
                 return e3
             }
@@ -437,12 +437,12 @@ func GetFullFileByMd5(md5 string, finishFlag int) (*bridge.File, error) {
         if rows != nil {
             for rows.Next() {
                 var id, partNu int
-                var md5, instance string
-                e1 := rows.Scan(&id, &md5, &instance, &partNu)
+                var md5, group, instance string
+                e1 := rows.Scan(&id, &md5, &group, &instance, &partNu)
                 if e1 != nil {
                     return e1
                 } else {
-                    fi = &bridge.File{Id: id, Md5: md5, Instance: instance, PartNum: partNu}
+                    fi = &bridge.File{Id: id, Md5: md5, Group: group, Instance: instance, PartNum: partNu}
                 }
             }
         }
@@ -505,12 +505,12 @@ func GetFullFileByFid(fid int, finishFlag int) (*bridge.File, error) {
         if rows != nil {
             for rows.Next() {
                 var id, partNu int
-                var md5, instance string
-                e1 := rows.Scan(&id, &md5, &instance, &partNu)
+                var md5, group, instance string
+                e1 := rows.Scan(&id, &md5, &group, &instance, &partNu)
                 if e1 != nil {
                     return e1
                 } else {
-                    fi = &bridge.File{Id: id, Md5: md5, Instance: instance, PartNum: partNu}
+                    fi = &bridge.File{Id: id, Md5: md5, Group: group, Instance: instance, PartNum: partNu}
                 }
             }
         }
@@ -585,12 +585,12 @@ func GetFullFileByFids(fids ...int) (*bridge.File, error) {
         if rows != nil {
             for rows.Next() {
                 var id, partNu int
-                var md5, instance string
-                e1 := rows.Scan(&id, &md5, &instance, &partNu)
+                var md5, group, instance string
+                e1 := rows.Scan(&id, &md5, &group, &instance, &partNu)
                 if e1 != nil {
                     return e1
                 } else {
-                    fi = &bridge.File{Id: id, Md5: md5, Instance: instance, PartNum: partNu}
+                    fi = &bridge.File{Id: id, Md5: md5, Group: group, Instance: instance, PartNum: partNu}
                 }
             }
         }
@@ -653,12 +653,12 @@ func GetFileByMd5(md5 string, finishFlag int) (*bridge.File, error) {
         if rows != nil {
             for rows.Next() {
                 var id, partNu int
-                var md5, instance string
-                e1 := rows.Scan(&id, &md5, &instance, &partNu)
+                var md5, group, instance string
+                e1 := rows.Scan(&id, &md5, &group, &instance, &partNu)
                 if e1 != nil {
                     return e1
                 } else {
-                    fi = &bridge.File{Id: id, Md5: md5, Instance: instance, PartNum: partNu}
+                    fi = &bridge.File{Id: id, Md5: md5, Group: group, Instance: instance, PartNum: partNu}
                 }
             }
         }
@@ -736,12 +736,12 @@ func GetFilesBasedOnId(fid int) (*list.List, error) {
         if rows != nil {
             for rows.Next() {
                 var id, partNu int
-                var md5, instance string
-                e1 := rows.Scan(&id, &md5, &instance, &partNu)
+                var md5, group, instance string
+                e1 := rows.Scan(&id, &md5, &group, &instance, &partNu)
                 if e1 != nil {
                     return e1
                 } else {
-                    fi := &bridge.File{Id: id, Md5: md5, Instance: instance, PartNum: partNu}
+                    fi := &bridge.File{Id: id, Md5: md5, Group: group, Instance: instance, PartNum: partNu}
                     files.PushBack(fi)
                 }
             }

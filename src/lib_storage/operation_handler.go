@@ -83,7 +83,7 @@ func uploadHandler(request *bridge.Meta, buffer []byte, md hash.Hash, conn io.Re
             sliceIds.PushBack(pid)
             logger.Info("上传结束，读取字节：", readBodySize, " MD5= " , md5)
 
-            stoe := lib_service.StorageAddFile(md5, &sliceIds)
+            stoe := lib_service.StorageAddFile(md5, app.GROUP, &sliceIds)
             if stoe != nil {
                 return stoe
             }

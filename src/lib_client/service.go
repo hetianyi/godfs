@@ -39,29 +39,17 @@ type IClient interface {
 
 type Client struct {
     //operationLock *sync.Mutex
-    TrackerManagers list.List
+    TrackerMaintainer *TrackerMaintainer
     connPool *ClientConnectionPool
     MaxConnPerServer int // 客户端和每个服务建立的最大连接数，web项目中建议设置为和最大线程相同的数量
 }
 
-type TrackerManager struct {
-    brokenChan *chan int
-    connBridge *bridge.Bridge
-}
 
 func NewClient(MaxConnPerServer int) *Client {
     logger.Debug("init godfs client.")
     connPool := &ClientConnectionPool{}
     connPool.Init(MaxConnPerServer)
     return &Client{connPool: connPool}
-}
-
-func (client *Client) Close() {
-    for ele := client.TrackerManagers.Front(); ele != nil; ele = ele.Next() {
-        b := ele.Value.(*TrackerManager)
-        logger.Debug("shutdown bridge ", b.connBridge.GetConn().RemoteAddr())
-        b.connBridge.Close()
-    }
 }
 
 
@@ -71,8 +59,23 @@ func (client *Client) Upload(path string, group string, startTime time.Time) (st
     if e == nil {
         defer fi.Close()
         logger.Info("upload file:", fi.Name())
+        logger.Debug("pre check file md5:", fi.Name())
+        md5, ee := file.GetFileMd5(path)
+        if ee == nil {
+            qfi, ee1 := client.QueryFile(md5)
+            if qfi != nil {
+                sm := "S"
+                if qfi.PartNum > 1 {
+                    sm = "M"
+                }
+                return qfi.Group + "/" + qfi.Instance + "/" + sm + "/" + qfi.Md5, nil
+            } else {
+                logger.Debug("error query file info from tracker server:", ee1)
+            }
+        } else {
+            logger.Debug("error check file md5:", ee,", skip pre check.")
+        }
         fInfo, _ := fi.Stat()
-
         uploadMeta := &bridge.OperationUploadFileRequest{
             FileSize: uint64(fInfo.Size()),
             FileExt: file.GetFileExt(fInfo.Name()),
@@ -171,14 +174,14 @@ func (client *Client) Upload(path string, group string, startTime time.Time) (st
 
 
 func (client *Client) QueryFile(pathOrMd5 string) (*bridge.File, error) {
+    logger.Debug("query file info:", pathOrMd5)
     var result *bridge.File
-    for ele := client.TrackerManagers.Front(); ele != nil; ele = ele.Next() {
+    for ele := client.TrackerMaintainer.TrackerInstances.Front(); ele != nil; ele = ele.Next() {
         queryMeta := &bridge.OperationQueryFileRequest{PathOrMd5: pathOrMd5}
-        connBridge := ele.Value.(*TrackerManager).connBridge
+        connBridge := ele.Value.(*TrackerInstance).connBridge
         e11 := connBridge.SendRequest(bridge.O_QUERY_FILE, queryMeta, 0, nil)
         if e11 != nil {
             connBridge.Close()
-            *ele.Value.(*TrackerManager).brokenChan <- 1
             continue
         }
         e12 := connBridge.ReceiveResponse(func(response *bridge.Meta, in io.Reader) error {
@@ -198,7 +201,6 @@ func (client *Client) QueryFile(pathOrMd5 string) (*bridge.File, error) {
         })
         if e12 != nil {
             connBridge.Close()
-            *ele.Value.(*TrackerManager).brokenChan <- 1
             continue
         }
         if result != nil {
