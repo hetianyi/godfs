@@ -241,13 +241,24 @@ func download(path string, start int64, offset int64, fromSrc bool, excludes *li
         var mem *bridge.ExpireMember
         if fromSrc {
             mem = selectStorageServer(group, instanceId, excludes)
+            if mem != nil {
+                logger.Debug("try to download file from source server:", mem.BindAddr + ":" + strconv.Itoa(mem.Port))
+            }
         } else {
             mem = selectStorageServer(group, "", excludes)
         }
-        excludes.PushBack(mem)
+        if mem != nil {
+            excludes.PushBack(mem)
+        }
         // no available storage
         if mem == nil {
-            return NO_STORAGE_ERROR
+            if !fromSrc {
+                return NO_STORAGE_ERROR
+            } else {
+                logger.Debug("source server is not available:", mem.BindAddr + ":" + strconv.Itoa(mem.Port))
+                fromSrc = false
+                continue
+            }
         }
         logger.Info("using storage server:", mem.BindAddr + ":" + strconv.Itoa(mem.Port))
         cb, e12 := client.connPool.GetConnBridge(mem)

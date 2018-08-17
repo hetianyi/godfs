@@ -74,6 +74,8 @@ func startTrackerMaintainer(trackers string) {
         Interval: time.Second * 10,
         Name: "推送本地新文件到tracker",
         Single: true,
+        FirstDelay: time.Second * 1,
+        ExecTimes: 1,
         Job: lib_client.QueryDownloadFileTaskCollector,
     }
     collector3 := lib_client.TaskCollector {

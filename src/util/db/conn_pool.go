@@ -46,14 +46,14 @@ func (pool *DbConnPool) GetDB() *DAO {
         time.Sleep(time.Millisecond * 1000)
     }
     dao := pool.dbList.Remove(pool.dbList.Front()).(*DAO)
-    logger.Debug("using db connection of index:", dao.index)
+    logger.Trace("using db connection of index:", dao.index)
     return dao
 }
 
 // return dao
 func (pool *DbConnPool) ReturnDB(dao *DAO) {
     if dao != nil {
-        logger.Debug("return db connection of index:", dao.index)
+        logger.Trace("return db connection of index:", dao.index)
         pool.dbList.PushBack(dao)
     }
 }
