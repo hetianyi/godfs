@@ -6,7 +6,7 @@
 group=G01
 
 # 实例ID
-instance_id=002
+instance_id=110
 
 
 # 服务器绑定的IP，用于服务之间互通时的地址，如果没有设置，则默认使用socket解析的远程地址
@@ -23,10 +23,10 @@ port=1025
 # -base_path
 #   └logs
 #   └data
-base_path=E:/godfs-storage/storage2
+base_path=E:/godfs-storage/storage3
 
 
-trackers=127.0.0.1:1022
+trackers=192.168.1.172:1022
 
 # secret用于服务通信时校验身份
 # 服务之间建立通信时会校验secret

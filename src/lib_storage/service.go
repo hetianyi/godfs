@@ -65,7 +65,7 @@ func StartService(config map[string] string) {
 
 func startTrackerMaintainer(trackers string) {
     collector1 := lib_client.TaskCollector {
-        Interval: time.Second * 30,
+        Interval: time.Second * 10,
         Name: "推送本地新文件到tracker",
         Single: false,
         Job: lib_client.QueryPushFileTaskCollector,//TODO 多tracker如何保证全部tracker成功？
@@ -77,7 +77,7 @@ func startTrackerMaintainer(trackers string) {
         Job: lib_client.QueryDownloadFileTaskCollector,
     }
     collector3 := lib_client.TaskCollector {
-        Interval: time.Second * 30,
+        Interval: time.Second * 10,
         Name: "拉取tracker新文件",
         Single: false,
         Job: lib_client.QueryNewFileTaskCollector,

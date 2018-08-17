@@ -28,7 +28,7 @@ import (
 // type 2: 上报文件给tracker（定时任务，持久化任务，插队任务，高优先级）
 // type 3: 定期向tracker服务器查询最新文件列表（定时任务，非持久化任务，插队任务，高优先级，任务列表中只能存在一条此类型的任务）
 // type 4: 从其他group节点下载文件（定时任务，持久化任务，最低优先级，goroutine执行）
-const ParallelDownload = 10
+const ParallelDownload = 50
 const MaxWaitDownload = 100
 var GroupMembers list.List
 var memberIteLock *sync.Mutex
@@ -404,7 +404,7 @@ func (tracker *TrackerInstance) ExecTask(task *bridge.Task) (bool, error) {
             if response.Err != nil {
                 return response.Err
             }
-            logger.Debug(string(response.MetaBody))
+            //logger.Debug(string(response.MetaBody))
             var validateResp = &bridge.OperationRegisterStorageClientResponse{}
             e3 := json.Unmarshal(response.MetaBody, validateResp)
             if e3 != nil {
@@ -597,6 +597,9 @@ func QueryDownloadFileTaskCollector(tracker *TrackerInstance) {
         logger.Error(e1)
         return
     }
+    if taskList.Len() == 0 {
+        logger.Debug("no file need to sync.")
+    }
     for e := taskList.Front(); e != nil; e = e.Next() {
         AddTask(e.Value.(*bridge.Task), tracker)
     }
@@ -629,7 +632,7 @@ func initDownloadClient(maintainer *TrackerMaintainer) {
         return
     }
     // TODO MaxConnPerServer
-    downloadClient = NewClient(10)
+    downloadClient = NewClient(ParallelDownload)
     downloadClient.TrackerMaintainer = maintainer
 }
 
@@ -642,7 +645,7 @@ func downloadFile(fullFi *bridge.File) {
     increaseActiveDownload(1)
     defer increaseActiveDownload(-1)
     common.Try(func() {
-        logger.Debug("downloading file from other storage server, current download thread:", increaseActiveDownload(0))
+        logger.Debug("sync file from other storage server, current download thread:", increaseActiveDownload(0))
         dirty := 0
         // calculate md5
         md := md5.New()

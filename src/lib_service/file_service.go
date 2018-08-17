@@ -23,7 +23,7 @@ const (
     getDownloadFiles   = `select id from files a where a.finish=0 limit ?`
     getFullFileSQL1  = `select b.id, b.md5, grop, b.instance, parts_num from files b where b.md5=? `
     getFullFileSQL11  = `select b.id, b.md5, grop, b.instance, parts_num from files b where b.id=? `
-    getFullFileSQL12  = `select b.id, b.md5, grop, b.instance, parts_num from files b where b.id > ? limit 10`
+    getFullFileSQL12  = `select b.id, b.md5, grop, b.instance, parts_num from files b where b.id > ? limit 20`
     getFullFileSQL13  = `select b.id, b.md5, grop, b.instance, parts_num from files b where b.id in`
     getFullFileSQL2  = `select d.md5, d.size
                         from files b
@@ -413,7 +413,7 @@ func GetDownloadFileTask(tasType int) (*list.List, error) {
             }
         }
         return nil
-    }, getDownloadFiles, 10)
+    }, getDownloadFiles, 20)
     if e != nil {
         return nil, e
     }
