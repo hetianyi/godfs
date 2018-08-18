@@ -43,7 +43,7 @@ After the build is successful, three files will be generated under the ./bin dir
 ```
 
 
-### build ```docker``` from latest source code:
+### build docker image from latest source code:
 ```
 cd godfs/docker
 docker build -t godfs .
@@ -82,7 +82,6 @@ client usage:
 
 for example, it's cool that you can upload all files in a directory by:
 ```javascript
-cd /f/foo
 echo \"$(ls -m /f/foo)\" |xargs /e/foo/bin/client -u
 ```
 
