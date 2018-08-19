@@ -10,6 +10,7 @@ import (
     "strconv"
     "app"
     "hash"
+    "fmt"
 )
 
 // operation codes const.
@@ -274,6 +275,7 @@ func ReadBytes(buff []byte, len int, conn io.ReadCloser, md hash.Hash) (int, err
             return 0, e1
         }
     }
+    fmt.Print(string(buff))
     return len, nil
 }
 

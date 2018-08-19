@@ -75,7 +75,7 @@ func startTrackerMaintainer(trackers string) {
         Name: "推送本地新文件到tracker",
         Single: true,
         FirstDelay: time.Second * 1,
-        ExecTimes: 1,
+        //ExecTimes: 1,
         Job: lib_client.QueryDownloadFileTaskCollector,
     }
     collector3 := lib_client.TaskCollector {
@@ -147,6 +147,7 @@ func startHttpDownloadService() {
     }
 
     http.HandleFunc("/download/", DownloadHandler)
+    http.HandleFunc("/upload", WebUploadHandler)
 
     s := &http.Server{
         Addr:           ":" + strconv.Itoa(app.HTTP_PORT),

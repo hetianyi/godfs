@@ -142,3 +142,7 @@ func Test10(t *testing.T) {
     fmt.Println(parseHeaderRange("bytes=120-"))
     fmt.Println(parseHeaderRange("bytes=-"))
 }
+func Test11(t *testing.T) {
+    a := "^multipart/form-data; boundary=.*$"
+    fmt.Println(regexp.Match(a, []byte("multipart/form-data; boundary=------------------------fe43cbff9d519997")))
+}
