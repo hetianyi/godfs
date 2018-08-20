@@ -180,6 +180,7 @@ func uploadHandler(request *bridge.Meta, buffer []byte, md hash.Hash, conn io.Re
 
 
 
+
 // 查询文件
 func QueryFileHandler(request *bridge.Meta, connBridge *bridge.Bridge, finishFlag int) error {
     var queryMeta = &bridge.OperationQueryFileRequest{}

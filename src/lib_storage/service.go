@@ -147,7 +147,7 @@ func startHttpDownloadService() {
     }
 
     http.HandleFunc("/download/", DownloadHandler)
-    http.HandleFunc("/upload", WebUploadHandler)
+    http.HandleFunc("/upload", WebUploadHandlerV1)
 
     s := &http.Server{
         Addr:           ":" + strconv.Itoa(app.HTTP_PORT),

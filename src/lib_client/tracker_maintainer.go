@@ -571,6 +571,10 @@ func (tracker *TrackerInstance) ExecTask(task *bridge.Task) (bool, error) {
 // ------------------------------------------------
 
 
+//TODO ERROR - 2018-08-20 09:46:03,879 [tracker_maintainer.go:232] task collector "推送本地新文件到tracker" return error: interface conversion: interface {} is nil, not *bridge.Task
+//TODO  ERROR - 2018-08-20 09:46:03,901 [tracker_maintainer.go:232] task collector "拉取tracker新文件" return error: interface conversion: interface {} is nil, not *bridge.Task
+
+
 // 查询推送文件到tracker的任务收集器
 func QueryPushFileTaskCollector(tracker *TrackerInstance) {
     if tracker.connBridge == nil {
@@ -581,7 +585,9 @@ func QueryPushFileTaskCollector(tracker *TrackerInstance) {
         logger.Error(e1)
         return
     }
-    AddTask(task, tracker)
+    if task != nil {
+        AddTask(task, tracker)
+    }
 }
 
 // TODO 标记多次下载失败的任务文件
