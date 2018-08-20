@@ -2,14 +2,19 @@ package lib_storage
 
 import (
     "net/http"
-    "util/file"
     "bytes"
     "regexp"
     "io"
     "errors"
-    "util/timeutil"
     "util/logger"
     "container/list"
+    "crypto/md5"
+    "hash"
+    "app"
+    "lib_common"
+    "os"
+    "encoding/hex"
+    "lib_service"
 )
 
 const ContentDispositionPattern = "^Content-Disposition: form-data; name=\"([^\"]+)\"$"
@@ -94,6 +99,9 @@ func (handler *FileUploadHandlerV1) beginUpload() error {
         boundary := regexp.MustCompile(ContentTypePattern).ReplaceAllString(contentType, "${1}")
         paraSeparator := "--" + boundary
         endSeparator := "--" + boundary + "--"
+        // calculate md5
+        md := md5.New()
+        buffer := make([]byte, app.BUFF_SIZE)
         for {
             line, e := readNextLine(formReader)
             //logger.Debug(">>>>>"+line)
@@ -141,9 +149,7 @@ func (handler *FileUploadHandlerV1) beginUpload() error {
                                 logger.Error("upload error4:", e3)
                                 break
                             } else { // read file body
-                                fi, _ := file.CreateFile("E:/" + timeutil.GetUUID() + ".exe")
-                                e4 := readFileBody(formReader, paraSeparator, fi)
-                                fi.Close()
+                                e4 := readFileBody(formReader, buffer, paraSeparator, md)
                                 if e4 != nil {
                                     logger.Error("upload error5:", e4)
                                     break
@@ -189,25 +195,57 @@ func readNextLine(reader *FileFormReader) (string, error) {
 }
 
 
-func readFileBody(reader *FileFormReader, separator string, writer io.Writer) error {
+
+type StageUploadStatus struct {
+    readBodySize uint64
+    sliceReadSize int64
+    md hash.Hash
+    sliceMd5 hash.Hash
+    sliceIds *list.List
+    out *os.File
+}
+
+func readFileBody(reader *FileFormReader, buffer []byte, separator string, md hash.Hash) (*StageUploadStatus, error) {
+
+    defer func() {
+        md.Reset()
+    }()
+    out, oe := lib_common.CreateTmpFile()
+    if oe != nil {
+        return nil, oe
+    }
+    stateUploadStatus := &StageUploadStatus {
+        readBodySize: 0,
+        sliceReadSize: 0,
+        sliceMd5: md5.New(),
+        md: md,
+        sliceIds: list.New(),
+        out: out,
+    }
+
+
     separator = "\r\n" + separator
-    buff1 := make([]byte, 1024*5)
+    buff1 := buffer
     buff2 := make([]byte, len(separator))
     tail := make([]byte, len(separator)*2)
     for {
         len1, e1 := reader.Read(buff1)
         if e1 != nil {
             if e1 != io.EOF {
-                return e1
+                return nil, e1
             }
         }
         if len1 == 0 {
-            return nil
+            return nil, nil
         }
         // whether buff1 contains separator
         i1 := bytes.Index(buff1, []byte(separator))
         if i1 != -1 {
-            writer.Write(buff1[0:i1])
+            out.Write(buff1[0:i1])
+            e8 := handleStagePartFile(buff1[0:i1], stateUploadStatus)
+            if e8 != nil {
+                return e8
+            }
             reader.Unread(buff1[i1 + 2:len1]) // skip "\r\n"
             break
         } else {
@@ -231,19 +269,91 @@ func readFileBody(reader *FileFormReader, separator string, writer io.Writer) er
             i2 := bytes.Index(tail, []byte(separator))
             if i2 != -1 {
                 if i2 < len(separator) {
-                    writer.Write(buff1[0:len1 - i2])
+                    out.Write(buff1[0:len1 - i2])
+
+                    e8 := handleStagePartFile(buff1[0:len1 - i2], stateUploadStatus)
+                    if e8 != nil {
+                        return e8
+                    }
+
                     reader.Unread(buff1[len1 - i2 + 2:len1])
                     reader.Unread(buff2[0:len2])
                 } else {
-                    writer.Write(buff1[0:len1])
+                    out.Write(buff1[0:len1])
+
+                    e8 := handleStagePartFile(buff1[0:len1], stateUploadStatus)
+                    if e8 != nil {
+                        return e8
+                    }
+
                     reader.Unread(buff2[i2 - len(separator) + 2:len2])
                 }
                 break
             } else {
-                writer.Write(buff1[0:len1])
+                out.Write(buff1[0:len1])
                 reader.Unread(buff2[0:len2])
             }
         }
+    }
+    return nil
+}
+
+func handleStagePartFile(buffer []byte, status *StageUploadStatus) error {
+    len1 := int64(len(buffer))
+    status.readBodySize += uint64(len1)
+    status.md.Write(buffer)
+    if status.sliceReadSize + len1 > app.SLICE_SIZE {
+        // write bytes to file
+        leftN := app.SLICE_SIZE - status.sliceReadSize
+        rightN := int64(len(buffer)) - (app.SLICE_SIZE - status.sliceReadSize)
+        len2, e1 := status.out.Write(buffer[0:leftN])
+        len4, e11 := status.sliceMd5.Write(buffer[0:leftN])
+        if e1 != nil || e11 != nil || int64(len2) != leftN || int64(len4) != leftN {
+            logger.Error("write out error:", e1, "|", e11)
+            lib_common.CloseAndDeleteTmpFile(status.out)
+            return errors.New("write out error(0)")
+        }
+
+        // close slice file and create a new slice file （承上启下）
+        status.out.Close()
+        sliceCipherStr := status.sliceMd5.Sum(nil)
+        sMd5 := hex.EncodeToString(sliceCipherStr)
+        status.sliceMd5.Reset()
+        e10 := lib_common.MoveTmpFileTo(sMd5, status.out)
+        if e10 != nil {
+            return e10
+        }
+        // save slice info to db
+        pid, e8 := lib_service.AddPart(sMd5, app.SLICE_SIZE)
+        if e8 != nil {
+            return e8
+        }
+        status.sliceIds.PushBack(pid)
+
+        out12, e12 := lib_common.CreateTmpFile()
+        if e12 != nil {
+            return e12
+        }
+        status.out = out12
+        len6, e2 := status.out.Write(buffer[leftN:len1])
+        len7, e12 := status.sliceMd5.Write(buffer[leftN:len1])
+        if e2 != nil || e12 != nil || int64(len6) != rightN || int64(len7) != rightN {
+            logger.Error("write out error:", e2, "|", e12)
+            lib_common.CloseAndDeleteTmpFile(status.out)
+            return errors.New("write out error(1)")
+        }
+        status.sliceReadSize = rightN
+    } else {
+        // write bytes to file
+        len2, e1 := status.out.Write(buffer[0:len1])
+        len4, e3 := status.sliceMd5.Write(buffer[0:len1])
+        // write error
+        if e1 != nil || e3 != nil || int64(len2) != len1 || int64(len4) != len1 {
+            logger.Error("write out error:", e1)
+            lib_common.CloseAndDeleteTmpFile(status.out)
+            return errors.New("write out error(0)")
+        }
+        status.sliceReadSize += int64(len1)
     }
     return nil
 }
