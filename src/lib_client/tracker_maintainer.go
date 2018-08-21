@@ -128,7 +128,7 @@ func (maintainer *TrackerMaintainer) track(tracker string, index int) {
     trackerInstance.Init()
     initDownloadClient(maintainer)
     // for test
-    go startTimer1()
+    //go startTimer1()
     for {//keep trying to connect to tracker server.
         conn, e := net.Dial("tcp", tracker)
         if e == nil {
