@@ -260,7 +260,8 @@ func download(path string, start int64, offset int64, fromSrc bool, excludes *li
                 continue
             }
         }
-        logger.Info("using storage server:", mem.BindAddr + ":" + strconv.Itoa(mem.Port))
+        // TODO when download is busy and no connection available, shall skip current download task.
+        logger.Debug("using storage server:", mem.BindAddr + ":" + strconv.Itoa(mem.Port))
         cb, e12 := client.connPool.GetConnBridge(mem)
         if e12 != nil {
             logger.Error(e12)
@@ -269,7 +270,8 @@ func download(path string, start int64, offset int64, fromSrc bool, excludes *li
                     srcInstanceFail = true
                 }
             }*/
-            continue
+            excludes.PushBack(mem)
+            return NO_STORAGE_ERROR
         }
         connBridge = cb
         member = mem

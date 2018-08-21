@@ -29,6 +29,7 @@ type ClientConnectionPool struct {
     getLock *sync.Mutex
     statusLock *sync.Mutex
     maxConnPerServer int    // 客户端和每个服务建立的最大连接数，web项目中建议设置为和最大线程相同的数量
+    totalActiveConn int
 }
 
 // maxConnPerServer: 每个服务的最大连接数
@@ -109,6 +110,7 @@ func (pool *ClientConnectionPool) ReturnBrokenConnBridge(server *bridge.ExpireMe
 func (pool *ClientConnectionPool) IncreaseActiveConnection(server *bridge.ExpireMember, value int) int {
     pool.statusLock.Lock()
     defer pool.statusLock.Unlock()
+    pool.totalActiveConn += value
     oldVal := pool.activeConnCounter[GetStorageServerUID(server)]
     pool.activeConnCounter[GetStorageServerUID(server)] = oldVal + value
     return oldVal + value

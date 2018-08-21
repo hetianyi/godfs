@@ -413,7 +413,7 @@ func GetDownloadFileTask(tasType int) (*list.List, error) {
             }
         }
         return nil
-    }, getDownloadFiles, 20)
+    }, getDownloadFiles, 50)
     if e != nil {
         return nil, e
     }

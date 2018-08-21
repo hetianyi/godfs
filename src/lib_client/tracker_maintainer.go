@@ -21,6 +21,7 @@ import (
     "crypto/md5"
     "encoding/hex"
     "util/timeutil"
+    "fmt"
 )
 
 // storage 的任务分为：
@@ -31,7 +32,9 @@ import (
 const ParallelDownload = 50
 const MaxWaitDownload = 100
 var GroupMembers list.List
+var DownloadingFiles list.List // 正在下载的文件Id列表
 var memberIteLock *sync.Mutex
+var addDownloadingFileLock = new(sync.Mutex)
 var downloadClient *Client
 var activeDownload int
 var activeDownloadLock *sync.Mutex
@@ -124,6 +127,8 @@ func (maintainer *TrackerMaintainer) track(tracker string, index int) {
     trackerInstance := &TrackerInstance{Collectors: *trackTaskFilter(&maintainer.Collectors, index)}
     trackerInstance.Init()
     initDownloadClient(maintainer)
+    // for test
+    go startTimer1()
     for {//keep trying to connect to tracker server.
         conn, e := net.Dial("tcp", tracker)
         if e == nil {
@@ -339,6 +344,11 @@ func AddTask(task *bridge.Task, tracker *TrackerInstance) bool {
         defer tracker.listIteLock.Unlock()
         total := 0
         for e := tracker.taskList.Front(); e != nil; e = e.Next() {
+            // if same download task exists then skip
+            if e.Value.(*bridge.Task).FileId == task.FileId {
+                logger.Debug("download task exists, ignore.")
+                return false
+            }
             if e.Value.(*bridge.Task).TaskType == task.TaskType {
                 total++
             }
@@ -528,6 +538,7 @@ func (tracker *TrackerInstance) ExecTask(task *bridge.Task) (bool, error) {
         if fi == nil || len(fi.Parts) == 0 {
             return false, nil
         }
+        addDownloadingFile(fi.Id, false)
         go downloadFile(fi)
         return false, nil
     } else if task.TaskType == app.TASK_SYNC_ALL_STORAGES {
@@ -607,7 +618,9 @@ func QueryDownloadFileTaskCollector(tracker *TrackerInstance) {
         logger.Debug("no file need to sync.")
     }
     for e := taskList.Front(); e != nil; e = e.Next() {
-        AddTask(e.Value.(*bridge.Task), tracker)
+        if !existsDownloadingFile(e.Value.(*bridge.Task).FileId) {
+            AddTask(e.Value.(*bridge.Task), tracker)
+        }
     }
 }
 
@@ -650,6 +663,7 @@ func getDownloadClient() *Client {
 func downloadFile(fullFi *bridge.File) {
     increaseActiveDownload(1)
     defer increaseActiveDownload(-1)
+    defer addDownloadingFile(fullFi.Id, true)
     common.Try(func() {
         logger.Debug("sync file from other storage server, current download thread:", increaseActiveDownload(0))
         dirty := 0
@@ -683,7 +697,7 @@ func downloadFile(fullFi *bridge.File) {
                     if e3 != nil {
                         return e3
                     }
-                    e4 := lib_common.WriteOut(reader, int64(fileLen), buffer, fi, md)
+                    e4 := lib_common.WriteOut(reader, int64(fileLen), buffer, fi, md, increDownloadBytes)
                     fi.Close()
                     if e4 != nil {
                         file.Delete(fi.Name())
@@ -747,3 +761,64 @@ func collectMemberInstanceId() string {
     logger.Debug("select download task file in members(" + buffer.String() + ")")
     return string(buffer.Bytes())
 }
+
+
+func addDownloadingFile(fileId int, remove bool) {
+    addDownloadingFileLock.Lock()
+    defer addDownloadingFileLock.Unlock()
+    exist := false
+    for ele := DownloadingFiles.Front(); ele != nil; ele = ele.Next() {
+        if ele.Value.(int) == fileId {
+            exist = true
+        }
+    }
+    if remove {
+        for ele := DownloadingFiles.Front(); ele != nil; ele = ele.Next() {
+            if ele.Value.(int) == fileId {
+                DownloadingFiles.Remove(ele)
+                break
+            }
+        }
+    } else {
+        if !exist {
+            DownloadingFiles.PushBack(fileId)
+        }
+    }
+}
+
+func existsDownloadingFile(fileId int) bool {
+    for ele := DownloadingFiles.Front(); ele != nil; ele = ele.Next() {
+        if ele.Value.(int) == fileId {
+            return true
+        }
+    }
+    return false
+}
+
+
+
+// for test
+var increLock sync.Mutex
+var lastBytesSecond = 0
+func increDownloadBytes(n int) {
+    increLock.Lock()
+    defer increLock.Unlock()
+    lastBytesSecond += n
+}
+
+func startTimer1() {
+    timer := time.NewTicker(time.Second)
+    for {
+        reportDownloadStatus()
+        lastBytesSecond = 0
+        <-timer.C
+    }
+}
+
+func reportDownloadStatus() {
+    fmt.Print("\n\n-----------------------------------------------------------------\n")
+    fmt.Print("连接总数：", downloadClient.connPool.totalActiveConn, ", 当前并行下载数：", increaseActiveDownload(0), ", 当前下载速率：", lastBytesSecond/1024, "kb/s")
+    fmt.Print("\n-----------------------------------------------------------------\n\n")
+}
+
+
