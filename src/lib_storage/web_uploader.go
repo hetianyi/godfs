@@ -322,7 +322,7 @@ func readFileBody(reader *FileFormReader, buffer []byte, separator string, md ha
             }
         }
     }
-    out.Close()
+    stateUploadStatus.out.Close()
     if stateUploadStatus.sliceReadSize > 0 {
         sliceCipherStr := stateUploadStatus.sliceMd5.Sum(nil)
         sMd5 := hex.EncodeToString(sliceCipherStr)
@@ -332,7 +332,7 @@ func readFileBody(reader *FileFormReader, buffer []byte, separator string, md ha
             return nil, e10
         }
         // save slice info to db
-        pid, e8 := lib_service.AddPart(sMd5, app.SLICE_SIZE)
+        pid, e8 := lib_service.AddPart(sMd5, stateUploadStatus.sliceReadSize)
         if e8 != nil {
             return nil, e8
         }
