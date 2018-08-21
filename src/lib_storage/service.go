@@ -150,7 +150,8 @@ func startHttpDownloadService() {
 
     s := &http.Server{
         Addr:           ":" + strconv.Itoa(app.HTTP_PORT),
-        ReadTimeout:    10 * time.Second,
+        //ReadTimeout:    10 * time.Second,
+        ReadHeaderTimeout: 10 * time.Second,
         WriteTimeout:   0,
         MaxHeaderBytes: 1 << 20,
     }
