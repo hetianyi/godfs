@@ -66,7 +66,7 @@ const (
     statisticQuery = `select * from (
                             (select count(*) files from files a),
                             (select count(*) finish from files a where a.finish = 1),
-                            (select sum(b.size) disk from files a left join parts_relation c on a.id = c.fid left join parts b on c.pid = b.id)  )`
+                            (select case when sum(b.size) is null then 0 else sum(b.size) end disk from files a left join parts_relation c on a.id = c.fid left join parts b on c.pid = b.id)  )`
 
 
 )
