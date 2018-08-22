@@ -114,7 +114,7 @@ func (handler *FileUploadHandlerV1) beginUpload() (*HttpUploadResponse, error) {
         endSeparator := "--" + boundary + "--"
         // calculate md5
         md := md5.New()
-        buffer := make([]byte, 1024*30)
+        buffer := make([]byte, app.BUFF_SIZE)
         for {
             line, e := readNextLine(formReader)
             //logger.Debug(">>>>>"+line)
