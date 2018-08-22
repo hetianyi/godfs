@@ -42,6 +42,7 @@ var (
     FILE_TOTAL int
     FILE_FINISH int
     DISK_USAGE int64
+    MEMORY uint64
 )
 
 const (

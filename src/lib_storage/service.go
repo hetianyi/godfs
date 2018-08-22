@@ -18,6 +18,7 @@ import (
     "lib_client"
     "lib_service"
     "util/timeutil"
+    "runtime"
 )
 
 //TODO support disk cpu statistic
@@ -233,6 +234,10 @@ func startStatisticService() {
             app.FILE_FINISH = finish
             app.DISK_USAGE = disk
         }
+
+        stats := &runtime.MemStats{}
+        runtime.ReadMemStats(stats)
+        app.MEMORY = stats.Sys
         <-timer.C
     }
 }

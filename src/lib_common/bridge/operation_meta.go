@@ -91,7 +91,7 @@ type OperationRegisterStorageClientRequest struct {
     IOin int64           `json:"in"`
     IOout int64          `json:"out"`
     DiskUsage int64      `json:"disk"`
-    Memory int64         `json:"disk"`
+    Memory uint64        `json:"mem"`
 }
 
 // validate operation response.

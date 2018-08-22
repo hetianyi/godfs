@@ -412,6 +412,7 @@ func (tracker *TrackerInstance) ExecTask(task *bridge.Task) (bool, error) {
             Downloads: app.DOWNLOADS,
             Uploads: app.UPLOADS,
             StartTime: app.START_TIME,
+            Memory: app.MEMORY,
         }
         // reg client
         e2 := connBridge.SendRequest(bridge.O_SYNC_MEMBERS, regClientMeta, 0, nil)

@@ -30,7 +30,7 @@ type storageMeta struct {
     IOin int64
     IOout int64
     DiskUsage int64
-    Memory int64
+    Memory uint64
 }
 
 // 定时任务，剔除过期的storage服务器
@@ -68,6 +68,7 @@ func AddStorageServer(meta *bridge.OperationRegisterStorageClientRequest) {
         Downloads: meta.Downloads,
         Uploads: meta.Uploads,
         StartTime: meta.StartTime,
+        Memory: app.MEMORY,
     }
     if managedStorages[key] == nil {
         logger.Debug("register storage server:", key)
@@ -99,6 +100,7 @@ func FutureExpireStorageServer(meta *bridge.OperationRegisterStorageClientReques
             Downloads: meta.Downloads,
             Uploads: meta.Uploads,
             StartTime: meta.StartTime,
+            Memory: app.MEMORY,
         }
         managedStorages[key] = holdMeta
     }
