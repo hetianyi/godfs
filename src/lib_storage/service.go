@@ -79,13 +79,13 @@ func startTrackerMaintainer(trackers string) {
         Job: lib_client.QueryDownloadFileTaskCollector,
     }
     collector3 := lib_client.TaskCollector {
-        Interval: time.Second * 10,
+        Interval: app.PULL_NEW_FILE_INTERVAL,
         Name: "拉取tracker新文件",
         Single: false,
         Job: lib_client.QueryNewFileTaskCollector,
     }
     collector4 := lib_client.TaskCollector {
-        Interval: time.Second * 30,
+        Interval: app.SYNC_MEMBER_INTERVAL,
         Name: "同步storage成员",
         Single: false,
         Job: lib_client.SyncMemberTaskCollector,

@@ -9,7 +9,6 @@ import (
     "container/list"
     "app"
     "lib_common/bridge"
-    "encoding/json"
 )
 
 var managedStorages = make(map[string] *storageMeta)
@@ -26,7 +25,7 @@ type storageMeta struct {
 
 // 定时任务，剔除过期的storage服务器
 func ExpirationDetection() {
-    timer := time.NewTicker(time.Second * app.STORAGE_CLIENT_EXPIRE_TIME)
+    timer := time.NewTicker(app.STORAGE_CLIENT_EXPIRE_TIME)
     for {
         <-timer.C
         logger.Debug("exec expired detected")
@@ -34,7 +33,7 @@ func ExpirationDetection() {
         for k, v := range managedStorages {
             if v.ExpireTime <= curTime { // 过期
                 delete(managedStorages, k)
-                logger.Info("storage server:", k, "expired")
+                logger.Info("storage server:", k, "expired finally")
             }
         }
     }
@@ -66,11 +65,10 @@ func FutureExpireStorageServer(meta *bridge.OperationRegisterStorageClientReques
     operationLock.Lock()
     defer operationLock.Unlock()
     if meta != nil {
-        s,_ := json.Marshal(meta)
-        logger.Info("expire storage client:", string(s))
         key := meta.BindAddr + ":" + strconv.Itoa(meta.Port)
+        logger.Info("expire storage client:", key, "in", app.STORAGE_CLIENT_EXPIRE_TIME)
         holdMeta := &storageMeta{
-            ExpireTime: timeutil.GetTimestamp(time.Now().Add(time.Second * app.STORAGE_CLIENT_EXPIRE_TIME)),//set to 100 years
+            ExpireTime: timeutil.GetTimestamp(time.Now().Add(app.STORAGE_CLIENT_EXPIRE_TIME)),
             Group: meta.Group,
             InstanceId: meta.InstanceId,
             Host: meta.BindAddr,
