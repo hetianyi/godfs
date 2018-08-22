@@ -2,6 +2,7 @@ package app
 
 import (
     "time"
+    "sync"
 )
 
 const (
@@ -30,6 +31,17 @@ var (
     QUWEY_DOWNLOAD_FILE_INTERVAL = time.Second * 15 //每5s取一次同步任务
     PATH_REGEX = "^/([0-9a-zA-Z_]{1,10})/([0-9a-zA-Z_]{1,10})/([MS])/([0-9a-fA-F]{32})$"
     UUID = ""
+
+
+    // statistic info
+    IOIN int64
+    IOOUT int64
+    DOWNLOADS int
+    UPLOADS int
+    START_TIME int64
+    FILE_TOTAL int
+    FILE_FINISH int
+    DISK_USAGE int64
 )
 
 const (
@@ -40,3 +52,32 @@ const (
     TASK_SYNC_ALL_STORAGES = 5 // client 同步所有的storage
     DB_Pool_SIZE = 10
 )
+
+
+var ioinLock sync.Mutex
+var iooutLock sync.Mutex
+var updownLock sync.Mutex
+func UpdateIOIN(len int64) {
+    ioinLock.Lock()
+    defer ioinLock.Unlock()
+    IOIN += len
+}
+func UpdateIOOUT(len int64) {
+    iooutLock.Lock()
+    defer iooutLock.Unlock()
+    IOOUT += len
+}
+
+func UpdateUploads() {
+    updownLock.Lock()
+    defer updownLock.Unlock()
+    UPLOADS++
+}
+
+func UpdateDownloads() {
+    updownLock.Lock()
+    defer updownLock.Unlock()
+    DOWNLOADS++
+}
+
+

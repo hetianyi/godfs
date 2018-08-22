@@ -217,6 +217,7 @@ func readNextLine(reader *FileFormReader) (string, error) {
         if len != 1 {
             return "", errors.New("error read from stream")
         }
+        app.UpdateIOIN(int64(len))
         last[0] = last[1]
         last[1] = buff[0]
         strBuff.Write(buff)
@@ -268,6 +269,7 @@ func readFileBody(reader *FileFormReader, buffer []byte, separator string, md ha
         if len1 == 0 {
             return nil, errors.New("read file body failed1")
         }
+        app.UpdateIOIN(int64(len1))
         // whether buff1 contains separator
         i1 := bytes.Index(buff1, []byte(separator))
         if i1 != -1 {
@@ -288,6 +290,7 @@ func readFileBody(reader *FileFormReader, buffer []byte, separator string, md ha
             if len2 == 0 {
                 return nil, errors.New("read file body failed2")
             }
+            app.UpdateIOIN(int64(len2))
             // []byte tail is last bytes of buff1 and first bytes of buff2 in case of broken separator.
             if len1 >= len(separator) {
                 ByteCopy(tail, 0, len(separator), buff1[len1 - len(separator):len1])

@@ -283,9 +283,9 @@ func downloadFileHandler(request *bridge.Meta, buffer []byte, connBridge *bridge
 
     response.Status = bridge.STATUS_OK
     startPos, endPos, totalLen := lib_common.GetReadPositions(fullFile, meta.Start, meta.Offset)
-    logger.Debug("下载位置：from：", startPos.PartIndex, ":", startPos.PartStart)
-    logger.Debug("下载位置：to  ：", endPos.PartIndex, ":", endPos.PartStart)
-    logger.Debug("大小：", totalLen)
+    logger.Debug("download from: ", startPos.PartIndex, ":", startPos.PartStart)
+    logger.Debug("download to  : ", endPos.PartIndex, ":", endPos.PartStart)
+    logger.Debug("download size: ", totalLen)
     return connBridge.SendResponse(response, uint64(totalLen), func(out io.WriteCloser) error {
         return WriteDownloadStream(fullFile, startPos, endPos, buffer, out)
     })

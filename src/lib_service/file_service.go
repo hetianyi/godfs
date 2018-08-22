@@ -63,6 +63,12 @@ const (
 
     existsStorageClient = `select count(*) from clients a where a.uuid = ?`
 
+    statisticQuery = `select * from (
+                            (select count(*) files from files a),
+                            (select count(*) finish from files a where a.finish = 1),
+                            (select sum(b.size) disk from files a left join parts_relation c on a.id = c.fid left join parts b on c.pid = b.id)  )`
+
+
 )
 
 var dbPool *db.DbConnPool
@@ -925,11 +931,11 @@ func GetLocalInstanceUUID() (string, error) {
 
 
 
-func QueryExistsStorageClient(uuid string) bool {
+func QueryExistsStorageClient(uuid string) (bool, error) {
     dao := dbPool.GetDB()
     defer dbPool.ReturnDB(dao)
     var count int
-    dao.Query(func(rows *sql.Rows) error {
+    e1 := dao.Query(func(rows *sql.Rows) error {
         if rows != nil {
             for rows.Next() {
                 e := rows.Scan(&count)
@@ -940,10 +946,13 @@ func QueryExistsStorageClient(uuid string) bool {
         }
         return nil
     }, existsStorageClient, uuid)
-    if count > 0 {
-        return true
+    if e1 != nil {
+        return false, e1
     }
-    return false
+    if count > 0 {
+        return true, nil
+    }
+    return false, nil
 }
 
 // 更新一个tracker的本地ID
@@ -962,6 +971,35 @@ func RegisterStorageClient(uuid string) error {
         return nil
     })
 }
+
+
+/// 查询数据库统计信息
+func QueryStatistic() (int, int, int64, error) {
+    dao := dbPool.GetDB()
+    defer dbPool.ReturnDB(dao)
+    var files, finish int
+    var disk int64
+    e1 := dao.Query(func(rows *sql.Rows) error {
+        if rows != nil {
+            for rows.Next() {
+                e := rows.Scan(&files, &finish, &disk)
+                if e != nil {
+                    return e
+                }
+            }
+        }
+        return nil
+    }, statisticQuery)
+    if e1 != nil {
+        return 0, 0, 0, e1
+    }
+
+    return files, finish, disk, nil
+}
+
+
+
+
 
 
 func createBatchPartSQL(parts []bridge.FilePart) string {

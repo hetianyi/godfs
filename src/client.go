@@ -129,10 +129,10 @@ func upload(paths string, beforeCheck bool) error {
 func download(path string, customDownloadFileName string) error {
     filePath := ""
     var startTime time.Time
-    e := client.DownloadFile(path, 0, -1, func(fileLen uint64, reader io.Reader) error {
+    e := client.DownloadFile(path, 0, -1, func(realPath string, fileLen uint64, reader io.Reader) error {
         var fi *os.File
         if customDownloadFileName == "" {
-            md5 := regexp.MustCompile(app.PATH_REGEX).ReplaceAllString(path, "${4}")
+            md5 := regexp.MustCompile(app.PATH_REGEX).ReplaceAllString(realPath, "${4}")
             customDownloadFileName = md5
             f, e1 := file.CreateFile(customDownloadFileName)
             if e1 != nil {

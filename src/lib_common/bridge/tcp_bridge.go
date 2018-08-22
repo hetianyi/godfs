@@ -118,6 +118,7 @@ func (bridge *Bridge) SendRequest(operation int, meta interface{}, bodyLen uint6
         Close(bridge.connection)
         return SEND_HEAD_BYTES_ERROR
     }
+    app.UpdateIOOUT(int64(headerBuff.Len()))
     if request.BodyLength > 0 {
         // write request body bytes using custom writer handler.
         err := bodyWriterHandler(bridge.connection)
@@ -252,6 +253,7 @@ func convertLen2Bytes(len uint64) []byte {
 }
 
 // 通用字节读取函数，如果读取结束/失败自动关闭连接
+// ioinout bool, true is in and false is out
 func ReadBytes(buff []byte, len int, conn io.ReadCloser, md hash.Hash) (int, error) {
     read := 0
     for {
@@ -274,6 +276,7 @@ func ReadBytes(buff []byte, len int, conn io.ReadCloser, md hash.Hash) (int, err
             return 0, e1
         }
     }
+    app.UpdateIOIN(int64(len))
     return len, nil
 }
 

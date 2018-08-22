@@ -215,7 +215,7 @@ func (client *Client) QueryFile(pathOrMd5 string) (*bridge.File, error) {
 }
 
 
-func (client *Client) DownloadFile(path string, start int64, offset int64, writerHandler func(fileLen uint64, reader io.Reader) error) error {
+func (client *Client) DownloadFile(path string, start int64, offset int64, writerHandler func(realPath string, fileLen uint64, reader io.Reader) error) error {
     path = strings.TrimSpace(path)
     if strings.Index(path, "/") != 0 {
         path = "/" + path
@@ -226,7 +226,8 @@ func (client *Client) DownloadFile(path string, start int64, offset int64, write
     return download(path, start, offset, false, new(list.List), client, writerHandler)
 }
 
-func download(path string, start int64, offset int64, fromSrc bool, excludes *list.List, client *Client, writerHandler func(fileLen uint64, reader io.Reader) error) error {
+func download(path string, start int64, offset int64, fromSrc bool, excludes *list.List, client *Client,
+                writerHandler func(realPath string, fileLen uint64, reader io.Reader) error) error {
     downloadMeta := &bridge.OperationDownloadFileRequest {
         Path: path,
         Start: start,
@@ -303,7 +304,7 @@ func download(path string, start int64, offset int64, fromSrc bool, excludes *li
             logger.Error("error connect to server, server response status:" + strconv.Itoa(downloadResponse.Status))
             return bridge.DOWNLOAD_FILE_ERROR
         }
-        return writerHandler(response.BodyLength, connBridge.GetConn())
+        return writerHandler(path, response.BodyLength, connBridge.GetConn())
     })
     if e3 != nil {
         client.connPool.ReturnBrokenConnBridge(member, connBridge)

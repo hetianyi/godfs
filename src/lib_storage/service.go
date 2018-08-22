@@ -17,6 +17,7 @@ import (
     "lib_common/bridge"
     "lib_client"
     "lib_service"
+    "util/timeutil"
 )
 
 //TODO support disk cpu statistic
@@ -41,6 +42,13 @@ func StartService(config map[string] string) {
 
     // set client type
     app.CLIENT_TYPE = 1
+    app.START_TIME = timeutil.GetTimestamp(time.Now())
+    app.DOWNLOADS = 0
+    app.UPLOADS = 0
+    app.IOIN = 0
+    app.IOOUT = 0
+    app.FILE_TOTAL = 0
+    app.FILE_FINISH = 0
 
     // 连接数据库
     lib_service.SetPool(db.NewPool(app.DB_Pool_SIZE))
@@ -57,6 +65,9 @@ func StartService(config map[string] string) {
     }
     app.UUID = uuid
     logger.Info("instance start with uuid:", app.UUID)
+
+    // start statistic service.
+    go startStatisticService()
 
     startHttpDownloadService()
     go startTrackerMaintainer(trackers)
@@ -208,5 +219,21 @@ func clientHandler(conn net.Conn) {
     }, func(i interface{}) {
         logger.Error("connection error:", i)
     })
+}
+
+
+func startStatisticService() {
+    timer := time.NewTicker(time.Second * 30)
+    for {
+        files, finish, disk, e := lib_service.QueryStatistic()
+        if e != nil {
+            logger.Error("error query statistic info:", e)
+        } else {
+            app.FILE_TOTAL = files
+            app.FILE_FINISH = finish
+            app.DISK_USAGE = disk
+        }
+        <-timer.C
+    }
 }
 

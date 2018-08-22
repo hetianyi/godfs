@@ -21,6 +21,16 @@ type storageMeta struct {
     InstanceId string
     Host string
     Port int
+    // 统计信息
+    TotalFiles int
+    Finish int
+    StartTime int64
+    Downloads int
+    Uploads int
+    IOin int64
+    IOout int64
+    DiskUsage int64
+    Memory int64
 }
 
 // 定时任务，剔除过期的storage服务器
@@ -50,6 +60,14 @@ func AddStorageServer(meta *bridge.OperationRegisterStorageClientRequest) {
         InstanceId: meta.InstanceId,
         Host: meta.BindAddr,
         Port: meta.Port,
+        TotalFiles: meta.TotalFiles,
+        Finish: meta.Finish,
+        IOin: meta.IOin,
+        IOout: meta.IOout,
+        DiskUsage: meta.DiskUsage,
+        Downloads: meta.Downloads,
+        Uploads: meta.Uploads,
+        StartTime: meta.StartTime,
     }
     if managedStorages[key] == nil {
         logger.Debug("register storage server:", key)
@@ -73,6 +91,14 @@ func FutureExpireStorageServer(meta *bridge.OperationRegisterStorageClientReques
             InstanceId: meta.InstanceId,
             Host: meta.BindAddr,
             Port: meta.Port,
+            TotalFiles: meta.TotalFiles,
+            Finish: meta.Finish,
+            IOin: meta.IOin,
+            IOout: meta.IOout,
+            DiskUsage: meta.DiskUsage,
+            Downloads: meta.Downloads,
+            Uploads: meta.Uploads,
+            StartTime: meta.StartTime,
         }
         managedStorages[key] = holdMeta
     }

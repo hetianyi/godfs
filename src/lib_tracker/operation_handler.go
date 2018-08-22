@@ -22,10 +22,15 @@ func validateClientHandler(request *bridge.Meta, connBridge *bridge.Bridge) erro
         if head.Secret == app.SECRET {
             response.Status = bridge.STATUS_OK
             response.UUID = app.UUID
-            if lib_service.QueryExistsStorageClient(head.UUID) {
-                response.IsNew = false
+            exist, e2 := lib_service.QueryExistsStorageClient(head.UUID)
+            if e2 != nil {
+                response.Status = bridge.STATUS_INTERNAL_SERVER_ERROR
             } else {
-                response.IsNew = true
+                if exist {
+                    response.IsNew = false
+                } else {
+                    response.IsNew = true
+                }
             }
             e1 = lib_service.RegisterStorageClient(head.UUID)
         } else {
@@ -54,6 +59,7 @@ func syncStorageMemberHandler(request *bridge.Meta, conn net.Conn,connBridge *br
     if e1 != nil {
         return nil, e1
     }
+    logger.Debug("storage info:", string(request.MetaBody))
     var response = &bridge.OperationRegisterStorageClientResponse{}
     //check meta fields
     if mat, _ := regexp.Match(validate.GroupInstancePattern, []byte(meta.Group)); !mat {

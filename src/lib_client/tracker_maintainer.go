@@ -404,6 +404,14 @@ func (tracker *TrackerInstance) ExecTask(task *bridge.Task) (bool, error) {
             Group: app.GROUP,
             InstanceId: app.INSTANCE_ID,
             Port: app.PORT,
+            TotalFiles: app.FILE_TOTAL,
+            Finish: app.FILE_FINISH,
+            IOin: app.IOIN,
+            IOout: app.IOOUT,
+            DiskUsage: app.DISK_USAGE,
+            Downloads: app.DOWNLOADS,
+            Uploads: app.UPLOADS,
+            StartTime: app.START_TIME,
         }
         // reg client
         e2 := connBridge.SendRequest(bridge.O_SYNC_MEMBERS, regClientMeta, 0, nil)
@@ -689,7 +697,7 @@ func downloadFile(fullFi *bridge.File) {
             logger.Debug("download part of ", strconv.Itoa(i+1) + "/" + strconv.Itoa(len(fullFi.Parts)), ": /" + app.GROUP + "/" + fullFi.Instance + "/" + som + "/" + fullFi.Md5, " -> ", part.Md5)
             e2 := download("/" + app.GROUP + "/" + fullFi.Instance + "/" + som + "/" + fullFi.Md5,
                 start, part.FileSize, true, new(list.List), getDownloadClient(),
-                func(fileLen uint64, reader io.Reader) error {
+                func(realPath string, fileLen uint64, reader io.Reader) error {
                     if uint64(part.FileSize) != fileLen {
                         return errors.New("download return wrong file length")
                     }

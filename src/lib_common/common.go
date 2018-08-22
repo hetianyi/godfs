@@ -176,6 +176,7 @@ func SeekWriteOut(in io.ReadSeeker, start int64, offset int64, buffer []byte, ou
             if e5 != nil || wl != len {
                 return errors.New("error handle download file")
             }
+            app.UpdateIOOUT(int64(wl))
         } else {
             if e2 == io.EOF {
                 return nil

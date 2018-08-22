@@ -82,7 +82,18 @@ type OperationRegisterStorageClientRequest struct {
     Group string         `json:"group"`
     InstanceId string    `json:"instance_id"`
     Port int             `json:"port"`
+    // 统计信息
+    TotalFiles int       `json:"files"`
+    Finish int           `json:"finish"`
+    StartTime int64      `json:"startTime"`
+    Downloads int        `json:"downloads"`
+    Uploads int          `json:"uploads"`
+    IOin int64           `json:"in"`
+    IOout int64          `json:"out"`
+    DiskUsage int64      `json:"disk"`
+    Memory int64         `json:"disk"`
 }
+
 // validate operation response.
 type OperationRegisterStorageClientResponse struct {
     Status int  `json:"status"`
@@ -90,8 +101,9 @@ type OperationRegisterStorageClientResponse struct {
     GroupMembers []Member       `json:"members"`    // 我的组内成员（不包括自己）
 }
 
-// register storage client operation request.
+// register storage client operation request.(only for client)
 type OperationGetStorageServerRequest struct {
+
 }
 // validate operation response.
 type OperationGetStorageServerResponse struct {
