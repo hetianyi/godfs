@@ -141,6 +141,7 @@ func DownloadHandler(writer http.ResponseWriter, request *http.Request) {
 
     bodyBuffSize := app.BUFF_SIZE
     var buffer = make([]byte, bodyBuffSize)
+    app.UpdateDownloads()
     WriteDownloadStream(fullFile, startPos, endPos, buffer, writer)
 }
 

@@ -82,6 +82,7 @@ func uploadHandler(request *bridge.Meta, buffer []byte, md hash.Hash, conn io.Re
             }
             sliceIds.PushBack(pid)
             logger.Info("上传结束，读取字节：", readBodySize, " MD5= " , md5)
+            app.UpdateUploads()
 
             stoe := lib_service.StorageAddFile(md5, app.GROUP, &sliceIds)
             if stoe != nil {
@@ -287,6 +288,7 @@ func downloadFileHandler(request *bridge.Meta, buffer []byte, connBridge *bridge
     logger.Debug("download to  : ", endPos.PartIndex, ":", endPos.PartStart)
     logger.Debug("download size: ", totalLen)
     return connBridge.SendResponse(response, uint64(totalLen), func(out io.WriteCloser) error {
+        app.UpdateDownloads()
         return WriteDownloadStream(fullFile, startPos, endPos, buffer, out)
     })
 }

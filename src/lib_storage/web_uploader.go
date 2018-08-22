@@ -355,6 +355,7 @@ func readFileBody(reader *FileFormReader, buffer []byte, separator string, md ha
         stateUploadStatus.path = app.GROUP + "/" + app.INSTANCE_ID + "/S/" + sMd5
     }
     logger.Debug("http upload fid is", stateUploadStatus.path)
+    app.UpdateUploads()
     return stateUploadStatus, nil
 }
 
