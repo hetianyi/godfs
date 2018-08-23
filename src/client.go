@@ -31,6 +31,7 @@ var checkChan chan int
 // 三方客户端可以开发成为一个连接池
 // echo \"$(ls -m /f/Software)\" |xargs /e/godfs-storage/client/bin/go_build_client_go -u
 // TODO suit for soft link
+// TODO remove client config file and using yml file in usr home directory.
 // path structure:
 // /usr/local/godfs
 //              |- /bin/client
