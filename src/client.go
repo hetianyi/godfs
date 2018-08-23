@@ -31,6 +31,10 @@ var checkChan chan int
 // 三方客户端可以开发成为一个连接池
 // echo \"$(ls -m /f/Software)\" |xargs /e/godfs-storage/client/bin/go_build_client_go -u
 func main() {
+
+
+    fmt.Println(os.Args[0])
+
     checkChan = make(chan int)
     abs, _ := filepath.Abs(os.Args[0])
     s, _ := filepath.Split(abs)
@@ -38,8 +42,6 @@ func main() {
 
     // set client type
     app.CLIENT_TYPE = 2
-    //for test
-    //a := "D:/nginx-1.8.1.zip"
 
     // the file to be upload
     var uploadFile = flag.String("u", "", "the file to be upload, if you want upload many file once, quote file paths using \"\"\" and split with \",\"")
