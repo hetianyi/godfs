@@ -93,6 +93,10 @@ func Check(m map[string] string, runWith int) {
         }
         app.GROUP = m["group"]
 
+        // check http auth
+        m["http_auth"] = strings.TrimSpace(m["http_auth"])
+        app.HTTP_AUTH = m["http_auth"]
+
         // check instance id
         m["instance_id"] = strings.TrimSpace(m["instance_id"])
         if mat, _ := regexp.Match(GroupInstancePattern, []byte(m["instance_id"])); !mat {

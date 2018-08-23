@@ -33,6 +33,15 @@ func init() {
 // TODO 加可选http验证
 func DownloadHandler(writer http.ResponseWriter, request *http.Request) {
 
+    if app.HTTP_AUTH != "" {
+        user, pass, _ := request.BasicAuth()
+        if app.HTTP_AUTH != user + ":" + pass {
+            writer.WriteHeader(403)
+            writer.Write([]byte("403 Forbidden."))
+            return
+        }
+    }
+
     qIndex := strings.Index(request.RequestURI, "?")
     var servletPath = request.RequestURI
     if qIndex != -1 {
@@ -42,7 +51,7 @@ func DownloadHandler(writer http.ResponseWriter, request *http.Request) {
     mat, _ := regexp.Match(pathRegexRestful, []byte(servletPath))
     if !mat {
         writer.WriteHeader(404)
-        writer.Write([]byte("Not found."))
+        writer.Write([]byte("404 Not Found."))
         return
     }
 
@@ -73,17 +82,17 @@ func DownloadHandler(writer http.ResponseWriter, request *http.Request) {
     fullFile, e11 := lib_service.GetFullFileByMd5(md5, 1)
     if e11 != nil {
         writer.WriteHeader(500)
-        writer.Write([]byte("Internal server error"))
+        writer.Write([]byte("500 Internal Server Error"))
         return
     }
     if fullFile == nil {
         writer.WriteHeader(404)
-        writer.Write([]byte("Not found."))
+        writer.Write([]byte("404 Not Found."))
         return
     }
     if len(fullFile.Parts) == 0 {
         writer.WriteHeader(500)
-        writer.Write([]byte("Internal server error"))
+        writer.Write([]byte("500 Internal Server Error"))
         return
     }
 

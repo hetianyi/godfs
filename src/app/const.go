@@ -32,6 +32,7 @@ var (
     PATH_REGEX = "^/([0-9a-zA-Z_]{1,10})/([0-9a-zA-Z_]{1,10})/([MS])/([0-9a-fA-F]{32})$"
     UUID = ""
 
+    HTTP_AUTH = ""
 
     // statistic info
     IOIN int64

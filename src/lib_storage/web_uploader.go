@@ -438,6 +438,16 @@ func ByteCopy(src []byte, start int, end int, cp []byte) {
 
 
 func WebUploadHandlerV1(writer http.ResponseWriter, request *http.Request) {
+
+    if app.HTTP_AUTH != "" {
+        user, pass, _ := request.BasicAuth()
+        if app.HTTP_AUTH != user + ":" + pass {
+            writer.WriteHeader(403)
+            writer.Write([]byte("403 Forbidden."))
+            return
+        }
+    }
+
     handler := &FileUploadHandlerV1{
         writer: writer,
         request: request,
