@@ -73,5 +73,10 @@ enable_mime_types=true
 # 定义浏览器能够直接识别展示的文件类型，如jpg,txt,html,css,js等，其他文件类型（如rar,gz等）则直接下载为文件
 web_content_mime_types=html,shtml,css,xml,gif,jpeg,jpg,js,txt,png,ico,bmp,svg,webp,woff,mp3,mp4,webm
 
+# 简单http验证，格式：
+# username:password
+# 如果为空，则不需要验证
+http_auth=
+
 # http下载服务监听端口
 http_port=8001

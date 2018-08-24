@@ -30,6 +30,13 @@ var checkChan chan int
 // client和每个storage server最多建立一个连接
 // 三方客户端可以开发成为一个连接池
 // echo \"$(ls -m /f/Software)\" |xargs /e/godfs-storage/client/bin/go_build_client_go -u
+// TODO suit for soft link
+// TODO remove client config file and using yml file in usr home directory.
+// path structure:
+// /usr/local/godfs
+//              |- /bin/client
+//              |- /conf/client.conf
+// /usr/bin/client -> /usr/local/godfs/bin/client
 func main() {
     checkChan = make(chan int)
     abs, _ := filepath.Abs(os.Args[0])
@@ -38,8 +45,6 @@ func main() {
 
     // set client type
     app.CLIENT_TYPE = 2
-    //for test
-    //a := "D:/nginx-1.8.1.zip"
 
     // the file to be upload
     var uploadFile = flag.String("u", "", "the file to be upload, if you want upload many file once, quote file paths using \"\"\" and split with \",\"")
