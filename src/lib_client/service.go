@@ -54,12 +54,12 @@ func NewClient(MaxConnPerServer int) *Client {
 
 
 //client demo for upload file to storage server.
-func (client *Client) Upload(path string, group string, startTime time.Time, beforeCheck bool) (string, error) {
+func (client *Client) Upload(path string, group string, startTime time.Time, skipCheck bool) (string, error) {
     fi, e := file.GetFile(path)
     if e == nil {
         defer fi.Close()
         logger.Info("upload file:", fi.Name())
-        if !beforeCheck {
+        if !skipCheck {
             logger.Debug("pre check file md5:", fi.Name())
             md5, ee := file.GetFileMd5(path)
             if ee == nil {
@@ -90,7 +90,7 @@ func (client *Client) Upload(path string, group string, startTime time.Time, bef
         var connBridge *bridge.Bridge
         var member *bridge.ExpireMember
         for {
-            mem := selectStorageServer(group, "", &excludes)
+            mem := selectStorageServer(group, "", &excludes, true)
             // no available storage
             if mem == nil {
                 return "", NO_STORAGE_ERROR
@@ -241,12 +241,12 @@ func download(path string, start int64, offset int64, fromSrc bool, excludes *li
     for {
         var mem *bridge.ExpireMember
         if fromSrc {
-            mem = selectStorageServer(group, instanceId, excludes)
+            mem = selectStorageServer(group, instanceId, excludes, false)
             if mem != nil {
                 logger.Debug("try to download file from source server:", mem.BindAddr + ":" + strconv.Itoa(mem.Port))
             }
         } else {
-            mem = selectStorageServer(group, "", excludes)
+            mem = selectStorageServer(group, "", excludes, false)
         }
         if mem != nil {
             excludes.PushBack(mem)
@@ -321,13 +321,13 @@ func download(path string, start int64, offset int64, fromSrc bool, excludes *li
 // TODO 新增连接池
 // select a storage server matching given group and instanceId
 // excludes contains fail storage and not gonna use this time.
-func selectStorageServer(group string, instanceId string, excludes *list.List) *bridge.ExpireMember {
+func selectStorageServer(group string, instanceId string, excludes *list.List, upload bool) *bridge.ExpireMember {
     memberIteLock.Lock()
     defer memberIteLock.Unlock()
     var pick list.List
     for ele := GroupMembers.Front(); ele != nil; ele = ele.Next() {
         b := ele.Value.(*bridge.ExpireMember)
-        if containsMember(b, excludes) || b.ReadOnly {
+        if containsMember(b, excludes) || (upload && b.ReadOnly) {
             continue
         }
         match1 := false

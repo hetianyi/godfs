@@ -53,7 +53,7 @@ func Test1(t *testing.T) {
     //fmt.Println(client.Upload("D:/1114785.jpg", app.GROUP))
     //fmt.Println(client.Upload("F:/project.rar", app.GROUP))
     //fmt.Println(client.Upload("F:/Software/AtomSetup-1.18.0_x64.exe", app.GROUP))
-    fmt.Println(client.Upload("D:/VMWare/ISO/CentOS-7-x86_64-Everything-1708.iso", app.GROUP))
+    fmt.Println(client.Upload("D:/VMWare/ISO/CentOS-7-x86_64-Everything-1708.iso", app.GROUP, time.Now(), false))
 }
 
 

@@ -19,6 +19,7 @@ import (
     "fmt"
     "errors"
     "util/timeutil"
+    "os/user"
 )
 
 
@@ -38,6 +39,7 @@ var checkChan chan int
 //              |- /conf/client.conf
 // /usr/bin/client -> /usr/local/godfs/bin/client
 func main() {
+
     checkChan = make(chan int)
     abs, _ := filepath.Abs(os.Args[0])
     s, _ := filepath.Split(abs)
@@ -45,7 +47,10 @@ func main() {
 
     // set client type
     app.CLIENT_TYPE = 2
+    app.RUN_WITH = 3
 
+    // the file to be upload
+    var setConfig = flag.String("set", "", "set global configuration with pattern \"name=value\".")
     // the file to be upload
     var uploadFile = flag.String("u", "", "the file to be upload, if you want upload many file once, quote file paths using \"\"\" and split with \",\"")
     // the file to download
@@ -55,54 +60,56 @@ func main() {
     // custom override log level
     var logLevel = flag.String("l", "", "custom logging level: trace, debug, info, warning, error, and fatal")
     // config file path
-    var confPath = flag.String("c", s + string(filepath.Separator) + ".." + string(filepath.Separator) + "conf" + string(filepath.Separator) + "client.conf", "custom config file")
+    m := prepare()
     // whether check file md5 before upload
-    var beforeCheck = false//flag.Bool("-skip-check", true, "whether check file md5 before upload, true|false")
+    var skipCheck = false//*flag.Bool("skip-check", true, "whether check file md5 before upload, true|false")
     flag.Parse()
+
+    if *setConfig != "" {
+        ec := resetConfig(*setConfig, m)
+        if ec != nil {
+            logger.Fatal("error set config:", ec)
+        } else {
+            logger.Info("success")
+        }
+        return
+    }
 
     *logLevel = strings.ToLower(strings.TrimSpace(*logLevel))
     if *logLevel != "trace" && *logLevel != "debug" && *logLevel != "info" && *logLevel != "warning" && *logLevel != "error" && *logLevel != "fatal" {
         *logLevel = ""
     }
 
-    logger.Info("Usage of godfs client:", *confPath)
-    m, e := file.ReadPropFile(*confPath)
-    if e == nil {
-        if *logLevel != "" {
-            m["log_level"] = *logLevel
+    if *logLevel != "" {
+        if *logLevel != "trace" && *logLevel != "debug" && *logLevel != "info" && *logLevel != "warn" &&
+            *logLevel != "error" && *logLevel != "fatal" {
+            *logLevel = "info"
         }
-        logger.Debug("uploadFile=" + *uploadFile)
-        app.RUN_WITH = 3
-        validate.Check(m, 3)
-        for k, v := range m {
-            logger.Debug(k, "=", v)
-        }
-        if *uploadFile != "" || *downFile != "" {
-            client = Init()
-        }
-        if *uploadFile != "" {
-            upload(*uploadFile, beforeCheck)
-        }
-        if *downFile != "" {
-            download(*downFile, strings.TrimSpace(*customDownloadFileName))
-        }
-        if *uploadFile == "" && *downFile == "" {
-            fmt.Println("godfs client usage:")
-            fmt.Println("\t-u string \n\t    the file to be upload, if you want upload many file once, quote file paths using \"\"\" and split with \",\"" +
-                "\n\t    example:\n\t\tclient -u \"/home/foo/bar1.tar.gz, /home/foo/bar1.tar.gz\"")
-            fmt.Println("\t-d string \n\t    the file to be download")
-            fmt.Println("\t-l string \n\t    custom logging level: trace, debug, info, warning, error, and fatal")
-            fmt.Println("\t-n string \n\t    custom download file name")
-            fmt.Println("\t--skip-check bool \n\t    whether check file md5 before upload, true|false")
-        }
-    } else {
-        logger.Fatal("error read file:", e)
+        m["log_level"] = *logLevel
+    }
+    validate.SetSystemLogLevel(m["log_level"])
+
+    if *uploadFile != "" || *downFile != "" {
+        client = Init()
+    }
+    if *uploadFile != "" {
+        upload(*uploadFile, skipCheck)
+    }
+    if *downFile != "" {
+        download(*downFile, strings.TrimSpace(*customDownloadFileName))
+    }
+    if *uploadFile == "" && *downFile == "" {
+        fmt.Println("godfs client usage:")
+        fmt.Println("\t-u string \n\t    the file to be upload, if you want upload many file once, quote file paths using \"\"\" and split with \",\"" +
+            "\n\t    example:\n\t\tclient -u \"/home/foo/bar1.tar.gz, /home/foo/bar1.tar.gz\"")
+        fmt.Println("\t-d string \n\t    the file to be download")
+        fmt.Println("\t-l string \n\t    custom logging level: trace, debug, info, warning, error, and fatal")
+        fmt.Println("\t-n string \n\t    custom download file name")
     }
 }
 
 // upload files
-//TODO support md5 check before upload
-func upload(paths string, beforeCheck bool) error {
+func upload(paths string, skipCheck bool) error {
     uploadFiles := strings.Split(paths, ",")
     var pickList list.List
     for i := range uploadFiles {
@@ -115,7 +122,7 @@ func upload(paths string, beforeCheck bool) error {
     }
     for ele := pickList.Front(); ele != nil; ele = ele.Next() {
         var startTime = time.Now()
-        fid, e := client.Upload(ele.Value.(string), "", startTime, beforeCheck)
+        fid, e := client.Upload(ele.Value.(string), "", startTime, skipCheck)
         if e != nil {
             logger.Error(e)
         } else {
@@ -246,3 +253,141 @@ func writeOut(in io.Reader, offset int64, buffer []byte, out io.Writer, startTim
 
 
 
+func prepare() map[string]string {
+    user, e := user.Current()
+    if e != nil {
+        logger.Fatal(e)
+    }
+    basdir := user.HomeDir + string(os.PathSeparator) + ".godfs"
+    app.BASE_PATH = basdir
+    if !file.Exists(basdir) {
+        if e1 := file.CreateDir(basdir); e != nil {
+            logger.Fatal("cannot create directory:", e1)
+        }
+    }
+    confFilePath := basdir + string(os.PathSeparator) + "client.conf"
+    if !file.Exists(confFilePath) {
+        if e2 := writeConf("", "", "true", "info", "d"); e2 != nil {
+            logger.Fatal("error write config file:", e2)
+        }
+    }
+    logFilePath := basdir + string(os.PathSeparator) + "logs"
+    if !file.Exists(logFilePath) {
+        if e1 := file.CreateDir(logFilePath); e != nil {
+            logger.Fatal("cannot create directory:", e1)
+        }
+    }
+    m, e3 := file.ReadPropFile(confFilePath)
+    if e3 != nil {
+        logger.Fatal("error read config file:", e3)
+    }
+
+    m["base_path"] = confFilePath
+    app.TRACKERS = m["trackers"]
+    m["secret"] = strings.TrimSpace(m["secret"])
+    app.SECRET = m["secret"]
+
+
+    //enable log config
+    logEnable := strings.ToLower(strings.TrimSpace(m["log_enable"]))
+    if logEnable == "" || (logEnable != "true" && logEnable != "false") {
+        logEnable = "true"
+    }
+    if logEnable == "true" {
+        app.LOG_ENABLE = true
+        logger.SetEnable(true)
+        app.LOG_ENABLE = true
+    } else {
+        app.LOG_ENABLE = false
+        logger.SetEnable(false)
+        app.LOG_ENABLE = false
+    }
+    m["log_enable"] = logEnable
+
+    // check log_level
+    logLevel := strings.ToLower(strings.TrimSpace(m["log_level"]))
+    if logLevel != "trace" && logLevel != "debug" && logLevel != "info" && logLevel != "warn" &&
+        logLevel != "error" && logLevel != "fatal" {
+        logLevel = "info"
+    }
+    m["log_level"] = logLevel
+    // check log_rotation_interval
+    log_rotation_interval := strings.ToLower(strings.TrimSpace(m["log_rotation_interval"]))
+    if log_rotation_interval != "h" && log_rotation_interval != "d" &&
+        log_rotation_interval != "m" && log_rotation_interval != "y" {
+        log_rotation_interval = "d"
+    }
+    m["log_rotation_interval"] = log_rotation_interval
+    app.LOG_INTERVAL = log_rotation_interval
+    return m
+}
+
+func resetConfig(setConfig string, m map[string]string) error {
+    kv := make([]string, 2)
+    firstEQ := strings.Index(setConfig, "=")
+    if firstEQ == -1 {
+        kv[0] = setConfig
+        kv[1] = ""
+    } else {
+        kv[0] = setConfig[0:firstEQ]
+        kv[1] = setConfig[firstEQ+1:]
+    }
+    var k, v string
+    if len(kv) == 1 {
+        k = strings.TrimSpace(kv[0])
+    } else if len(kv) > 1 {
+        k = strings.TrimSpace(kv[0])
+        for i := range kv {
+            if i == 0 {
+                continue
+            }
+            v += strings.TrimSpace(kv[i])
+        }
+    }
+
+    if k == "secret" {
+        m[k] = v
+    } else if k == "trackers" {
+        m[k] = v
+    } else if k == "log_enable" {
+        if v == "" || (v != "true" && v != "false") {
+            v = "true"
+        }
+        m[k] = v
+    } else if k == "log_level" {
+        if v != "trace" && v != "debug" && v != "info" && v != "warn" &&
+            v != "error" && v != "fatal" {
+            v = "info"
+        }
+        m[k] = v
+    } else if k == "log_rotation_interval" {
+        if v != "h" && v != "d" &&
+            v != "m" && v != "y" {
+            v = "d"
+        }
+        m[k] = v
+    } else {
+        return errors.New("unknown parameter: \"" + k + "\"")
+    }
+    logger.Info("set", k, "to", "\""+v+"\"")
+    return writeConf(m["trackers"], m["secret"], m["log_enable"], m["log_level"], m["log_rotation_interval"])
+}
+
+func writeConf(trackers string, secret string, log_enable string, log_level string, log_rotation_interval string) error {
+    fi, e := file.CreateFile(app.BASE_PATH + string(os.PathSeparator) + "client.conf")
+    if e != nil {
+        return e
+    }
+    fi.WriteString("trackers=" + trackers)
+    fi.WriteString("\n")
+    fi.WriteString("secret=" + secret)
+    fi.WriteString("\n")
+    fi.WriteString("log_enable=" + log_enable)
+    fi.WriteString("\n")
+    fi.WriteString("log_level=" + log_level)
+    fi.WriteString("\n")
+    fi.WriteString("log_rotation_interval=" + log_rotation_interval)
+    fi.WriteString("\n")
+    fi.Close()
+    return nil
+}

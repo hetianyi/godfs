@@ -18,6 +18,10 @@ trackers=192.168.1.172:1022
 # 如果校验失败则会拒绝连接
 secret=OASAD834jA97AAQE761==
 
+
+# 是否开启日志，true or false
+log_enable=true
+
 # 日志级别：debug, info, warn, error, fatal
 # 如不设置，默认为info
 log_level=debug

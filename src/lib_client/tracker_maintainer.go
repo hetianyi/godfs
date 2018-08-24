@@ -109,7 +109,11 @@ func trackTaskFilter(allCollectors *list.List, index int) *list.List {
 func (maintainer *TrackerMaintainer) Maintain(trackers string) *list.List {
     ls := lib_common.ParseTrackers(trackers)
     if ls.Len() == 0 {
-        logger.Warn("no trackers set, the storage server will run in stand-alone mode.")
+        if app.RUN_WITH == 1 {
+            logger.Warn("no trackers configured, the storage server will run in stand-alone mode.")
+        } else if app.RUN_WITH == 3 {
+            logger.Warn("no trackers configured for client.")
+        }
         return ls
     }
     index := 0
@@ -137,6 +141,9 @@ func (maintainer *TrackerMaintainer) track(tracker string, index int) {
             if e1 != nil {
                 bridge.Close(conn)
                 logger.Error(e1)
+                if app.RUN_WITH == 3 {
+                    break
+                }
             } else {
                 /*trackerConfig, te := lib_service.GetTrackerConfig(connBridge.UUID)
                 if te != nil {

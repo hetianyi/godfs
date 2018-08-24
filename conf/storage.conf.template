@@ -34,7 +34,7 @@ trackers=127.0.0.1:1022
 secret=OASAD834jA97AAQE761==
 
 # 配置此节点实例是否支持upload，如果为false，则此节点只读
-upload_enable=false
+upload_enable=true
 
 
 # 是否开启日志，true or false
