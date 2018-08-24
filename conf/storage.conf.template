@@ -34,7 +34,7 @@ trackers=127.0.0.1:1022
 secret=OASAD834jA97AAQE761==
 
 # 配置此节点实例是否支持upload，如果为false，则此节点只读
-upload_enable=true
+upload_enable=false
 
 
 # 是否开启日志，true or false
@@ -42,7 +42,7 @@ log_enable=true
 
 # 日志级别：debug, info, warn, error, fatal
 # 如不设置，默认为 info
-log_level=info
+log_level=debug
 
 # 轮转日志间隔，支持以小时(h)、天(d)、月(m)、年(y)为周期创建及备份日志文件
 # 日志文件名称格式为：
