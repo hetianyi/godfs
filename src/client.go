@@ -88,6 +88,7 @@ func main() {
         m["log_level"] = *logLevel
     }
     validate.SetSystemLogLevel(m["log_level"])
+    logger.SetEnable(app.LOG_ENABLE)
 
     if *uploadFile != "" || *downFile != "" {
         client = Init()
@@ -295,11 +296,7 @@ func prepare() map[string]string {
     }
     if logEnable == "true" {
         app.LOG_ENABLE = true
-        logger.SetEnable(true)
-        app.LOG_ENABLE = true
     } else {
-        app.LOG_ENABLE = false
-        logger.SetEnable(false)
         app.LOG_ENABLE = false
     }
     m["log_enable"] = logEnable

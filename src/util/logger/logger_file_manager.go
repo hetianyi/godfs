@@ -68,8 +68,10 @@ func resetLogFile(now time.Time) {
     logWith := ""
     if app.RUN_WITH == 1 {
         logWith = "storage-"
-    } else {
+    } else if app.RUN_WITH == 2 {
         logWith = "tracker-"
+    } else if app.RUN_WITH == 3 {
+        logWith = "client-"
     }
     logFileName := app.BASE_PATH + string(os.PathSeparator) + "logs" + string(os.PathSeparator) +
                     logFilePrefix + logWith + timeutil.GetLogFileName(now) + ".log"
