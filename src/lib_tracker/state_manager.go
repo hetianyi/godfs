@@ -31,6 +31,7 @@ type storageMeta struct {
     IOout int64
     DiskUsage int64
     Memory uint64
+    ReadOnly bool
 }
 
 // 定时任务，剔除过期的storage服务器
@@ -68,7 +69,8 @@ func AddStorageServer(meta *bridge.OperationRegisterStorageClientRequest) {
         Downloads: meta.Downloads,
         Uploads: meta.Uploads,
         StartTime: meta.StartTime,
-        Memory: app.MEMORY,
+        Memory: meta.Memory,
+        ReadOnly: meta.ReadOnly,
     }
     if managedStorages[key] == nil {
         logger.Debug("register storage server:", key)
@@ -100,7 +102,8 @@ func FutureExpireStorageServer(meta *bridge.OperationRegisterStorageClientReques
             Downloads: meta.Downloads,
             Uploads: meta.Uploads,
             StartTime: meta.StartTime,
-            Memory: app.MEMORY,
+            Memory: meta.Memory,
+            ReadOnly: meta.ReadOnly,
         }
         managedStorages[key] = holdMeta
     }
@@ -123,7 +126,7 @@ func GetGroupMembers(meta *bridge.OperationRegisterStorageClientRequest) []bridg
     var mList list.List
     for k, v := range managedStorages {
         if k != key && v.Group == meta.Group { // 过期
-            m := bridge.Member{BindAddr: v.Host, Port: v.Port, InstanceId: v.InstanceId, Group: v.Group}
+            m := bridge.Member{BindAddr: v.Host, Port: v.Port, InstanceId: v.InstanceId, Group: v.Group, ReadOnly: v.ReadOnly}
             mList.PushBack(m)
         }
     }
@@ -141,7 +144,7 @@ func GetGroupMembers(meta *bridge.OperationRegisterStorageClientRequest) []bridg
 func GetAllStorages() []bridge.Member {
     var mList list.List
     for _, v := range managedStorages {
-        m := bridge.Member{BindAddr: v.Host, Port: v.Port, InstanceId: v.InstanceId, Group: v.Group}
+        m := bridge.Member{BindAddr: v.Host, Port: v.Port, InstanceId: v.InstanceId, Group: v.Group, ReadOnly: v.ReadOnly}
         mList.PushBack(m)
     }
     var members = make([]bridge.Member, mList.Len())

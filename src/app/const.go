@@ -21,6 +21,7 @@ var (
     TRACKERS string
     HTTP_ENABLE bool
     MIME_TYPES_ENABLE bool
+    UPLOAD_ENABLE bool
     LOG_ENABLE bool
     PORT int
     HTTP_PORT int

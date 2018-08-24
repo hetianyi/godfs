@@ -164,6 +164,14 @@ func Check(m map[string] string, runWith int) {
         m["http_enable"] = http_enable
         app.HTTP_ENABLE = http_enable == "true"
 
+        // check upload_enable
+        upload_enable := strings.ToLower(strings.TrimSpace(m["upload_enable"]))
+        if upload_enable != "true" && upload_enable != "false" {
+            upload_enable = "true"
+        }
+        m["upload_enable"] = upload_enable
+        app.UPLOAD_ENABLE = http_enable == "true"
+
         // check enable_mime_types
         enable_mime_types := strings.ToLower(strings.TrimSpace(m["enable_mime_types"]))
         if enable_mime_types != "true" && enable_mime_types != "false" {

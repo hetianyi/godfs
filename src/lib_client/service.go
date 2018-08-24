@@ -327,7 +327,7 @@ func selectStorageServer(group string, instanceId string, excludes *list.List) *
     var pick list.List
     for ele := GroupMembers.Front(); ele != nil; ele = ele.Next() {
         b := ele.Value.(*bridge.ExpireMember)
-        if containsMember(b, excludes) {
+        if containsMember(b, excludes) || b.ReadOnly {
             continue
         }
         match1 := false

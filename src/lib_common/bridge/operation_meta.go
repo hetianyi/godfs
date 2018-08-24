@@ -17,6 +17,7 @@ type Member struct {
     InstanceId string `json:"instance_id"`
     Group string `json:"group"`
     Port int `json:"port"`
+    ReadOnly bool `json:"readonly"`
 }
 
 type ExpireMember struct {
@@ -25,6 +26,7 @@ type ExpireMember struct {
     Group string
     Port int
     ExpireTime time.Time
+    ReadOnly bool `json:"readonly"`
 }
 
 func (expireMember *ExpireMember) From(member *Member) {
@@ -32,6 +34,7 @@ func (expireMember *ExpireMember) From(member *Member) {
     expireMember.InstanceId = member.InstanceId
     expireMember.Group = member.Group
     expireMember.Port = member.Port
+    expireMember.ReadOnly = member.ReadOnly
 }
 
 type FilePart struct {
@@ -92,6 +95,7 @@ type OperationRegisterStorageClientRequest struct {
     IOout int64          `json:"out"`
     DiskUsage int64      `json:"disk"`
     Memory uint64        `json:"mem"`
+    ReadOnly bool        `json:"readonly"`
 }
 
 // validate operation response.
