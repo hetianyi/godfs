@@ -30,7 +30,7 @@ var checkChan chan int
 // 对于客户端，只提供类似于mysql的客户端，每个client与所有的tracker建立单个连接进行数据同步
 // client和每个storage server最多建立一个连接
 // 三方客户端可以开发成为一个连接池
-// echo \"$(ls -m /f/Software)\" |xargs /e/godfs-storage/client/bin/go_build_client_go -u
+// echo \"$(ls -m)\" |xargs /e/godfs-storage/client/bin/go_build_client_go -u
 // TODO suit for soft link
 // TODO remove client config file and using yml file in usr home directory.
 // path structure:
