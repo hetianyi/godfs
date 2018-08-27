@@ -11,6 +11,11 @@ if [ ! -e "./bin" ];then
     exit 1
 fi
 
+if [ "$1"="" ];then
+    echo "no installation directory specific."
+    exit 2
+fi
+
 echo "install to directory: $1"
 if [ ! -e "$1" ];then
     echo "installation directory not found, auto create it."
