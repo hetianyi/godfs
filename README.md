@@ -35,10 +35,7 @@ Take CentOS 7 as example.
 yum install golang -y
 git clone https://github.com/hetianyi/godfs.git
 cd godfs
-# vi docker_build.sh and change env params below:
-# GOROOT="/usr/local/go"
-# GOPATH="$PWD:/go:/go/src";
-./docker_build.sh
+./make.sh
 ```
 After the build is successful, three files will be generated under the ./bin directory:
 ```
@@ -53,8 +50,8 @@ After the build is successful, three files will be generated under the ./bin dir
 cd godfs/docker
 docker build -t godfs .
 ```
-
-You can also pull docker image from docker hub:
+It is highly recommended to use docker to run godfs.
+You can pull the docker image from [docker hub](https://hub.docker.com/r/hehety/godfs/):
 ```javascript
 docker pull hehety/godfs
 ```
@@ -63,10 +60,12 @@ start tracker using docker:
 ```javascript
 docker run -d -p 1022:1022 --name tracker --restart always -v /godfs/data:/godfs/data --privileged -e log_level="info" hehety/godfs:latest tracker
 ```
+
 start storage using docker:
 ```javascript
 docker run -d -p 1024:1024 -p 80:8001 --name storage -v /godfs/data:/godfs/data --privileged -e trackers=192.168.1.172:1022 -e bind_address=192.168.1.187  -e instance_id="01" hehety/godfs storage
 ```
+we're here using directory ```/godfs/data``` to persist data.
 
 client usage:
 ```javascript
