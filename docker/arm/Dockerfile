@@ -18,15 +18,14 @@ RUN echo "http://mirrors.aliyun.com/alpine/v3.8/main/" > /etc/apk/repositories &
     cp /etc/hosts /etc/hosts.bak && \
     echo "192.30.253.112 github.com" >> /etc/hosts && echo "151.101.113.194 github.global.ssl.fastly.net" >> /etc/hosts && \
     apk add git gcc g++ cmake make automake && \
-    go get github.com/mattn/go-sqlite3 && \
-    cd /tmp && rm -rf godfs && git clone https://github.com/hetianyi/godfs.git && \
+    mkdir /godfs && cd /tmp && rm -rf godfs && git clone https://github.com/hetianyi/godfs.git && \
     cd godfs && mkdir data && cp conf/storage.db data/ && \
-    rm -rf dev_tool && ./docker_build.sh && rm -rf docker && rm -rf src && cd .. && \
-    tar czvf godfs.tar.gz godfs
+    ./make.sh && rm -f bin/client && mv bin /godfs && mv conf /godfs && mv data /godfs && mv docker_run.sh /godfs && \
+    cd / && tar czvf godfs.tar.gz godfs
 
 
 FROM arm32v6/alpine
-COPY --from=0 /tmp/godfs.tar.gz /
+COPY --from=0 /godfs.tar.gz /
 RUN tar -xzf /godfs.tar.gz -C / && rm -f /godfs.tar.gz && \
     echo "http://mirrors.aliyun.com/alpine/v3.8/main/" > /etc/apk/repositories && \
     echo "http://mirrors.aliyun.com/alpine/v3.8/community/" >> /etc/apk/repositories && \
