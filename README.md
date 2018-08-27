@@ -37,12 +37,18 @@ git clone https://github.com/hetianyi/godfs.git
 cd godfs
 ./make.sh
 ```
-After the build is successful, three files will be generated under the ./bin directory:
+After the build is successful, three files will be generated under the `````./bin````` directory:
 ```
 ./bin/client
 ./bin/storage
 ./bin/tracker
 ```
+
+Install godfs binary files to ```/usr/local/godfs```:
+```javascript
+./install.sh /usr/local/godfs
+```
+Now you can using command ```client``` in command line.
 
 
 ### build docker image from latest source code:
