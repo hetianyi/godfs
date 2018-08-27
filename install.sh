@@ -11,7 +11,7 @@ if [ ! -e "./bin" ];then
     exit 1
 fi
 
-if [ "$1"=="" ];then
+if [ "$1"x = ""x ];then
     echo "no installation directory specific."
     exit 2
 fi
@@ -22,9 +22,8 @@ if [ ! -e "$1" ];then
     mkdir -p "$1"
 fi
 
-\cp -rf bin/client $1
-\cp -rf bin/storage $1
-\cp -rf bin/tracker $1
+\cp -rf bin $1
+\cp -rf conf $1
 rm -f /usr/bin/client
 cd /usr/bin/ && ln -s $1/bin/client client
 echo "install success"
