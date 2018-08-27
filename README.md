@@ -13,17 +13,22 @@ You can pull the image on dockerhub:
 ## Features
 
 - Fast, lightweight, stable, out-of-the-box, friendly api.
-- Easy to expand.
-- Native client api and java client api.
+- Easy to expand, Stable to RUN.
+- Low resource overhead.
+- Native client api and java client api(not started).
 - API for http upload and download.
 - Clear logs help troubleshoot errors.
-- Cross-platform support.
+- Support different platforms: Linux, Windows, Mac
+- Better support docker.
+- Perfect data migration solution.
+- Support readonly node.
+- File synchronization in same group.
 
 ## Install
 
 > Please install golang first!
 
-Take CentOS 7 as an example.
+Take CentOS 7 as example.
 
 ### build from latest source code:
 ```javascript
@@ -65,22 +70,19 @@ docker run -d -p 1024:1024 -p 80:8001 --name storage -v /godfs/data:/godfs/data 
 
 client usage:
 ```javascript
-
--u string
+-u string 
     the file to be upload, if you want upload many file once, quote file paths using """ and split with ","
     example:
-        client -u "/home/foo/bar1.tar.gz, /home/foo/bar1.tar.gz"
--d string
+    client -u "/home/foo/bar1.tar.gz, /home/foo/bar1.tar.gz"
+-d string 
     the file to be download
--l string
+-l string 
     custom logging level: trace, debug, info, warning, error, and fatal
--n string
+-n string 
     custom download file name
---skip-check bool
-    whether check file md5 before upload, true|false
 ```
 
-for example, it's cool that you can upload all files in a directory by:
+also, it's cool that you can upload all files in a directory by:
 ```javascript
 echo \"$(ls -m /f/foo)\" |xargs /e/foo/bin/client -u
 ```
