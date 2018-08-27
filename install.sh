@@ -11,7 +11,7 @@ if [ ! -e "./bin" ];then
     exit 1
 fi
 
-if [ "$1"="" ];then
+if [ "$1"=="" ];then
     echo "no installation directory specific."
     exit 2
 fi
