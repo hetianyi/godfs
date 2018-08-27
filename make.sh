@@ -3,7 +3,7 @@
 echo -e "+-------------------------------------+"
 echo -e "|              >>godfs<<              |"
 echo -e "| focus project on github: \033[0m           |"
-echo -e "| \033[4mhttps://github.com/hetianyi/godfs \033[0m  |"
+echo -e "| \033[4mhttps://github.com/hetianyi/godfs\033[0m   |"
 echo -e "+-------------------------------------+"
 
 rm -rf bin
