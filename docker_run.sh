@@ -8,6 +8,6 @@ case $1 in
         bin/storage $*
     ;;
     *)
-        echo "unsupport command: $1"
+        echo "unknown command: $1"
 esac
 exit 0

@@ -20,7 +20,7 @@ RUN echo "http://mirrors.aliyun.com/alpine/v3.8/main/" > /etc/apk/repositories &
     apk add git gcc g++ cmake make automake && \
     mkdir /godfs && cd /tmp && rm -rf godfs && git clone https://github.com/hetianyi/godfs.git && \
     cd godfs && mkdir data && cp conf/storage.db data/ && \
-    ./make.sh && rm -f bin/client && mv bin /godfs && mv conf /godfs && mv data /godfs && \
+    ./make.sh && rm -f bin/client && mv bin /godfs && mv conf /godfs && mv data /godfs && mv docker_run.sh /godfs && \
     cd / && tar czvf godfs.tar.gz godfs
 
 
