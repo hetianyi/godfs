@@ -106,6 +106,9 @@ func main() {
         fmt.Println("\t-d string \n\t    the file to be download")
         fmt.Println("\t-l string \n\t    custom logging level: trace, debug, info, warning, error, and fatal")
         fmt.Println("\t-n string \n\t    custom download file name")
+        fmt.Println("\t--set string \n\t    set client config, for example: \n\t" +
+            "    client --set \"tracker=127.0.0.1:1022\"\n\t" +
+            "    client --set \"log_level=info\"")
     }
 }
 

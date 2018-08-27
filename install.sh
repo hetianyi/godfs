@@ -20,5 +20,6 @@ fi
 \cp -rf bin/client $1
 \cp -rf bin/storage $1
 \cp -rf bin/tracker $1
+rm -f /usr/bin/client
 cd /usr/bin/ && ln -s $1/bin/client client
 echo "install success"
