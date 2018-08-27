@@ -55,17 +55,8 @@ func DownloadHandler(writer http.ResponseWriter, request *http.Request) {
         return
     }
 
-
     var md5 string
     md5 = compiledRegexpRestful.ReplaceAllString(servletPath, "${4}")
-    headers := writer.Header()
-    eTag := request.Header["If-None-Match"]
-    // 304 Not Modified
-    if app.MIME_TYPES_ENABLE && eTag != nil && len(eTag) > 0 && eTag[0] == "\"" + md5 + "\"" {
-        setMimeHeaders(md5, &headers)
-        writer.WriteHeader(304)
-        return
-    }
 
     fn := compiledRegexpRestful.ReplaceAllString(servletPath, "${6}")
     if fn == "" {
@@ -78,6 +69,17 @@ func DownloadHandler(writer http.ResponseWriter, request *http.Request) {
         }
     }
     logger.Debug("custom download file name is:", fn)
+    ext := file.GetFileExt(fn)
+    headers := writer.Header()
+    headers.Set("Content-Type", *app.GetContentTypeHeader(ext))
+
+    // 304 Not Modified
+    eTag := request.Header["If-None-Match"]
+    if app.MIME_TYPES_ENABLE && eTag != nil && len(eTag) > 0 && eTag[0] == "\"" + md5 + "\"" {
+        setMimeHeaders(md5, &headers)
+        writer.WriteHeader(304)
+        return
+    }
 
     fullFile, e11 := lib_service.GetFullFileByMd5(md5, 1)
     if e11 != nil {
@@ -101,7 +103,6 @@ func DownloadHandler(writer http.ResponseWriter, request *http.Request) {
         fileSize += fullFile.Parts[i].FileSize
     }
 
-    ext := file.GetFileExt(fn)
 
     // parse header: range
     rangeH := request.Header["Range"]
@@ -120,7 +121,6 @@ func DownloadHandler(writer http.ResponseWriter, request *http.Request) {
     }
     startPos, endPos, totalLen := lib_common.GetReadPositions(fullFile, start, end-start)
 
-    headers.Set("Content-Type", *app.GetContentTypeHeader(ext))
     headers.Set("Accept-Ranges", "bytes")
     headers.Set("Content-Length", strconv.FormatInt(totalLen, 10))
     headers.Set("Content-Range", "bytes " + strconv.FormatInt(start, 10) + "-" + strconv.FormatInt(end - 1, 10) + "/" + strconv.FormatInt(fileSize, 10))
