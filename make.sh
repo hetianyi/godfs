@@ -6,6 +6,8 @@ echo -e "| focus project on github: \033[0m           |"
 echo -e "| \033[4mhttps://github.com/hetianyi/godfs \033[0m  |"
 echo -e "+-------------------------------------+"
 
+rm -rf bin
+
 echo "step 1/6: set go env."
 echo "$(go env)"|awk -F= '{export $1"="$2}'
 GOPATH="$PWD:/go:/go/src";
