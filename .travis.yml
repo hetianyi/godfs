@@ -4,5 +4,5 @@ language: go
 go:
     - 1.9.x
 
-install:
+script:
     - ./make.sh
