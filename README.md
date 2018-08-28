@@ -92,6 +92,10 @@ client usage:
     client --set "log_level=info"
 ```
 
+You can upload file by:
+
+![architecture](/doc/20180828094826.png)
+
 also, it's cool that you can upload all files in a directory by:
 ```javascript
 echo \"$(ls -m /f/foo)\" |xargs client -u
