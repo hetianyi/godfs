@@ -93,12 +93,16 @@ client usage:
 ```
 
 You can upload file by:
-
-![architecture](/doc/20180828094826.png)
+```javascript
+ /e/godfs-storage/client/bin/client -u /f/project.rar
+```
+![architecture](/doc/20180828095840.png)
 
 also, it's cool that you can upload all files in a directory by:
 ```javascript
 echo \"$(ls -m /f/foo)\" |xargs client -u
 ```
+![architecture](/doc/20180828100341.png)
+
 
 
