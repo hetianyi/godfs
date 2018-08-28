@@ -1,5 +1,7 @@
 godfs
 ==========
+[![Build Status](https://travis-ci.org/hetianyi/godfs.svg?branch=master)](https://travis-ci.org/hetianyi/godfs)
+
 [README](README.md) | [中文文档](README_zh.md)
 # Description
 

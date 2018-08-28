@@ -1,0 +1,11 @@
+sudo: false
+language: go
+
+go:
+    - 1.9.x
+
+install:
+    - ./make.sh
+
+script:
+    - make alltest
