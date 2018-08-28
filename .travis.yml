@@ -6,4 +6,9 @@ go:
 
 install: true
 
-script: ./make.sh
+script:
+  - ./make.sh
+  - echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
+  - cd docker
+  - docker build -t hehety/godfs:latest .
+  - docker push hehety/godfs
