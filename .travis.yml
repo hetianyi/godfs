@@ -6,6 +6,3 @@ go:
 
 install:
     - ./make.sh
-
-script:
-    - make alltest
