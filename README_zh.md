@@ -1,0 +1,107 @@
+godfs
+==========
+[README](README.md) | [中文文档](README_zh.md)
+### ```godfs``` 是一个用go实现的轻量，快速，简单易用的分布式文件存储服务器。
+
+```godfs``` 开箱即用，并对docker支持友好。
+
+你可以在docker hub上下载最新镜像:
+[https://hub.docker.com/r/hehety/godfs/](https://hub.docker.com/r/hehety/godfs/)
+
+## 特性
+
+- 快速, 轻量, 开箱即用, 友好的API
+- 易于扩展，运行稳定
+- 非常低的资源开销
+- 提供原生的客户端和Java客户端(还未开始)
+- 提供HTTP方式的下载和上传API
+- 清晰的日志帮助排查运行异常
+- 支持不同平台下的编译运行: Linux, Windows, Mac
+- 更好地支持docker容器
+- 文件分片保存
+- 完美的文件迁移解决方案
+- 支持读写和只读文件节点
+- 文件组内自动同步
+
+## 安装
+
+> 请先安装golang1.9+
+
+以CentOS7为例.
+
+### 从最新的源码构建：
+```javascript
+yum install golang -y
+git clone https://github.com/hetianyi/godfs.git
+cd godfs
+./make.sh
+```
+构建成功后, 三个文件会生成在`````./bin````` 目录下，分别是:
+```
+./bin/client
+./bin/storage
+./bin/tracker
+```
+
+将构建成功的二进制文件安装到目录 ```/usr/local/godfs```:
+```javascript
+./install.sh /usr/local/godfs
+```
+现在你可以直接在命令行使用 ```client```来上传下载文件了.
+> 当然要先设置trackers服务器设置（见下）
+
+### 从最新源代码构建docker镜像：
+```
+cd godfs/docker
+docker build -t godfs .
+```
+强烈推荐使用docker来运行godfs.
+最新的godfs的docker镜像可以在 [docker hub](https://hub.docker.com/r/hehety/godfs/) 获取:
+```javascript
+docker pull hehety/godfs
+```
+
+启动tracker服务器:
+```javascript
+docker run -d -p 1022:1022 --name tracker --restart always -v /godfs/data:/godfs/data --privileged -e log_level="info" hehety/godfs:latest tracker
+```
+
+启动storage服务器:
+```javascript
+docker run -d -p 1024:1024 -p 80:8001 --name storage -v /godfs/data:/godfs/data --privileged -e trackers=192.168.1.172:1022 -e bind_address=192.168.1.187 -e port=1024  -e instance_id="01" hehety/godfs storage
+# 单机上部署多个storage最好加上命令： '-e port=1024'
+```
+这里，我们使用宿主机上的目录 ```/godfs/data``` 来存放上传的文件。
+
+客户端命令:
+```javascript
+-u string 
+    the file to be upload, if you want upload many file once, quote file paths using """ and split with ","
+    example:
+    client -u "/home/foo/bar1.tar.gz, /home/foo/bar1.tar.gz"
+-d string 
+    the file to be download
+-l string 
+    custom logging level: trace, debug, info, warning, error, and fatal
+-n string 
+    custom download file name
+--set string
+    set client config, for example: 
+    client --set "tracker=127.0.0.1:1022"
+    client --set "log_level=info"
+```
+
+你可以通过命令上传一个文件:
+```javascript
+ client -u /f/project.rar
+```
+![architecture](/doc/20180828095840.png)
+
+或者可以用一个更酷的命令来上传一个文件夹下所有的文件:
+```javascript
+echo \"$(ls -m /f/foo)\" |xargs client -u
+```
+![architecture](/doc/20180828100341.png)
+
+
+

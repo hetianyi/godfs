@@ -1,6 +1,6 @@
 godfs
 ==========
-
+[README](README.md) | [中文文档](README_zh.md)
 # Description
 
 ### ```godfs``` is a simple fast, easy use distributed file system written by golang.
@@ -20,13 +20,14 @@ You can pull the image on docker hub:
 - Clear logs help troubleshoot errors.
 - Support different platforms: Linux, Windows, Mac
 - Better support docker.
+- File fragmentation storage.
 - Perfect data migration solution.
 - Support readonly node.
 - File synchronization in same group.
 
 ## Install
 
-> Please install golang first!
+> Please install golang1.9+ first!
 
 Take CentOS 7 as example.
 
