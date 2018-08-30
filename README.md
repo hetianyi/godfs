@@ -65,6 +65,21 @@ For example:
 ```javascript
 # upload a file
 client -u /you/upload/file
+```
+
+You can upload file by:
+```javascript
+ /e/godfs-storage/client/bin/client -u /f/project.rar
+```
+![architecture](/doc/20180828095840.png)
+
+also, it's cool that you can upload all files in a directory by:
+```javascript
+echo \"$(ls -m /f/foo)\" |xargs client -u
+```
+![architecture](/doc/20180828100341.png)
+
+```javascript
 # download a file as 123.zip
 client -d G01/10/M/2c9da7ea280c020db7f4879f8180dfd6 -n 123.zip
 ```
@@ -109,18 +124,6 @@ client usage:
     client --set "tracker=127.0.0.1:1022"
     client --set "log_level=info"
 ```
-
-You can upload file by:
-```javascript
- /e/godfs-storage/client/bin/client -u /f/project.rar
-```
-![architecture](/doc/20180828095840.png)
-
-also, it's cool that you can upload all files in a directory by:
-```javascript
-echo \"$(ls -m /f/foo)\" |xargs client -u
-```
-![architecture](/doc/20180828100341.png)
 
 
 
