@@ -12,7 +12,7 @@ godfs
 You can pull the image on docker hub:
 [https://hub.docker.com/r/hehety/godfs/](https://hub.docker.com/r/hehety/godfs/)
 
-![architecture](/doc/20180830150615.png)
+![architecture](/doc/20180830151005.png)
 
 ## Features
 
