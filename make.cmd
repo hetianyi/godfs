@@ -6,9 +6,13 @@ echo ^| https://github.com/hetianyi/godfs   ^|
 echo +-------------------------------------+
 
 
-rmdir /Q /S bin
-for /f %i in ('go env GOROOT') do set GOROOT=%i
-for /f %i in ('go env GOPATH') do set GOPATH=%i
+rmdir /Q /S bin > nul 2>nul
+
+for /f %i in (`chdir`) do set pwd=%i
+
+for /f %k in (`go env GOPATH`) do set gp=%k
+
+set GOPATH=%gp%;%pwd%
 
 echo step 1/5: create build output directory.
 IF NOT EXIST bin mkdir bin
