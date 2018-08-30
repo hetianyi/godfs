@@ -62,14 +62,22 @@ cd godfs
 > 当然要先设置trackers服务器设置（见下）
 
 举个栗子:
+
+上传一个文件:
 ```javascript
-# 上传文件
-client -u /you/upload/file
+ client -u /you/upload/file
+```
+![architecture](/doc/20180828095840.png)
+
+或者可以用一个更酷的命令来上传一个文件夹下所有的文件:
+```javascript
+echo \"$(ls -m /f/foo)\" |xargs client -u
+```
+![architecture](/doc/20180828100341.png)
+```javascript
 # 下载文件
 client -d G01/10/M/2c9da7ea280c020db7f4879f8180dfd6 -n 123.zip
 ```
-
-
 
 ### 从最新源代码构建docker镜像：
 ```
@@ -112,17 +120,6 @@ docker run -d -p 1024:1024 -p 80:8001 --name storage -v /godfs/data:/godfs/data 
     client --set "log_level=info"
 ```
 
-你可以通过命令上传一个文件:
-```javascript
- client -u /f/project.rar
-```
-![architecture](/doc/20180828095840.png)
-
-或者可以用一个更酷的命令来上传一个文件夹下所有的文件:
-```javascript
-echo \"$(ls -m /f/foo)\" |xargs client -u
-```
-![architecture](/doc/20180828100341.png)
 
 
 
