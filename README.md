@@ -12,6 +12,8 @@ godfs
 You can pull the image on docker hub:
 [https://hub.docker.com/r/hehety/godfs/](https://hub.docker.com/r/hehety/godfs/)
 
+![architecture](/doc/20180830150615.png)
+
 ## Features
 
 - Fast, lightweight, stable, out-of-the-box, friendly api.

@@ -10,6 +10,8 @@ godfs
 你可以在docker hub上下载最新镜像:
 [https://hub.docker.com/r/hehety/godfs/](https://hub.docker.com/r/hehety/godfs/)
 
+![architecture](/doc/20180830150615.png)
+
 ## 特性
 
 - 快速, 轻量, 开箱即用, 友好的API
