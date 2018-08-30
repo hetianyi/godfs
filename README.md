@@ -51,8 +51,23 @@ Install godfs binary files to ```/usr/local/godfs```:
 ```javascript
 ./install.sh /usr/local/godfs
 ```
-Now you can using command ```client``` in command line.
+You can start tracker server by:
+```javascript
+/usr/local/godfs/bin/tracker [-c /your/tracker/config/path]
+```
+and start storage node by:
+```javascript
+/usr/local/godfs/bin/storage [-c /your/storage/config/path]
+```
+then you can using command ```client``` directly in command line to upload and download file.
 
+For example:
+```javascript
+# upload a file
+client -u /you/upload/file
+# download a file as 123.zip
+client -d G01/10/M/2c9da7ea280c020db7f4879f8180dfd6 -n 123.zip
+```
 
 ### build docker image from latest source code:
 ```

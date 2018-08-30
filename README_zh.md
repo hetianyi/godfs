@@ -49,8 +49,27 @@ cd godfs
 ```javascript
 ./install.sh /usr/local/godfs
 ```
-现在你可以直接在命令行使用 ```client```来上传下载文件了.
+
+启动tracker服务:
+```javascript
+/usr/local/godfs/bin/tracker [-c /your/tracker/config/path]
+```
+启动storage服务:
+```javascript
+/usr/local/godfs/bin/storage [-c /your/storage/config/path]
+```
+然后你就可以在命令行直接使用 ```client``` 来上传和下载文件了。
 > 当然要先设置trackers服务器设置（见下）
+
+举个栗子:
+```javascript
+# 上传文件
+client -u /you/upload/file
+# 下载文件
+client -d G01/10/M/2c9da7ea280c020db7f4879f8180dfd6 -n 123.zip
+```
+
+
 
 ### 从最新源代码构建docker镜像：
 ```
