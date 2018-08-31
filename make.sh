@@ -9,7 +9,7 @@ echo -e "+-------------------------------------+"
 rm -rf bin
 
 export GOROOT=$(go env GOROOT)
-export GOPATH="$(go env GOPATH):$PWD"
+export GOPATH=$(go env GOPATH):${HOME}/go:$PWD
 
 echo "step 1/5: create build output directory."
 if [ ! -e "./bin" ];then
