@@ -89,7 +89,7 @@ func Test4(t *testing.T) {
         newFile.Write(d)
         return nil
     })*/
-    client.DownloadFile(path, 0, -1, func(fileLen uint64, reader io.Reader) error {
+    client.DownloadFile(path, 0, -1, func(realPath string, fileLen uint64, reader io.Reader) error {
         newFile, _ := file.CreateFile("E:/godfs-storage/123.zip")
         defer newFile.Close()
         d := make([]byte, fileLen)
@@ -160,7 +160,7 @@ func Test7(t *testing.T) {
             client := Init()
             path := "/G01/002/M/0d3cc782c3242cf3ce4b2174e1041ed2"
             fname := timeutil.GetUUID()
-            fmt.Println(client.DownloadFile(path, 0, 1029, func(fileLen uint64, reader io.Reader) error {
+            fmt.Println(client.DownloadFile(path, 0, 1029, func(realPath string, fileLen uint64, reader io.Reader) error {
                 newFile, _ := file.OpenFile4Write("E:/godfs-storage/test/"+ fname +".jpg")
                 defer newFile.Close()
                 d := make([]byte, fileLen)
@@ -168,7 +168,7 @@ func Test7(t *testing.T) {
                 newFile.Write(d)
                 return nil
             }))
-            fmt.Println(client.DownloadFile(path, 1029, -1, func(fileLen uint64, reader io.Reader) error {
+            fmt.Println(client.DownloadFile(path, 1029, -1, func(realPath string, fileLen uint64, reader io.Reader) error {
                 newFile, _ := file.OpenFile4Write("E:/godfs-storage/test/"+ fname +".jpg")
                 defer newFile.Close()
                 d := make([]byte, fileLen)
@@ -192,7 +192,7 @@ func Test8(t *testing.T) {
     for i := 0; i < 10 ; i++ {
         go func() {
             for  {
-                client.DownloadFile(path, 0, -1, func(fileLen uint64, reader io.Reader) error {
+                client.DownloadFile(path, 0, -1, func(realPath string, fileLen uint64, reader io.Reader) error {
                     newFile, _ := file.CreateFile("C:/Users/Tisnyi/Downloads/123/" + timeutil.GetUUID() + ".jpg")
                     d := make([]byte, fileLen)
                     io.ReadFull(reader, d)

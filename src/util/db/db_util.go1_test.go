@@ -4,9 +4,6 @@ import (
     "app"
     "util/logger"
     "testing"
-    "database/sql"
-    "errors"
-    "lib_service"
 )
 
 func initParam() {
@@ -36,7 +33,7 @@ func Test3(t *testing.T) {
 }*/
 
 func Test4(t *testing.T) {
-    initParam()
+    /*initParam()
     InitDB()
 
     sqlString := "select id from files"
@@ -53,12 +50,12 @@ func Test4(t *testing.T) {
         }
         return nil
     }, sqlString)
-    logger.Info(err)
+    logger.Info(err)*/
 }
 
 
 func Test5(t *testing.T) {
-    initParam()
+    /*initParam()
     InitDB()
 
     sqlString1 := "select id from files"
@@ -97,7 +94,7 @@ func Test5(t *testing.T) {
         panic(errors.New("test rollback"))
         return nil
     })
-    logger.Info(err)
+    logger.Info(err)*/
 
 }
 

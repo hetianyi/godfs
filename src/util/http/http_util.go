@@ -3,13 +3,12 @@ package http
 import (
     "net/http"
     "bytes"
-    "lib_common"
 )
 
 func GetResponseBodyContent(resp *http.Response) (c string, e error) {
     body := resp.Body
     defer body.Close()
-    bs := make([]byte, lib_common.BUFF_SIZE)
+    bs := make([]byte, 10240)
     var buffer bytes.Buffer
     for {
         len, err := body.Read(bs)

@@ -64,8 +64,6 @@ func Test8(t *testing.T) {
 }
 func Test9(t *testing.T) {
     initParam()
-
-    fmt.Println(FinishSyncTask(1))
 }
 
 func Test10(t *testing.T) {
@@ -89,12 +87,12 @@ func Test11(t *testing.T) {
 
 func Test12(t *testing.T) {
     initParam()
-    UpdateTrackerSyncId("xxxxxxxxx", 111)
+    //UpdateTrackerSyncId("xxxxxxxxx", 111)
 }
 
 func Test13(t *testing.T) {
     initParam()
-    UpdateLocalPushId("xxxxxxxxx", 222)
+    //UpdateLocalPushId("xxxxxxxxx", 222)
 }
 
 
