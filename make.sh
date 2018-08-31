@@ -8,9 +8,8 @@ echo -e "+-------------------------------------+"
 
 rm -rf bin
 
-echo "$(go env)"|awk -F= '{export $1"="$2}'
-GOPATH="$PWD:/go:/go/src";
-export GOPATH
+export GOROOT=$(go env GOROOT)
+export GOPATH="$(go env GOPATH):$PWD"
 
 echo "step 1/5: create build output directory."
 if [ ! -e "./bin" ];then
