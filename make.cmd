@@ -18,8 +18,6 @@ for /f %%k in ('go env GOROOT') do set gr=%%k
 set GOROOT=%gr%
 set GOPATH=%gp%
 
-echo gopath is %GOPATH%
-
 echo step 1/5: create build output directory.
 IF NOT EXIST bin mkdir bin
 
