@@ -16,6 +16,7 @@ import (
 // exp: /G001(组)/01(原始服务器实例ID)/M[S](单片or多片)/{MD5}[.ext]
 // 文件的原始名称需要客户端自行记录（可能未来加上服务端记录功能）
 // TODO support detect total file size for assigning
+// TODO Optimize log information
 func main() {
     abs, _ := filepath.Abs(os.Args[0])
     s, _ := filepath.Split(abs)
