@@ -26,4 +26,4 @@ fi
 \cp -rf conf $1
 rm -f /usr/bin/client
 cd /usr/bin/ && ln -s $1/bin/client client
-echo "install success"
+echo "install success!"
