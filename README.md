@@ -81,6 +81,13 @@ echo \"$(ls -m /f/foo)\" |xargs client -u
 ```
 ![architecture](/doc/20180828100341.png)
 
+if you don't has a godfs client, you can use ```curl``` to upload files by:
+```javascript
+curl -F "file=@/your/file" "http://your.host:81/upload"
+```
+![architecture](/doc/20180828100342.png)
+
+
 ```javascript
 # download a file as 123.zip
 client -d G01/10/M/2c9da7ea280c020db7f4879f8180dfd6 -n 123.zip

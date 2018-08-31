@@ -76,6 +76,13 @@ cd godfs
 echo \"$(ls -m /f/foo)\" |xargs client -u
 ```
 ![architecture](/doc/20180828100341.png)
+
+如果你没有现成的godfs客户端，你可以使用 ```curl``` 来上传文件:
+```javascript
+curl -F "file=@/your/file" "http://your.host:81/upload"
+```
+![architecture](/doc/20180828100342.png)
+
 ```javascript
 # 下载文件
 client -d G01/10/M/2c9da7ea280c020db7f4879f8180dfd6 -n 123.zip
