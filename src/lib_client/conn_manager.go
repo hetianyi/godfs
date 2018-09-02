@@ -15,7 +15,7 @@ import (
 var MAX_CONN_EXCEED_ERROR = errors.New("max client connection reached")
 
 type ConnPool interface {
-    Init()
+    Init(maxConnPerServer int)
     GetConnBridge(server *bridge.Member) (*bridge.Bridge, error)
     newConnection(server *bridge.Member)(*bridge.Bridge, error)
     ReturnConnBridge(server *bridge.Member, connBridge *bridge.Bridge)
