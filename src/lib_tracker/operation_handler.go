@@ -32,7 +32,13 @@ func validateClientHandler(request *bridge.Meta, connBridge *bridge.Bridge) erro
                     response.IsNew = true
                 }
             }
-            e1 = lib_service.RegisterStorageClient(head.UUID)
+            // only valid client uuid (means storage client) will log into db.
+            if head.UUID != "" && len(head.UUID) == 30 {
+                e1 = lib_service.RegisterStorageClient(head.UUID)
+                if e1 != nil {
+                    response.Status = bridge.STATUS_INTERNAL_SERVER_ERROR
+                }
+            }
         } else {
             response.Status = bridge.STATUS_BAD_SECRET
         }

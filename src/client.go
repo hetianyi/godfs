@@ -47,6 +47,7 @@ func main() {
     // set client type
     app.CLIENT_TYPE = 2
     app.RUN_WITH = 3
+    app.UUID = "NATIVE-CLIENT"
 
     // the file to be upload
     var setConfig = flag.String("set", "", "set global configuration with pattern \"name=value\".")
