@@ -21,6 +21,7 @@ type ConnPool interface {
     ReturnConnBridge(server *bridge.Member, connBridge *bridge.Bridge)
     IncreaseActiveConnection(server *bridge.Member, value int)
     getConnMap(server *bridge.Member) *list.List
+    testGetConnBridge(server *bridge.Member) (*bridge.Bridge, error)
 }
 
 type ClientConnectionPool struct {
@@ -62,6 +63,21 @@ func (pool *ClientConnectionPool) GetConnBridge(server *bridge.ExpireMember) (*b
     }
     return nil, MAX_CONN_EXCEED_ERROR
 }
+
+func (pool *ClientConnectionPool) testGetConnBridge(server *bridge.ExpireMember) (*bridge.Bridge, error) {
+    pool.getLock.Lock()
+    defer pool.getLock.Unlock()
+    list := pool.getConnMap(server)
+    if list.Len() > 0 {
+        return list.Remove(list.Front()).(*bridge.Bridge), nil
+    }
+    if pool.IncreaseActiveConnection(server, 0) < pool.maxConnPerServer {
+        return pool.newConnection(server)
+    }
+    return nil, MAX_CONN_EXCEED_ERROR
+}
+
+
 
 func (pool *ClientConnectionPool) newConnection(server *bridge.ExpireMember) (*bridge.Bridge, error) {
     logger.Debug("connecting to storage server...")

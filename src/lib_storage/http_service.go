@@ -12,6 +12,7 @@ import (
     "util/file"
     "os"
     "lib_common"
+    "lib_common/bridge"
 )
 
 const (
@@ -148,8 +149,7 @@ func DownloadHandler(writer http.ResponseWriter, request *http.Request) {
         writer.WriteHeader(206)
     }
 
-    bodyBuffSize := app.BUFF_SIZE
-    var buffer = make([]byte, bodyBuffSize)
+    buffer, _ := bridge.MakeBytes(app.BUFF_SIZE, false, 0)
     app.UpdateDownloads()
     WriteDownloadStream(fullFile, startPos, endPos, buffer, writer)
 }

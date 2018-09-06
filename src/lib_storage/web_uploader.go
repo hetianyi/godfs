@@ -16,9 +16,11 @@ import (
     "encoding/hex"
     "lib_service"
     "encoding/json"
+    "lib_common/bridge"
 )
 
-const ContentDispositionPattern = "^Content-Disposition: form-data; name=\"([^\"]+)\"$"
+const ContentDispositionPattern = "^Content-Disposition: form-data; name=\"([^\"]*)\"$"
+const FileContentDispositionPattern = "^Content-Disposition: form-data; name=\"([^\"]*)\"; filename=\"([^\"]*)\".*$"
 const ContentTypePattern = "^multipart/form-data; boundary=(.*)$"
 
 
@@ -87,7 +89,7 @@ func (handler *FileUploadHandlerV1) onTextField(name string, value string) {
     handler.params[name] = ls
 }
 
-
+// begin read request entity and parse form field
 func (handler *FileUploadHandlerV1) beginUpload() (*HttpUploadResponse, error) {
 
     logger.Info("begin read file form, content len is", handler.request.ContentLength/1024, "KB")
@@ -101,7 +103,7 @@ func (handler *FileUploadHandlerV1) beginUpload() (*HttpUploadResponse, error) {
         Params: make(map[string][]string),
     }
 
-    var fileStatuses list.List
+    var fileStages list.List
 
     headerContentType := handler.request.Header["Content-Type"]
     contentType := ""
@@ -114,7 +116,7 @@ func (handler *FileUploadHandlerV1) beginUpload() (*HttpUploadResponse, error) {
         endSeparator := "--" + boundary + "--"
         // calculate md5
         md := md5.New()
-        buffer := make([]byte, app.BUFF_SIZE)
+        buffer, _ := bridge.MakeBytes(app.BUFF_SIZE, false, 0)
         for {
             line, e := readNextLine(formReader)
             //logger.Debug(">>>>>"+line)
@@ -162,12 +164,12 @@ func (handler *FileUploadHandlerV1) beginUpload() (*HttpUploadResponse, error) {
                                 logger.Error("upload error4:", e3)
                                 break
                             } else { // read file body
-                                stateUploadStatus, e4 := readFileBody(formReader, buffer, paraSeparator, md)
+                                stageUploadStatus, e4 := readFileBody(formReader, buffer, paraSeparator, md)
                                 if e4 != nil {
                                     logger.Error("upload error5:", e4)
                                     break
                                 }
-                                fileStatuses.PushBack(stateUploadStatus)
+                                fileStages.PushBack(stageUploadStatus)
                             }
                         }
                     }
@@ -182,6 +184,7 @@ func (handler *FileUploadHandlerV1) beginUpload() (*HttpUploadResponse, error) {
             }
         }
     }
+    // copy string list to string[]
     for k, v := range handler.params {
         if v != nil {
             tmp := make([]string, v.Len())
@@ -193,9 +196,9 @@ func (handler *FileUploadHandlerV1) beginUpload() (*HttpUploadResponse, error) {
             ret.Params[k] = tmp
         }
     }
-    ret.Files = make([]string, fileStatuses.Len())
+    ret.Files = make([]string, fileStages.Len())
     index := 0
-    for ele := fileStatuses.Front(); ele != nil; ele = ele.Next() {
+    for ele := fileStages.Front(); ele != nil; ele = ele.Next() {
         ret.Files[index] = ele.Value.(*StageUploadStatus).path
         index++
     }
@@ -203,6 +206,7 @@ func (handler *FileUploadHandlerV1) beginUpload() (*HttpUploadResponse, error) {
     return ret, nil
 }
 
+// TODO fix in case of memory fragmentation
 func readNextLine(reader *FileFormReader) (string, error) {
     buff := make([]byte, 1)
     last := make([]byte, 2)
@@ -239,6 +243,7 @@ type StageUploadStatus struct {
     path string
 }
 
+// begin read file part
 func readFileBody(reader *FileFormReader, buffer []byte, separator string, md hash.Hash) (*StageUploadStatus, error) {
     defer func() {
         md.Reset()
@@ -257,8 +262,9 @@ func readFileBody(reader *FileFormReader, buffer []byte, separator string, md ha
     }
     separator = "\r\n" + separator
     buff1 := buffer
-    buff2 := make([]byte, len(separator))
-    tail := make([]byte, len(separator)*2)
+    // TODO fix in case of memory fragmentation
+    buff2, _ := bridge.MakeBytes(uint64(len(separator)), true, 1024)
+    tail, _ := bridge.MakeBytes(uint64(len(separator)*2), true, 1024)
     for {
         len1, e1 := reader.Read(buff1)
         if e1 != nil {
@@ -419,12 +425,7 @@ func handleStagePartFile(buffer []byte, status *StageUploadStatus) error {
     return nil
 }
 
-
-
-
-
-
-
+// copy bytes
 func ByteCopy(src []byte, start int, end int, cp []byte) {
     for i := range src {
         if i >= start && i < end {
@@ -436,7 +437,7 @@ func ByteCopy(src []byte, start int, end int, cp []byte) {
 }
 
 
-
+// web upload entry point
 func WebUploadHandlerV1(writer http.ResponseWriter, request *http.Request) {
 
     if app.HTTP_AUTH != "" {

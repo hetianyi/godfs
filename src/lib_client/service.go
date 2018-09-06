@@ -108,7 +108,7 @@ func (client *Client) Upload(path string, group string, startTime time.Time, ski
 
         e2 := connBridge.SendRequest(bridge.O_UPLOAD, uploadMeta, uint64(fInfo.Size()), func(out io.WriteCloser) error {
             // begin upload file body bytes
-            buff := make([]byte, app.BUFF_SIZE)
+            buff, _ := bridge.MakeBytes(app.BUFF_SIZE, false, 0)
             var finish, total int64
             var stopFlag = false
             defer func() {stopFlag = true}()

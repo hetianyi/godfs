@@ -247,7 +247,7 @@ func Close(closer io.Closer) error {
 }
 
 func convertLen2Bytes(len uint64) []byte {
-    bodyLenBytes := make([]byte, 8)
+    bodyLenBytes, _ := MakeBytes(8, false, 0)
     binary.BigEndian.PutUint64(bodyLenBytes, uint64(len))
     return bodyLenBytes
 }
@@ -282,7 +282,7 @@ func ReadBytes(buff []byte, len int, conn io.ReadCloser, md hash.Hash) (int, err
 
 // read 18 head bytes.
 func readHeadBytes(reader io.ReadCloser) (int, uint64, uint64, []byte, error) {
-    headerBytes := make([]byte, HeaderSize)  // meta header size
+    headerBytes, _ := MakeBytes(HeaderSize, false, 0)  // meta header size
     // read header meta data
     len, e := ReadBytes(headerBytes, HeaderSize, reader, nil)
     if e == nil && len == HeaderSize {
@@ -304,7 +304,10 @@ func readHeadBytes(reader io.ReadCloser) (int, uint64, uint64, []byte, error) {
 
 // 读取meta字节信息
 func readMetaBytes(metaSize int, reader io.ReadCloser) ([]byte, error) {
-    tmp := make([]byte, metaSize)
+    tmp, me := MakeBytes(uint64(metaSize), true, 5242880)//5MB
+    if me != nil {
+        return nil, me
+    }
     len, e := ReadBytes(tmp, metaSize, reader, nil)
     if e != nil && e != io.EOF {
         return nil, e
@@ -356,3 +359,11 @@ func CreateMeta(operation int, meta interface{}, bodyLen uint64) (*Meta, error) 
     }, nil
 }
 
+
+
+func MakeBytes(len uint64, dangerCheck bool, max uint64) ([]byte, error) {
+    if dangerCheck && len > max {
+        return nil, errors.New("cannot create bytes: system protection")
+    }
+    return make([]byte, len), nil
+}

@@ -24,7 +24,7 @@ import (
 //TODO support disk cpu statistic
 
 // max client connection set to 1000
-var p, _ = pool.NewPool(1000, 100000)
+var p, _ = pool.NewPool(1, 2)
 // sys secret
 var secret string
 // sys config
@@ -133,6 +133,7 @@ func startStorageService(port string) {
                             })
                             // maybe the poll is full
                             if ee != nil {
+                                logger.Error(ee)
                                 bridge.Close(conn)
                             }
                         } else {
@@ -183,12 +184,12 @@ func startHttpDownloadService() {
 // 其他storage定时取任务，将任务
 func clientHandler(conn net.Conn) {
     defer func() {
-        logger.Debug("close connection from server")
+        logger.Info("close connection from server")
         bridge.Close(conn)
     }()
     common.Try(func() {
         // body buff
-        bodyBuff := make([]byte, app.BUFF_SIZE)
+        bodyBuff, _ := bridge.MakeBytes(app.BUFF_SIZE, false, 0)
         // calculate md5
         md := md5.New()
         connBridge := bridge.NewBridge(conn)

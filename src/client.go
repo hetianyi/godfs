@@ -163,7 +163,7 @@ func download(path string, customDownloadFileName string) error {
             fi = f
         }
         defer fi.Close()
-        buffer := make([]byte, app.BUFF_SIZE)
+        buffer, _ := bridge.MakeBytes(app.BUFF_SIZE, false, 0)
         filePath, _ = filepath.Abs(fi.Name())
         startTime = time.Now()
         return writeOut(reader, int64(fileLen), buffer, fi, startTime)
