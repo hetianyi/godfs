@@ -24,7 +24,7 @@ import (
 //TODO support disk cpu statistic
 
 // max client connection set to 1000
-var p, _ = pool.NewPool(1, 2)
+var p, _ = pool.NewPool(200, 0)
 // sys secret
 var secret string
 // sys config

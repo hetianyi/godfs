@@ -31,9 +31,8 @@ func init() {
 }
 
 // storage server provide http download service
-// TODO 加可选http验证
 func DownloadHandler(writer http.ResponseWriter, request *http.Request) {
-
+    defer request.Body.Close()
     if app.HTTP_AUTH != "" {
         user, pass, _ := request.BasicAuth()
         if app.HTTP_AUTH != user + ":" + pass {

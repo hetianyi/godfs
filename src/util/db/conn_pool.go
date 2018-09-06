@@ -41,13 +41,16 @@ func (pool *DbConnPool) InitPool(poolSize int) {
 func (pool *DbConnPool) GetDB() *DAO {
     pool.fetchLock.Lock()
     defer pool.fetchLock.Unlock()
-    for pool.dbList.Len() == 0 {
-        logger.Debug("no connection available")
-        time.Sleep(time.Millisecond * 1000)
+    for {
+        dao := pool.dbList.Remove(pool.dbList.Front())
+        if dao == nil {
+            logger.Debug("no connection available")
+            time.Sleep(time.Millisecond * 100)
+        } else {
+            logger.Trace("using db connection of index:", dao.(*DAO).index)
+            return dao.(*DAO)
+        }
     }
-    dao := pool.dbList.Remove(pool.dbList.Front()).(*DAO)
-    logger.Trace("using db connection of index:", dao.index)
-    return dao
 }
 
 // return dao
