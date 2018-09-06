@@ -71,7 +71,7 @@ client -u /you/upload/file
 
 You can upload file by:
 ```javascript
- /e/godfs-storage/client/bin/client -u /f/project.rar
+client -u /f/project.rar
 ```
 ![architecture](/doc/20180828095840.png)
 
@@ -87,6 +87,29 @@ curl -F "file=@/your/file" "http://your.host:81/upload"
 ```
 ![architecture](/doc/20180828100342.png)
 
+if upload success, server will return a json string like this:
+```json
+{
+    "status":"success",
+    "formData":{
+        "data":[
+            "G01/01/M/826d552525bceec5b8e9709efaf481ec"
+        ],
+        "name":[
+            "mike"
+        ]
+    },
+    "fileInfo":[
+        {
+            "index":0,
+            "fileName":"mysql-cluster-community-7.6.7-1.sles12.x86_64.rpm-bundle.tar",
+            "path":"G01/01/M/826d552525bceec5b8e9709efaf481ec"
+        }
+    ]
+}
+```
+
+> The ```formData``` contains all parameters of your posted form, the file will be replaced by a remote path.
 
 ```javascript
 # download a file as 123.zip
