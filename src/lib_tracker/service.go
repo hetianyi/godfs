@@ -16,7 +16,7 @@ import (
     "app"
 )
 
-var p, _ = pool.NewPool(1000, 100000)
+var p, _ = pool.NewPool(500, 0)
 
 
 var secret string
