@@ -17,6 +17,7 @@ import (
     "lib_service"
     "encoding/json"
     "lib_common/bridge"
+    "util/common"
 )
 
 const ContentDispositionPattern = "^Content-Disposition: form-data; name=\"([^\"]*)\"$"
@@ -30,8 +31,7 @@ type FileFormReader struct {
 }
 type HttpUploadResponse struct {
     Status string `json:"status"`     // 分片所属文件的id
-    Files []string `json:"files"`     // 分片所属文件的id
-    Params map[string][]string `json:"params"`     // 分片所属文件的id
+    FormData map[string][]string `json:"formData"`     // 分片所属文件的id
 }
 
 func (reader *FileFormReader) Unread(read []byte) {
@@ -100,7 +100,7 @@ func (handler *FileUploadHandlerV1) beginUpload() (*HttpUploadResponse, error) {
     }
 
     var ret = &HttpUploadResponse {
-        Params: make(map[string][]string),
+        FormData: make(map[string][]string),
     }
 
     var fileStages list.List
@@ -159,6 +159,16 @@ func (handler *FileUploadHandlerV1) beginUpload() (*HttpUploadResponse, error) {
                                 handler.onTextField(paramName, paramValue)
                             }
                         } else { // parse content type
+
+                            mat2, _ := regexp.Match(FileContentDispositionPattern, []byte(contentDisposition))
+                            if e != nil {
+                                return nil, e
+                            }
+                            fileName := ""
+                            if mat2 {
+                                fileName = regexp.MustCompile(FileContentDispositionPattern).ReplaceAllString(contentDisposition, "${2}")
+                            }
+
                             _, e3 := readNextLine(formReader)
                             if e3 != nil {
                                 logger.Error("upload error4:", e3)
@@ -170,6 +180,9 @@ func (handler *FileUploadHandlerV1) beginUpload() (*HttpUploadResponse, error) {
                                     break
                                 }
                                 fileStages.PushBack(stageUploadStatus)
+                                if fileName != "" {
+                                    handler.onTextField(fileName, stageUploadStatus.path)
+                                }
                             }
                         }
                     }
@@ -193,14 +206,8 @@ func (handler *FileUploadHandlerV1) beginUpload() (*HttpUploadResponse, error) {
                 tmp[index] = ele.Value.(string)
                 index++
             }
-            ret.Params[k] = tmp
+            ret.FormData[k] = tmp
         }
-    }
-    ret.Files = make([]string, fileStages.Len())
-    index := 0
-    for ele := fileStages.Front(); ele != nil; ele = ele.Next() {
-        ret.Files[index] = ele.Value.(*StageUploadStatus).path
-        index++
     }
     ret.Status = "success"
     return ret, nil
@@ -449,27 +456,40 @@ func WebUploadHandlerV1(writer http.ResponseWriter, request *http.Request) {
         }
     }
 
+    writer.Header().Set("Content-Type", "application/json;charset=UTF-8")
     handler := &FileUploadHandlerV1{
         writer: writer,
         request: request,
     }
-    ret, e := handler.beginUpload()
-    if e != nil {
-        logger.Error("upload error1:", e)
-        ret = &HttpUploadResponse{
+    common.Try(func() {
+        ret, e := handler.beginUpload()
+        if e != nil {
+            logger.Error("upload error1:", e)
+            ret = &HttpUploadResponse {
+                Status: "error",
+            }
+            bs, e1 := json.Marshal(ret)
+            if e1 != nil {
+                logger.Error("upload error2:", e1)
+            } else {
+                handler.writeBack(string(bs))
+            }
+        }
+        bs, e1 := json.Marshal(ret)
+        if e1 != nil {
+            logger.Error("upload error3:", e)
+        } else {
+            handler.writeBack(string(bs))
+        }
+    }, func(i interface{}) {
+        ret := &HttpUploadResponse {
             Status: "error",
         }
         bs, e1 := json.Marshal(ret)
         if e1 != nil {
-            logger.Error("upload error2:", e)
+            logger.Error("upload error2:", e1)
         } else {
             handler.writeBack(string(bs))
         }
-    }
-    bs, e1 := json.Marshal(ret)
-    if e1 != nil {
-        logger.Error("upload error3:", e)
-    } else {
-        handler.writeBack(string(bs))
-    }
+    })
 }
