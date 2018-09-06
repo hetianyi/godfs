@@ -24,6 +24,8 @@ const ContentDispositionPattern = "^Content-Disposition: form-data; name=\"([^\"
 const FileContentDispositionPattern = "^Content-Disposition: form-data; name=\"([^\"]*)\"; filename=\"([^\"]*)\".*$"
 const ContentTypePattern = "^multipart/form-data; boundary=(.*)$"
 
+// simple test case:
+// curl -vF "myfile=@/foo/bar.txt" "http://localhost:8001/upload"
 
 type FileFormReader struct {
     request *http.Request
