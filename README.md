@@ -85,8 +85,6 @@ if you don't has a godfs client, you can use ```curl``` to upload files by:
 ```javascript
 curl -F "file=@/your/file" "http://your.host:81/upload"
 ```
-![architecture](/doc/20180828100342.png)
-
 if upload success, server will return a json string like this:
 ```json
 {
