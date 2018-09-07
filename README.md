@@ -63,6 +63,11 @@ and start storage node by:
 /usr/local/godfs/bin/storage [-c /your/storage/config/path]
 ```
 then you can using command ```client``` directly in command line to upload and download file.
+> Of course, you must first set up the tracker server.
+```javascript
+# set up tracker servers for client
+client --set "trackers=host1:port1[,host2:port2]"
+```
 
 For example:
 ```javascript

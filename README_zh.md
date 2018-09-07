@@ -62,7 +62,11 @@ cd godfs
 /usr/local/godfs/bin/storage [-c /your/storage/config/path]
 ```
 然后你就可以在命令行直接使用 ```client``` 来上传和下载文件了。
-> 当然要先设置trackers服务器设置（见下）
+> 当然要先设置trackers服务器设置
+```javascript
+# 例如，为客户端设置tracker服务器
+client --set "trackers=host1:port1[,host2:port2]"
+```
 
 举个栗子:
 
