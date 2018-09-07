@@ -41,6 +41,7 @@ yum install golang -y
 git clone https://github.com/hetianyi/godfs.git
 cd godfs
 ./make.sh
+# on windows you just need to click 'make.cmd'
 ```
 After the build is successful, three files will be generated under the `````./bin````` directory:
 ```

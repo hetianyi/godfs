@@ -39,6 +39,7 @@ yum install golang -y
 git clone https://github.com/hetianyi/godfs.git
 cd godfs
 ./make.sh
+# Windows下直接点击 make.cmd 开始构建。
 ```
 构建成功后, 三个文件会生成在`````./bin````` 目录下，分别是:
 ```
@@ -81,7 +82,29 @@ echo \"$(ls -m /f/foo)\" |xargs client -u
 ```javascript
 curl -F "file=@/your/file" "http://your.host:81/upload"
 ```
-![architecture](/doc/20180828100342.png)
+上传成功之后，服务器会返回一个json字符串:
+```json
+{
+    "status":"success",
+    "formData":{
+        "data":[
+            "G01/01/M/826d552525bceec5b8e9709efaf481ec"
+        ],
+        "name":[
+            "mike"
+        ]
+    },
+    "fileInfo":[
+        {
+            "index":0,
+            "fileName":"mysql-cluster-community-7.6.7-1.sles12.x86_64.rpm-bundle.tar",
+            "path":"G01/01/M/826d552525bceec5b8e9709efaf481ec"
+        }
+    ]
+}
+```
+
+> 其中， ```formData``` 是post表单中的所有字段的name-value信息，文件已被替换为上传之后的路径地址。
 
 ```javascript
 # 下载文件
