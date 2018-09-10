@@ -16,6 +16,7 @@ FROM arm32v6/golang:alpine
 RUN echo "http://mirrors.aliyun.com/alpine/v3.8/main/" > /etc/apk/repositories && \
     echo "http://mirrors.aliyun.com/alpine/v3.8/community/" >> /etc/apk/repositories && \
     cp /etc/hosts /etc/hosts.bak && \
+    # faster in china
     echo "192.30.253.112 github.com" >> /etc/hosts && echo "151.101.113.194 github.global.ssl.fastly.net" >> /etc/hosts && \
     apk add git gcc g++ cmake make automake && \
     mkdir /godfs && cd /tmp && rm -rf godfs && git clone https://github.com/hetianyi/godfs.git && \
@@ -27,6 +28,7 @@ RUN echo "http://mirrors.aliyun.com/alpine/v3.8/main/" > /etc/apk/repositories &
 FROM arm32v6/alpine
 COPY --from=0 /godfs.tar.gz /
 RUN tar -xzf /godfs.tar.gz -C / && rm -f /godfs.tar.gz && \
+    # faster in china
     echo "http://mirrors.aliyun.com/alpine/v3.8/main/" > /etc/apk/repositories && \
     echo "http://mirrors.aliyun.com/alpine/v3.8/community/" >> /etc/apk/repositories && \
     apk add tzdata
