@@ -10,6 +10,7 @@ import (
     "strconv"
     "app"
     "hash"
+    "util/pool"
 )
 
 // operation codes const.
@@ -31,6 +32,8 @@ const (
 const HeaderSize = 18
 // store operation code mapped with 2 first head bytes.
 var operationHeadMap = make(map[int][]byte)
+
+var bytesPool *pool.BytesPool
 
 // error indicate that the operation is not support.
 var OPERATION_NOT_SUPPORT_ERROR = errors.New("operation not support")
@@ -54,6 +57,8 @@ func init() {
     operationHeadMap[O_SYNC_STORAGE] = []byte{1,8}
     operationHeadMap[O_PULL_NEW_FILES] = []byte{1,9}
     operationHeadMap[O_SYNC_MEMBERS] = []byte{1,10}
+
+    bytesPool = pool.NewBytesPool(50)
 }
 
 // SendReceiveCloser
@@ -101,13 +106,16 @@ func (bridge *Bridge) SendRequest(operation int, meta interface{}, bodyLen uint6
     if e2 != nil {
         return e2
     }
-    metaLenBytes := convertLen2Bytes(request.metaLength)
-    bodyLenBytes := convertLen2Bytes(request.BodyLength)
+    tmpBuf, _ := MakeBytes(8, false, 0, false)
+    defer RecycleBytes(tmpBuf)
 
     var headerBuff bytes.Buffer
     headerBuff.Write(operationHeadMap[request.Operation])
-    headerBuff.Write(metaLenBytes)
-    headerBuff.Write(bodyLenBytes)
+    metaLenBytes := convertLen2Bytes(request.metaLength, &tmpBuf)
+    headerBuff.Write(*metaLenBytes)
+    bodyLenBytes := convertLen2Bytes(request.BodyLength, &tmpBuf)
+    headerBuff.Write(*bodyLenBytes)
+
     headerBuff.Write(request.MetaBody)
     len1, e1 := bridge.connection.Write(headerBuff.Bytes())
     if e1 != nil {
@@ -162,13 +170,16 @@ func (bridge *Bridge) SendResponse(meta interface{}, bodyLen uint64, bodyWriterH
     if e2 != nil {
         return e2
     }
+    tmpBuf, _ := MakeBytes(8, false, 0, false)
+    defer RecycleBytes(tmpBuf)
     //logger.Debug(string(response.MetaBody))
-    metaLenBytes := convertLen2Bytes(response.metaLength)
-    bodyLenBytes := convertLen2Bytes(response.BodyLength)
     var headerBuff bytes.Buffer
     headerBuff.Write(operationHeadMap[response.Operation])
-    headerBuff.Write(metaLenBytes)
-    headerBuff.Write(bodyLenBytes)
+    metaLenBytes := convertLen2Bytes(response.metaLength, &tmpBuf)
+    headerBuff.Write(*metaLenBytes)
+    bodyLenBytes := convertLen2Bytes(response.BodyLength, &tmpBuf)
+    headerBuff.Write(*bodyLenBytes)
+
     headerBuff.Write(response.MetaBody)
     len1, e1 := bridge.connection.Write(headerBuff.Bytes())
     if e1 != nil {
@@ -246,10 +257,9 @@ func Close(closer io.Closer) error {
     return nil
 }
 
-func convertLen2Bytes(len uint64) []byte {
-    bodyLenBytes, _ := MakeBytes(8, false, 0)
-    binary.BigEndian.PutUint64(bodyLenBytes, uint64(len))
-    return bodyLenBytes
+func convertLen2Bytes(len uint64, buffer *[]byte) *[]byte {
+    binary.BigEndian.PutUint64(*buffer, uint64(len))
+    return buffer
 }
 
 // 通用字节读取函数，如果读取结束/失败自动关闭连接
@@ -282,7 +292,8 @@ func ReadBytes(buff []byte, len int, conn io.ReadCloser, md hash.Hash) (int, err
 
 // read 18 head bytes.
 func readHeadBytes(reader io.ReadCloser) (int, uint64, uint64, []byte, error) {
-    headerBytes, _ := MakeBytes(HeaderSize, false, 0)  // meta header size
+    headerBytes, _ := MakeBytes(HeaderSize, false, 0, false)  // meta header size
+    defer RecycleBytes(headerBytes)
     // read header meta data
     len, e := ReadBytes(headerBytes, HeaderSize, reader, nil)
     if e == nil && len == HeaderSize {
@@ -304,7 +315,7 @@ func readHeadBytes(reader io.ReadCloser) (int, uint64, uint64, []byte, error) {
 
 // 读取meta字节信息
 func readMetaBytes(metaSize int, reader io.ReadCloser) ([]byte, error) {
-    tmp, me := MakeBytes(uint64(metaSize), true, 5242880)//5MB
+    tmp, me := MakeBytes(uint64(metaSize), true, 5242880, true)//5MB
     if me != nil {
         return nil, me
     }
@@ -360,10 +371,19 @@ func CreateMeta(operation int, meta interface{}, bodyLen uint64) (*Meta, error) 
 }
 
 
-
-func MakeBytes(len uint64, dangerCheck bool, max uint64) ([]byte, error) {
+// dynamic: whether apply size is dynamic or unknown before,
+// and we don't cache those.
+func MakeBytes(len uint64, dangerCheck bool, max uint64, dynamic bool) ([]byte, error) {
     if dangerCheck && len > max {
         return nil, errors.New("cannot create bytes: system protection")
     }
+    if !dynamic {
+        return bytesPool.Apply(int(len)), nil
+    }
     return make([]byte, len), nil
+}
+
+// recycle bytes buffer.
+func RecycleBytes(buffer []byte) {
+    bytesPool.Recycle(buffer)
 }

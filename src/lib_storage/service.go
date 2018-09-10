@@ -19,7 +19,6 @@ import (
     "lib_service"
     "util/timeutil"
     "runtime"
-    _ "net/http/pprof"
 )
 
 //TODO support disk cpu statistic
@@ -189,8 +188,6 @@ func clientHandler(conn net.Conn) {
         bridge.Close(conn)
     }()
     common.Try(func() {
-        // body buff
-        bodyBuff, _ := bridge.MakeBytes(app.BUFF_SIZE, false, 0)
         // calculate md5
         md := md5.New()
         connBridge := bridge.NewBridge(conn)
@@ -204,11 +201,11 @@ func clientHandler(conn net.Conn) {
                 if request.Operation == bridge.O_CONNECT {
                     return validateClientHandler(request, connBridge)
                 } else if request.Operation == bridge.O_UPLOAD {
-                    return uploadHandler(request, bodyBuff, md, conn, connBridge)
+                    return uploadHandler(request, md, conn, connBridge)
                 } else if request.Operation == bridge.O_QUERY_FILE {
                     return QueryFileHandler(request, connBridge, 1)
                 } else if request.Operation == bridge.O_DOWNLOAD_FILE {
-                    return downloadFileHandler(request, bodyBuff, connBridge)
+                    return downloadFileHandler(request, connBridge)
                 } else {
                     return bridge.OPERATION_NOT_SUPPORT_ERROR
                 }

@@ -9,7 +9,8 @@ import (
 func GetResponseBodyContent(resp *http.Response) (c string, e error) {
     body := resp.Body
     defer body.Close()
-    bs, _ := bridge.MakeBytes(10240, false, 0)
+    bs, _ := bridge.MakeBytes(10240, false, 0, false)
+    defer bridge.RecycleBytes(bs)
     var buffer bytes.Buffer
     for {
         len, err := body.Read(bs)

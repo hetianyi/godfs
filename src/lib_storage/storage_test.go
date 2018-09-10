@@ -146,3 +146,28 @@ func Test11(t *testing.T) {
     a := "^multipart/form-data; boundary=.*$"
     fmt.Println(regexp.Match(a, []byte("multipart/form-data; boundary=------------------------fe43cbff9d519997")))
 }
+
+func Test12(t *testing.T) {
+    a := make([]byte, 5)
+    b := a[:]
+    fmt.Println(&b)
+    fmt.Println(&a[0])
+    fmt.Println(&a[1])
+    c := a[1:2]
+    fmt.Println(&c)
+
+}
+func Test13(t *testing.T) {
+    a := make([]byte, 2)
+    a[0] = 1
+    a[1] = 5
+    fmt.Println(&a[0])
+    fmt.Println(&a[1])
+
+    ls := new(list.List)
+    ls.PushBack(a)
+    b := ls.Front().Value.([]byte)
+    fmt.Println(&b[0])
+    fmt.Println(&b[1])
+
+}

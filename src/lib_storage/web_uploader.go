@@ -148,7 +148,8 @@ func (handler *FileUploadHandlerV1) beginUpload() (*HttpUploadResponse, error) {
         logger.Debug("form boundary is", paraSeparator)
         // calculate md5
         md := md5.New()
-        buffer, _ := bridge.MakeBytes(app.BUFF_SIZE, false, 0)
+        buffer, _ := bridge.MakeBytes(app.BUFF_SIZE, false, 0, false)
+        defer bridge.RecycleBytes(buffer)
         for {
             line, e := readNextLine(formReader)
             //logger.Debug(">>>>>"+line)
@@ -263,8 +264,10 @@ func (handler *FileUploadHandlerV1) beginUpload() (*HttpUploadResponse, error) {
 
 // TODO fix in case of memory fragmentation
 func readNextLine(reader *FileFormReader) (string, error) {
-    buff := make([]byte, 1)
-    last := make([]byte, 2)
+    buff, _ := bridge.MakeBytes(uint64(1), false, 0, false)
+    last, _ := bridge.MakeBytes(uint64(2), false, 0, false)
+    defer bridge.RecycleBytes(buff)
+    defer bridge.RecycleBytes(last)
     var strBuff bytes.Buffer
     for {
         len, e := reader.Read(buff)
@@ -306,8 +309,8 @@ func readFileBody(reader *FileFormReader, buffer []byte, separator string, md ha
     separator = "\r\n" + separator
     buff1 := buffer
     // TODO fix in case of memory fragmentation
-    buff2, _ := bridge.MakeBytes(uint64(len(separator)), true, 1024)
-    tail, _ := bridge.MakeBytes(uint64(len(separator)*2), true, 1024)
+    buff2, _ := bridge.MakeBytes(uint64(len(separator)), true, 1024, true)
+    tail, _ := bridge.MakeBytes(uint64(len(separator)*2), true, 1024, true)
     for {
         len1, e1 := reader.Read(buff1)
         if e1 != nil {

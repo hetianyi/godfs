@@ -687,7 +687,8 @@ func downloadFile(fullFi *bridge.File) {
         // calculate md5
         md := md5.New()
         var start int64 = 0
-        buffer, _ := bridge.MakeBytes(app.BUFF_SIZE, false, 0)
+        buffer, _ := bridge.MakeBytes(app.BUFF_SIZE, false, 0, false)
+        defer bridge.RecycleBytes(buffer)
         for i := range fullFi.Parts {
             md.Reset()
             part := fullFi.Parts[i]

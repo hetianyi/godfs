@@ -163,10 +163,9 @@ func download(path string, customDownloadFileName string) error {
             fi = f
         }
         defer fi.Close()
-        buffer, _ := bridge.MakeBytes(app.BUFF_SIZE, false, 0)
         filePath, _ = filepath.Abs(fi.Name())
         startTime = time.Now()
-        return writeOut(reader, int64(fileLen), buffer, fi, startTime)
+        return writeOut(reader, int64(fileLen), fi, startTime)
     })
     if e != nil {
         logger.Error("download failed:", e)
@@ -214,7 +213,9 @@ func clientMonitorCollector(tracker *lib_client.TrackerInstance) {
 
 
 
-func writeOut(in io.Reader, offset int64, buffer []byte, out io.Writer, startTime time.Time) error {
+func writeOut(in io.Reader, offset int64, out io.Writer, startTime time.Time) error {
+    buffer, _ := bridge.MakeBytes(app.BUFF_SIZE, false, 0, false)
+    defer bridge.RecycleBytes(buffer)
     var finish, total int64
     var stopFlag = false
     defer func() {stopFlag = true}()

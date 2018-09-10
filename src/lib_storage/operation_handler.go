@@ -42,11 +42,13 @@ func validateClientHandler(request *bridge.Meta, connBridge *bridge.Bridge) erro
 }
 
 // 处理文件上传请求
-func uploadHandler(request *bridge.Meta, buffer []byte, md hash.Hash, conn io.ReadCloser, connBridge *bridge.Bridge) error {
+func uploadHandler(request *bridge.Meta, md hash.Hash, conn io.ReadCloser, connBridge *bridge.Bridge) error {
     logger.Info("begin read file body, file len is ", request.BodyLength/1024, "KB")
-
+    // body buff
+    buffer, _ := bridge.MakeBytes(app.BUFF_SIZE, false, 0, false)
     defer func() {
         md.Reset()
+        bridge.RecycleBytes(buffer)
     }()
     out, oe := lib_common.CreateTmpFile()
     if oe != nil {
@@ -226,7 +228,7 @@ func QueryFileHandler(request *bridge.Meta, connBridge *bridge.Bridge, finishFla
 
 
 // 处理文件下载请求
-func downloadFileHandler(request *bridge.Meta, buffer []byte, connBridge *bridge.Bridge) error {
+func downloadFileHandler(request *bridge.Meta, connBridge *bridge.Bridge) error {
     var meta = &bridge.OperationDownloadFileRequest{}
     e1 := json.Unmarshal(request.MetaBody, meta)
     var response = &bridge.OperationDownloadFileResponse{}
@@ -289,14 +291,16 @@ func downloadFileHandler(request *bridge.Meta, buffer []byte, connBridge *bridge
     logger.Debug("download size: ", totalLen)
     return connBridge.SendResponse(response, uint64(totalLen), func(out io.WriteCloser) error {
         app.UpdateDownloads()
-        return WriteDownloadStream(fullFile, startPos, endPos, buffer, out)
+        return WriteDownloadStream(fullFile, startPos, endPos, out)
     })
 }
 
 
 
-func WriteDownloadStream(fullFile *bridge.File, startPos *bridge.ReadPos, endPos *bridge.ReadPos, buffer []byte, out io.Writer) error {
-
+func WriteDownloadStream(fullFile *bridge.File, startPos *bridge.ReadPos, endPos *bridge.ReadPos, out io.Writer) error {
+    // body buff
+    buffer, _ := bridge.MakeBytes(app.BUFF_SIZE, false, 0, false)
+    defer bridge.RecycleBytes(buffer)
     for i := range fullFile.Parts {
         var start int64 = 0
         var offset int64 = 0

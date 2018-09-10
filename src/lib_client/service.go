@@ -108,10 +108,13 @@ func (client *Client) Upload(path string, group string, startTime time.Time, ski
 
         e2 := connBridge.SendRequest(bridge.O_UPLOAD, uploadMeta, uint64(fInfo.Size()), func(out io.WriteCloser) error {
             // begin upload file body bytes
-            buff, _ := bridge.MakeBytes(app.BUFF_SIZE, false, 0)
+            buff, _ := bridge.MakeBytes(app.BUFF_SIZE, false, 0, false)
             var finish, total int64
             var stopFlag = false
-            defer func() {stopFlag = true}()
+            defer func() {
+                stopFlag = true
+                bridge.RecycleBytes(buff)
+            }()
             total = fInfo.Size()
             finish = 0
             go lib_common.ShowPercent(&total, &finish, &stopFlag, startTime)
