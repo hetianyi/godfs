@@ -19,6 +19,7 @@ import (
     "lib_service"
     "util/timeutil"
     "runtime"
+    _ "net/http/pprof"
 )
 
 //TODO support disk cpu statistic
