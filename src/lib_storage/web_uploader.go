@@ -21,6 +21,9 @@ import (
     "net/url"
     "time"
     "util/timeutil"
+    "sync"
+    "fmt"
+    "strconv"
 )
 
 const ContentDispositionPattern = "^Content-Disposition: form-data; name=\"([^\"]*)\"(; filename=\"([^\"]*)\".*)?$"
@@ -116,7 +119,8 @@ func (handler *FileUploadHandlerV1) onTextField(name string, value string) {
 // begin read request entity and parse form field
 func (handler *FileUploadHandlerV1) beginUpload() (*HttpUploadResponse, error) {
     beginTime := time.Now()
-
+    // test code
+    //defer increaseTest(1)
     //buff := make([]byte, 10240)
     var formReader = &FileFormReader{
         request: handler.request,
@@ -531,4 +535,32 @@ func WebUploadHandlerV1(writer http.ResponseWriter, request *http.Request) {
             handler.writeBack(string(bs))
         }
     })
+}
+
+
+
+
+
+
+var count = 0
+var _lock *sync.Mutex
+func init() {
+    _lock = new(sync.Mutex)
+    //go statisticTest()
+}
+// code for test
+func increaseTest(value int) int {
+    _lock.Lock()
+    defer _lock.Unlock()
+    count += value
+    return count
+}
+
+func statisticTest() {
+    timer := time.NewTicker(time.Second)
+    for {
+        fmt.Print("\n\n========================================\nupload statistic:" + strconv.Itoa(increaseTest(0)) + "\n========================================\n\n")
+        count = 0
+        <-timer.C
+    }
 }

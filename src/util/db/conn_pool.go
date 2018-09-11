@@ -9,6 +9,8 @@ import (
     "errors"
 )
 
+// TODO bug: 大量数据测试发现，数据库连接存在泄露机会，导致程序大量等待连接。
+
 type IDbConnPool interface {
     InitPool(connSize int)
     GetDB() *DAO
