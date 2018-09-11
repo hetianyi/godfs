@@ -14,7 +14,7 @@ import (
 const (
     insertFileSQL  = "insert into files(md5, parts_num, grop, instance, finish) values(?,?,?,?,?)"
     updateFileStatusSQL  = "update files set finish=1 where id=?"
-    insertPartSQL  = "insert into parts(md5, size) values(?,?)"
+    insertPartSQL  = "insert into parts(md5, size) select ?,? where not exists (select 1 from parts where md5=?)"
     insertRelationSQL  = "insert into parts_relation(fid, pid) values(?, ?)"
     fileExistsSQL  = "select id from files a where a.md5 = ? "
     partExistsSQL  = "select id from parts a where a.md5 = ?"
@@ -145,7 +145,7 @@ func AddPart(md5 string, size int64) (int, error) {
             return e2
         }
         logger.Debug("exec SQL:\n\t" + insertPartSQL)
-        ret, e3 := state.Exec(md5, size)
+        ret, e3 := state.Exec(md5, size, md5)
         if e3 != nil {
             return e3
         }
@@ -326,9 +326,13 @@ func TrackerAddFile(meta *bridge.OperationRegisterFileRequest) error {
                     return e2
                 }
                 logger.Debug("exec SQL:\n\t" + insertPartSQL)
-                ret, e3 := state.Exec(parts[i].Md5, parts[i].FileSize)
+                ret, e3 := state.Exec(parts[i].Md5, parts[i].FileSize, parts[i].Md5)
                 if e3 != nil {
                     return e3
+                }
+                row, _ := ret.RowsAffected()
+                if row == 0 {
+                    continue
                 }
                 lastPid, e5 := ret.LastInsertId()
                 if e5 != nil {
