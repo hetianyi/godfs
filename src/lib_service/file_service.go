@@ -81,7 +81,10 @@ func SetPool(pool *db.DbConnPool) {
 func GetFileId(md5 string, dao *db.DAO) (int, error) {
     var id = 0
     if dao == nil {
-        dao = dbPool.GetDB()
+        dao, ef := dbPool.GetDB()
+        if ef != nil {
+            return 0, ef
+        }
         defer dbPool.ReturnDB(dao)
     }
     e := dao.Query(func(rows *sql.Rows) error {
@@ -106,7 +109,10 @@ func GetFileId(md5 string, dao *db.DAO) (int, error) {
 // get part id by md5
 func GetPartId(md5 string) (int, error) {
     var id = 0
-    dao := dbPool.GetDB()
+    dao, ef := dbPool.GetDB()
+    if ef != nil {
+        return 0, ef
+    }
     defer dbPool.ReturnDB(dao)
     e := dao.Query(func(rows *sql.Rows) error {
         if rows != nil {
@@ -137,7 +143,10 @@ func AddPart(md5 string, size int64) (int, error) {
         return pid, nil
     }
     var id int
-    dao := dbPool.GetDB()
+    dao, ef := dbPool.GetDB()
+    if ef != nil {
+        return 0, ef
+    }
     defer dbPool.ReturnDB(dao)
     err := dao.DoTransaction(func(tx *sql.Tx) error {
         state, e2 := tx.Prepare(insertPartSQL)
@@ -163,7 +172,10 @@ func AddPart(md5 string, size int64) (int, error) {
 // storage add file and add new sync task
 // parts is part id list
 func StorageAddFile(md5 string, group string, parts *list.List) error {
-    dao := dbPool.GetDB()
+    dao, ef := dbPool.GetDB()
+    if ef != nil {
+        return ef
+    }
     defer dbPool.ReturnDB(dao)
     fid, ee := GetFileId(md5, dao)
     if ee != nil {
@@ -211,7 +223,10 @@ func StorageAddTrackerPulledFile(fis []bridge.File, trackerUUID string) error {
     if fis == nil || len(fis) == 0 {
         return nil
     }
-    dao := dbPool.GetDB()
+    dao, ef := dbPool.GetDB()
+    if ef != nil {
+        return ef
+    }
     defer dbPool.ReturnDB(dao)
     for i := range fis {
         fi := fis[i]
@@ -290,7 +305,10 @@ func StorageAddTrackerPulledFile(fis []bridge.File, trackerUUID string) error {
 func TrackerAddFile(meta *bridge.OperationRegisterFileRequest) error {
     var fid int
     var e error
-    dao := dbPool.GetDB()
+    dao, ef := dbPool.GetDB()
+    if ef != nil {
+        return ef
+    }
     defer dbPool.ReturnDB(dao)
 
     for i := range meta.Files {
@@ -365,7 +383,10 @@ func TrackerAddFile(meta *bridge.OperationRegisterFileRequest) error {
 
 // mark that a file successfully pushed to tracker.
 func FinishLocalFilePushTask(fid int, trackerUUID string) error {
-    dao := dbPool.GetDB()
+    dao, ef := dbPool.GetDB()
+    if ef != nil {
+        return ef
+    }
     defer dbPool.ReturnDB(dao)
     return dao.DoTransaction(func(tx *sql.Tx) error {
         state, e2 := tx.Prepare(updateLocalPushId)
@@ -384,7 +405,10 @@ func FinishLocalFilePushTask(fid int, trackerUUID string) error {
 // 获取推送到tracker的文件
 func GetLocalPushFileTask(tasType int, trackerUUID string) (*bridge.Task, error) {
     var ret = &bridge.Task{FileId: 0, TaskType: tasType}
-    dao := dbPool.GetDB()
+    dao, ef := dbPool.GetDB()
+    if ef != nil {
+        return nil, ef
+    }
     defer dbPool.ReturnDB(dao)
     e := dao.Query(func(rows *sql.Rows) error {
         if rows != nil {
@@ -408,7 +432,10 @@ func GetLocalPushFileTask(tasType int, trackerUUID string) (*bridge.Task, error)
 // 获取下载任务文件
 func GetDownloadFileTask(tasType int) (*list.List, error) {
     var ls list.List
-    dao := dbPool.GetDB()
+    dao, ef := dbPool.GetDB()
+    if ef != nil {
+        return nil, ef
+    }
     defer dbPool.ReturnDB(dao)
     e := dao.Query(func(rows *sql.Rows) error {
         if rows != nil {
@@ -440,7 +467,10 @@ func GetFullFileByMd5(md5 string, finishFlag int) (*bridge.File, error) {
         addOn = " and finish=0"
     }
     var fi *bridge.File
-    dao := dbPool.GetDB()
+    dao, ef := dbPool.GetDB()
+    if ef != nil {
+        return nil, ef
+    }
     defer dbPool.ReturnDB(dao)
     // query file
     e1 := dao.Query(func(rows *sql.Rows) error {
@@ -508,7 +538,10 @@ func GetFullFileByFid(fid int, finishFlag int) (*bridge.File, error) {
         addOn = " and finish=0"
     }
     var fi *bridge.File
-    dao := dbPool.GetDB()
+    dao, ef := dbPool.GetDB()
+    if ef != nil {
+        return nil, ef
+    }
     defer dbPool.ReturnDB(dao)
     // query file
     e1 := dao.Query(func(rows *sql.Rows) error {
@@ -573,7 +606,10 @@ func GetFullFileByFids(fids ...int) (*bridge.File, error) {
     if fids == nil || len(fids) == 0 {
         return nil, nil
     }
-    dao := dbPool.GetDB()
+    dao, ef := dbPool.GetDB()
+    if ef != nil {
+        return nil, ef
+    }
     defer dbPool.ReturnDB(dao)
     var fi *bridge.File
 
@@ -656,7 +692,10 @@ func GetFileByMd5(md5 string, finishFlag int) (*bridge.File, error) {
         addOn = " and finish=0"
     }
     var fi *bridge.File
-    dao := dbPool.GetDB()
+    dao, ef := dbPool.GetDB()
+    if ef != nil {
+        return nil, ef
+    }
     defer dbPool.ReturnDB(dao)
     // query file
     e1 := dao.Query(func(rows *sql.Rows) error {
@@ -690,7 +729,10 @@ func GetFileByFid(fid int, finishFlag int) (*bridge.File, error) {
         addOn = " and finish=0"
     }
     var fi *bridge.File
-    dao := dbPool.GetDB()
+    dao, ef := dbPool.GetDB()
+    if ef != nil {
+        return nil, ef
+    }
     defer dbPool.ReturnDB(dao)
     // query file
     e1 := dao.Query(func(rows *sql.Rows) error {
@@ -718,7 +760,10 @@ func GetFileByFid(fid int, finishFlag int) (*bridge.File, error) {
 
 // if file download finish update finish status.
 func UpdateFileStatus(fid int) error {
-    dao := dbPool.GetDB()
+    dao, ef := dbPool.GetDB()
+    if ef != nil {
+        return ef
+    }
     defer dbPool.ReturnDB(dao)
     return dao.DoTransaction(func(tx *sql.Tx) error {
 
@@ -739,7 +784,10 @@ func UpdateFileStatus(fid int) error {
 // storage查询tracker新文件，基于tracker服务器的Id作为起始
 func GetFilesBasedOnId(fid int) (*list.List, error) {
     var files list.List
-    dao := dbPool.GetDB()
+    dao, ef := dbPool.GetDB()
+    if ef != nil {
+        return nil, ef
+    }
     defer dbPool.ReturnDB(dao)
     // query file
     e1 := dao.Query(func(rows *sql.Rows) error {
@@ -816,7 +864,10 @@ func GetFilesBasedOnId(fid int) (*list.List, error) {
 func UpdateTrackerSyncId(trackerUUID string, id int, tx *sql.Tx) error {
     logger.Debug("update Tracker Sync Id to", id)
     if tx == nil {
-        dao := dbPool.GetDB()
+        dao, ef := dbPool.GetDB()
+        if ef != nil {
+            return ef
+        }
         defer dbPool.ReturnDB(dao)
         return dao.DoTransaction(func(tx *sql.Tx) error {
             state, e2 := tx.Prepare(updateTrackerSyncId)
@@ -848,7 +899,10 @@ func UpdateTrackerSyncId(trackerUUID string, id int, tx *sql.Tx) error {
 // 更新一个tracker的本地ID
 func UpdateLocalPushId(trackerUUID string, id int) error {
     logger.Debug("update local push id to", id)
-    dao := dbPool.GetDB()
+    dao, ef := dbPool.GetDB()
+    if ef != nil {
+        return ef
+    }
     defer dbPool.ReturnDB(dao)
     return dao.DoTransaction(func(tx *sql.Tx) error {
         state, e2 := tx.Prepare(updateLocalPushId)
@@ -866,7 +920,10 @@ func UpdateLocalPushId(trackerUUID string, id int) error {
 
 // 获取tracker的config
 func GetTrackerConfig(trackerUUID string) (*bridge.TrackerConfig, error) {
-    dao := dbPool.GetDB()
+    dao, ef := dbPool.GetDB()
+    if ef != nil {
+        return nil, ef
+    }
     defer dbPool.ReturnDB(dao)
 
     var config *bridge.TrackerConfig
@@ -895,7 +952,10 @@ func GetTrackerConfig(trackerUUID string) (*bridge.TrackerConfig, error) {
 
 // 更新一个tracker的本地ID
 func ConfirmLocalInstanceUUID(uuid string) error {
-    dao := dbPool.GetDB()
+    dao, ef := dbPool.GetDB()
+    if ef != nil {
+        return ef
+    }
     defer dbPool.ReturnDB(dao)
     return dao.DoTransaction(func(tx *sql.Tx) error {
         state, e2 := tx.Prepare(confirmLocalInstanceUUID)
@@ -913,7 +973,10 @@ func ConfirmLocalInstanceUUID(uuid string) error {
 
 //
 func GetLocalInstanceUUID() (string, error) {
-    dao := dbPool.GetDB()
+    dao, ef := dbPool.GetDB()
+    if ef != nil {
+        return "", ef
+    }
     defer dbPool.ReturnDB(dao)
     var uuid string
     err := dao.Query(func(rows *sql.Rows) error {
@@ -936,7 +999,10 @@ func GetLocalInstanceUUID() (string, error) {
 
 
 func QueryExistsStorageClient(uuid string) (bool, error) {
-    dao := dbPool.GetDB()
+    dao, ef := dbPool.GetDB()
+    if ef != nil {
+        return false, ef
+    }
     defer dbPool.ReturnDB(dao)
     var count int
     e1 := dao.Query(func(rows *sql.Rows) error {
@@ -961,7 +1027,10 @@ func QueryExistsStorageClient(uuid string) (bool, error) {
 
 // 更新一个tracker的本地ID
 func RegisterStorageClient(uuid string) error {
-    dao := dbPool.GetDB()
+    dao, ef := dbPool.GetDB()
+    if ef != nil {
+        return ef
+    }
     defer dbPool.ReturnDB(dao)
     return dao.DoTransaction(func(tx *sql.Tx) error {
         state, e2 := tx.Prepare(regStorageClient)
@@ -979,7 +1048,10 @@ func RegisterStorageClient(uuid string) error {
 
 /// 查询数据库统计信息
 func QueryStatistic() (int, int, int64, error) {
-    dao := dbPool.GetDB()
+    dao, ef := dbPool.GetDB()
+    if ef != nil {
+        return 0, 0, 0, ef
+    }
     defer dbPool.ReturnDB(dao)
     var files, finish int
     var disk int64
