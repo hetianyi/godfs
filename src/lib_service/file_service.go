@@ -107,13 +107,15 @@ func GetFileId(md5 string, dao *db.DAO) (int, error) {
 
 
 // get part id by md5
-func GetPartId(md5 string) (int, error) {
+func GetPartId(md5 string, dao *db.DAO) (int, error) {
     var id = 0
-    dao, ef := dbPool.GetDB()
-    if ef != nil {
-        return 0, ef
+    if dao == nil {
+        dao, ef := dbPool.GetDB()
+        if ef != nil {
+            return 0, ef
+        }
+        defer dbPool.ReturnDB(dao)
     }
-    defer dbPool.ReturnDB(dao)
     e := dao.Query(func(rows *sql.Rows) error {
         if rows != nil {
             for rows.Next() {
@@ -134,7 +136,13 @@ func GetPartId(md5 string) (int, error) {
 
 
 func AddPart(md5 string, size int64) (int, error) {
-    pid, ee := GetPartId(md5)
+    dao, ef := dbPool.GetDB()
+    if ef != nil {
+        return 0, ef
+    }
+    defer dbPool.ReturnDB(dao)
+
+    pid, ee := GetPartId(md5, dao)
     if ee != nil {
         return 0, ee
     }
@@ -143,11 +151,6 @@ func AddPart(md5 string, size int64) (int, error) {
         return pid, nil
     }
     var id int
-    dao, ef := dbPool.GetDB()
-    if ef != nil {
-        return 0, ef
-    }
-    defer dbPool.ReturnDB(dao)
     err := dao.DoTransaction(func(tx *sql.Tx) error {
         state, e2 := tx.Prepare(insertPartSQL)
         if e2 != nil {
@@ -216,7 +219,6 @@ func StorageAddFile(md5 string, group string, parts *list.List) error {
 }
 
 
-// TODO continue here
 // store file info which pulled from tracker server.
 // return immediate if error occurs
 func StorageAddTrackerPulledFile(fis []bridge.File, trackerUUID string) error {

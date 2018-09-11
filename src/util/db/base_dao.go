@@ -13,6 +13,7 @@ import (
     "util/common"
     "os"
     "util/file"
+    "errors"
 )
 
 // download sqlite3 studio @
@@ -33,11 +34,11 @@ type DAO struct {
 }
 
 
-func (dao *DAO) InitDB(index int) {
+func (dao *DAO) InitDB(index int) error {
     logger.Debug("initial db connection with index:", index)
     dao.connMutex = new(sync.Mutex)
-    dao.checkDb()
     dao.index = index
+    return dao.checkDb()
 }
 
 func (dao *DAO) connect() (*sql.DB, error) {
@@ -63,7 +64,7 @@ func (dao *DAO) checkDb() error {
             tdb, e := dao.connect()
             if e != nil {
                 logger.Error("error connect db, wait...:", app.BASE_PATH + "/data/storage.db")
-                time.Sleep(time.Second * 5)
+                time.Sleep(time.Second * 1)
                 continue
             }
             dao.db = tdb
@@ -75,23 +76,27 @@ func (dao *DAO) checkDb() error {
     }
 }
 
-func (dao *DAO) verifyConn() {
-    for {
+func (dao *DAO) verifyConn() error {
+    for i := 0; i < 5; i++ {
         if e := dao.checkDb(); e != nil {
+            logger.Error("error check db:", e)
+            dao.db.Close()
             dao.db = nil
-            logger.Error(e)
-            time.Sleep(time.Second * 2)
         } else {
-            break
+            return nil
         }
     }
+    return errors.New("error check db: failed retry many times")
 }
 
 
 
 // db db query
 func (dao *DAO) Query(handler func(rows *sql.Rows) error, sqlString string, args ...interface{}) error {
-    dao.verifyConn()
+    te := dao.verifyConn()
+    if te != nil {
+        return te
+    }
     var rs *sql.Rows
     var e error
     logger.Debug("exec SQL:\n\t" + sqlString)
@@ -108,7 +113,10 @@ func (dao *DAO) Query(handler func(rows *sql.Rows) error, sqlString string, args
 
 
 func (dao *DAO) DoTransaction(works func(tx *sql.Tx) error) error {
-    dao.verifyConn()
+    te := dao.verifyConn()
+    if te != nil {
+        return te
+    }
     tx, e1 := dao.db.Begin()
     if e1 != nil {
         return e1

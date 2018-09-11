@@ -26,7 +26,7 @@ func Test1(t *testing.T) {
 }
 func Test2(t *testing.T) {
     initParam()
-    fmt.Println(GetPartId("0d3cc782c3242cf3ce4b2174e1041ed233"))
+    fmt.Println(GetPartId("0d3cc782c3242cf3ce4b2174e1041ed233", nil))
 }
 
 func Test3(t *testing.T) {

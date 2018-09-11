@@ -36,7 +36,11 @@ func (pool *DbConnPool) InitPool(poolSize int) {
     pool.fetchLock = new(sync.Mutex)
     for i := 0; i < poolSize; i++ {
         dao := &DAO{}
-        dao.InitDB(i)
+        e := dao.InitDB(i)
+        if e != nil {
+            i--
+            continue
+        }
         pool.dbList.PushBack(dao)
     }
 }
@@ -68,6 +72,8 @@ func (pool *DbConnPool) ReturnDB(dao *DAO) {
     if dao != nil {
         logger.Trace("return db connection of index:", dao.index)
         pool.dbList.PushBack(dao)
+    } else {
+        logger.Error("\n\n\n---------=========error return nil dao---------=========")
     }
 }
 
