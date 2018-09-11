@@ -31,7 +31,7 @@ You can pull the image on docker hub:
 
 ## Install
 
-> Please install golang1.9+ first!
+> Please install golang1.8+ first!
 
 Take CentOS 7 as example.
 

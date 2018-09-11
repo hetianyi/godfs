@@ -20,7 +20,7 @@ func TestBytesPool2(t *testing.T) {
     rand.Seed(time.Now().UnixNano())
     for  {
         rd := rand.Int31n(10)
-        a := pool.Apply(uint64(rd))
+        a := pool.Apply(int(rd))
         fmt.Println(len(a))
         pool.Recycle(a)
         time.Sleep(time.Millisecond * 1)

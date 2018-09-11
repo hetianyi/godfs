@@ -48,8 +48,11 @@ func (pool *BytesPool) Recycle(buffer []byte) {
     }
     // pool is full, discard
     if ls.Len() >= pool.maxSize {
-        logger.Debug("discard bytes buffer of length:", len(buffer))
-        return
+        // for small bytes buffer, try to cache more.
+        if len(buffer) > 1024 || ls.Len() > pool.maxSize * 100 {
+            logger.Debug("discard bytes buffer of length:", len(buffer))
+            return
+        }
     }
     logger.Debug("cache bytes buffer of length:", len(buffer))
     ls.PushBack(buffer)

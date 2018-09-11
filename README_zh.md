@@ -29,7 +29,7 @@ godfs
 
 ## 安装
 
-> 请先安装golang1.9+
+> 请先安装golang1.8+
 
 以CentOS7为例.
 

@@ -9,9 +9,11 @@ import (
     "flag"
     "validate"
     "lib_tracker"
+    "runtime"
 )
 
 func main() {
+    runtime.GOMAXPROCS(runtime.NumCPU())
     abs, _ := filepath.Abs(os.Args[0])
     s, _ := filepath.Split(abs)
     s = file.FixPath(s)
