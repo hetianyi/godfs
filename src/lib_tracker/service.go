@@ -28,7 +28,7 @@ func StartService(config map[string] string) {
     port := config["port"]
     secret = config["secret"]
     // 连接数据库
-    lib_service.SetPool(db.NewPool(app.DB_Pool_SIZE))
+    lib_service.SetPool(db.NewPool(app.DB_POOL_SIZE))
 
     e1 := lib_service.ConfirmLocalInstanceUUID(common.UUID())
     if e1 != nil {

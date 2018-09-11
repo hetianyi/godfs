@@ -17,7 +17,7 @@ func initParam() {
     logger.SetLogLevel(1)
 
     // 连接数据库
-    SetPool(db.NewPool(app.DB_Pool_SIZE))
+    SetPool(db.NewPool(app.DB_POOL_SIZE))
 }
 
 func Test1(t *testing.T) {

@@ -52,7 +52,7 @@ func StartService(config map[string] string) {
     app.FILE_FINISH = 0
 
     // 连接数据库
-    lib_service.SetPool(db.NewPool(app.DB_Pool_SIZE))
+    lib_service.SetPool(db.NewPool(app.DB_POOL_SIZE))
     newUUID := common.UUID()
     logger.Debug("generate UUID:", newUUID)
     e1 := lib_service.ConfirmLocalInstanceUUID(newUUID)

@@ -53,7 +53,7 @@ const (
     TASK_PULL_NEW_FILE = 3
     TASK_DOWNLOAD_FILE = 4
     TASK_SYNC_ALL_STORAGES = 5 // client 同步所有的storage
-    DB_Pool_SIZE = 10
+    DB_POOL_SIZE = 10
 )
 
 

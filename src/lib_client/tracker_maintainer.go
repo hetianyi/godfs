@@ -470,6 +470,7 @@ func (tracker *TrackerInstance) ExecTask(task *bridge.Task) (bool, error) {
         regFileMeta := &bridge.OperationRegisterFileRequest {
             Files: fs,
         }
+        logger.Info("register", files.Len(), "files to tracker server")
         // reg client
         e2 := connBridge.SendRequest(bridge.O_REG_FILE, regFileMeta, 0, nil)
         if e2 != nil {

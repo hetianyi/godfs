@@ -5,6 +5,7 @@ import (
     "sync"
     "time"
     "util/logger"
+    "fmt"
 )
 
 type IDbConnPool interface {
@@ -44,6 +45,7 @@ func (pool *DbConnPool) GetDB() *DAO {
     for {
         dao := pool.dbList.Remove(pool.dbList.Front())
         if dao == nil {
+            fmt.Print("\n\n等待数据库连接..........\n\n\n")
             logger.Debug("no connection available")
             time.Sleep(time.Millisecond * 100)
         } else {
