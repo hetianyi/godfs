@@ -118,7 +118,6 @@ func CopyFileTo(src string, dir string) (s bool, e error) {
 
 // check whether the file exists.
 // 判断文件是否存在
-// TODO need to check
 func Exists(path string) bool {
     fi, err := os.Stat(path)
     if os.IsNotExist(err) {
