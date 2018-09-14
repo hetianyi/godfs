@@ -10,14 +10,15 @@ import (
     "math"
     "encoding/json"
     "util/db"
+    "time"
 )
 
 func initParam() {
-    app.BASE_PATH = "E:/godfs-storage/tracker"
-    logger.SetLogLevel(1)
+    app.BASE_PATH = "E:/godfs-storage/storage1"
+    logger.SetLogLevel(2)
 
     // 连接数据库
-    SetPool(db.NewPool(app.DB_POOL_SIZE))
+    SetPool(db.NewPool(1))
 }
 
 func Test1(t *testing.T) {
@@ -93,6 +94,34 @@ func Test12(t *testing.T) {
 func Test13(t *testing.T) {
     initParam()
     //UpdateLocalPushId("xxxxxxxxx", 222)
+}
+
+
+
+
+
+
+
+
+
+
+
+func Test14(t *testing.T) {
+    initParam()
+    time.Sleep(time.Second)
+    forTest(0)
+    //go forTest(1)
+    //time.Sleep(time.Second*100000000)
+}
+
+func forTest(init int) {
+    i := init
+    s := "xxxxxxx"
+    var ls list.List
+    for  {
+        i+=2
+        logger.Error(i, StorageAddFile(s + "_" + strconv.Itoa(i), "G01", &ls))
+    }
 }
 
 
