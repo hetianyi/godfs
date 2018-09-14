@@ -61,7 +61,7 @@ func (dao *DAO) connect() (*sql.DB, error) {
             logger.Fatal("error prepare db file:", e1)
         }
     }
-    return sql.Open("sqlite3", app.BASE_PATH + "/data/storage.db")
+    return sql.Open("sqlite3", app.BASE_PATH + "/data/storage.db?cache=shared&_synchronous=0")
 }
 
 func (dao *DAO) checkDb() error {
@@ -99,6 +99,7 @@ func (dao *DAO) verifyConn() error {
 
 
 
+
 // db db query
 func (dao *DAO) Query(handler func(rows *sql.Rows) error, sqlString string, args ...interface{}) error {
     te := dao.verifyConn()
@@ -121,8 +122,8 @@ func (dao *DAO) Query(handler func(rows *sql.Rows) error, sqlString string, args
 
 
 func (dao *DAO) DoTransaction(works func(tx *sql.Tx) error) error {
-    //dbWriteLock.Lock()
-    //defer dbWriteLock.Unlock()
+    dbWriteLock.Lock()
+    defer dbWriteLock.Unlock()
     te := dao.verifyConn()
     if te != nil {
         return te

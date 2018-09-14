@@ -11,6 +11,7 @@ import (
     "encoding/json"
     "util/db"
     "time"
+    "sync"
 )
 
 func initParam() {
@@ -110,11 +111,28 @@ func Test14(t *testing.T) {
     initParam()
     time.Sleep(time.Second)
     go forTest(0)
-    go forTest(1)
-    go forTest(2)
+    //go forTest(1)
+    //go forTest(2)
     //go forTest(3)
     //go forTest(4)
-    time.Sleep(time.Second*100000000)
+    //time.Sleep(time.Second*100000000)
+    timer1()
+}
+
+var total = 0
+var lock1 = new(sync.Mutex)
+func increase() {
+    lock1.Lock()
+    defer lock1.Unlock()
+    total++
+}
+func timer1() {
+    timer := time.NewTicker(time.Second)
+    for {
+        fmt.Println("avg:", total, "/s")
+        total = 0
+        <-timer.C
+    }
 }
 
 func forTest(init int) {
@@ -122,8 +140,9 @@ func forTest(init int) {
     s := "xxxxxxx"
     var ls list.List
     for  {
-        i+=3
+        i+=1
         logger.Info(i, StorageAddFile(s + "_" + strconv.Itoa(i), "G01", &ls))
+        increase()
     }
 }
 
