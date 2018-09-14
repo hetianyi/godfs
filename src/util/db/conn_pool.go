@@ -21,7 +21,8 @@ type DbConnPool struct {
     connSize int
     dbList *list.List
     fetchLock *sync.Mutex
-    WriteLock *sync.Mutex
+    writeLock *sync.Mutex
+    listLock *sync.Mutex
 }
 
 func NewPool(poolSize int) *DbConnPool {
@@ -35,7 +36,8 @@ func (pool *DbConnPool) InitPool(poolSize int) {
     pool.connSize = poolSize
     pool.dbList = list.New()
     pool.fetchLock = new(sync.Mutex)
-    pool.WriteLock = new(sync.Mutex)
+    pool.writeLock = new(sync.Mutex)
+    pool.listLock = new(sync.Mutex)
     for i := 0; i < poolSize; i++ {
         dao := &DAO{}
         e := dao.InitDB(i)
@@ -57,13 +59,15 @@ func (pool *DbConnPool) GetDB() (*DAO, error) {
             if waits > 30 {
                 return nil, errors.New("cannot fetch db connection from pool: wait time out")
             }
-            fmt.Print("\n\n等待数据库连接..........\n\n\n")
+            fmt.Print("\n等待数据库连接..........\n")
             logger.Debug("no connection available")
             time.Sleep(time.Millisecond * 100)
             waits++
             continue
         }
+        pool.listLock.Lock()
         dao := pool.dbList.Remove(pool.dbList.Front())
+        pool.listLock.Unlock()
         logger.Trace("using db connection of index:", dao.(*DAO).index)
         return dao.(*DAO), nil
     }
@@ -73,7 +77,9 @@ func (pool *DbConnPool) GetDB() (*DAO, error) {
 func (pool *DbConnPool) ReturnDB(dao *DAO) {
     if dao != nil {
         logger.Trace("return db connection of index:", dao.index)
+        pool.listLock.Lock()
         pool.dbList.PushBack(dao)
+        pool.listLock.Unlock()
     } else {
         logger.Error("\n\n\n---------=========error return nil dao---------=========")
     }

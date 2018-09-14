@@ -16,6 +16,14 @@ import (
     "errors"
 )
 
+// db write lock
+// when write event happens, the sys will lock by program in case if error occurs such 'database is locked'
+var dbWriteLock *sync.Mutex
+
+func init() {
+    dbWriteLock = new(sync.Mutex)
+}
+
 // download sqlite3 studio @
 // https://sqlitestudio.pl/index.rvt?act=download
 type IDAO interface {
@@ -113,6 +121,8 @@ func (dao *DAO) Query(handler func(rows *sql.Rows) error, sqlString string, args
 
 
 func (dao *DAO) DoTransaction(works func(tx *sql.Tx) error) error {
+    //dbWriteLock.Lock()
+    //defer dbWriteLock.Unlock()
     te := dao.verifyConn()
     if te != nil {
         return te

@@ -18,7 +18,7 @@ func initParam() {
     logger.SetLogLevel(2)
 
     // 连接数据库
-    SetPool(db.NewPool(1))
+    SetPool(db.NewPool(3))
 }
 
 func Test1(t *testing.T) {
@@ -109,9 +109,12 @@ func Test13(t *testing.T) {
 func Test14(t *testing.T) {
     initParam()
     time.Sleep(time.Second)
-    forTest(0)
-    //go forTest(1)
-    //time.Sleep(time.Second*100000000)
+    go forTest(0)
+    go forTest(1)
+    go forTest(2)
+    //go forTest(3)
+    //go forTest(4)
+    time.Sleep(time.Second*100000000)
 }
 
 func forTest(init int) {
@@ -119,11 +122,18 @@ func forTest(init int) {
     s := "xxxxxxx"
     var ls list.List
     for  {
-        i+=2
-        logger.Error(i, StorageAddFile(s + "_" + strconv.Itoa(i), "G01", &ls))
+        i+=3
+        logger.Info(i, StorageAddFile(s + "_" + strconv.Itoa(i), "G01", &ls))
     }
 }
 
+func Test141(t *testing.T) {
+    var ls list.List
+    ls.PushBack(1)
+    ls.Remove(ls.Front())
+    ls.Remove(ls.Front())
+    ls.PushBack(2)
+}
 
 
 
