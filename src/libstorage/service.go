@@ -1,0 +1,239 @@
+package libstorage
+
+import (
+	"app"
+	"container/list"
+	"crypto/md5"
+	"io"
+	"libclient"
+	"libcommon"
+	"libcommon/bridge"
+	"libservice"
+	"net"
+	"net/http"
+	"runtime"
+	"strconv"
+	"time"
+	"util/common"
+	"util/db"
+	"util/logger"
+	"util/pool"
+	"util/timeutil"
+)
+
+//TODO support disk cpu statistic
+
+// max client connection set to 1000
+var p, _ = pool.NewPool(200, 0)
+
+// sys secret
+var secret string
+
+// sys config
+var cfg map[string]string
+
+// tasks put in this list
+var fileRegisterList list.List
+
+// Start service and listen
+// 1. Start task for upload listen
+// 2. Start task for communication with tracker
+func StartService(config map[string]string) {
+	cfg = config
+	trackers := config["trackers"]
+	port := config["port"]
+	secret = config["secret"]
+
+	// set client type
+	app.CLIENT_TYPE = 1
+	app.START_TIME = timeutil.GetTimestamp(time.Now())
+	app.DOWNLOADS = 0
+	app.UPLOADS = 0
+	app.IOIN = 0
+	app.IOOUT = 0
+	app.FILE_TOTAL = 0
+	app.FILE_FINISH = 0
+
+	// 连接数据库
+	libservice.SetPool(db.NewPool(app.DB_POOL_SIZE))
+	newUUID := common.UUID()
+	logger.Debug("generate UUID:", newUUID)
+	e1 := libservice.ConfirmLocalInstanceUUID(newUUID)
+	if e1 != nil {
+		logger.Fatal("error persist local instance uuid:", e1)
+	}
+
+	uuid, e2 := libservice.GetLocalInstanceUUID()
+	if e2 != nil {
+		logger.Fatal("error fetch local instance uuid:", e2)
+	}
+	app.UUID = uuid
+	logger.Info("instance start with uuid:", app.UUID)
+
+	// start statistic service.
+	go startStatisticService()
+
+	startHttpDownloadService()
+	go startTrackerMaintainer(trackers)
+	startStorageService(port)
+}
+
+func startTrackerMaintainer(trackers string) {
+	collector1 := libclient.TaskCollector{
+		Interval: time.Second * 10,
+		Name:     "推送本地新文件到tracker",
+		Single:   false,
+		Job:      libclient.QueryPushFileTaskCollector, //TODO 多tracker如何保证全部tracker成功？
+	}
+	collector2 := libclient.TaskCollector{
+		Interval:   time.Second * 10,
+		Name:       "查询待同步文件",
+		Single:     true,
+		FirstDelay: time.Second * 1,
+		Job:        libclient.QueryDownloadFileTaskCollector,
+	}
+	collector3 := libclient.TaskCollector{
+		Interval: app.PULL_NEW_FILE_INTERVAL,
+		Name:     "拉取tracker新文件",
+		Single:   false,
+		Job:      libclient.QueryNewFileTaskCollector,
+	}
+	collector4 := libclient.TaskCollector{
+		Interval: app.SYNC_MEMBER_INTERVAL,
+		Name:     "同步storage成员",
+		Single:   false,
+		Job:      libclient.SyncMemberTaskCollector,
+	}
+	collectors := *new(list.List)
+	collectors.PushBack(&collector1)
+	collectors.PushBack(&collector2)
+	collectors.PushBack(&collector3)
+	collectors.PushBack(&collector4)
+
+	maintainer := &libclient.TrackerMaintainer{Collectors: collectors}
+	maintainer.Maintain(trackers)
+}
+
+// upload listen
+func startStorageService(port string) {
+	pt := libcommon.ParsePort(port)
+	if pt > 0 {
+		tryTimes := 0
+		for {
+			common.Try(func() {
+				listener, e := net.Listen("tcp", ":"+strconv.Itoa(pt))
+				logger.Info("service listening on port:", pt)
+				if e != nil {
+					panic(e)
+				} else {
+					// keep accept connections.
+					for {
+						conn, e1 := listener.Accept()
+						if e1 == nil {
+							ee := p.Exec(func() {
+								clientHandler(conn)
+							})
+							// maybe the poll is full
+							if ee != nil {
+								logger.Error(ee)
+								bridge.Close(conn)
+							}
+						} else {
+							logger.Info("accept new conn error", e1)
+							if conn != nil {
+								bridge.Close(conn)
+							}
+						}
+					}
+				}
+			}, func(i interface{}) {
+				logger.Error("["+strconv.Itoa(tryTimes)+"] error shutdown service duo to:", i)
+				time.Sleep(time.Second * 10)
+			})
+		}
+	}
+}
+
+// http download service
+func startHttpDownloadService() {
+	if !app.HTTP_ENABLE {
+		logger.Info("http server disabled")
+		return
+	}
+
+	http.HandleFunc("/download/", DownloadHandler)
+	http.HandleFunc("/upload", WebUploadHandlerV1)
+
+	s := &http.Server{
+		Addr: ":" + strconv.Itoa(app.HTTP_PORT),
+		//ReadTimeout:    10 * time.Second,
+		ReadHeaderTimeout: 10 * time.Second,
+		WriteTimeout:      0,
+		MaxHeaderBytes:    1 << 20,
+	}
+	logger.Info("http server listen on port:", app.HTTP_PORT)
+	go s.ListenAndServe()
+}
+
+// accept a new connection for file upload
+// the connection will keep till it is broken
+// 文件同步策略：
+// 文件上传成功将任务写到本地文件storage_task.data作为备份
+// 将任务通知到tracker服务器，通知成功，tracker服务进行广播
+// 其他storage定时取任务，将任务
+func clientHandler(conn net.Conn) {
+	defer func() {
+		logger.Info("close connection from server")
+		bridge.Close(conn)
+	}()
+	common.Try(func() {
+		// calculate md5
+		md := md5.New()
+		connBridge := bridge.NewBridge(conn)
+		for {
+			error := connBridge.ReceiveRequest(func(request *bridge.Meta, in io.ReadCloser) error {
+				//return requestRouter(request, &bodyBuff, md, connBridge, conn)
+				if request.Err != nil {
+					return request.Err
+				}
+				// route
+				if request.Operation == bridge.O_CONNECT {
+					return validateClientHandler(request, connBridge)
+				} else if request.Operation == bridge.O_UPLOAD {
+					return uploadHandler(request, md, conn, connBridge)
+				} else if request.Operation == bridge.O_QUERY_FILE {
+					return QueryFileHandler(request, connBridge, 1)
+				} else if request.Operation == bridge.O_DOWNLOAD_FILE {
+					return downloadFileHandler(request, connBridge)
+				} else {
+					return bridge.OPERATION_NOT_SUPPORT_ERROR
+				}
+			})
+			if error != nil {
+				logger.Error(error)
+				break
+			}
+		}
+	}, func(i interface{}) {
+		logger.Error("connection error:", i)
+	})
+}
+
+func startStatisticService() {
+	timer := time.NewTicker(time.Second * 30)
+	for {
+		files, finish, disk, e := libservice.QueryStatistic()
+		if e != nil {
+			logger.Error("error query statistic info:", e)
+		} else {
+			app.FILE_TOTAL = files
+			app.FILE_FINISH = finish
+			app.DISK_USAGE = disk
+		}
+
+		stats := &runtime.MemStats{}
+		runtime.ReadMemStats(stats)
+		app.MEMORY = stats.Sys
+		<-timer.C
+	}
+}
