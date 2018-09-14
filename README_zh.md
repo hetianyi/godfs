@@ -1,6 +1,7 @@
 godfs
 ==========
 [![Build Status](https://travis-ci.org/hetianyi/godfs.svg?branch=master)](https://travis-ci.org/hetianyi/godfs)
+[![go report card](https://goreportcard.com/badge/github.com/hetianyi/godfs "go report card")](https://goreportcard.com/report/github.com/hetianyi/godfs)
 
 [README](README.md) | [中文文档](README_zh.md)
 ### ```godfs``` 是一个用go实现的轻量，快速，简单易用的分布式文件存储服务器。
