@@ -98,6 +98,8 @@ func (dao *DAO) verifyConn() error {
 
 // db db query
 func (dao *DAO) Query(handler func(rows *sql.Rows) error, sqlString string, args ...interface{}) error {
+	dbWriteLock.Lock()
+	defer dbWriteLock.Unlock()
 	te := dao.verifyConn()
 	if te != nil {
 		return te

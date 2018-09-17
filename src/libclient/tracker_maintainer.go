@@ -167,7 +167,7 @@ func (maintainer *TrackerMaintainer) track(tracker string, index int) {
 					}
 					forceClosed, e2 := trackerInstance.ExecTask(task)
 					if e2 != nil {
-						logger.Debug("task exec error:", e2)
+						logger.Error("task exec error:", e2)
 					} else {
 						logger.Trace("task exec success:", task.TaskType)
 					}

@@ -2,11 +2,11 @@ package db
 
 import (
 	"container/list"
+	"sync"
+	"util/logger"
 	"errors"
 	"fmt"
-	"sync"
 	"time"
-	"util/logger"
 )
 
 // TODO bug: 大量数据测试发现，数据库连接存在泄露机会，导致程序大量等待连接。
@@ -68,7 +68,7 @@ func (pool *DbConnPool) GetDB() (*DAO, error) {
 		pool.listLock.Lock()
 		dao := pool.dbList.Remove(pool.dbList.Front())
 		pool.listLock.Unlock()
-		logger.Trace("using db connection of index:", dao.(*DAO).index)
+		logger.Debug("using db connection of index:", dao.(*DAO).index, " left connections:", pool.dbList.Len())
 		return dao.(*DAO), nil
 	}
 }

@@ -60,7 +60,7 @@ func uploadHandler(request *bridge.Meta, md hash.Hash, conn io.ReadCloser, connB
 	var nextReadSize int
 	var sliceReadSize int64 = 0
 	var sliceMd5 = md5.New()
-	var sliceIds list.List
+	var fileParts list.List
 
 	for {
 		//read finish
@@ -77,28 +77,24 @@ func uploadHandler(request *bridge.Meta, md hash.Hash, conn io.ReadCloser, connB
 				libcommon.CloseAndDeleteTmpFile(out)
 				return e10
 			}
-			// save slice info to db
-			pid, e8 := libservice.AddPart(sMd5, sliceReadSize)
-			if e8 != nil {
-				return e8
-			}
-			sliceIds.PushBack(pid)
+			tmpPart := &bridge.FilePart{Md5: sMd5, FileSize: app.SLICE_SIZE}
+			fileParts.PushBack(tmpPart)
 			logger.Info("上传结束，读取字节：", readBodySize, " MD5= ", md5)
 			app.UpdateUploads()
 
-			stoe := libservice.StorageAddFile(md5, app.GROUP, &sliceIds)
+			stoe := libservice.StorageAddFile(md5, app.GROUP, &fileParts)
 			if stoe != nil {
 				return stoe
 			}
 			// mark the file is multi part or single part
 			var path string
-			if sliceIds.Len() > 1 {
+			if fileParts.Len() > 1 {
 				path = app.GROUP + "/" + app.INSTANCE_ID + "/M/" + md5
 			} else {
 				path = app.GROUP + "/" + app.INSTANCE_ID + "/S/" + md5
 			}
 
-			var response = &bridge.OperationUploadFileResponse{
+			var response = &bridge.OperationUploadFileResponse {
 				Status: bridge.STATUS_OK,
 				Path:   path,
 			}
@@ -139,12 +135,8 @@ func uploadHandler(request *bridge.Meta, md hash.Hash, conn io.ReadCloser, connB
 				if e10 != nil {
 					return e10
 				}
-				// save slice info to db
-				pid, e8 := libservice.AddPart(sMd5, app.SLICE_SIZE)
-				if e8 != nil {
-					return e8
-				}
-				sliceIds.PushBack(pid)
+				tmpPart := &bridge.FilePart{Md5: sMd5, FileSize: app.SLICE_SIZE}
+				fileParts.PushBack(tmpPart)
 
 				out12, e12 := libcommon.CreateTmpFile()
 				if e12 != nil {

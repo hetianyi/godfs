@@ -40,6 +40,16 @@ func GetLongDateString(t time.Time) string {
 	buff.WriteString(format2(GetSecond(t)))
 	return buff.String()
 }
+// 获取长日期格式：2018-11-11 12:12:12
+func GetShortDateString(t time.Time) string {
+	var buff bytes.Buffer
+	buff.WriteString(format2(GetHour(t)))
+	buff.WriteString(":")
+	buff.WriteString(format2(GetMinute(t)))
+	buff.WriteString(":")
+	buff.WriteString(format2(GetSecond(t)))
+	return buff.String()
+}
 
 // 获取长日期格式：2018-11-11 12:12:12,233
 func GetLongLongDateString(t time.Time) string {

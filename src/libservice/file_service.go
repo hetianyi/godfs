@@ -15,7 +15,7 @@ const (
 	insertFileSQL       = "insert into files(md5, parts_num, grop, instance, finish) values(?,?,?,?,?)"
 	updateFileStatusSQL = "update files set finish=1 where id=?"
 	insertPartSQL       = "insert into parts(md5, size) select ?,? where not exists (select 1 from parts where md5=?)"
-	insertRelationSQL   = "insert into parts_relation(fid, pid) values(?, ?)"
+	insertRelationSQL   = "insert into parts_relation(fid, pid) select ?,? where not exists (select 1 from parts_relation where fid=? and pid=?)"
 	fileExistsSQL       = "select id from files a where a.md5 = ? "
 	partExistsSQL       = "select id from parts a where a.md5 = ?"
 
@@ -197,14 +197,30 @@ func StorageAddFile(md5 string, group string, parts *list.List) error {
 		}
 		fid := int(lastId)
 		for ele := parts.Front(); ele != nil; ele = ele.Next() {
-			state, e2 := tx.Prepare(insertRelationSQL)
+			part := ele.Value.(*bridge.FilePart)
+			state, e2 := tx.Prepare(insertPartSQL)
 			if e2 != nil {
 				return e2
 			}
-			logger.Debug("exec SQL:\n\t" + insertRelationSQL)
-			_, e3 := state.Exec(fid, ele.Value)
+			logger.Debug("exec SQL:\n\t" + insertPartSQL)
+			ret, e3 := state.Exec(part.Md5, part.FileSize, part.Md5)
 			if e3 != nil {
 				return e3
+			}
+			lastId, e4 := ret.LastInsertId()
+			if e4 != nil {
+				return e4
+			}
+			pid := int(lastId)
+
+			state, e5 := tx.Prepare(insertRelationSQL)
+			if e5 != nil {
+				return e5
+			}
+			logger.Debug("exec SQL:\n\t" + insertRelationSQL)
+			_, e6 := state.Exec(fid, pid, fid, pid)
+			if e6 != nil {
+				return e6
 			}
 		}
 		return nil
@@ -260,7 +276,7 @@ func StorageAddTrackerPulledFile(fis []bridge.File, trackerUUID string) error {
 					return e4
 				}
 				logger.Debug("exec SQL:\n\t" + insertPartSQL)
-				ret1, e5 := state1.Exec(fi.Parts[i].Md5, fi.Parts[i].FileSize)
+				ret1, e5 := state1.Exec(fi.Parts[i].Md5, fi.Parts[i].FileSize, fi.Parts[i].Md5)
 				if e5 != nil {
 					return e5
 				}
@@ -274,7 +290,7 @@ func StorageAddTrackerPulledFile(fis []bridge.File, trackerUUID string) error {
 					return e2
 				}
 				logger.Debug("exec SQL:\n\t" + insertRelationSQL)
-				_, e3 := state2.Exec(fid, pid)
+				_, e3 := state2.Exec(fid, pid, fid, pid)
 				if e3 != nil {
 					return e3
 				}
@@ -355,7 +371,7 @@ func TrackerAddFile(meta *bridge.OperationRegisterFileRequest) error {
 					return e6
 				}
 				logger.Debug("exec SQL:\n\t" + insertRelationSQL)
-				ret1, e7 := state1.Exec(id, lastPid)
+				ret1, e7 := state1.Exec(id, lastPid, fid, lastPid)
 				if e7 != nil {
 					return e7
 				}
@@ -754,7 +770,6 @@ func UpdateFileStatus(fid int) error {
 	}
 	defer dbPool.ReturnDB(dao)
 	return dao.DoTransaction(func(tx *sql.Tx) error {
-
 		state, e2 := tx.Prepare(updateFileStatusSQL)
 		if e2 != nil {
 			return e2

@@ -89,7 +89,7 @@ type StageUploadStatus struct {
 	sliceReadSize int64
 	md            hash.Hash
 	sliceMd5      hash.Hash
-	sliceIds      *list.List
+	fileParts      *list.List
 	fileName      string
 	index         int
 	out           *os.File
@@ -138,11 +138,11 @@ func (handler *FileUploadHandlerV1) beginUpload() (*HttpUploadResponse, error) {
 	}
 	if mat, _ := regexp.Match(ContentTypePattern, []byte(contentType)); mat {
 		boundary := regexp.MustCompile(ContentTypePattern).ReplaceAllString(contentType, "${1}")
-		logger.Info("begin read file form, start from ["+timeutil.GetLongLongDateString(beginTime)+"] content len is", handler.request.ContentLength/1024, "KB, with boundary:", boundary)
+		logger.Info("begin read file form, start from " + timeutil.GetShortDateString(beginTime) + " content len is", handler.request.ContentLength/1024, "KB")
 		defer func() {
 			endTime := time.Now()
-			logger.Info("end read file form,   end at     ["+timeutil.GetLongLongDateString(endTime)+"] content len is",
-				handler.request.ContentLength/1024, "KB, time duration ["+timeutil.GetHumanReadableDuration(beginTime, endTime)+"] with boundary:", boundary)
+			logger.Info("end read file form,   end at     " + timeutil.GetShortDateString(endTime) + " content len is",
+				handler.request.ContentLength/1024, "KB, time duration " +timeutil.GetHumanReadableDuration(beginTime, endTime))
 		}()
 		paraSeparator := "--" + boundary
 		endSeparator := "--" + boundary + "--"
@@ -263,7 +263,7 @@ func (handler *FileUploadHandlerV1) beginUpload() (*HttpUploadResponse, error) {
 	return ret, nil
 }
 
-// TODO fix in case of memory fragmentation
+
 func readNextLine(reader *FileFormReader) (string, error) {
 	buff, _ := bridge.MakeBytes(uint64(1), false, 0, false)
 	last, _ := bridge.MakeBytes(uint64(2), false, 0, false)
@@ -304,12 +304,11 @@ func readFileBody(reader *FileFormReader, buffer []byte, separator string, md ha
 		sliceReadSize: 0,
 		sliceMd5:      md5.New(),
 		md:            md,
-		sliceIds:      list.New(),
+		fileParts:     list.New(),
 		out:           out,
 	}
 	separator = "\r\n" + separator
 	buff1 := buffer
-	// TODO fix in case of memory fragmentation
 	buff2, _ := bridge.MakeBytes(uint64(len(separator)), true, 1024, true)
 	tail, _ := bridge.MakeBytes(uint64(len(separator)*2), true, 1024, true)
 	for {
@@ -387,22 +386,19 @@ func readFileBody(reader *FileFormReader, buffer []byte, separator string, md ha
 		if e10 != nil {
 			return nil, e10
 		}
-		// save slice info to db
-		pid, e8 := libservice.AddPart(sMd5, stateUploadStatus.sliceReadSize)
-		if e8 != nil {
-			return nil, e8
-		}
-		stateUploadStatus.sliceIds.PushBack(pid)
+
+		tmpPart := &bridge.FilePart{Md5: sMd5, FileSize: stateUploadStatus.sliceReadSize}
+		stateUploadStatus.fileParts.PushBack(tmpPart)
 	}
 	sliceCipherStr := md.Sum(nil)
 	sMd5 := hex.EncodeToString(sliceCipherStr)
-	logger.Debug("http upload file md5 is", sMd5, "part num:", stateUploadStatus.sliceIds.Len())
-	stoe := libservice.StorageAddFile(sMd5, app.GROUP, stateUploadStatus.sliceIds)
+	logger.Debug("http upload file md5 is", sMd5, "part num:", stateUploadStatus.fileParts.Len())
+	stoe := libservice.StorageAddFile(sMd5, app.GROUP, stateUploadStatus.fileParts)
 	if stoe != nil {
 		return nil, stoe
 	}
 	// mark the file is multi part or single part
-	if stateUploadStatus.sliceIds.Len() > 1 {
+	if stateUploadStatus.fileParts.Len() > 1 {
 		stateUploadStatus.path = app.GROUP + "/" + app.INSTANCE_ID + "/M/" + sMd5
 	} else {
 		stateUploadStatus.path = app.GROUP + "/" + app.INSTANCE_ID + "/S/" + sMd5
@@ -437,12 +433,8 @@ func handleStagePartFile(buffer []byte, status *StageUploadStatus) error {
 		if e10 != nil {
 			return e10
 		}
-		// save slice info to db
-		pid, e8 := libservice.AddPart(sMd5, app.SLICE_SIZE)
-		if e8 != nil {
-			return e8
-		}
-		status.sliceIds.PushBack(pid)
+		tmpPart := &bridge.FilePart{Md5: sMd5, FileSize: app.SLICE_SIZE}
+		status.fileParts.PushBack(tmpPart)
 
 		out12, e12 := libcommon.CreateTmpFile()
 		if e12 != nil {
