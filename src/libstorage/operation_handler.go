@@ -77,9 +77,10 @@ func uploadHandler(request *bridge.Meta, md hash.Hash, conn io.ReadCloser, connB
 				libcommon.CloseAndDeleteTmpFile(out)
 				return e10
 			}
-			tmpPart := &bridge.FilePart{Md5: sMd5, FileSize: app.SLICE_SIZE}
+			//TODO check
+			tmpPart := &bridge.FilePart{Md5: sMd5, FileSize: sliceReadSize}
 			fileParts.PushBack(tmpPart)
-			logger.Info("上传结束，读取字节：", readBodySize, " MD5= ", md5)
+			logger.Info("upload finish, read bytes", readBodySize, " MD5= ", md5)
 			app.UpdateUploads()
 
 			stoe := libservice.StorageAddFile(md5, app.GROUP, &fileParts)
@@ -137,6 +138,7 @@ func uploadHandler(request *bridge.Meta, md hash.Hash, conn io.ReadCloser, connB
 				}
 				tmpPart := &bridge.FilePart{Md5: sMd5, FileSize: app.SLICE_SIZE}
 				fileParts.PushBack(tmpPart)
+				app.UpdateDiskUsage(app.SLICE_SIZE)
 
 				out12, e12 := libcommon.CreateTmpFile()
 				if e12 != nil {

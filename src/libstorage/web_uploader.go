@@ -389,6 +389,7 @@ func readFileBody(reader *FileFormReader, buffer []byte, separator string, md ha
 
 		tmpPart := &bridge.FilePart{Md5: sMd5, FileSize: stateUploadStatus.sliceReadSize}
 		stateUploadStatus.fileParts.PushBack(tmpPart)
+		app.UpdateDiskUsage(stateUploadStatus.sliceReadSize)
 	}
 	sliceCipherStr := md.Sum(nil)
 	sMd5 := hex.EncodeToString(sliceCipherStr)
@@ -435,6 +436,7 @@ func handleStagePartFile(buffer []byte, status *StageUploadStatus) error {
 		}
 		tmpPart := &bridge.FilePart{Md5: sMd5, FileSize: app.SLICE_SIZE}
 		status.fileParts.PushBack(tmpPart)
+		app.UpdateDiskUsage(app.SLICE_SIZE)
 
 		out12, e12 := libcommon.CreateTmpFile()
 		if e12 != nil {

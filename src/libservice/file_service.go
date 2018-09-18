@@ -66,7 +66,7 @@ const (
 	statisticQuery = `select * from (
                             (select count(*) files from files a),
                             (select count(*) finish from files a where a.finish = 1),
-                            (select case when sum(b.size) is null then 0 else sum(b.size) end disk from files a left join parts_relation c on a.id = c.fid left join parts b on c.pid = b.id)  )`
+                            (select case when sum(b.size) is null then 0 else sum(b.size) end disk from parts b)  )`
 )
 
 var dbPool *db.DbConnPool
@@ -223,6 +223,8 @@ func StorageAddFile(md5 string, group string, parts *list.List) error {
 				return e6
 			}
 		}
+		app.UpdateFileFinishCount(1)
+		app.UpdateFileTotalCount(1)
 		return nil
 	})
 }
@@ -306,6 +308,7 @@ func StorageAddTrackerPulledFile(fis []bridge.File, trackerUUID string) error {
 			return e8
 		}
 	}
+	app.UpdateFileTotalCount(1)
 	return nil
 }
 
@@ -779,6 +782,7 @@ func UpdateFileStatus(fid int) error {
 		if e3 != nil {
 			return e3
 		}
+		app.UpdateFileFinishCount(1)
 		return nil
 	})
 }
@@ -855,7 +859,7 @@ func GetFilesBasedOnId(fid int) (*list.List, error) {
 
 		}
 		return nil
-	}, getFullFileSQL22+string(addOn.Bytes()))
+	}, getFullFileSQL22 + string(addOn.Bytes()))
 	if e2 != nil {
 		return nil, e2
 	}
