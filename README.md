@@ -90,7 +90,7 @@ echo \"$(ls -m /f/foo)\" |xargs client -u
 
 if you don't has a godfs client, you can use ```curl``` to upload files by:
 ```javascript
-curl -F "file=@/your/file" "http://your.host:81/upload"
+curl -F "file=@/your/file" "http://your.host:http_port/upload"
 ```
 if upload success, server will return a json string like this:
 ```json
@@ -142,7 +142,7 @@ start storage using docker:
 docker run -d -p 1024:1024 -p 80:8001 --name storage -v /godfs/data:/godfs/data --privileged -e trackers=192.168.1.172:1022 -e bind_address=192.168.1.187 -e port=1024  -e instance_id="01" hehety/godfs storage
 # you'd better add docker command '-e port=1024' on single machine.  
 ```
-we're here using directory ```/godfs/data``` to persist data.
+we're here using directory ```/godfs/data``` to persist data, you can use ```-e``` in docker command line to override default configuration.
 
 client usage:
 ```javascript
