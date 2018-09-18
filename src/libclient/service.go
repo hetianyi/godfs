@@ -312,7 +312,6 @@ func download(path string, start int64, offset int64, fromSrc bool, excludes *li
 	return nil
 }
 
-// TODO 新增连接池
 // select a storage server matching given group and instanceId
 // excludes contains fail storage and not gonna use this time.
 func selectStorageServer(group string, instanceId string, excludes *list.List, upload bool) *bridge.ExpireMember {

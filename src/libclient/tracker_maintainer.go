@@ -660,7 +660,6 @@ func getDownloadClient() *Client {
 	return downloadClient
 }
 
-// TODO download from source first
 func downloadFile(fullFi *bridge.File) {
 	increaseActiveDownload(1)
 	defer increaseActiveDownload(-1)
@@ -705,7 +704,7 @@ func downloadFile(fullFi *bridge.File) {
 						file.Delete(fi.Name())
 						return e4
 					}
-					// check whether file md5 is correct. TODO need to test
+					// check whether file md5 is correct.
 					md5 := hex.EncodeToString(md.Sum(nil))
 					if md5 != part.Md5 {
 						file.Delete(fi.Name())

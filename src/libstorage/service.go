@@ -83,7 +83,7 @@ func startTrackerMaintainer(trackers string) {
 		Interval: time.Second * 10,
 		Name:     "推送本地新文件到tracker",
 		Single:   false,
-		Job:      libclient.QueryPushFileTaskCollector, //TODO 多tracker如何保证全部tracker成功？
+		Job:      libclient.QueryPushFileTaskCollector,
 	}
 	collector2 := libclient.TaskCollector{
 		Interval:   time.Second * 10,
