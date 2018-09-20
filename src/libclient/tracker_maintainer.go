@@ -202,7 +202,7 @@ func connectAndValidate(conn net.Conn) (*bridge.Bridge, error) {
 		return nil, e1
 	}
 	if isNew && app.CLIENT_TYPE == 1 {
-		logger.Info("I'm new to tracker:", connBridge.GetConn().RemoteAddr().String(), "[", connBridge.UUID, "]")
+		logger.Info("I'm new to tracker:", connBridge.GetConn().RemoteAddr().String(), "(", connBridge.UUID, ")")
 		e2 := libservice.UpdateTrackerSyncId(connBridge.UUID, 0, nil)
 		if e2 != nil {
 			connBridge.Close()

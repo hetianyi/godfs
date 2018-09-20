@@ -83,3 +83,21 @@ func UpdateDownloads() {
 	defer updownLock.Unlock()
 	DOWNLOADS++
 }
+
+func UpdateFileTotalCount(value int) {
+	updownLock.Lock()
+	defer updownLock.Unlock()
+	FILE_TOTAL += value
+}
+
+func UpdateFileFinishCount(value int) {
+	updownLock.Lock()
+	defer updownLock.Unlock()
+	FILE_FINISH += value
+}
+
+func UpdateDiskUsage(value int64) {
+	updownLock.Lock()
+	defer updownLock.Unlock()
+	DISK_USAGE += value
+}
