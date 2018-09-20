@@ -22,6 +22,8 @@ You can pull the image on docker hub:
 - Low resource overhead.
 - Native client api and java client api(not started).
 - API for http upload and download.
+- Support file breakpoint download.
+- Support basic verification by http download.
 - Clear logs help troubleshoot errors.
 - Support different platforms: Linux, Windows, Mac
 - Better support docker.
