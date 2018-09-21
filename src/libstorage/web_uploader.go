@@ -503,17 +503,21 @@ func WebUploadHandlerV1(writer http.ResponseWriter, request *http.Request) {
 			bs, e1 := json.Marshal(ret)
 			if e1 != nil {
 				logger.Error("upload error2:", e1)
+				writer.WriteHeader(500)
+			} else {
+				handler.writeBack(string(bs))
+			}
+		} else {
+			bs, e1 := json.Marshal(ret)
+			if e1 != nil {
+				logger.Error("upload error3:", e)
+				writer.WriteHeader(500)
 			} else {
 				handler.writeBack(string(bs))
 			}
 		}
-		bs, e1 := json.Marshal(ret)
-		if e1 != nil {
-			logger.Error("upload error3:", e)
-		} else {
-			handler.writeBack(string(bs))
-		}
 	}, func(i interface{}) {
+		writer.WriteHeader(500)
 		ret := &HttpUploadResponse{
 			Status: "error",
 		}
