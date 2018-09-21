@@ -43,6 +43,19 @@ func validateClientHandler(request *bridge.Meta, connBridge *bridge.Bridge) erro
 
 // 处理文件上传请求
 func uploadHandler(request *bridge.Meta, md hash.Hash, conn io.ReadCloser, connBridge *bridge.Bridge) error {
+
+	if !app.UPLOAD_ENABLE {
+		var response = &bridge.OperationUploadFileResponse{
+			Status: bridge.STATUS_UPLOAD_DISABLED,
+			Path:   "",
+		}
+		e13 := connBridge.SendResponse(response, 0, nil)
+		if e13 != nil {
+			return e13
+		}
+		return nil
+	}
+
 	logger.Info("begin read file body, file len is ", request.BodyLength/1024, "KB")
 	// body buff
 	buffer, _ := bridge.MakeBytes(app.BUFF_SIZE, false, 0, false)
@@ -95,7 +108,7 @@ func uploadHandler(request *bridge.Meta, md hash.Hash, conn io.ReadCloser, connB
 				path = app.GROUP + "/" + app.INSTANCE_ID + "/S/" + md5
 			}
 
-			var response = &bridge.OperationUploadFileResponse {
+			var response = &bridge.OperationUploadFileResponse{
 				Status: bridge.STATUS_OK,
 				Path:   path,
 			}

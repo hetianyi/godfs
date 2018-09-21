@@ -2,11 +2,11 @@ package db
 
 import (
 	"container/list"
-	"sync"
-	"util/logger"
 	"errors"
 	"fmt"
+	"sync"
 	"time"
+	"util/logger"
 )
 
 type IDbConnPool interface {

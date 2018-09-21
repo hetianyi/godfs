@@ -89,7 +89,7 @@ type StageUploadStatus struct {
 	sliceReadSize int64
 	md            hash.Hash
 	sliceMd5      hash.Hash
-	fileParts      *list.List
+	fileParts     *list.List
 	fileName      string
 	index         int
 	out           *os.File
@@ -138,11 +138,11 @@ func (handler *FileUploadHandlerV1) beginUpload() (*HttpUploadResponse, error) {
 	}
 	if mat, _ := regexp.Match(ContentTypePattern, []byte(contentType)); mat {
 		boundary := regexp.MustCompile(ContentTypePattern).ReplaceAllString(contentType, "${1}")
-		logger.Info("begin read file form, start from " + timeutil.GetShortDateString(beginTime) + " content len is", handler.request.ContentLength/1024, "KB")
+		logger.Info("begin read file form, start from "+timeutil.GetShortDateString(beginTime)+" content len is", handler.request.ContentLength/1024, "KB")
 		defer func() {
 			endTime := time.Now()
-			logger.Info("end read file form,   end at     " + timeutil.GetShortDateString(endTime) + " content len is",
-				handler.request.ContentLength/1024, "KB, time duration " +timeutil.GetHumanReadableDuration(beginTime, endTime))
+			logger.Info("end read file form,   end at     "+timeutil.GetShortDateString(endTime)+" content len is",
+				handler.request.ContentLength/1024, "KB, time duration "+timeutil.GetHumanReadableDuration(beginTime, endTime))
 		}()
 		paraSeparator := "--" + boundary
 		endSeparator := "--" + boundary + "--"
@@ -262,7 +262,6 @@ func (handler *FileUploadHandlerV1) beginUpload() (*HttpUploadResponse, error) {
 	ret.Status = "success"
 	return ret, nil
 }
-
 
 func readNextLine(reader *FileFormReader) (string, error) {
 	buff, _ := bridge.MakeBytes(uint64(1), false, 0, false)

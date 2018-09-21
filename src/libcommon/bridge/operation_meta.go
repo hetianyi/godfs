@@ -8,6 +8,7 @@ const (
 	STATUS_OPERATION_NOT_SUPPORT = 2
 	STATUS_INTERNAL_SERVER_ERROR = 3
 	STATUS_NOT_FOUND             = 4
+	STATUS_UPLOAD_DISABLED       = 5
 )
 
 type Member struct {

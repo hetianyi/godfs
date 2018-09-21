@@ -163,7 +163,10 @@ func startHttpDownloadService() {
 	}
 
 	http.HandleFunc("/download/", DownloadHandler)
-	http.HandleFunc("/upload", WebUploadHandlerV1)
+	if app.UPLOAD_ENABLE {
+		logger.Info("upload is disabled.")
+		http.HandleFunc("/upload", WebUploadHandlerV1)
+	}
 
 	s := &http.Server{
 		Addr: ":" + strconv.Itoa(app.HTTP_PORT),
@@ -220,7 +223,6 @@ func clientHandler(conn net.Conn) {
 	})
 }
 
-
 func initDbStatistic() {
 	for {
 		files, finish, disk, e := libservice.QueryStatistic()
@@ -232,11 +234,11 @@ func initDbStatistic() {
 			app.FILE_FINISH = finish
 			app.DISK_USAGE = disk
 			logger.Info(":::statistic:::")
-			logger.Info("+-------------------------+")
+			logger.Info("+---------------------------+")
 			logger.Info("* file count       :", app.FILE_TOTAL)
 			logger.Info("* sync finish count:", app.FILE_FINISH)
-			logger.Info("* disk usage       :", app.DISK_USAGE/1024/1024, "MB")
-			logger.Info("+-------------------------+")
+			logger.Info("* disk usage       :", libcommon.HumanReadable(app.DISK_USAGE, 1000))//TODO not right
+			logger.Info("+---------------------------+")
 			break
 		}
 	}

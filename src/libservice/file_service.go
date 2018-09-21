@@ -859,7 +859,7 @@ func GetFilesBasedOnId(fid int) (*list.List, error) {
 
 		}
 		return nil
-	}, getFullFileSQL22 + string(addOn.Bytes()))
+	}, getFullFileSQL22+string(addOn.Bytes()))
 	if e2 != nil {
 		return nil, e2
 	}

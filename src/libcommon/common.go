@@ -266,6 +266,7 @@ func ShowPercent(total *int64, finish *int64, stop *bool, startTime time.Time) {
 		buffer.WriteString("]")
 		buffer.WriteString(" - ")
 		buffer.WriteString(HumanReadable(lastRead, 1000))
+		buffer.WriteString("/s")
 		fmt.Print(buffer.String() + "\r")
 	}
 
@@ -289,12 +290,12 @@ func FixLength(num int, width int, fixChar string) string {
 // at 'during' ms read total 'len' bytes
 func HumanReadable(len int64, during int64) string {
 	if len < 1024 {
-		return strconv.FormatInt(len*1000/during, 10) + "B/s       "
+		return strconv.FormatInt(len*1000/during, 10) + "B       "
 	} else if len < 1048576 {
-		return strconv.FormatInt(len*1.0/1024*1000/during, 10) + "KB/s       "
+		return strconv.FormatInt(len*1.0/1024*1000/during, 10) + "KB       "
 	} else if len < 1073741824 {
-		return fmt.Sprintf("%.2f", float64(len)/1048576*1000/float64(during)) + "MB/s       "
+		return fmt.Sprintf("%.2f", float64(len)/1048576*1000/float64(during)) + "MB       "
 	} else {
-		return fmt.Sprintf("%.2f", float64(len)/1073741824*1000/float64(during)) + "GB/s       "
+		return fmt.Sprintf("%.2f", float64(len)/1073741824*1000/float64(during)) + "GB       "
 	}
 }
