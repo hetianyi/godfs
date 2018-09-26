@@ -84,6 +84,7 @@ client -u /f/project.rar
 ```
 ![architecture](/doc/20180828095840.png)
 
+If you want to upload file to specified group, you can add parameter ```-g <groupID>``` in command line.
 also, it's cool that you can upload all files in a directory by:
 ```javascript
 echo \"$(ls -m /f/foo)\" |xargs client -u

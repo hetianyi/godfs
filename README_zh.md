@@ -79,7 +79,9 @@ client --set "trackers=host1:port1[,host2:port2]"
 ```
 ![architecture](/doc/20180828095840.png)
 
-或者可以用一个更酷的命令来上传一个文件夹下所有的文件:
+如果你想上传文件到指定的group，可以在命令行加参数```-g <groupID>```
+
+你还可以用一个更酷的命令来上传一个文件夹下所有的文件:
 ```javascript
 echo \"$(ls -m /f/foo)\" |xargs client -u
 ```
