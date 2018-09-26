@@ -112,6 +112,7 @@ curl -F "file=@/your/file" "http://your.host:http_port/upload"
 ```
 
 > 其中， ```formData``` 是post表单中的所有字段的name-value信息，文件已被替换为上传之后的路径地址。
+如果你想上传文件到指定的group，可以在路径上加参数```?group=<groupID>```
 
 ```javascript
 # 下载文件

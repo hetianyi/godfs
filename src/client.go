@@ -51,13 +51,16 @@ func main() {
 	// the file to be upload
 	var setConfig = flag.String("set", "", "set global configuration with pattern \"name=value\".")
 	// the file to be upload
-	var uploadFile = flag.String("u", "", "the file to be upload, if you want upload many file once, quote file paths using \"\"\" and split with \",\"")
+	var uploadFile = flag.String("u", "", "the file to be upload,\nif you want upload many file once,\nquote file paths using \"\"\" and split with \",\"" +
+		"\nexample:\nclient -u \"/home/foo/bar1.tar.gz, /home/foo/bar1.tar.gz\"")
 	// the file to download
 	var downFile = flag.String("d", "", "the file to be download")
 	// the download file name
 	var customDownloadFileName = flag.String("n", "", "custom download file name")
 	// custom override log level
 	var logLevel = flag.String("l", "", "custom logging level: trace, debug, info, warning, error, and fatal")
+	// custom upload group
+	var customGroup = flag.String("g", "", "custom upload group, use with command parameter '-u'")
 	// config file path
 	m := prepare()
 	// whether check file md5 before upload
@@ -93,18 +96,21 @@ func main() {
 		client = Init()
 	}
 	if *uploadFile != "" {
-		upload(*uploadFile, skipCheck)
+		upload(*uploadFile, *customGroup, skipCheck)
+		return
 	}
 	if *downFile != "" {
 		download(*downFile, strings.TrimSpace(*customDownloadFileName))
+		return
 	}
 	if *uploadFile == "" && *downFile == "" {
 		fmt.Println("godfs client usage:")
-		fmt.Println("\t-u string \n\t    the file to be upload, if you want upload many file once, quote file paths using \"\"\" and split with \",\"" +
+		fmt.Println("\t-u string \n\t    the file to be upload,\n\t    if you want upload many file once,\n\t    quote file paths using \"\"\" and split with \",\"" +
 			"\n\t    example:\n\t\tclient -u \"/home/foo/bar1.tar.gz, /home/foo/bar1.tar.gz\"")
 		fmt.Println("\t-d string \n\t    the file to be download")
 		fmt.Println("\t-l string \n\t    custom logging level: trace, debug, info, warning, error, and fatal")
 		fmt.Println("\t-n string \n\t    custom download file name")
+		fmt.Println("\t-g string \n\t    custom upload group, use with command parameter '-u'")
 		fmt.Println("\t--set string \n\t    set client config, for example: \n\t" +
 			"    client --set \"tracker=127.0.0.1:1022\"\n\t" +
 			"    client --set \"log_level=info\"")
@@ -112,7 +118,10 @@ func main() {
 }
 
 // upload files
-func upload(paths string, skipCheck bool) error {
+// paths: file path to be upload
+// group: file upload group, if not set, use random group
+// skipCheck: whether check md5 before upload
+func upload(paths string, group string, skipCheck bool) error {
 	uploadFiles := strings.Split(paths, ",")
 	var pickList list.List
 	for i := range uploadFiles {
@@ -125,7 +134,7 @@ func upload(paths string, skipCheck bool) error {
 	}
 	for ele := pickList.Front(); ele != nil; ele = ele.Next() {
 		var startTime = time.Now()
-		fid, e := client.Upload(ele.Value.(string), "", startTime, skipCheck)
+		fid, e := client.Upload(ele.Value.(string), group, startTime, skipCheck)
 		if e != nil {
 			logger.Error(e)
 		} else {

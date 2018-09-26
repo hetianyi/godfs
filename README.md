@@ -117,6 +117,7 @@ if upload success, server will return a json string like this:
 ```
 
 > The ```formData``` contains all parameters of your posted form, the file will be replaced by a remote path.
+If you want to upload file to specified group, you can add parameter ```?group=<groupID>``` to the request path.
 
 ```javascript
 # download a file as 123.zip

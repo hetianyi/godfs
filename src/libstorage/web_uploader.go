@@ -24,6 +24,7 @@ import (
 	"util/common"
 	"util/logger"
 	"util/timeutil"
+	"strings"
 )
 
 const ContentDispositionPattern = "^Content-Disposition: form-data; name=\"([^\"]*)\"(; filename=\"([^\"]*)\".*)?$"
@@ -479,6 +480,19 @@ func ByteCopy(src []byte, start int, end int, cp []byte) {
 // web upload entry point
 func WebUploadHandlerV1(writer http.ResponseWriter, request *http.Request) {
 	defer request.Body.Close()
+
+	// check if client really want to upload file to this group.
+	params := request.URL.Query()
+	if params != nil {
+		targetGroup := params["group"]
+		if targetGroup != nil && len(targetGroup) != 0 && strings.TrimSpace(targetGroup[0]) != "" && app.GROUP != strings.TrimSpace(targetGroup[0]) {
+			writer.WriteHeader(404)
+			writer.Write([]byte("404 Not Found."))
+			return
+		}
+	}
+
+	// client validation
 	if app.HTTP_AUTH != "" {
 		user, pass, _ := request.BasicAuth()
 		if app.HTTP_AUTH != user+":"+pass {
