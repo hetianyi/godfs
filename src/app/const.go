@@ -32,6 +32,7 @@ var (
 	PULL_NEW_FILE_INTERVAL       = time.Second * 10 //每5s取一次同步任务
 	QUWEY_DOWNLOAD_FILE_INTERVAL = time.Second * 15 //每5s取一次同步任务
 	PATH_REGEX                   = "^/([0-9a-zA-Z_]{1,10})/([0-9a-zA-Z_]{1,10})/([MS])/([0-9a-fA-F]{32})$"
+	MD5_REGEX                   = "^[0-9a-fA-F]{32}$"
 	UUID                         = ""
 
 	HTTP_AUTH = ""

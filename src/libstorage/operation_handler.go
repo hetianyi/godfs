@@ -201,10 +201,10 @@ func QueryFileHandler(request *bridge.Meta, connBridge *bridge.Bridge, finishFla
 		return e1
 	}
 	var md5 string
-	if mat1, _ := regexp.Match("[0-9a-f]{32}", []byte(queryMeta.PathOrMd5)); mat1 {
+	if mat1, _ := regexp.Match(app.MD5_REGEX, []byte(queryMeta.PathOrMd5)); mat1 {
 		md5 = queryMeta.PathOrMd5
 	} else if mat2, _ := regexp.Match(app.PATH_REGEX, []byte(queryMeta.PathOrMd5)); mat2 {
-		md5 = regexp.MustCompile(app.PATH_REGEX).ReplaceAllString(queryMeta.PathOrMd5, "${3}")
+		md5 = regexp.MustCompile(app.PATH_REGEX).ReplaceAllString(queryMeta.PathOrMd5, "${4}")
 	} else {
 		response.Status = bridge.STATUS_NOT_FOUND
 		response.Exist = false
