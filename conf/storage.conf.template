@@ -42,7 +42,7 @@ log_enable=true
 
 # 日志级别：trace, debug, info, warn, error, fatal
 # 如不设置，默认为 info
-log_level=info
+log_level=debug
 
 # 轮转日志间隔，支持以小时(h)、天(d)、月(m)、年(y)为周期创建及备份日志文件
 # 日志文件名称格式为：
@@ -59,7 +59,7 @@ assign_disk_space=50G
 # 文件分片大小
 # 将大文件拆分为较小的文件分片存储
 # 定义每个小文件的大小，0则不分片，值写法参考规则：assign_disk_space
-slice_size=30k
+slice_size=10M
 
 
 # 是否启用http协议下载服务
