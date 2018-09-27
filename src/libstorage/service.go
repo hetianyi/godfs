@@ -164,8 +164,9 @@ func startHttpDownloadService() {
 
 	http.HandleFunc("/download/", DownloadHandler)
 	if app.UPLOAD_ENABLE {
-		logger.Info("upload is disabled.")
 		http.HandleFunc("/upload", WebUploadHandlerV1)
+	} else {
+		logger.Info("upload is disabled.")
 	}
 
 	s := &http.Server{
