@@ -181,7 +181,7 @@ DISK    : 60GB SSD
 ##### Test description
 Generate 500w simple files, the file content
 is just a number from 1 to 5000000.
-and they are uploaded in 5 different threads by curl command(http upload).
+and they were uploaded in 5 different threads by curl command(http upload).
 
 
 The test took 41.26 hours with not a single error which means 33.7 files uploaded per second.
