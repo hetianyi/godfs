@@ -94,7 +94,7 @@ func GetReadPositions(fullFile *bridge.File, start int64, offset int64) (*bridge
 		fileLen += fullFile.Parts[i].FileSize
 	}
 	// exceed
-	if start >= fileLen {
+	if start > fileLen {
 		return nil, nil, 0
 	}
 	var addLen int64 = 0
@@ -106,7 +106,7 @@ func GetReadPositions(fullFile *bridge.File, start int64, offset int64) (*bridge
 	var endPos = &bridge.ReadPos{PartIndex: len(fullFile.Parts) - 1, PartStart: fullFile.Parts[len(fullFile.Parts)-1].FileSize}
 	for i := range fullFile.Parts {
 		fInfo, _ := os.Stat(GetFilePathByMd5(fullFile.Parts[i].Md5))
-		if start >= addLen+fInfo.Size() {
+		if start > addLen+fInfo.Size() {
 			addLen += fInfo.Size()
 			continue
 		} else {
