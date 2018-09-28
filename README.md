@@ -166,5 +166,29 @@ client usage:
     client --set "log_level=info"
 ```
 
+### Simple load test on vultr
++--------------------+
+
+OS      : CentOS7
+
+RAM     : 1GB
+
+CPU core: 1
+
+DISK    : 60GB SSD
+
++--------------------+
+##### Test description
+Generate 500w simple files, the file content
+is just a number from 1 to 5000000.
+and they are uploaded in 5 different threads by curl command(http upload).
 
 
+The test took 41.26 hours with not a single error which means 33.7 files uploaded per second.
+
+The CPU usage of the host in the test was kept at 60%-70%, and the memory consumed by the tracker and storage were both less than 30M.
+>The test and one tracker server, one storage server are on the same machine.
+This test shows that godfs has no problem in handling large concurrent (for file system) uploads and database writes, and the system performs very stable.
+
+Test tool is available in release page.
+and I will do more test in the future.
