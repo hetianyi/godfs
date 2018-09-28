@@ -265,7 +265,7 @@ func ShowPercent(total *int64, finish *int64, stop *bool, startTime time.Time) {
 		buffer.WriteString(timeutil.GetHumanReadableDuration(startTime, now))
 		buffer.WriteString("]")
 		buffer.WriteString(" - ")
-		buffer.WriteString(HumanReadable(lastRead, 1000))
+		buffer.WriteString(strings.TrimSpace(HumanReadable(lastRead, 1000)))
 		buffer.WriteString("/s")
 		fmt.Print(buffer.String() + "\r")
 	}
