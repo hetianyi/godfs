@@ -402,6 +402,8 @@ func (tracker *TrackerInstance) ExecTask(task *bridge.Task) (bool, error) {
 			Group:      app.GROUP,
 			InstanceId: app.INSTANCE_ID,
 			Port:       app.PORT,
+			HttpPort:	app.HTTP_PORT,
+			HttpEnable:	app.HTTP_ENABLE,
 			TotalFiles: app.FILE_TOTAL,
 			Finish:     app.FILE_FINISH,
 			IOin:       app.IOIN,

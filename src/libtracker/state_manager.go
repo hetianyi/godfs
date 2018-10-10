@@ -21,6 +21,8 @@ type storageMeta struct {
 	InstanceId string
 	Host       string
 	Port       int
+	HttpPort   int
+	HttpEnable bool
 	// 统计信息
 	TotalFiles int
 	Finish     int
@@ -61,6 +63,8 @@ func AddStorageServer(meta *bridge.OperationRegisterStorageClientRequest) {
 		InstanceId: meta.InstanceId,
 		Host:       meta.BindAddr,
 		Port:       meta.Port,
+		HttpPort:   meta.HttpPort,
+		HttpEnable: meta.HttpEnable,
 		TotalFiles: meta.TotalFiles,
 		Finish:     meta.Finish,
 		IOin:       meta.IOin,
@@ -94,6 +98,8 @@ func FutureExpireStorageServer(meta *bridge.OperationRegisterStorageClientReques
 			InstanceId: meta.InstanceId,
 			Host:       meta.BindAddr,
 			Port:       meta.Port,
+			HttpPort:   meta.HttpPort,
+			HttpEnable: meta.HttpEnable,
 			TotalFiles: meta.TotalFiles,
 			Finish:     meta.Finish,
 			IOin:       meta.IOin,

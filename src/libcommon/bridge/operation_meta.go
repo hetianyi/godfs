@@ -84,6 +84,8 @@ type OperationRegisterStorageClientRequest struct {
 	Group      string `json:"group"`
 	InstanceId string `json:"instance_id"`
 	Port       int    `json:"port"`
+	HttpPort   int    `json:"httpPort"`
+	HttpEnable bool   `json:"httpEnable"`
 	// 统计信息
 	TotalFiles int    `json:"files"`
 	Finish     int    `json:"finish"`
