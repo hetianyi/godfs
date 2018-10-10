@@ -16,6 +16,8 @@ type Member struct {
 	InstanceId string `json:"instance_id"`
 	Group      string `json:"group"`
 	Port       int    `json:"port"`
+	HttpPort   int    `json:"httpPort"`
+	HttpEnable bool   `json:"httpEnable"`
 	ReadOnly   bool   `json:"readonly"`
 }
 
@@ -24,8 +26,10 @@ type ExpireMember struct {
 	InstanceId string
 	Group      string
 	Port       int
+	HttpPort   int
+	HttpEnable bool
 	ExpireTime time.Time
-	ReadOnly   bool `json:"readonly"`
+	ReadOnly   bool
 }
 
 func (expireMember *ExpireMember) From(member *Member) {
@@ -34,6 +38,9 @@ func (expireMember *ExpireMember) From(member *Member) {
 	expireMember.Group = member.Group
 	expireMember.Port = member.Port
 	expireMember.ReadOnly = member.ReadOnly
+	expireMember.HttpPort = member.HttpPort
+	expireMember.HttpEnable = member.HttpEnable
+
 }
 
 type FilePart struct {
