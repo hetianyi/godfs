@@ -167,17 +167,14 @@ client usage:
 ```
 
 ### Simple load test on vultr
-+--------------------+
 
-OS      : CentOS7
+|Name|Value|
+|---|---|
+| OS        | CentOS7   |
+| RAM       | 1GB       |
+| CPU core  | 1         |
+| DISK      | 60GB SSD  |
 
-RAM     : 1GB
-
-CPU core: 1
-
-DISK    : 60GB SSD
-
-+--------------------+
 ##### Test description
 Generate 500w simple files, the file content
 is just a number from 1 to 5000000.
