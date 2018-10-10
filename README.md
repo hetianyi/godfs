@@ -39,7 +39,7 @@ You can pull the image on docker hub:
 Take CentOS 7 as example.
 
 ### build from latest source code:
-```javascript
+```shell
 yum install golang -y
 git clone https://github.com/hetianyi/godfs.git
 cd godfs
@@ -47,52 +47,52 @@ cd godfs
 # on windows you just need to click 'make.cmd'
 ```
 After the build is successful, three files will be generated under the `````./bin````` directory:
-```
+```shell
 ./bin/client
 ./bin/storage
 ./bin/tracker
 ```
 
 Install godfs binary files to ```/usr/local/godfs```:
-```javascript
+```shell
 ./install.sh /usr/local/godfs
 ```
 You can start tracker server by:
-```javascript
+```shell
 /usr/local/godfs/bin/tracker [-c /your/tracker/config/path]
 ```
 and start storage node by:
-```javascript
+```shell
 /usr/local/godfs/bin/storage [-c /your/storage/config/path]
 ```
 then you can using command ```client``` directly in command line to upload and download file.
 > Of course, you must first set up the tracker server.
-```javascript
+```shell
 # set up tracker servers for client
 client --set "trackers=host1:port1[,host2:port2]"
 ```
 
 For example:
-```javascript
+```shell
 # upload a file
 client -u /you/upload/file
 ```
 
 You can upload file by:
-```javascript
+```shell
 client -u /f/project.rar
 ```
 ![architecture](/doc/20180828095840.png)
 
 If you want to upload file to specified group, you can add parameter ```-g <groupID>``` in command line.
 also, it's cool that you can upload all files in a directory by:
-```javascript
+```shell
 echo \"$(ls -m /f/foo)\" |xargs client -u
 ```
 ![architecture](/doc/20180828100341.png)
 
 if you don't has a godfs client, you can use ```curl``` to upload files by:
-```javascript
+```shell
 curl -F "file=@/your/file" "http://your.host:http_port/upload"
 ```
 if upload success, server will return a json string like this:
@@ -120,36 +120,36 @@ if upload success, server will return a json string like this:
 > The ```formData``` contains all parameters of your posted form, the file will be replaced by a remote path.
 If you want to upload file to specified group, you can add parameter ```?group=<groupID>``` to the request path.
 
-```javascript
+```shell
 # download a file as 123.zip
 client -d G01/10/M/2c9da7ea280c020db7f4879f8180dfd6 -n 123.zip
 ```
 
 ### build docker image from latest source code:
-```
+```shell
 cd godfs/docker
 docker build -t godfs .
 ```
 It is highly recommended to use docker to run godfs.
 You can pull the docker image from [docker hub](https://hub.docker.com/r/hehety/godfs/):
-```javascript
+```shell
 docker pull hehety/godfs
 ```
 
 start tracker using docker:
-```javascript
+```shell
 docker run -d -p 1022:1022 --name tracker --restart always -v /godfs/data:/godfs/data --privileged -e log_level="info" hehety/godfs:latest tracker
 ```
 
 start storage using docker:
-```javascript
+```shell
 docker run -d -p 1024:1024 -p 80:8001 --name storage -v /godfs/data:/godfs/data --privileged -e trackers=192.168.1.172:1022 -e bind_address=192.168.1.187 -e port=1024  -e instance_id="01" hehety/godfs storage
 # you'd better add docker command '-e port=1024' on single machine.  
 ```
 we're here using directory ```/godfs/data``` to persist data, you can use ```-e``` in docker command line to override default configuration.
 
 client usage:
-```javascript
+```shell
 -u string 
     the file to be upload, if you want upload many file once, quote file paths using """ and split with ","
     example:
