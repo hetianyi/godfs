@@ -305,6 +305,7 @@ func (tracker *TrackerInstance) GetTask() *bridge.Task {
 }
 
 // 某些任务不能多个tracker instance重复执行，只能选择其中一个予以执行
+// TODO bug sometime nil task will add to the list
 func AddTask(task *bridge.Task, tracker *TrackerInstance) bool {
 	if task == nil {
 		logger.Debug("can't push nil task")
