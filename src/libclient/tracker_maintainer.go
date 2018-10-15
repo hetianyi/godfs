@@ -299,7 +299,10 @@ func (tracker *TrackerInstance) GetTask() *bridge.Task {
 	tracker.listIteLock.Lock()
 	defer tracker.listIteLock.Unlock()
 	if tracker.GetTaskSize() > 0 {
-		return tracker.taskList.Remove(tracker.taskList.Front()).(*bridge.Task)
+		ret := tracker.taskList.Remove(tracker.taskList.Front())
+		if ret != nil {
+			return ret.(*bridge.Task)
+		}
 	}
 	return nil
 }
