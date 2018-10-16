@@ -166,8 +166,8 @@ client usage:
     client --set "log_level=info"
 ```
 
-### Simple load test on vultr
-
+## Simple load test on vultr
+### HTTP upload test
 |Name|Value|
 |---|---|
 | OS        | CentOS7   |
@@ -175,7 +175,7 @@ client usage:
 | CPU core  | 1         |
 | DISK      | 60GB SSD  |
 
-##### Test description
+#### Test description
 Generate 500w simple files, the file content
 is just a number from 1 to 5000000.
 and they were uploaded in 5 different threads by curl command(http upload).
@@ -188,4 +188,54 @@ The CPU usage of the host in the test was kept at 60%-70%, and the memory consum
 This test shows that godfs has no problem in handling large concurrent (for file system) uploads and database writes, and the system performs very stable.
 
 Test tool is available in release page.
-and I will do more test in the future.
+
+### HTTP download test
+
+storage server configuration(California)
+|Name|Value|
+|---|---|
+| OS        | CentOS7   |
+| RAM       | 512M       |
+| CPU core  | 1         |
+| DISK      | SSD  |
+
+download client machine configuration(Los Angeles)
+|Name|Value|
+|---|---|
+| OS        | CentOS7   |
+| RAM       | 8GB       |
+| CPU core  | 4         |
+| DISK      | SSD  |
+
+
+#### Test description
+We are here using apache [jmeter-5.0](http://jmeter.apache.org/download_jmeter.cgi) as test tool.
+
+In the test, we used 20 threads to download 4 files of different sizes (less than 1MB), each thread running 100000 times, a total of 800000.
+
+|Label|	# Samples|	Average	|Median	|90% Line|	95% Line|	99% Line|	Min|	Max|	Error %|	Throughput|	Received KB/sec|	Sent KB/sec|
+|-|-|-|-|-|-|-|-|-|-|-|-|-|
+|1|	200000|	78|	72|	116| 135| 195|	5|	8377|	0.00%|	79.88966|	20079.84|	13.65|
+|2|	200000|	39|	36|	66| 76| 106|	2|	2715|	0.00%|	79.89087|	11202.43|	13.65|
+|3|	200000|	76|	65|	125| 154|	238|	5|	8641|	0.00%|	79.89052|	37493.62|	13.65|
+|4|	200000|	55|	49|	91|	111|	171|	4|	2789|	0.00%|	79.891|	23045.82|	13.65|
+|Total|	800000|	62|	55|	104|	126|	193|	2|	8641|	0.00%|	319.55492|	91819.69|	54.61|
+
+![architecture](/doc/response-time.png)
+
+**Test result:**
+
+| 样本总数     | 800000      |
+| ------------ | ----------- |
+| 线程         | 20          |
+| 总耗时       | 41min       |
+| 平均请求     | 319.55492/s |
+| 平均响应时间 | 62ms        |
+| 成功率       | 100%        |
+| 失败率       | 0%          |
+
+And I will do more test in the future.
+
+
+
+

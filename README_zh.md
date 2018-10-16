@@ -183,6 +183,51 @@ docker run -d -p 1024:1024 -p 80:8001 --name storage -v /godfs/data:/godfs/data 
 这个测试说明godfs在处理大并发（对于文件系统来说）的上传、数据库写入不成问题，对于稳定性来说也是一个很好的考验。
 
 测试工具可以在release页面获取到。
+### HTTP download test
+
+storage server 配置(California)
+| Name     | Value   |
+| -------- | ------- |
+| OS       | CentOS7 |
+| RAM      | 512M    |
+| CPU core | 1       |
+| DISK     | SSD     |
+
+下载客户端机器配置(Los Angeles)
+| Name     | Value   |
+| -------- | ------- |
+| OS       | CentOS7 |
+| RAM      | 8GB     |
+| CPU core | 4       |
+| DISK     | SSD     |
+
+
+#### 测试说明
+这里使用 Apache [jmeter-5.0](http://jmeter.apache.org/download_jmeter.cgi) 作为测试工具l.
+
+在测试中，我们使用20个线程下载4个不同大小的文件（文件大小不超过1MB），每个线程运行10000次，总共800000次。测试结果如下：
+
+| Label | # Samples | Average | Median | 90% Line | 95% Line | 99% Line | Min  | Max  | Error % | Throughput | Received KB/sec | Sent KB/sec |
+| ----- | --------- | ------- | ------ | -------- | -------- | -------- | ---- | ---- | ------- | ---------- | --------------- | ----------- |
+| 1     | 200000    | 78      | 72     | 116      | 135      | 195      | 5    | 8377 | 0.00%   | 79.88966   | 20079.84        | 13.65       |
+| 2     | 200000    | 39      | 36     | 66       | 76       | 106      | 2    | 2715 | 0.00%   | 79.89087   | 11202.43        | 13.65       |
+| 3     | 200000    | 76      | 65     | 125      | 154      | 238      | 5    | 8641 | 0.00%   | 79.89052   | 37493.62        | 13.65       |
+| 4     | 200000    | 55      | 49     | 91       | 111      | 171      | 4    | 2789 | 0.00%   | 79.891     | 23045.82        | 13.65       |
+| Total | 800000    | 62      | 55     | 104      | 126      | 193      | 2    | 8641 | 0.00%   | 319.55492  | 91819.69        | 54.61       |
+
+![architecture](/doc/response-time.png)
+
+**测试结果**
+
+| Total       | 800000      |
+| ----------- | ----------- |
+| Threads     | 20          |
+| Total times | 41min       |
+| requests    | 319.55492/s |
+| avg time    | 62ms        |
+| success     | 100%        |
+| error       | 0%          |
+
 我将来会在这里发布更多的测试。
 
 
