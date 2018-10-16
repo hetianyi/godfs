@@ -192,6 +192,7 @@ Test tool is available in release page.
 ### HTTP download test
 
 storage server configuration(California)
+
 |Name|Value|
 |---|---|
 | OS        | CentOS7   |
@@ -200,6 +201,7 @@ storage server configuration(California)
 | DISK      | SSD  |
 
 download client machine configuration(Los Angeles)
+
 |Name|Value|
 |---|---|
 | OS        | CentOS7   |
@@ -225,14 +227,14 @@ In the test, we used 20 threads to download 4 files of different sizes (less tha
 
 **Test result:**
 
-| 样本总数     | 800000      |
-| ------------ | ----------- |
-| 线程         | 20          |
-| 总耗时       | 41min       |
-| 平均请求     | 319.55492/s |
-| 平均响应时间 | 62ms        |
-| 成功率       | 100%        |
-| 失败率       | 0%          |
+| Total       | 800000      |
+| ----------- | ----------- |
+| Threads     | 20          |
+| Total times | 41min       |
+| requests    | 319.55492/s |
+| avg time    | 62ms        |
+| success     | 100%        |
+| error       | 0%          |
 
 And I will do more test in the future.
 

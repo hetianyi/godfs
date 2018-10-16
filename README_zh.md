@@ -186,6 +186,7 @@ docker run -d -p 1024:1024 -p 80:8001 --name storage -v /godfs/data:/godfs/data 
 ### HTTP download test
 
 storage server 配置(California)
+
 | Name     | Value   |
 | -------- | ------- |
 | OS       | CentOS7 |
@@ -194,6 +195,7 @@ storage server 配置(California)
 | DISK     | SSD     |
 
 下载客户端机器配置(Los Angeles)
+
 | Name     | Value   |
 | -------- | ------- |
 | OS       | CentOS7 |
@@ -219,14 +221,14 @@ storage server 配置(California)
 
 **测试结果**
 
-| Total       | 800000      |
-| ----------- | ----------- |
-| Threads     | 20          |
-| Total times | 41min       |
-| requests    | 319.55492/s |
-| avg time    | 62ms        |
-| success     | 100%        |
-| error       | 0%          |
+| 样本总数     | 800000      |
+| ------------ | ----------- |
+| 线程         | 20          |
+| 总耗时       | 41min       |
+| 平均请求     | 319.55492/s |
+| 平均响应时间 | 62ms        |
+| 成功率       | 100%        |
+| 失败率       | 0%          |
 
 我将来会在这里发布更多的测试。
 
