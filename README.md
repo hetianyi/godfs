@@ -226,6 +226,7 @@ In the test, we used 20 threads to download 4 files of different sizes (less tha
 ![architecture](/doc/response-time.png)
 
 **Test result:**
+
 | Total       | 800000      |
 | ----------- | ----------- |
 | Threads     | 20          |
