@@ -118,7 +118,6 @@ func DownloadHandler(writer http.ResponseWriter, request *http.Request) {
 	if end <= 0 || end > (fileSize-1) || end == start {
 		end = fileSize
 	}
-	//TODO 0 byte error
 	startPos, endPos, totalLen := libcommon.GetReadPositions(fullFile, start, end-start)
 
 	headers.Set("Accept-Ranges", "bytes")

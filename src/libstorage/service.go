@@ -21,8 +21,6 @@ import (
 	"util/timeutil"
 )
 
-//TODO support disk cpu statistic
-
 // max client connection set to 1000
 var p, _ = pool.NewPool(200, 0)
 
