@@ -183,10 +183,9 @@ docker run -d -p 1024:1024 -p 80:8001 --name storage -v /godfs/data:/godfs/data 
 这个测试说明godfs在处理大并发（对于文件系统来说）的上传、数据库写入不成问题，对于稳定性来说也是一个很好的考验。
 
 测试工具可以在release页面获取到。
-### HTTP download test
+### HTTP 下载测试
 
 storage server 配置(California)
-
 | Name     | Value   |
 | -------- | ------- |
 | OS       | CentOS7 |
@@ -195,7 +194,6 @@ storage server 配置(California)
 | DISK     | SSD     |
 
 下载客户端机器配置(Los Angeles)
-
 | Name     | Value   |
 | -------- | ------- |
 | OS       | CentOS7 |
