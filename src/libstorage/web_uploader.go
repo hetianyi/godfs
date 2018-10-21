@@ -481,6 +481,32 @@ func ByteCopy(src []byte, start int, end int, cp []byte) {
 func WebUploadHandlerV1(writer http.ResponseWriter, request *http.Request) {
 	defer request.Body.Close()
 
+	method := request.Method
+	if method != http.MethodPost && method != http.MethodOptions {
+		writer.WriteHeader(405)
+		writer.Write([]byte("405 Method '"+ method +"' not supported."))
+		return
+	}
+
+	// handle http options method
+	headers := writer.Header()
+	origin := ""
+	origins := request.Header["Origin"]
+	if origins != nil && len(origins) > 0 {
+		origin = origins[0]
+	}
+	if app.CheckOriginAllow(origin) {
+		headers.Set("Access-Control-Allow-Origin", origin)
+	}
+	headers.Set("Access-Control-Allow-Methods", "POST, OPTIONS")
+	headers.Set("Access-Control-Allow-Credentials", "true")
+	headers.Set("Access-Control-Allow-Headers", "*")
+	if method == http.MethodOptions {
+		writer.WriteHeader(205)
+		return
+	}
+
+
 	// check if client really want to upload file to this group.
 	params := request.URL.Query()
 	if params != nil {

@@ -33,6 +33,32 @@ func init() {
 // storage server provide http download service
 func DownloadHandler(writer http.ResponseWriter, request *http.Request) {
 	defer request.Body.Close()
+
+	method := request.Method
+	if method != http.MethodGet && method != http.MethodOptions {
+		writer.WriteHeader(405)
+		writer.Write([]byte("405 Method '"+ method +"' not supported."))
+		return
+	}
+
+	// handle http options method
+	headers := writer.Header()
+	origin := ""
+	origins := request.Header["Origin"]
+	if origins != nil && len(origins) > 0 {
+		origin = origins[0]
+	}
+	if app.CheckOriginAllow(origin) {
+		headers.Set("Access-Control-Allow-Origin", origin)
+	}
+	headers.Set("Access-Control-Allow-Methods", "GET, OPTIONS")
+	headers.Set("Access-Control-Allow-Credentials", "true")
+	headers.Set("Access-Control-Allow-Headers", "*")
+	if method == http.MethodOptions {
+		writer.WriteHeader(205)
+		return
+	}
+
 	if app.HTTP_AUTH != "" {
 		user, pass, _ := request.BasicAuth()
 		if app.HTTP_AUTH != user+":"+pass {
@@ -70,7 +96,6 @@ func DownloadHandler(writer http.ResponseWriter, request *http.Request) {
 	}
 	logger.Debug("custom download file name is:", fn)
 	ext := file.GetFileExt(fn)
-	headers := writer.Header()
 	headers.Set("Content-Type", *app.GetContentTypeHeader(ext))
 
 	// 304 Not Modified

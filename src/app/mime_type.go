@@ -1,13 +1,17 @@
 package app
 
-import "strings"
+import (
+	"strings"
+	"container/list"
+)
 
 // mime types for browser download header 'Content-Type'
 var (
-	mimeTypes       = make(map[string]string)
-	webMimeTypes    = make(map[string]string)
-	enable          = false
-	defaultMimeType = "application/octet-stream"
+	mimeTypes       				= make(map[string]string)
+	webMimeTypes    				= make(map[string]string)
+	accessControllerAllowOrigins 	= list.New()
+	enable          				= false
+	defaultMimeType 				= "application/octet-stream"
 )
 
 // if enable it will auto add download header 'Content-Type' before download,
@@ -132,6 +136,31 @@ func GetContentTypeHeader(fileFormat string) *string {
 func AddWebMimeType(format string) {
 	webMimeTypes[format] = mimeTypes[format]
 }
+
+// add web content file format based on mimeTypes
+func AddAccessAllowOrigin(origin string) {
+	for ele := accessControllerAllowOrigins.Front(); ele != nil; ele = ele.Next() {
+		if ele.Value.(string) == origin {
+			return
+		}
+	}
+	accessControllerAllowOrigins.PushBack(origin)
+}
+
+// check whether access origin is allowed
+func CheckOriginAllow(origin string) bool {
+	if accessControllerAllowOrigins.Len() == 0 {
+		return true
+	}
+	for ele := accessControllerAllowOrigins.Front(); ele != nil; ele = ele.Next() {
+		if ele.Value.(string) == origin {
+			return true
+		}
+	}
+	return false
+}
+
+
 
 func SupportWebContent(ext string) bool {
 	ret := webMimeTypes[strings.TrimLeft(ext, ".")]

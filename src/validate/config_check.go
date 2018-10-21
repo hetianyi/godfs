@@ -182,6 +182,17 @@ func Check(m map[string]string, runWith int) {
 			app.AddWebMimeType(strS)
 		}
 
+		// check web_content_mime_types
+		m["access_control_allow_origin"] = strings.TrimSpace(m["access_control_allow_origin"])
+		acao := strings.Split(m["access_control_allow_origin"], ",")
+		for i := range acao {
+			strS := strings.TrimSpace(acao[i])
+			if strS == "" {
+				continue
+			}
+			app.AddAccessAllowOrigin(strS)
+		}
+
 		//--
 	} else if runWith == 2 {
 
