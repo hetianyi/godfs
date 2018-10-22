@@ -23,12 +23,13 @@ You can pull the image on docker hub:
 - Native client api and java client api(not started).
 - API for http upload and download.
 - Support file breakpoint download.
-- Support basic verification by http download.
+- Support basic verification for http download and upload.
+- Cross-site resource protection.
 - Clear logs help troubleshoot errors.
 - Support different platforms: Linux, Windows, Mac
 - Better support docker.
 - File fragmentation storage.
-- Perfect data migration solution.
+- Better data migration solution.
 - Support readonly node.
 - File synchronization in same group.
 
@@ -166,7 +167,10 @@ client usage:
     client --set "log_level=info"
 ```
 
+
+
 ## Simple load test on vultr
+
 ### HTTP upload test
 |Name|Value|
 |---|---|
