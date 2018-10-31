@@ -46,7 +46,7 @@ func (pool *ClientConnectionPool) Init(maxConnPerServer int) {
 }
 
 func GetStorageServerUID(server *bridge.ExpireMember) string {
-	return server.BindAddr + ":" + strconv.Itoa(server.Port) + ":" + server.Group + ":" + server.InstanceId
+	return server.AdvertiseAddr + ":" + strconv.Itoa(server.Port) + ":" + server.Group + ":" + server.InstanceId
 }
 
 // connection pool has not been implemented.
@@ -79,7 +79,7 @@ func (pool *ClientConnectionPool) testGetConnBridge(server *bridge.ExpireMember)
 
 func (pool *ClientConnectionPool) newConnection(server *bridge.ExpireMember) (*bridge.Bridge, error) {
 	logger.Debug("connecting to storage server...")
-	con, e := net.Dial("tcp", server.BindAddr+":"+strconv.Itoa(server.Port))
+	con, e := net.Dial("tcp", server.AdvertiseAddr+":"+strconv.Itoa(server.Port))
 	if e != nil {
 		return nil, e
 	}

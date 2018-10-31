@@ -12,7 +12,7 @@ const (
 )
 
 type Member struct {
-	BindAddr   string `json:"addr"`
+	AdvertiseAddr   string `json:"addr"`
 	InstanceId string `json:"instance_id"`
 	Group      string `json:"group"`
 	Port       int    `json:"port"`
@@ -22,7 +22,7 @@ type Member struct {
 }
 
 type ExpireMember struct {
-	BindAddr   string
+	AdvertiseAddr   string
 	InstanceId string
 	Group      string
 	Port       int
@@ -33,7 +33,7 @@ type ExpireMember struct {
 }
 
 func (expireMember *ExpireMember) From(member *Member) {
-	expireMember.BindAddr = member.BindAddr
+	expireMember.AdvertiseAddr = member.AdvertiseAddr
 	expireMember.InstanceId = member.InstanceId
 	expireMember.Group = member.Group
 	expireMember.Port = member.Port
@@ -87,7 +87,7 @@ type OperationValidationResponse struct {
 
 // register storage client operation request.
 type OperationRegisterStorageClientRequest struct {
-	BindAddr   string `json:"addr"`
+	AdvertiseAddr   string `json:"addr"`
 	Group      string `json:"group"`
 	InstanceId string `json:"instance_id"`
 	Port       int    `json:"port"`

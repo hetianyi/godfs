@@ -75,10 +75,10 @@ func syncStorageMemberHandler(request *bridge.Meta, conn net.Conn, connBridge *b
 		logger.Error("register failed: error parameter")
 		valid = false
 	}
-	remoteAddr := strings.Split(conn.RemoteAddr().String(), ":")[0]
-	if meta.BindAddr == "" {
+	remoteAddr := string([]rune(conn.RemoteAddr().String())[0:strings.LastIndex(conn.RemoteAddr().String(), ":")])
+	if meta.AdvertiseAddr == "" {
 		logger.Debug("storage server not send bind address, using", remoteAddr)
-		meta.BindAddr = remoteAddr
+		meta.AdvertiseAddr = remoteAddr
 	}
 	if !IsInstanceIdUnique(meta) {
 		logger.Error("register failed: instance_id is not unique")

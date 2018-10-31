@@ -402,22 +402,22 @@ func (tracker *TrackerInstance) ExecTask(task *bridge.Task) (bool, error) {
 	if task.TaskType == app.TASK_SYNC_MEMBER {
 		// register storage client to tracker server
 		regClientMeta := &bridge.OperationRegisterStorageClientRequest{
-			BindAddr:   app.BIND_ADDRESS,
-			Group:      app.GROUP,
-			InstanceId: app.INSTANCE_ID,
-			Port:       app.PORT,
-			HttpPort:	app.HTTP_PORT,
-			HttpEnable:	app.HTTP_ENABLE,
-			TotalFiles: app.FILE_TOTAL,
-			Finish:     app.FILE_FINISH,
-			IOin:       app.IOIN,
-			IOout:      app.IOOUT,
-			DiskUsage:  app.DISK_USAGE,
-			Downloads:  app.DOWNLOADS,
-			Uploads:    app.UPLOADS,
-			StartTime:  app.START_TIME,
-			Memory:     app.MEMORY,
-			ReadOnly:   !app.UPLOAD_ENABLE,
+			AdvertiseAddr: app.ADVERTISE_ADDRESS,
+			Group:         app.GROUP,
+			InstanceId:    app.INSTANCE_ID,
+			Port:          app.PORT,
+			HttpPort:      app.HTTP_PORT,
+			HttpEnable:    app.HTTP_ENABLE,
+			TotalFiles:    app.FILE_TOTAL,
+			Finish:        app.FILE_FINISH,
+			IOin:          app.IOIN,
+			IOout:         app.IOOUT,
+			DiskUsage:     app.DISK_USAGE,
+			Downloads:     app.DOWNLOADS,
+			Uploads:       app.UPLOADS,
+			StartTime:     app.START_TIME,
+			Memory:        app.MEMORY,
+			ReadOnly:      !app.UPLOAD_ENABLE,
 		}
 		// reg client
 		e2 := connBridge.SendRequest(bridge.O_SYNC_MEMBERS, regClientMeta, 0, nil)

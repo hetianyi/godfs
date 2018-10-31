@@ -27,8 +27,8 @@ var (
 func Check(m map[string]string, runWith int) {
 	replaceParams(m)
 	// check: bind_address
-	bind_address := strings.TrimSpace(m["bind_address"])
-	app.BIND_ADDRESS = bind_address
+	advertise_addr := strings.TrimSpace(m["advertise_addr"])
+	app.ADVERTISE_ADDRESS = advertise_addr
 
 	// check base_path
 	basePath := strings.TrimSpace(m["base_path"])

@@ -9,11 +9,14 @@ import (
 	"time"
 	"util/logger"
 	"util/timeutil"
+	"regexp"
 )
 
 var managedStorages = make(map[string]*storageMeta)
 
 var operationLock = *new(sync.Mutex)
+const ipv4Pattern          = "^((25[0-5]|2[0-4]\\d|[0-1]?\\d\\d?)\\.){3}(25[0-5]|2[0-4]\\d|[0-1]?\\d\\d?)$"
+const ipv4WithPortPattern  = "^(((25[0-5]|2[0-4]\\d|[0-1]?\\d\\d?)\\.){3}(25[0-5]|2[0-4]\\d|[0-1]?\\d\\d?)):([0-9]{1,5})$"
 
 type storageMeta struct {
 	ExpireTime int64
@@ -56,13 +59,14 @@ func ExpirationDetection() {
 func AddStorageServer(meta *bridge.OperationRegisterStorageClientRequest) {
 	operationLock.Lock()
 	defer operationLock.Unlock()
-	key := meta.BindAddr + ":" + strconv.Itoa(meta.Port)
+	host, port := parseAdvertiseAddr(meta.AdvertiseAddr, meta.Port)
+	key := host + ":" + strconv.Itoa(port)
 	holdMeta := &storageMeta{
 		ExpireTime: timeutil.GetTimestamp(time.Now().Add(time.Hour * 876000)), //set to 100 years
 		Group:      meta.Group,
 		InstanceId: meta.InstanceId,
-		Host:       meta.BindAddr,
-		Port:       meta.Port,
+		Host:       host,
+		Port:       port,
 		HttpPort:   meta.HttpPort,
 		HttpEnable: meta.HttpEnable,
 		TotalFiles: meta.TotalFiles,
@@ -90,14 +94,15 @@ func FutureExpireStorageServer(meta *bridge.OperationRegisterStorageClientReques
 	operationLock.Lock()
 	defer operationLock.Unlock()
 	if meta != nil {
-		key := meta.BindAddr + ":" + strconv.Itoa(meta.Port)
+		host, port := parseAdvertiseAddr(meta.AdvertiseAddr, meta.Port)
+		key := host + ":" + strconv.Itoa(port)
 		logger.Info("expire storage client:", key, "in", app.STORAGE_CLIENT_EXPIRE_TIME)
 		holdMeta := &storageMeta{
 			ExpireTime: timeutil.GetTimestamp(time.Now().Add(app.STORAGE_CLIENT_EXPIRE_TIME)),
 			Group:      meta.Group,
 			InstanceId: meta.InstanceId,
-			Host:       meta.BindAddr,
-			Port:       meta.Port,
+			Host:       host,
+			Port:       port,
 			HttpPort:   meta.HttpPort,
 			HttpEnable: meta.HttpEnable,
 			TotalFiles: meta.TotalFiles,
@@ -117,7 +122,8 @@ func FutureExpireStorageServer(meta *bridge.OperationRegisterStorageClientReques
 
 // check if instance if is unique
 func IsInstanceIdUnique(meta *bridge.OperationRegisterStorageClientRequest) bool {
-	key := meta.BindAddr + ":" + strconv.Itoa(meta.Port)
+	host, port := parseAdvertiseAddr(meta.AdvertiseAddr, meta.Port)
+	key := host + ":" + strconv.Itoa(port)
 	for k, v := range managedStorages {
 		if k != key && v.Group == meta.Group && v.InstanceId == meta.InstanceId {
 			return false
@@ -128,11 +134,12 @@ func IsInstanceIdUnique(meta *bridge.OperationRegisterStorageClientRequest) bool
 
 // 获取组内成员
 func GetGroupMembers(meta *bridge.OperationRegisterStorageClientRequest) []bridge.Member {
-	key := meta.BindAddr + ":" + strconv.Itoa(meta.Port)
+	host, port := parseAdvertiseAddr(meta.AdvertiseAddr, meta.Port)
+	key := host + ":" + strconv.Itoa(port)
 	var mList list.List
 	for k, v := range managedStorages {
 		if k != key && v.Group == meta.Group { // 过期
-			m := bridge.Member{BindAddr: v.Host, Port: v.Port, InstanceId: v.InstanceId, Group: v.Group, ReadOnly: v.ReadOnly, HttpEnable: v.HttpEnable, HttpPort: v.HttpPort}
+			m := bridge.Member{AdvertiseAddr: v.Host, Port: v.Port, InstanceId: v.InstanceId, Group: v.Group, ReadOnly: v.ReadOnly, HttpEnable: v.HttpEnable, HttpPort: v.HttpPort}
 			mList.PushBack(m)
 		}
 	}
@@ -149,7 +156,7 @@ func GetGroupMembers(meta *bridge.OperationRegisterStorageClientRequest) []bridg
 func GetAllStorages() []bridge.Member {
 	var mList list.List
 	for _, v := range managedStorages {
-		m := bridge.Member{BindAddr: v.Host, Port: v.Port, InstanceId: v.InstanceId, Group: v.Group, ReadOnly: v.ReadOnly, HttpEnable: v.HttpEnable, HttpPort: v.HttpPort}
+		m := bridge.Member{AdvertiseAddr: v.Host, Port: v.Port, InstanceId: v.InstanceId, Group: v.Group, ReadOnly: v.ReadOnly, HttpEnable: v.HttpEnable, HttpPort: v.HttpPort}
 		mList.PushBack(m)
 	}
 	var members = make([]bridge.Member, mList.Len())
@@ -159,4 +166,32 @@ func GetAllStorages() []bridge.Member {
 		index++
 	}
 	return members
+}
+
+// advAddr: storage configuration parameter 'advertise_addr'
+// port: storage real serve port
+// return parsed ip address and port
+func parseAdvertiseAddr(advAddr string, port int) (string, int) {
+	m, e := regexp.Match(ipv4Pattern, []byte(advAddr))
+	// if parse error, use serve port and parsed ip address
+	if e != nil {
+		return "", port
+	}
+	if m {
+		return advAddr, port
+	}
+
+	m, e1 := regexp.Match(ipv4WithPortPattern, []byte(advAddr))
+	// if parse error, use serve port and parsed ip address
+	if e1 != nil {
+		return "", port
+	}
+	if m {
+		// 1 5
+		regxp := regexp.MustCompile(ipv4WithPortPattern)
+		adAddr := regxp.ReplaceAllString(advAddr, "${1}")
+		adPort, _ := strconv.Atoi(regxp.ReplaceAllString(advAddr, "${5}"))
+		return adAddr, adPort
+	}
+	return "", port
 }

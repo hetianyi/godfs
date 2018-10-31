@@ -92,7 +92,7 @@ func (client *Client) Upload(path string, group string, startTime time.Time, ski
 			if mem == nil {
 				return "", NO_STORAGE_ERROR
 			}
-			logger.Info("using storage server:", mem.BindAddr+":"+strconv.Itoa(mem.Port))
+			logger.Info("using storage server:", mem.AdvertiseAddr+":"+strconv.Itoa(mem.Port))
 			cb, e12 := client.connPool.GetConnBridge(mem)
 			if e12 != nil {
 				excludes.PushBack(mem)
@@ -239,7 +239,7 @@ func download(path string, start int64, offset int64, fromSrc bool, excludes *li
 		if fromSrc {
 			mem = selectStorageServer(group, instanceId, excludes, false)
 			if mem != nil {
-				logger.Debug("try to download file from source server:", mem.BindAddr+":"+strconv.Itoa(mem.Port))
+				logger.Debug("try to download file from source server:", mem.AdvertiseAddr+":"+strconv.Itoa(mem.Port))
 			}
 		} else {
 			mem = selectStorageServer(group, "", excludes, false)
@@ -252,13 +252,13 @@ func download(path string, start int64, offset int64, fromSrc bool, excludes *li
 			if !fromSrc {
 				return NO_STORAGE_ERROR
 			} else {
-				logger.Debug("source server is not available:", mem.BindAddr+":"+strconv.Itoa(mem.Port))
+				logger.Debug("source server is not available:", mem.AdvertiseAddr+":"+strconv.Itoa(mem.Port))
 				fromSrc = false
 				continue
 			}
 		}
 		// TODO when download is busy and no connection available, shall skip current download task.
-		logger.Debug("using storage server:", mem.BindAddr+":"+strconv.Itoa(mem.Port))
+		logger.Debug("using storage server:", mem.AdvertiseAddr+":"+strconv.Itoa(mem.Port))
 		cb, e12 := client.connPool.GetConnBridge(mem)
 		if e12 != nil {
 			logger.Error(e12)
