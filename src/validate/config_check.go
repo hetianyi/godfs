@@ -26,7 +26,7 @@ var (
 //        3: client
 func Check(m map[string]string, runWith int) {
 	replaceParams(m)
-	// check: bind_address
+	// check: advertise_addr
 	advertise_addr := strings.TrimSpace(m["advertise_addr"])
 	app.ADVERTISE_ADDRESS = advertise_addr
 

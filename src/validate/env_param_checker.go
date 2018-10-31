@@ -16,7 +16,7 @@ var (
 	allParams = map[string]int{
 		"group":                 1,
 		"instance_id":           1,
-		"bind_address":          1,
+		"advertise_addr":        1,
 		"port":                  2,
 		"base_path":             2,
 		"trackers":              1,

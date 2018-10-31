@@ -140,7 +140,7 @@ docker run -d -p 1022:1022 --name tracker --restart always -v /godfs/data:/godfs
 
 启动storage服务器:
 ```shell
-docker run -d -p 1024:1024 -p 80:8001 --name storage -v /godfs/data:/godfs/data --privileged -e trackers=192.168.1.172:1022 -e bind_address=192.168.1.187 -e port=1024  -e instance_id="01" hehety/godfs storage
+docker run -d -p 1024:1024 -p 80:8001 --name storage -v /godfs/data:/godfs/data --privileged -e trackers=192.168.1.172:1022 -e advertise_addr=192.168.1.187 -e port=1024  -e instance_id="01" hehety/godfs storage
 # 单机上部署多个storage最好加上命令： '-e port=1024'
 ```
 这里，我们使用宿主机上的目录 ```/godfs/data``` 来存放上传的文件，你可以使用docker的命令```-e```来覆盖配置文件中的相应配置。
