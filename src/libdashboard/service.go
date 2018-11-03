@@ -14,10 +14,8 @@ import (
 )
 
 func StartService(config map[string]string) {
-	// set client type
-	app.CLIENT_TYPE = 3
 	app.START_TIME = timeutil.GetTimestamp(time.Now())
-	go startTrackerMaintainer("127.0.0.1:1022")
+	go startTrackerMaintainer(app.TRACKERS)
 	startWebService()
 }
 

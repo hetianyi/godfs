@@ -1,7 +1,6 @@
 package main
 
 import (
-	"app"
 	"flag"
 	"libtracker"
 	"os"
@@ -10,10 +9,12 @@ import (
 	"util/file"
 	"util/logger"
 	"validate"
+	"app"
 )
 
 func main() {
 	runtime.GOMAXPROCS(runtime.NumCPU())
+	app.RUN_WITH = 2
 	abs, _ := filepath.Abs(os.Args[0])
 	s, _ := filepath.Split(abs)
 	s = file.FixPath(s)
@@ -22,11 +23,10 @@ func main() {
 	logger.Info("using config file:", *confPath)
 	m, e := file.ReadPropFile(*confPath)
 	if e == nil {
-		validate.Check(m, 2)
+		validate.Check(m, app.RUN_WITH)
 		for k, v := range m {
 			logger.Debug(k, "=", v)
 		}
-		app.RUN_WITH = 2
 		libtracker.StartService(m)
 	} else {
 		logger.Fatal("error read file:", e)

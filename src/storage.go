@@ -1,7 +1,6 @@
 package main
 
 import (
-	"app"
 	"flag"
 	"libstorage"
 	"os"
@@ -10,6 +9,7 @@ import (
 	"util/file"
 	"util/logger"
 	"validate"
+	"app"
 )
 
 // 当客户端下载文件的时候，如果文件尚未在组内全部同步完成，
@@ -20,6 +20,7 @@ import (
 // TODO Optimize log information
 func main() {
 	runtime.GOMAXPROCS(runtime.NumCPU())
+	app.RUN_WITH = 1
 	abs, _ := filepath.Abs(os.Args[0])
 	s, _ := filepath.Split(abs)
 	s = file.FixPath(s)
@@ -28,11 +29,10 @@ func main() {
 	logger.Info("using config file:", *confPath)
 	m, e := file.ReadPropFile(*confPath)
 	if e == nil {
-		validate.Check(m, 1)
+		validate.Check(m, app.RUN_WITH)
 		for k, v := range m {
 			logger.Debug(k, "=", v)
 		}
-		app.RUN_WITH = 1
 		libstorage.StartService(m)
 	} else {
 		logger.Fatal("error read file:", e)

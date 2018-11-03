@@ -24,26 +24,27 @@ var (
 //        1: storage server
 //        2: tracker server
 //        3: client
+//        4: dashboard
 func Check(m map[string]string, runWith int) {
 	replaceParams(m)
-	// check: advertise_addr
-	advertise_addr := strings.TrimSpace(m["advertise_addr"])
-	app.ADVERTISE_ADDRESS = advertise_addr
 
-	// check base_path
-	basePath := strings.TrimSpace(m["base_path"])
-	if basePath == "" {
-		abs, _ := filepath.Abs(os.Args[0])
-		parent, _ := filepath.Split(abs)
-		finalPath := parent + "godfs"
-		logger.Info("base_path not set, use", finalPath)
-		m["base_path"] = finalPath
-	} else {
-		m["base_path"] = file.FixPath(basePath)
+	// client doesn't has base path
+	if runWith != 3 {
+		// check base_path
+		basePath := strings.TrimSpace(m["base_path"])
+		if basePath == "" {
+			abs, _ := filepath.Abs(os.Args[0])
+			parent, _ := filepath.Split(abs)
+			finalPath := parent + "godfs"
+			logger.Info("base_path not set, use", finalPath)
+			m["base_path"] = finalPath
+		} else {
+			m["base_path"] = file.FixPath(basePath)
+		}
+		app.BASE_PATH = m["base_path"]
+		cleanTmpdir()
+		prepareDirs(m["base_path"])
 	}
-	app.BASE_PATH = m["base_path"]
-	cleanTmpdir()
-	prepareDirs(m["base_path"])
 
 	// check secret
 	m["secret"] = strings.TrimSpace(m["secret"])
@@ -81,6 +82,10 @@ func Check(m map[string]string, runWith int) {
 	}
 
 	if runWith == 1 {
+		// check: advertise_addr
+		advertise_addr := strings.TrimSpace(m["advertise_addr"])
+		app.ADVERTISE_ADDRESS = advertise_addr
+
 		// check GROUP
 		m["group"] = strings.TrimSpace(m["group"])
 		if mat, _ := regexp.Match(GroupInstancePattern, []byte(m["group"])); !mat {
@@ -88,26 +93,12 @@ func Check(m map[string]string, runWith int) {
 		}
 		app.GROUP = m["group"]
 
-		// check http auth
-		m["http_auth"] = strings.TrimSpace(m["http_auth"])
-		app.HTTP_AUTH = m["http_auth"]
-
 		// check instance id
 		m["instance_id"] = strings.TrimSpace(m["instance_id"])
 		if mat, _ := regexp.Match(GroupInstancePattern, []byte(m["instance_id"])); !mat {
 			logger.Fatal("error parameter 'instance_id'")
 		}
 		app.INSTANCE_ID = m["instance_id"]
-
-		// check http_port
-		http_port := strings.ToLower(strings.TrimSpace(m["http_port"]))
-
-		httpPort, ehp := strconv.Atoi(http_port)
-		if ehp != nil || httpPort <= 0 || httpPort > 65535 {
-			logger.Fatal("error http_port:", http_port)
-		}
-		m["http_port"] = http_port
-		app.HTTP_PORT = httpPort
 
 		// check assign_disk_space
 		assign_disk_space := strings.ToLower(strings.TrimSpace(m["assign_disk_space"]))
@@ -210,8 +201,27 @@ func Check(m map[string]string, runWith int) {
 			logger.Fatal("invalid port ", m["port"], ":", e)
 		}
 	}
-	if runWith == 1 || runWith == 3 {
 
+	if runWith == 1 || runWith == 4 {
+		// check http_port
+		http_port := strings.ToLower(strings.TrimSpace(m["http_port"]))
+
+		httpPort, ehp := strconv.Atoi(http_port)
+		if runWith == 4 || (runWith == 1 && app.HTTP_ENABLE) {
+			if ehp != nil || httpPort <= 0 || httpPort > 65535 {
+				logger.Fatal("error http_port:", http_port)
+			} else {
+				m["http_port"] = http_port
+				app.HTTP_PORT = httpPort
+			}
+		}
+
+		// check http auth
+		m["http_auth"] = strings.TrimSpace(m["http_auth"])
+		app.HTTP_AUTH = m["http_auth"]
+	}
+
+	if runWith != 2 {
 		// check trackers
 		trackers := strings.TrimSpace(m["trackers"])
 		_ts := strings.Split(trackers, ",")
