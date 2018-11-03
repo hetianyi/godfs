@@ -72,6 +72,29 @@ type ReadPos struct {
 	PartStart int64
 }
 
+type ServerStatistic struct {
+	UUID   string `json:"uuid"`
+	AdvertiseAddr   string `json:"addr"`
+	Group      string `json:"group"`
+	InstanceId string `json:"instance_id"`
+	Port       int    `json:"port"`
+	HttpPort   int    `json:"httpPort"`
+	HttpEnable bool   `json:"httpEnable"`
+	// 统计信息
+	TotalFiles int    `json:"files"`
+	Finish     int    `json:"finish"`
+	StartTime  int64  `json:"startTime"`
+	Downloads  int    `json:"downloads"`
+	Uploads    int    `json:"uploads"`
+	IOin       int64  `json:"in"`
+	IOout      int64  `json:"out"`
+	DiskUsage  int64  `json:"disk"`
+	Memory     uint64 `json:"mem"`
+	ReadOnly   bool   `json:"readonly"`
+}
+
+
+
 // validate operation request.
 type OperationValidationRequest struct {
 	Secret string `json:"secret"`
@@ -87,6 +110,7 @@ type OperationValidationResponse struct {
 
 // register storage client operation request.
 type OperationRegisterStorageClientRequest struct {
+	UUID   string `json:"uuid"`
 	AdvertiseAddr   string `json:"addr"`
 	Group      string `json:"group"`
 	InstanceId string `json:"instance_id"`
@@ -181,6 +205,15 @@ type OperationPullFileResponse struct {
 	Status int `json:"status"`
 	Files  []File
 }
+
+type OperationSyncStatisticRequest struct {
+}
+
+type OperationSyncStatisticResponse struct {
+	Status int `json:"status"`
+	Statistic []ServerStatistic `json:"statistic"`
+}
+
 
 type TrackerConfig struct {
 	UUID          string

@@ -10,6 +10,7 @@ import (
 	"util/logger"
 	"util/timeutil"
 	"regexp"
+	"util/common"
 )
 
 var managedStorages = make(map[string]*storageMeta)
@@ -20,6 +21,7 @@ const ipv4WithPortPattern  = "^(((25[0-5]|2[0-4]\\d|[0-1]?\\d\\d?)\\.){3}(25[0-5
 
 type storageMeta struct {
 	ExpireTime int64
+	UUID       string
 	Group      string
 	InstanceId string
 	Host       string
@@ -46,12 +48,16 @@ func ExpirationDetection() {
 		<-timer.C
 		logger.Debug("exec expired detected")
 		curTime := time.Now().UnixNano() / 1e6
-		for k, v := range managedStorages {
-			if v.ExpireTime <= curTime { // 过期
-				delete(managedStorages, k)
-				logger.Info("storage server:", k, "expired finally")
+		operationLock.Lock()
+		common.Try(func() {
+			for k, v := range managedStorages {
+				if v.ExpireTime <= curTime { // 过期
+					delete(managedStorages, k)
+					logger.Info("storage server:", k, "expired finally")
+				}
 			}
-		}
+		}, func(i interface{}) {})
+		operationLock.Unlock()
 	}
 }
 
@@ -62,7 +68,8 @@ func AddStorageServer(meta *bridge.OperationRegisterStorageClientRequest) {
 	host, port := parseAdvertiseAddr(meta.AdvertiseAddr, meta.Port)
 	key := host + ":" + strconv.Itoa(port)
 	holdMeta := &storageMeta{
-		ExpireTime: timeutil.GetTimestamp(time.Now().Add(time.Hour * 876000)), //set to 100 years
+		UUID:		meta.UUID,
+		ExpireTime: timeutil.GetTimestamp(time.Now().Add(time.Hour * 876000)), // set to 100 years
 		Group:      meta.Group,
 		InstanceId: meta.InstanceId,
 		Host:       host,
@@ -98,6 +105,7 @@ func FutureExpireStorageServer(meta *bridge.OperationRegisterStorageClientReques
 		key := host + ":" + strconv.Itoa(port)
 		logger.Info("expire storage client:", key, "in", app.STORAGE_CLIENT_EXPIRE_TIME)
 		holdMeta := &storageMeta{
+			UUID:		meta.UUID,
 			ExpireTime: timeutil.GetTimestamp(time.Now().Add(app.STORAGE_CLIENT_EXPIRE_TIME)),
 			Group:      meta.Group,
 			InstanceId: meta.InstanceId,
@@ -122,6 +130,8 @@ func FutureExpireStorageServer(meta *bridge.OperationRegisterStorageClientReques
 
 // check if instance if is unique
 func IsInstanceIdUnique(meta *bridge.OperationRegisterStorageClientRequest) bool {
+	operationLock.Lock()
+	defer operationLock.Unlock()
 	host, port := parseAdvertiseAddr(meta.AdvertiseAddr, meta.Port)
 	key := host + ":" + strconv.Itoa(port)
 	for k, v := range managedStorages {
@@ -134,6 +144,8 @@ func IsInstanceIdUnique(meta *bridge.OperationRegisterStorageClientRequest) bool
 
 // 获取组内成员
 func GetGroupMembers(meta *bridge.OperationRegisterStorageClientRequest) []bridge.Member {
+	operationLock.Lock()
+	defer operationLock.Unlock()
 	host, port := parseAdvertiseAddr(meta.AdvertiseAddr, meta.Port)
 	key := host + ":" + strconv.Itoa(port)
 	var mList list.List
@@ -154,6 +166,8 @@ func GetGroupMembers(meta *bridge.OperationRegisterStorageClientRequest) []bridg
 
 // 获取组内成员
 func GetAllStorages() []bridge.Member {
+	operationLock.Lock()
+	defer operationLock.Unlock()
 	var mList list.List
 	for _, v := range managedStorages {
 		m := bridge.Member{AdvertiseAddr: v.Host, Port: v.Port, InstanceId: v.InstanceId, Group: v.Group, ReadOnly: v.ReadOnly, HttpEnable: v.HttpEnable, HttpPort: v.HttpPort}
@@ -166,6 +180,37 @@ func GetAllStorages() []bridge.Member {
 		index++
 	}
 	return members
+}
+
+func GetSyncStatistic() []bridge.ServerStatistic {
+	operationLock.Lock()
+	defer operationLock.Unlock()
+	var res = make([]bridge.ServerStatistic, len(managedStorages))
+	i := 0
+	for _, v := range managedStorages {
+		item := bridge.ServerStatistic {
+			UUID:		   v.UUID,
+			AdvertiseAddr: v.Host,
+			Group:         v.Group,
+			InstanceId:    v.InstanceId,
+			Port:          v.Port,
+			HttpPort:      v.HttpPort,
+			HttpEnable:    v.HttpEnable,
+			TotalFiles:    v.TotalFiles,
+			Finish:        v.Finish,
+			IOin:          v.IOin,
+			IOout:         v.IOout,
+			DiskUsage:     v.DiskUsage,
+			Downloads:     v.Downloads,
+			Uploads:       v.Uploads,
+			StartTime:     v.StartTime,
+			Memory:        v.Memory,
+			ReadOnly:      v.ReadOnly,
+		}
+		res[i] = item
+		i++
+	}
+	return res
 }
 
 // advAddr: storage configuration parameter 'advertise_addr'

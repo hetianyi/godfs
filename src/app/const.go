@@ -26,7 +26,7 @@ var (
 	LOG_ENABLE                   bool
 	PORT                         int
 	HTTP_PORT                    int
-	CLIENT_TYPE                  int //client类型，1：storage client，2：other client
+	CLIENT_TYPE                  int //client类型，1:storage client, 2:other client, 3:dashboard client
 	STORAGE_CLIENT_EXPIRE_TIME   = time.Second * 60
 	SYNC_MEMBER_INTERVAL         = time.Second * 30
 	PULL_NEW_FILE_INTERVAL       = time.Second * 10 //每5s取一次同步任务
@@ -55,6 +55,7 @@ const (
 	TASK_PULL_NEW_FILE     = 3
 	TASK_DOWNLOAD_FILE     = 4
 	TASK_SYNC_ALL_STORAGES = 5 // client 同步所有的storage
+	TASK_SYNC_STATISTIC    = 6 // dashboard同步所有的tracker统计信息
 	DB_POOL_SIZE           = 20
 )
 

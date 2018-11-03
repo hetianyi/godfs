@@ -26,6 +26,7 @@ const (
 	O_PULL_NEW_FILES = 8
 	O_UPLOAD         = 9
 	O_SYNC_MEMBERS   = 10
+	O_SYNC_STATISTIC = 11
 )
 
 const HeaderSize = 18
@@ -56,6 +57,7 @@ func init() {
 	operationHeadMap[O_SYNC_STORAGE] = []byte{1, 8}
 	operationHeadMap[O_PULL_NEW_FILES] = []byte{1, 9}
 	operationHeadMap[O_SYNC_MEMBERS] = []byte{1, 10}
+	operationHeadMap[O_SYNC_STATISTIC] = []byte{1, 11}
 
 	bytesPool = pool.NewBytesPool(50)
 }
@@ -218,7 +220,7 @@ func (bridge *Bridge) ValidateConnection(secret string) (bool, error) {
 			return response.Err
 		}
 		var validateResp = &OperationValidationResponse{}
-		//logger.Debug(string(response.MetaBody))
+		// logger.Debug(string(response.MetaBody))
 		e3 := json.Unmarshal(response.MetaBody, validateResp)
 		if e3 != nil {
 			return e3

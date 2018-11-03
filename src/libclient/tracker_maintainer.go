@@ -132,8 +132,8 @@ func (maintainer *TrackerMaintainer) track(tracker string, index int) {
 	trackerInstance.Init()
 	initDownloadClient(maintainer)
 	// for test
-	//go startTimer1()
-	for { //keep trying to connect to tracker server.
+	// go startTimer1()
+	for { // keep trying to connect to tracker server.
 		conn, e := net.Dial("tcp", tracker)
 		if e == nil {
 			// validate client
@@ -367,6 +367,15 @@ func AddTask(task *bridge.Task, tracker *TrackerInstance) bool {
 			logger.Debug("can't push task type 4: task list full")
 			return false
 		}
+	} else if task.TaskType == app.TASK_SYNC_STATISTIC {
+		if tracker.checkTaskTypeCount(task.TaskType) == 0 {
+			logger.Trace("push task type:", strconv.Itoa(task.TaskType))
+			tracker.taskList.PushFront(task)
+			return true
+		} else {
+			logger.Trace("can't push task type " + strconv.Itoa(task.TaskType) + ": task type exists")
+			return false
+		}
 	}
 	return false
 }
@@ -402,6 +411,7 @@ func (tracker *TrackerInstance) ExecTask(task *bridge.Task) (bool, error) {
 	if task.TaskType == app.TASK_SYNC_MEMBER {
 		// register storage client to tracker server
 		regClientMeta := &bridge.OperationRegisterStorageClientRequest{
+			UUID:		   app.UUID,
 			AdvertiseAddr: app.ADVERTISE_ADDRESS,
 			Group:         app.GROUP,
 			InstanceId:    app.INSTANCE_ID,
@@ -583,6 +593,32 @@ func (tracker *TrackerInstance) ExecTask(task *bridge.Task) (bool, error) {
 			return true, e5
 		}
 		return false, nil
+	} else if task.TaskType == app.TASK_SYNC_STATISTIC {
+		regClientMeta := &bridge.OperationSyncStatisticRequest{}
+		e2 := connBridge.SendRequest(bridge.O_SYNC_STATISTIC, regClientMeta, 0, nil)
+		if e2 != nil {
+			return true, e2
+		}
+		e5 := connBridge.ReceiveResponse(func(response *bridge.Meta, in io.Reader) error {
+			if response.Err != nil {
+				return response.Err
+			}
+			logger.Debug("sync statistic response:", string(response.MetaBody))
+			var validateResp = &bridge.OperationSyncStatisticResponse{}
+			e3 := json.Unmarshal(response.MetaBody, validateResp)
+			if e3 != nil {
+				return e3
+			}
+			if validateResp.Status != bridge.STATUS_OK {
+				return errors.New("error sync statistic from tracker server, server response status:" + strconv.Itoa(validateResp.Status))
+			}
+			updateStatistic(tracker.connBridge.UUID, validateResp.Statistic)
+			return nil
+		})
+		if e5 != nil {
+			return true, e5
+		}
+		return false, nil
 	}
 	return false, nil
 }
@@ -643,6 +679,11 @@ func QueryNewFileTaskCollector(tracker *TrackerInstance) {
 
 func SyncAllStorageServersTaskCollector(tracker *TrackerInstance) {
 	task := &bridge.Task{TaskType: app.TASK_SYNC_ALL_STORAGES}
+	AddTask(task, tracker)
+}
+
+func SyncStatisticTaskCollector(tracker *TrackerInstance) {
+	task := &bridge.Task{TaskType: app.TASK_SYNC_STATISTIC}
 	AddTask(task, tracker)
 }
 

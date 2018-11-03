@@ -97,7 +97,7 @@ func clientHandler(conn net.Conn) {
 		connBridge := bridge.NewBridge(conn)
 		for {
 			error := connBridge.ReceiveRequest(func(request *bridge.Meta, in io.ReadCloser) error {
-				//return requestRouter(request, &bodyBuff, md, connBridge, conn)
+				// return requestRouter(request, &bodyBuff, md, connBridge, conn)
 				if request.Err != nil {
 					return request.Err
 				}
@@ -116,6 +116,8 @@ func clientHandler(conn net.Conn) {
 					return libstorage.QueryFileHandler(request, connBridge, 2)
 				} else if request.Operation == bridge.O_PULL_NEW_FILES {
 					return pullNewFile(request, connBridge)
+				} else if request.Operation == bridge.O_SYNC_STATISTIC {
+					return syncStatistic(request, connBridge)
 				} else {
 					return bridge.OPERATION_NOT_SUPPORT_ERROR
 				}

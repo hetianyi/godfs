@@ -45,7 +45,7 @@ func validateClientHandler(request *bridge.Meta, connBridge *bridge.Bridge) erro
 	} else {
 		response.Status = bridge.STATUS_INTERNAL_SERVER_ERROR
 	}
-	logger.Info("register storage client:", head.UUID)
+	logger.Info("register client:", head.UUID)
 	e3 := connBridge.SendResponse(response, 0, nil)
 	if e1 != nil {
 		return e1
@@ -59,14 +59,14 @@ func validateClientHandler(request *bridge.Meta, connBridge *bridge.Bridge) erro
 func syncStorageMemberHandler(request *bridge.Meta, conn net.Conn, connBridge *bridge.Bridge) (*bridge.OperationRegisterStorageClientRequest, error) {
 	valid := true
 	var meta = &bridge.OperationRegisterStorageClientRequest{}
-	//logger.Debug(string(request.MetaBody))
+	// logger.Debug(string(request.MetaBody))
 	e1 := json.Unmarshal(request.MetaBody, meta)
 	if e1 != nil {
 		return nil, e1
 	}
 	logger.Debug("storage info:", string(request.MetaBody))
 	var response = &bridge.OperationRegisterStorageClientResponse{}
-	//check meta fields
+	// check meta fields
 	if mat, _ := regexp.Match(validate.GroupInstancePattern, []byte(meta.Group)); !mat {
 		logger.Error("register failed: group or instance_id is invalid")
 		valid = false
@@ -168,4 +168,21 @@ func pullNewFile(request *bridge.Meta, connBridge *bridge.Bridge) error {
 	    logger.Debug(string(s))
 	}*/
 	return connBridge.SendResponse(response, 0, nil)
+}
+
+func syncStatistic(request *bridge.Meta, connBridge *bridge.Bridge) error {
+	var meta = &bridge.OperationSyncStatisticRequest{}
+	e1 := json.Unmarshal(request.MetaBody, meta)
+	if e1 != nil {
+		return e1
+	}
+	var response = &bridge.OperationSyncStatisticResponse{}
+	ret := GetSyncStatistic()
+	response.Status = bridge.STATUS_OK
+	response.Statistic = ret
+	e2 := connBridge.SendResponse(response, 0, nil)
+	if e2 != nil {
+		return e2
+	}
+	return nil
 }
