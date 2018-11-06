@@ -169,7 +169,7 @@ func startHttpDownloadService() {
 
 	s := &http.Server{
 		Addr: ":" + strconv.Itoa(app.HTTP_PORT),
-		//ReadTimeout:    10 * time.Second,
+		// ReadTimeout:    10 * time.Second,
 		ReadHeaderTimeout: 10 * time.Second,
 		WriteTimeout:      0,
 		MaxHeaderBytes:    1 << 20,
@@ -195,7 +195,7 @@ func clientHandler(conn net.Conn) {
 		connBridge := bridge.NewBridge(conn)
 		for {
 			error := connBridge.ReceiveRequest(func(request *bridge.Meta, in io.ReadCloser) error {
-				//return requestRouter(request, &bodyBuff, md, connBridge, conn)
+				// return requestRouter(request, &bodyBuff, md, connBridge, conn)
 				if request.Err != nil {
 					return request.Err
 				}

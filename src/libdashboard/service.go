@@ -6,12 +6,14 @@ import (
 	"time"
 	"libclient"
 	"container/list"
+	"util/pool"
 	"util/logger"
-	"libcommon/bridge"
-	"net"
+	"net/http"
 	"strconv"
-	"util/common"
 )
+
+// max client connection set to 1000
+var p, _ = pool.NewPool(200, 0)
 
 func StartService(config map[string]string) {
 	app.START_TIME = timeutil.GetTimestamp(time.Now())
@@ -38,23 +40,13 @@ func startTrackerMaintainer(trackers string) {
 
 
 func startWebService() {
-	tryTimes := 0
-	for {
-		common.Try(func() {
-			listener, e := net.Listen("tcp", ":"+strconv.Itoa(8080))
-			logger.Info("service listening on port:", 8080)
-			if e != nil {
-				panic(e)
-			} else {
-				// keep accept connections.
-				for {
-					conn, _ := listener.Accept()
-					bridge.Close(conn)
-				}
-			}
-		}, func(i interface{}) {
-			logger.Error("["+strconv.Itoa(tryTimes)+"] error shutdown service duo to:", i)
-			time.Sleep(time.Second * 10)
-		})
+	//http.HandleFunc("/download/", DownloadHandler)
+	s := &http.Server{
+		Addr: ":" + strconv.Itoa(app.HTTP_PORT),
+		ReadHeaderTimeout: 10 * time.Second,
+		WriteTimeout:      0,
+		MaxHeaderBytes:    1 << 20,
 	}
+	logger.Info("http server listen on port:", app.HTTP_PORT)
+	s.ListenAndServe()
 }

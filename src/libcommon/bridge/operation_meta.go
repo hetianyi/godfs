@@ -220,3 +220,14 @@ type TrackerConfig struct {
 	TrackerSyncId int
 	LocalPushId   int
 }
+
+
+type WebTracker struct {
+	UUID 	string `json:"status"`
+	Host string
+	Port int
+	Secret string
+	Remark string
+	// sync interval from tracker(in seconds)
+	// SyncInterval int
+}
