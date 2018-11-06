@@ -67,6 +67,17 @@ const (
                             (select count(*) files from files a),
                             (select count(*) finish from files a where a.finish = 1),
                             (select case when sum(b.size) is null then 0 else sum(b.size) end disk from parts b)  )`
+
+	insert_web_tracker = `insert into web_trackers(host, port, status, secret, remark, uuid)
+                            values(?, ?, ?, ?, ?, ?)`
+
+
+
+
+
+
+
+
 )
 
 var dbPool *db.DbConnPool
@@ -1090,3 +1101,40 @@ func createBatchPartSQL(parts []bridge.FilePart) string {
 	}
 	return string(sql.Bytes())
 }
+
+
+
+func AddWebTracker(tracker bridge.WebTracker) error {
+	dao, ef := dbPool.GetDB()
+	if ef != nil {
+		return ef
+	}
+	defer dbPool.ReturnDB(dao)
+	return dao.DoTransaction(func(tx *sql.Tx) error {
+		state, e2 := tx.Prepare(insert_web_tracker)
+		if e2 != nil {
+			return e2
+		}
+		_, e3 := state.Exec(tracker.Host, tracker.Port, tracker.Status, tracker.Secret, tracker.Remark, tracker.UUID)
+		if e3 != nil {
+			return e3
+		}
+		return nil
+	})
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

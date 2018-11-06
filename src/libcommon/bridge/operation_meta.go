@@ -226,6 +226,7 @@ type WebTracker struct {
 	UUID 	string `json:"status"`
 	Host string
 	Port int
+	Status int
 	Secret string
 	Remark string
 	// sync interval from tracker(in seconds)

@@ -12,6 +12,7 @@ import (
 	"time"
 	"util/db"
 	"util/logger"
+	"libcommon/bridge"
 )
 
 func initParam() {
@@ -139,4 +140,17 @@ func Test141(t *testing.T) {
 	ls.Remove(ls.Front())
 	ls.Remove(ls.Front())
 	ls.PushBack(2)
+}
+
+func Test142(t *testing.T) {
+	initParam()
+	a := bridge.WebTracker{
+		UUID: "xxxxxxxx",
+		Secret: "123456",
+		Host: "192.168.1.100",
+		Port: 1122,
+		Status: 1,
+		Remark: "asdasd",
+	}
+	AddWebTracker(a)
 }
