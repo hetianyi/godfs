@@ -11,6 +11,15 @@ import (
     "validate"
 )
 
+// show in dashboard(in minutes):
+// --------------------------------
+// cpu          record one month
+// storage io   record one month
+// disk usage   record once
+// network io   record one month
+// --------------------------------
+// tracker hosts 10 caches of each storage,
+// delete one cache once it was send successfully to web manager.
 func main() {
     // set client type
     app.RUN_WITH = 4

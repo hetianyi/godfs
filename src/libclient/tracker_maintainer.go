@@ -411,9 +411,9 @@ func (tracker *TrackerInstance) startTaskCollector() {
 	for ele := tracker.Collectors.Front(); ele != nil; ele = ele.Next() {
 		go ele.Value.(*TaskCollector).Start(tracker)
 	}
-	//go tracker.QueryPersistTaskCollector()
-	//go tracker.SyncMemberTaskCollector()
-	//go tracker.QueryNewFileTaskCollector()
+	// go tracker.QueryPersistTaskCollector()
+	// go tracker.SyncMemberTaskCollector()
+	// go tracker.QueryNewFileTaskCollector()
 }
 
 // exec task
@@ -451,7 +451,7 @@ func (tracker *TrackerInstance) ExecTask(task *bridge.Task) (bool, error) {
 			if response.Err != nil {
 				return response.Err
 			}
-			//logger.Debug(string(response.MetaBody))
+			// logger.Debug(string(response.MetaBody))
 			var validateResp = &bridge.OperationRegisterStorageClientResponse{}
 			e3 := json.Unmarshal(response.MetaBody, validateResp)
 			if e3 != nil {
@@ -566,7 +566,7 @@ func (tracker *TrackerInstance) ExecTask(task *bridge.Task) (bool, error) {
 		logger.Debug("trying download file from other storage server...")
 		if increaseActiveDownload(0) >= ParallelDownload {
 			logger.Debug("ParallelDownload reached")
-			//AddTask(task, tracker)
+			// AddTask(task, tracker)
 			return false, nil
 		}
 		fi, e1 := libservice.GetFullFileByFid(task.FileId, 0)
@@ -639,8 +639,8 @@ func (tracker *TrackerInstance) ExecTask(task *bridge.Task) (bool, error) {
 // task collectors below
 // ------------------------------------------------
 
-//TODO ERROR - 2018-08-20 09:46:03,879 [tracker_maintainer.go:232] task collector "推送本地新文件到tracker" return error: interface conversion: interface {} is nil, not *bridge.Task
-//TODO  ERROR - 2018-08-20 09:46:03,901 [tracker_maintainer.go:232] task collector "拉取tracker新文件" return error: interface conversion: interface {} is nil, not *bridge.Task
+// TODO ERROR - 2018-08-20 09:46:03,879 [tracker_maintainer.go:232] task collector "推送本地新文件到tracker" return error: interface conversion: interface {} is nil, not *bridge.Task
+// TODO ERROR - 2018-08-20 09:46:03,901 [tracker_maintainer.go:232] task collector "拉取tracker新文件" return error: interface conversion: interface {} is nil, not *bridge.Task
 
 // 查询推送文件到tracker的任务收集器
 func QueryPushFileTaskCollector(tracker *TrackerInstance) {
