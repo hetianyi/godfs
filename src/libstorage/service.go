@@ -52,7 +52,7 @@ func StartService(config map[string]string) {
 	app.FILE_TOTAL = 0
 	app.FILE_FINISH = 0
 
-	// 连接数据库
+	// init db connection pool
 	libservice.SetPool(db.NewPool(app.DB_POOL_SIZE))
 	newUUID := common.UUID()
 	logger.Debug("generate UUID:", newUUID)
@@ -109,8 +109,15 @@ func startTrackerMaintainer(trackers string) {
 	collectors.PushBack(&collector3)
 	collectors.PushBack(&collector4)
 
+	ls := libcommon.ParseTrackers(trackers)
+	trackerMap := make(map[string]string)
+	if ls != nil {
+		for ele := ls.Front(); ele != nil; ele = ele.Next() {
+			trackerMap[ele.Value.(string)] = app.SECRET
+		}
+	}
 	maintainer := &libclient.TrackerMaintainer{Collectors: collectors}
-	maintainer.Maintain(trackers)
+	maintainer.Maintain(trackerMap)
 }
 
 // upload listen

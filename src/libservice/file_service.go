@@ -9,82 +9,9 @@ import (
 	"strconv"
 	"util/db"
 	"util/logger"
+	"errors"
 )
 
-const (
-	insertFileSQL       = "insert into files(md5, parts_num, grop, instance, finish) values(?,?,?,?,?)"
-	updateFileStatusSQL = "update files set finish=1 where id=?"
-	insertPartSQL       = "insert into parts(md5, size) select ?,? where not exists (select 1 from parts where md5=?)"
-	insertRelationSQL   = "insert into parts_relation(fid, pid) select ?,? where not exists (select 1 from parts_relation where fid=? and pid=?)"
-	fileExistsSQL       = "select id from files a where a.md5 = ? "
-	partExistsSQL       = "select id from parts a where a.md5 = ?"
-
-	getLocalPushFiles = `select a.local_push_id from trackers a where a.uuid=?`
-	getDownloadFiles  = `select id from files a where a.finish=0 limit ?`
-	getFullFileSQL1   = `select b.id, b.md5, grop, b.instance, parts_num from files b where b.md5=? `
-	getFullFileSQL11  = `select b.id, b.md5, grop, b.instance, parts_num from files b where b.id=? `
-	getFullFileSQL12  = `select b.id, b.md5, grop, b.instance, parts_num from files b where b.id > ? limit 50`
-	getFullFileSQL13  = `select b.id, b.md5, grop, b.instance, parts_num from files b where b.id in`
-	getFullFileSQL2   = `select d.md5, d.size
-                        from files b
-                        left join parts_relation c on b.id = c.fid
-                        left join parts d on c.pid = d.id where b.md5=?`
-	getFullFileSQL21 = `select d.md5, d.size
-                        from files b
-                        left join parts_relation c on b.id = c.fid
-                        left join parts d on c.pid = d.id where b.id=?`
-	getFullFileSQL22 = `select b.id, d.md5, d.size
-                        from files b
-                        left join parts_relation c on b.id = c.fid
-                        left join parts d on c.pid = d.id where b.id in(`
-	getFullFileSQL23 = `select b.id, d.md5, d.size
-                        from files b
-                        left join parts_relation c on b.id = c.fid
-                        left join parts d on c.pid = d.id where b.id in`
-
-	updateTrackerSyncId = `replace into trackers(uuid, tracker_sync_id, last_reg_time, local_push_id)
-                            values(?, ?, datetime('now','localtime'), (select local_push_id from trackers where uuid = ?))`
-	updateLocalPushId = `replace into trackers(uuid, tracker_sync_id, last_reg_time, local_push_id)
-                            values(?, 
-                            (select tracker_sync_id from trackers where uuid = ?),
-                            (select last_reg_time from trackers where uuid = ?), ?)`
-
-	getTrackerConfig = `select tracker_sync_id, local_push_id from trackers where uuid=?`
-
-	confirmLocalInstanceUUID = `replace into sys(key, value) values(
-                'uuid',
-                (select case when 
-                (select count(*) from sys where key = 'uuid') = 0 then ? 
-                else (select value from sys where key = 'uuid') end))`
-
-	getLocalInstanceUUID = `select value from sys where key = 'uuid'`
-
-	regStorageClient = `replace into clients(uuid, last_reg_time) values(?, datetime('now','localtime'))`
-
-	existsStorageClient = `select count(*) from clients a where a.uuid = ?`
-
-	statisticQuery = `select * from (
-                            (select count(*) files from files a),
-                            (select count(*) finish from files a where a.finish = 1),
-                            (select case when sum(b.size) is null then 0 else sum(b.size) end disk from parts b)  )`
-
-	insert_web_tracker = `insert into web_trackers(host, port, status, secret, remark, uuid)
-                            values(?, ?, ?, ?, ?, ?)`
-
-
-
-
-
-
-
-
-)
-
-var dbPool *db.DbConnPool
-
-func SetPool(pool *db.DbConnPool) {
-	dbPool = pool
-}
 
 // get file id by md5
 func GetFileId(md5 string, dao *db.DAO) (int, error) {
@@ -1104,12 +1031,20 @@ func createBatchPartSQL(parts []bridge.FilePart) string {
 
 
 
-func AddWebTracker(tracker bridge.WebTracker) error {
+func AddWebTracker(tracker *bridge.WebTracker) error {
 	dao, ef := dbPool.GetDB()
 	if ef != nil {
 		return ef
 	}
 	defer dbPool.ReturnDB(dao)
+	exists, e1 := CheckWebTrackerExists(tracker.Host, tracker.Port, dao)
+	if e1 != nil {
+		return e1
+	}
+	if exists {
+		return errors.New("web tracker already exists")
+	}
+
 	return dao.DoTransaction(func(tx *sql.Tx) error {
 		state, e2 := tx.Prepare(insert_web_tracker)
 		if e2 != nil {
@@ -1124,7 +1059,82 @@ func AddWebTracker(tracker bridge.WebTracker) error {
 }
 
 
+func DeleteWebTracker(tracker *bridge.WebTracker) bool {
+    dao, ef := dbPool.GetDB()
+    if ef != nil {
+        return false
+    }
+    defer dbPool.ReturnDB(dao)
 
+    return dao.DoTransaction(func(tx *sql.Tx) error {
+        state, e2 := tx.Prepare(delete_web_tracker)
+        if e2 != nil {
+            return e2
+        }
+        _, e3 := state.Exec(tracker.Id)
+        if e3 != nil {
+            return e3
+        }
+        return nil
+    }) == nil
+}
+
+func GetAllWebTrackers() (*list.List, error) {
+	var ls list.List
+	dao, ef := dbPool.GetDB()
+	if ef != nil {
+		return nil, ef
+	}
+	defer dbPool.ReturnDB(dao)
+	e := dao.Query(func(rows *sql.Rows) error {
+		if rows != nil {
+			for rows.Next() {
+				var host string
+				var port int
+				var status int
+				var secret string
+				e1 := rows.Scan(&host, &port, &status, &secret)
+				if e1 != nil {
+					return e1
+				}
+				ret := &bridge.WebTracker{Host: host, Port: port, Status: status, Secret: secret}
+				ls.PushBack(ret)
+			}
+		}
+		return nil
+	}, get_all_web_trackers)
+	if e != nil {
+		return nil, e
+	}
+	return &ls, nil
+}
+
+
+func CheckWebTrackerExists(host string, port int, dao *db.DAO) (bool, error) {
+	if dao == nil {
+		dao, ef := dbPool.GetDB()
+		if ef != nil {
+			return false, ef
+		}
+		defer dbPool.ReturnDB(dao)
+	}
+	var count int
+	e := dao.Query(func(rows *sql.Rows) error {
+		if rows != nil {
+			for rows.Next() {
+				e1 := rows.Scan(&count)
+				if e1 != nil {
+					return e1
+				}
+			}
+		}
+		return nil
+	}, check_web_trackers, host, port)
+	if e != nil {
+		return count > 0, e
+	}
+	return count > 0, e
+}
 
 
 

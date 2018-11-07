@@ -72,6 +72,8 @@ type TrackerInstance struct {
 	connBridge  *bridge.Bridge
 	Collectors  list.List
 	Ready       bool
+	nextRun     bool
+	ConnStr     string
 }
 
 type Collector interface {
@@ -106,38 +108,44 @@ func trackTaskFilter(allCollectors *list.List, index int) *list.List {
 }
 
 // communication with tracker
-func (maintainer *TrackerMaintainer) Maintain(trackers string) *list.List {
-	ls := libcommon.ParseTrackers(trackers)
-	if ls.Len() == 0 {
+// k,v => <connection string, secret>
+func (maintainer *TrackerMaintainer) Maintain(trackers map[string]string) {
+	if len(trackers) == 0 {
 		if app.RUN_WITH == 1 {
 			logger.Warn("no trackers configured, the storage server will run in stand-alone mode.")
 		} else if app.RUN_WITH == 3 {
 			logger.Warn("no trackers configured for client.")
 		}
-		return ls
+		return
 	}
 	index := 0
-	for e := ls.Front(); e != nil; e = e.Next() {
-		go maintainer.track(e.Value.(string), index)
+	for k, v := range trackers {
+		go maintainer.track(k, v, index)
 		index++
 	}
-	return ls
 }
 
 // connect to each tracker
-func (maintainer *TrackerMaintainer) track(tracker string, index int) {
+func (maintainer *TrackerMaintainer) track(tracker string, secret string, index int) {
 	logger.Debug("start tracker conn with tracker server:", tracker)
 	retry := 0
-	trackerInstance := &TrackerInstance{Collectors: *trackTaskFilter(&maintainer.Collectors, index)}
+	trackerInstance := &TrackerInstance{Collectors: *trackTaskFilter(&maintainer.Collectors, index), ConnStr: tracker}
 	trackerInstance.Init()
-	initDownloadClient(maintainer)
+	if app.CLIENT_TYPE == 1 {
+		initDownloadClient(maintainer)
+	}
+	registerTrackerInstance(trackerInstance)
+	defer unRegisterTrackerInstance(trackerInstance.ConnStr)
 	// for test
 	// go startTimer1()
 	for { // keep trying to connect to tracker server.
+		if !trackerInstance.nextRun {
+			break
+		}
 		conn, e := net.Dial("tcp", tracker)
 		if e == nil {
 			// validate client
-			connBridge, e1 := connectAndValidate(conn)
+			connBridge, e1 := connectAndValidate(conn, secret)
 			if e1 != nil {
 				bridge.Close(conn)
 				logger.Error(e1)
@@ -160,6 +168,10 @@ func (maintainer *TrackerMaintainer) track(tracker string, index int) {
 				logger.Debug("connect to tracker server success.")
 				trackerInstance.SetConnBridge(connBridge)
 				for { // keep sending client statistic info to tracker server.
+					if !trackerInstance.nextRun {
+						logger.Warn("stop next run of tracker instance:", tracker)
+						break
+					}
 					task := trackerInstance.GetTask()
 					if task == nil {
 						time.Sleep(time.Second * 1)
@@ -192,11 +204,11 @@ func (maintainer *TrackerMaintainer) track(tracker string, index int) {
 }
 
 // connect to tracker server and register client to it.
-func connectAndValidate(conn net.Conn) (*bridge.Bridge, error) {
+func connectAndValidate(conn net.Conn, secret string) (*bridge.Bridge, error) {
 	// create bridge
 	connBridge := bridge.NewBridge(conn)
 	// send validate request
-	isNew, e1 := connBridge.ValidateConnection("")
+	isNew, e1 := connBridge.ValidateConnection(secret)
 	if e1 != nil {
 		connBridge.Close()
 		return nil, e1
@@ -249,6 +261,7 @@ func (collector *TaskCollector) Start(tracker *TrackerInstance) {
 func (tracker *TrackerInstance) Init() {
 	tracker.listIteLock = new(sync.Mutex)
 	tracker.startTaskCollector()
+	tracker.nextRun = true
 }
 
 func (tracker *TrackerInstance) SetConnBridge(connBridge *bridge.Bridge) {

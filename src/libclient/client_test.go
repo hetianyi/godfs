@@ -16,6 +16,7 @@ import (
 	"util/file"
 	"util/logger"
 	"util/timeutil"
+	"libcommon"
 )
 
 func Init() *Client {
@@ -35,7 +36,15 @@ func Init() *Client {
 	collectors := *new(list.List)
 	collectors.PushBack(&collector)
 	maintainer := &TrackerMaintainer{Collectors: collectors}
-	maintainer.Maintain(app.TRACKERS)
+
+	trackerList := libcommon.ParseTrackers(app.TRACKERS)
+	trackerMap := make(map[string]string)
+	if trackerList != nil {
+		for ele := trackerList.Front(); ele != nil; ele = ele.Next() {
+			trackerMap[ele.Value.(string)] = app.SECRET
+		}
+	}
+	maintainer.Maintain(trackerMap)
 	return client
 }
 

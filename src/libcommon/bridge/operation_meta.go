@@ -223,12 +223,13 @@ type TrackerConfig struct {
 
 
 type WebTracker struct {
-	UUID 	string `json:"status"`
-	Host string
-	Port int
-	Status int
-	Secret string
-	Remark string
+    Id              int     `json:"id"`
+	UUID            string  `json:"uuid"`
+	Host            string  `json:"host"`
+	Port            int     `json:"port"`
+	Status          int     `json:"status"`
+	Secret          string  `json:"secret"`
+	Remark          string  `json:"remark"`
 	// sync interval from tracker(in seconds)
 	// SyncInterval int
 }

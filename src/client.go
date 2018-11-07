@@ -199,7 +199,15 @@ func Init() *libclient.Client {
 	collectors.PushBack(&collector)
 	maintainer := &libclient.TrackerMaintainer{Collectors: *collectors}
 	client.TrackerMaintainer = maintainer
-	trackerList = maintainer.Maintain(app.TRACKERS)
+
+	trackerList := libcommon.ParseTrackers(app.TRACKERS)
+	trackerMap := make(map[string]string)
+	if trackerList != nil {
+		for ele := trackerList.Front(); ele != nil; ele = ele.Next() {
+			trackerMap[ele.Value.(string)] = app.SECRET
+		}
+	}
+	maintainer.Maintain(trackerMap)
 	logger.Info("synchronize with trackers...")
 	for i := 0; i < trackerList.Len(); i++ {
 		<-checkChan

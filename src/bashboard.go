@@ -13,8 +13,8 @@ import (
 
 func main() {
     // set client type
-    app.CLIENT_TYPE = 3
     app.RUN_WITH = 4
+    app.CLIENT_TYPE = 3
     app.UUID = "DASHBOARD-CLIENT"
 
     abs, _ := filepath.Abs(os.Args[0])
