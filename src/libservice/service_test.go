@@ -142,9 +142,21 @@ func Test141(t *testing.T) {
 	ls.PushBack(2)
 }
 
+
+func Test1422(t *testing.T) {
+	initParam()
+	ls, _ := GetExistsWebTrackers()
+	if ls != nil {
+		for ele := ls.Front(); ele != nil; ele = ele.Next() {
+			b, _ := json.Marshal(ele.Value)
+			fmt.Println(string(b))
+		}
+	}
+}
+
 func Test142(t *testing.T) {
 	initParam()
-	a := bridge.WebTracker{
+	a := &bridge.WebTracker{
 		UUID: "xxxxxxxx",
 		Secret: "123456",
 		Host: "192.168.1.100",
@@ -152,5 +164,32 @@ func Test142(t *testing.T) {
 		Status: 1,
 		Remark: "asdasd",
 	}
-	AddWebTracker(a)
+	logger.Error(AddWebTracker(a))
+}
+
+func Test143(t *testing.T) {
+	initParam()
+	arr := make([]*bridge.WebStorage, 1)
+	for i := 0; i < 1; i++ {
+		item := &bridge.WebStorage{
+			Host: "192.168.1.100",
+			Port: 1024,
+			TotalFiles: 111,
+			UUID: "xxxxxxxx",
+			Group: "G01",
+			InstanceId: "001",
+			HttpPort: 8001,
+			HttpEnable: true,
+			StartTime: 1000020,
+			Downloads: 100,
+			Uploads: 101,
+			DiskUsage: 100021,
+			ReadOnly: true,
+		}
+		arr[i] = item
+	}
+	e := AddWebStorage("192.168.1.100:1122", arr)
+	if e != nil {
+		logger.Error("error insert web storage items:", e)
+	}
 }

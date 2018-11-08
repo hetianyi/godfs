@@ -223,13 +223,32 @@ type TrackerConfig struct {
 
 
 type WebTracker struct {
-    Id              int     `json:"id"`
-	UUID            string  `json:"uuid"`
-	Host            string  `json:"host"`
-	Port            int     `json:"port"`
-	Status          int     `json:"status"`
-	Secret          string  `json:"secret"`
-	Remark          string  `json:"remark"`
-	// sync interval from tracker(in seconds)
-	// SyncInterval int
+    Id              int     	`json:"id"`
+	UUID            string  	`json:"uuid"`
+	Host            string  	`json:"host"`
+	Port            int     	`json:"port"`
+	Status          int     	`json:"status"`	// 0: disabled,  1:enabled, 3: deleted
+	Secret          string  	`json:"secret"`
+	Remark          string  	`json:"remark"`
+	AddTime         time.Time   `json:"addTime"`
+}
+
+type WebStorage struct {
+    Id              int     	`json:"id"`
+	Host            string  	`json:"host"`
+	Port            int     	`json:"port"`
+	Status          int     	`json:"status"`		// 0: disabled,  1:enabled, 3: deleted
+	Tracker         int     	`json:"tracker"`
+	TotalFiles      int		  	`json:"totalFiles"`
+	UUID            string  	`json:"uuid"`
+
+	Group      string `json:"group"`
+	InstanceId string `json:"instance_id"`
+	HttpPort   int    `json:"httpPort"`
+	HttpEnable bool   `json:"httpEnable"`
+	StartTime  int64  `json:"startTime"`
+	Downloads  int    `json:"downloads"`
+	Uploads    int    `json:"uploads"`
+	DiskUsage  int64  `json:"disk"`
+	ReadOnly   bool   `json:"readonly"`
 }

@@ -10,6 +10,7 @@ import (
 	"util/db"
 	"util/logger"
 	"errors"
+	"strings"
 )
 
 
@@ -1031,53 +1032,67 @@ func createBatchPartSQL(parts []bridge.FilePart) string {
 
 
 
+
+//---------------------------------------------------------web tracker ↓↓↓
+
 func AddWebTracker(tracker *bridge.WebTracker) error {
 	dao, ef := dbPool.GetDB()
 	if ef != nil {
 		return ef
 	}
 	defer dbPool.ReturnDB(dao)
-	exists, e1 := CheckWebTrackerExists(tracker.Host, tracker.Port, dao)
+
+	webTracker, e1 := GetWebTrackerByHostAndPort(tracker.Host, tracker.Port, dao)
 	if e1 != nil {
 		return e1
 	}
-	if exists {
-		return errors.New("web tracker already exists")
+	if webTracker != nil {
+		if webTracker.Status == app.STATUS_ENABLED || webTracker.Status == app.STATUS_DISABLED {
+			return errors.New("web tracker already exists")
+		} else {
+			if UpdateWebTrackerStatus(webTracker.Id, tracker.Status, dao) {
+				return nil
+			}
+			return errors.New("error add web tracker")
+		}
+	} else {
+		return dao.DoTransaction(func(tx *sql.Tx) error {
+			state, e2 := tx.Prepare(insert_web_tracker)
+			if e2 != nil {
+				return e2
+			}
+			_, e3 := state.Exec(tracker.Host, tracker.Port, tracker.Status, tracker.Secret, tracker.Remark)
+			if e3 != nil {
+				return e3
+			}
+			return nil
+		})
 	}
-
-	return dao.DoTransaction(func(tx *sql.Tx) error {
-		state, e2 := tx.Prepare(insert_web_tracker)
-		if e2 != nil {
-			return e2
-		}
-		_, e3 := state.Exec(tracker.Host, tracker.Port, tracker.Status, tracker.Secret, tracker.Remark, tracker.UUID)
-		if e3 != nil {
-			return e3
-		}
-		return nil
-	})
 }
 
 
-func DeleteWebTracker(tracker *bridge.WebTracker) bool {
-    dao, ef := dbPool.GetDB()
-    if ef != nil {
-        return false
-    }
-    defer dbPool.ReturnDB(dao)
+func UpdateWebTrackerStatus(trackerId int, status int, dao *db.DAO) bool {
+	if dao == nil {
+		dao, ef := dbPool.GetDB()
+		if ef != nil {
+			return false
+		}
+		defer dbPool.ReturnDB(dao)
+	}
 
     return dao.DoTransaction(func(tx *sql.Tx) error {
-        state, e2 := tx.Prepare(delete_web_tracker)
+        state, e2 := tx.Prepare(update_web_tracker_status)
         if e2 != nil {
             return e2
         }
-        _, e3 := state.Exec(tracker.Id)
+        _, e3 := state.Exec(status, trackerId)
         if e3 != nil {
             return e3
         }
         return nil
     }) == nil
 }
+
 
 func GetAllWebTrackers() (*list.List, error) {
 	var ls list.List
@@ -1089,20 +1104,42 @@ func GetAllWebTrackers() (*list.List, error) {
 	e := dao.Query(func(rows *sql.Rows) error {
 		if rows != nil {
 			for rows.Next() {
-				var host string
-				var port int
-				var status int
-				var secret string
-				e1 := rows.Scan(&host, &port, &status, &secret)
+				ret := &bridge.WebTracker{}
+				e1 := rows.Scan(&ret.Id, &ret.Host, &ret.Port, &ret.Status, &ret.Remark, &ret.Secret)
 				if e1 != nil {
 					return e1
 				}
-				ret := &bridge.WebTracker{Host: host, Port: port, Status: status, Secret: secret}
 				ls.PushBack(ret)
 			}
 		}
 		return nil
 	}, get_all_web_trackers)
+	if e != nil {
+		return nil, e
+	}
+	return &ls, nil
+}
+
+func GetExistsWebTrackers() (*list.List, error) {
+	var ls list.List
+	dao, ef := dbPool.GetDB()
+	if ef != nil {
+		return nil, ef
+	}
+	defer dbPool.ReturnDB(dao)
+	e := dao.Query(func(rows *sql.Rows) error {
+		if rows != nil {
+			for rows.Next() {
+				ret := &bridge.WebTracker{}
+				e1 := rows.Scan(&ret.Id, &ret.Host, &ret.Port, &ret.Status, &ret.Remark, &ret.Secret)
+				if e1 != nil {
+					return e1
+				}
+				ls.PushBack(ret)
+			}
+		}
+		return nil
+	}, get_exists_trackers, app.STATUS_DELETED)
 	if e != nil {
 		return nil, e
 	}
@@ -1137,11 +1174,201 @@ func CheckWebTrackerExists(host string, port int, dao *db.DAO) (bool, error) {
 }
 
 
+func GetWebTrackerByHostAndPort(host string, port int, dao *db.DAO) (*bridge.WebTracker, error) {
+
+	if dao == nil {
+		dao, ef := dbPool.GetDB()
+		if ef != nil {
+			return nil, ef
+		}
+		defer dbPool.ReturnDB(dao)
+	}
+	var ret *bridge.WebTracker
+	e := dao.Query(func(rows *sql.Rows) error {
+		if rows != nil {
+			for rows.Next() {
+				ret = &bridge.WebTracker{}
+				e1 := rows.Scan(&ret.Id, &ret.Host, &ret.Port, &ret.Status, &ret.Remark, &ret.Secret)
+				if e1 != nil {
+					return e1
+				}
+			}
+		}
+		return nil
+	}, custom_get_web_tracker + "host = ? and port = ?", host, port)
+	return ret, e
+}
 
 
 
 
 
+
+
+
+
+
+//---------------------------------------------------------web storage ↓↓↓
+
+
+func CheckWebStorageExists(uuid string, dao *db.DAO) (bool, error) {
+	if dao == nil {
+		dao, ef := dbPool.GetDB()
+		if ef != nil {
+			return false, ef
+		}
+		defer dbPool.ReturnDB(dao)
+	}
+	var count int
+	e := dao.Query(func(rows *sql.Rows) error {
+		if rows != nil {
+			for rows.Next() {
+				e1 := rows.Scan(&count)
+				if e1 != nil {
+					return e1
+				}
+			}
+		}
+		return nil
+	}, check_web_storages, uuid)
+	if e != nil {
+		return count > 0, e
+	}
+	return count > 0, e
+}
+
+
+
+func GetWebStorageByUUID(uuid string, trackerId int, dao *db.DAO) (*bridge.WebStorage, error) {
+	if dao == nil {
+		dao, ef := dbPool.GetDB()
+		if ef != nil {
+			return nil, ef
+		}
+		defer dbPool.ReturnDB(dao)
+	}
+	var ret *bridge.WebStorage
+	e := dao.Query(func(rows *sql.Rows) error {
+		if rows != nil {
+			for rows.Next() {
+				ret = &bridge.WebStorage{}
+				e1 := rows.Scan(&ret.Id, &ret.Host, &ret.Port, &ret.Status, &ret.Tracker, &ret.UUID, &ret.TotalFiles, &ret.Group, &ret.InstanceId, &ret.HttpPort,
+					&ret.HttpEnable, &ret.StartTime, &ret.Downloads, &ret.Uploads, &ret.DiskUsage, &ret.ReadOnly)
+				if e1 != nil {
+					return e1
+				}
+			}
+		}
+		return nil
+	}, custom_get_web_storages + "a.uuid = ? and a.tracker = ?", uuid, trackerId)
+	return ret, e
+}
+
+
+func UpdateWebStorage(webStorage *bridge.WebStorage, trackerId int, dao *db.DAO) bool {
+	if dao == nil {
+		dao, ef := dbPool.GetDB()
+		if ef != nil {
+			return false
+		}
+		defer dbPool.ReturnDB(dao)
+	}
+	//const update_web_storage string = `update web_storages a set a.host = ?, a.port = ?, a.status = ?, a.total_files = ?, a.group = ?, a.instance_id = ?,
+    //                                                    a.http_port = ?, a.http_enable = ?, a.start_time = ?, a.downloads = ?, a.uploads = ?, a.disk = ?, a.read_only = ?
+    //                                where a.uuid = ? and a.tracker = ?`
+	return dao.DoTransaction(func(tx *sql.Tx) error {
+		state, e2 := tx.Prepare(update_web_storage)
+		if e2 != nil {
+			return e2
+		}
+		_, e3 := state.Exec(webStorage.Host, webStorage.Port, app.STATUS_ENABLED, webStorage.TotalFiles, webStorage.Group, webStorage.InstanceId,
+			webStorage.HttpPort, webStorage.HttpEnable, webStorage.StartTime, webStorage.Downloads, webStorage.Uploads, webStorage.DiskUsage, webStorage.ReadOnly, webStorage.UUID, trackerId)
+		if e3 != nil {
+			return e3
+		}
+		return nil
+	}) == nil
+}
+
+
+func parseHostAndPort(trackerUUID string) (string, int) {
+	tmp := strings.Split(trackerUUID, ":")
+	port, _ := strconv.Atoi(tmp[1])
+	return tmp[0], port
+}
+
+func AddWebStorage(trackerUUID string, storage []*bridge.WebStorage) error {
+	dao, ef := dbPool.GetDB()
+	if ef != nil {
+		return ef
+	}
+	defer dbPool.ReturnDB(dao)
+
+	if storage == nil {
+		return nil
+	}
+
+	host, port := parseHostAndPort(trackerUUID)
+
+	tracker, et := GetWebTrackerByHostAndPort(host, port, dao)
+	if et != nil {
+		return et
+	}
+
+	for i := 0; i < len(storage); i++ {
+		webStorage, e1 := GetWebStorageByUUID(storage[i].UUID, tracker.Id, dao)
+		if e1 != nil {
+			return e1
+		}
+		if webStorage != nil {
+			UpdateWebStorage(storage[i], tracker.Id, dao)
+		} else {
+			dao.DoTransaction(func(tx *sql.Tx) error {
+				state, e2 := tx.Prepare(insert_web_storage)
+				if e2 != nil {
+					return e2
+				}
+				_, e3 := state.Exec(storage[i].Host, storage[i].Port, app.STATUS_ENABLED, tracker.Id, storage[i].UUID, storage[i].TotalFiles,
+					storage[i].Group, storage[i].InstanceId, storage[i].HttpPort, storage[i].HttpEnable, storage[i].StartTime, storage[i].Downloads, storage[i].Uploads,
+					storage[i].DiskUsage, storage[i].ReadOnly)
+				if e3 != nil {
+					return e3
+				}
+				return nil
+			})
+		}
+	}
+	return nil
+}
+
+
+
+func GetWebStoragesByTracker(trackerId int) (*list.List, error) {
+	var ls list.List
+	dao, ef := dbPool.GetDB()
+	if ef != nil {
+		return nil, ef
+	}
+	defer dbPool.ReturnDB(dao)
+	e := dao.Query(func(rows *sql.Rows) error {
+		if rows != nil {
+			for rows.Next() {
+				ret := &bridge.WebStorage{}
+				e1 := rows.Scan(&ret.Id, &ret.Host, &ret.Port, &ret.Status, &ret.Tracker, &ret.UUID, &ret.TotalFiles, &ret.Group, &ret.InstanceId, &ret.HttpPort,
+					&ret.HttpEnable, &ret.StartTime, &ret.Downloads, &ret.Uploads, &ret.DiskUsage, &ret.ReadOnly)
+				if e1 != nil {
+					return e1
+				}
+				ls.PushBack(ret)
+			}
+		}
+		return nil
+	}, custom_get_web_storages + "tracker = ?", trackerId)
+	if e != nil {
+		return nil, e
+	}
+	return &ls, nil
+}
 
 
 

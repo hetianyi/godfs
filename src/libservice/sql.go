@@ -59,13 +59,26 @@ const (
                             (select count(*) finish from files a where a.finish = 1),
                             (select case when sum(b.size) is null then 0 else sum(b.size) end disk from parts b)  )`
 
-	insert_web_tracker = `insert into web_trackers(host, port, status, secret, remark, uuid) values(?, ?, ?, ?, ?, ?)`
-	delete_web_tracker = `delete from web_trackers where id = ?`
 
-	get_all_web_trackers = `select host, port, status, secret from web_trackers`
+
+	// web manager
+	insert_web_tracker = `insert into web_trackers(host, port, status, secret, remark) values(?, ?, ?, ?, ?)`
+	update_web_tracker_status = `update web_trackers set status = ? where id = ?`
+	get_all_web_trackers = `select id, host, port, status, remark, secret from web_trackers`
+	get_exists_trackers = `select id, host, port, status, remark, secret from web_trackers where status != ?`
+	custom_get_web_tracker = `select id, host, port, status, remark, secret from web_trackers a where `
 	check_web_trackers = `select count(*) from web_trackers a where a.host = ? and a.port = ?`
 
 
+	insert_web_storage = `insert into web_storages(host, port, status, tracker, uuid, total_files, grop, instance_id, http_port, 
+													http_enable, start_time, downloads, uploads, disk, read_only) 
+							values(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+	update_web_storage = `update web_storages set host = ?, port = ?, status = ?, total_files = ?, grop = ?, instance_id = ?, 
+                                                        http_port = ?, http_enable = ?, start_time = ?, downloads = ?, uploads = ?, disk = ?, read_only = ?
+                                    where uuid = ? and tracker = ?`
+	custom_get_web_storages = `select a.id, a.host, a.port, a.status, a.tracker, a.uuid, a.total_files, a.grop, a.instance_id, 
+								a.http_port, a.http_enable, a.start_time, a.downloads, a.uploads, a.disk, a.read_only from web_storages a where `
+	check_web_storages = `select count(*) from web_storages a where a.uuid = ? and a.tracker = ?`
 
 
 

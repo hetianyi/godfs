@@ -7,9 +7,9 @@ import (
     "sync"
     "util/common"
     "libservice"
-    "strconv"
     "time"
     "app"
+    "strconv"
 )
 
 var (
@@ -18,10 +18,39 @@ var (
     managedLock = new(sync.Mutex)
 )
 
+// trackerUUID -> host:port
 func updateStatistic(trackerUUID string, statistic []bridge.ServerStatistic) {
     ret, _ := json.Marshal(statistic)
     logger.Info("update statistic info:( ", string(ret), ")")
     managedStatistic[trackerUUID] = statistic
+
+    if statistic != nil {
+        arr := make([]*bridge.WebStorage, len(statistic))
+        for i := 0; i < len(statistic); i++ {
+            item := &bridge.WebStorage{
+                Host: statistic[i].AdvertiseAddr,
+                Port: statistic[i].Port,
+                TotalFiles: statistic[i].TotalFiles,
+                UUID: statistic[i].UUID,
+
+                HttpEnable: statistic[i].HttpEnable,
+                HttpPort: statistic[i].HttpPort,
+                Downloads: statistic[i].Downloads,
+                Uploads: statistic[i].Uploads,
+                DiskUsage: statistic[i].DiskUsage,
+                ReadOnly: statistic[i].ReadOnly,
+                StartTime: statistic[i].StartTime,
+                InstanceId: statistic[i].InstanceId,
+                Group: statistic[i].Group,
+                Status: app.STATUS_ENABLED,
+            }
+            arr[i] = item
+        }
+        e := libservice.AddWebStorage(trackerUUID, arr)
+        if e != nil {
+            logger.Error("error insert web storage items:", e)
+        }
+    }
 }
 
 
@@ -82,10 +111,8 @@ func SyncTrackerAliveStatus(trackerMaintainer *TrackerMaintainer) {
                 if trackers != nil && trackers.Len() > 0 {
                     for ele := trackers.Front(); ele != nil; ele = ele.Next() {
                         tracker := ele.Value.(*bridge.WebTracker)
-                        if tracker.Status == 0 {
-                            UpdateTrackerInstanceState(tracker.Host + ":" + strconv.Itoa(tracker.Port),
-                                tracker.Secret, tracker.Status == 1, trackerMaintainer)
-                        }
+                        UpdateTrackerInstanceState(tracker.Host + ":" + strconv.Itoa(tracker.Port),
+                            tracker.Secret, tracker.Status == app.STATUS_ENABLED, trackerMaintainer)
                     }
                 }
             }

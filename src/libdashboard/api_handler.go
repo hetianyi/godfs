@@ -9,6 +9,7 @@ import (
 	"libservice"
 	"strconv"
     "io"
+    "app"
 )
 
 type HttpResponse struct {
@@ -136,7 +137,7 @@ func deleteWebTrackerHandler(writer http.ResponseWriter, request *http.Request) 
                         writer.Write([]byte(strconv.Itoa(http.StatusInternalServerError) + " incorrect parameter."))
                         return
                     }
-                    if libservice.DeleteWebTracker(webTracker) {
+                    if libservice.UpdateWebTrackerStatus(webTracker.Id, app.STATUS_DELETED, nil) {
                         resp := HttpResponse{
                             Code: 200,
                             Message: "success",

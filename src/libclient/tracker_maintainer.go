@@ -625,7 +625,7 @@ func (tracker *TrackerInstance) ExecTask(task *bridge.Task) (bool, error) {
 			if validateResp.Status != bridge.STATUS_OK {
 				return errors.New("error sync statistic from tracker server, server response status:" + strconv.Itoa(validateResp.Status))
 			}
-			updateStatistic(tracker.connBridge.UUID, validateResp.Statistic)
+			updateStatistic(tracker.ConnStr, validateResp.Statistic)
 			return nil
 		})
 		if e5 != nil {

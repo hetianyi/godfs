@@ -57,6 +57,11 @@ const (
 	TASK_SYNC_ALL_STORAGES = 5 // client 同步所有的storage
 	TASK_SYNC_STATISTIC    = 6 // dashboard同步所有的tracker统计信息
 	DB_POOL_SIZE           = 20
+
+
+	STATUS_ENABLED		   = 1
+	STATUS_DISABLED		   = 0
+	STATUS_DELETED		   = 3
 )
 
 var ioinLock sync.Mutex

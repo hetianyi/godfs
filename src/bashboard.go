@@ -20,6 +20,7 @@ import (
 // --------------------------------
 // tracker hosts 10 caches of each storage,
 // delete one cache once it was send successfully to web manager.
+//
 func main() {
     // set client type
     app.RUN_WITH = 4
