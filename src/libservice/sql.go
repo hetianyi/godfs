@@ -80,6 +80,7 @@ const (
 								a.http_port, a.http_enable, a.start_time, a.downloads, a.uploads, a.disk, a.read_only from web_storages a where `
 	check_web_storages = `select count(*) from web_storages a where a.uuid = ? and a.tracker = ?`
 
+	insert_storage_log = ``
 
 
 

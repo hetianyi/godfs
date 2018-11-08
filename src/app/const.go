@@ -28,7 +28,7 @@ var (
 	HTTP_PORT                    int
 	CLIENT_TYPE                  int //client类型，1:storage client, 2:other client, 3:dashboard client
 	STORAGE_CLIENT_EXPIRE_TIME   = time.Second * 60
-	SYNC_MEMBER_INTERVAL         = time.Second * 30
+	SYNC_MEMBER_INTERVAL         = time.Second * 60
 	PULL_NEW_FILE_INTERVAL       = time.Second * 10 //每5s取一次同步任务
 	SYNC_STATISTIC_INTERVAL 	 = time.Second * 15 //每5s取一次同步任务
 	PATH_REGEX                   = "^/([0-9a-zA-Z_]{1,10})/([0-9a-zA-Z_]{1,10})/([MS])/([0-9a-fA-F]{32})$"
@@ -40,8 +40,12 @@ var (
 	// statistic info
 	IOIN        int64
 	IOOUT       int64
+	STAGE_IOIN        int64
+	STAGE_IOOUT       int64
 	DOWNLOADS   int
 	UPLOADS     int
+	STAGE_DOWNLOADS   int
+	STAGE_UPLOADS     int
 	START_TIME  int64
 	FILE_TOTAL  int
 	FILE_FINISH int

@@ -49,6 +49,10 @@ func StartService(config map[string]string) {
 	app.UPLOADS = 0
 	app.IOIN = 0
 	app.IOOUT = 0
+	app.STAGE_DOWNLOADS = 0
+	app.STAGE_UPLOADS = 0
+	app.STAGE_IOIN = 0
+	app.STAGE_IOOUT = 0
 	app.FILE_TOTAL = 0
 	app.FILE_FINISH = 0
 

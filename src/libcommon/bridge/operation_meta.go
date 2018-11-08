@@ -86,8 +86,14 @@ type ServerStatistic struct {
 	StartTime  int64  `json:"startTime"`
 	Downloads  int    `json:"downloads"`
 	Uploads    int    `json:"uploads"`
+
+	StageDownloads int `json:"stageDownloads"`
+	StageUploads int `json:"stageUploads"`
+
 	IOin       int64  `json:"in"`
 	IOout      int64  `json:"out"`
+	StageIOin       int64  `json:"stageIOin"`
+	StageIOout      int64  `json:"stageIOout"`
 	DiskUsage  int64  `json:"disk"`
 	Memory     uint64 `json:"mem"`
 	ReadOnly   bool   `json:"readonly"`
@@ -125,6 +131,12 @@ type OperationRegisterStorageClientRequest struct {
 	Uploads    int    `json:"uploads"`
 	IOin       int64  `json:"in"`
 	IOout      int64  `json:"out"`
+
+	StageDownloads int `json:"stageDownloads"`
+	StageUploads int `json:"stageUploads"`
+	StageIOin       int64  `json:"stageIOin"`
+	StageIOout      int64  `json:"stageIOout"`
+
 	DiskUsage  int64  `json:"disk"`
 	Memory     uint64 `json:"mem"`
 	ReadOnly   bool   `json:"readonly"`

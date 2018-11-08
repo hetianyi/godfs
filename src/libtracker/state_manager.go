@@ -39,6 +39,11 @@ type storageMeta struct {
 	DiskUsage  int64
 	Memory     uint64
 	ReadOnly   bool
+
+	StageDownloads int
+	StageUploads int
+	StageIOin       int64
+	StageIOout      int64
 }
 
 // 定时任务，剔除过期的storage服务器
@@ -86,13 +91,16 @@ func AddStorageServer(meta *bridge.OperationRegisterStorageClientRequest) {
 		StartTime:  meta.StartTime,
 		Memory:     meta.Memory,
 		ReadOnly:   meta.ReadOnly,
+
+		StageDownloads: meta.StageDownloads,
+		StageUploads: 	meta.StageUploads,
+		StageIOin:		meta.StageIOin,
+		StageIOout:		meta.StageIOout,
 	}
 	if managedStorages[key] == nil {
 		logger.Debug("register storage server:", key)
 	}
 	managedStorages[key] = holdMeta
-	//js, _ := json.Marshal(*managedStorages[key])
-	//fmt.Println(string(js))
 }
 
 // 执行即将过期storage服务器
@@ -123,6 +131,11 @@ func FutureExpireStorageServer(meta *bridge.OperationRegisterStorageClientReques
 			StartTime:  meta.StartTime,
 			Memory:     meta.Memory,
 			ReadOnly:   meta.ReadOnly,
+
+			StageDownloads: meta.StageDownloads,
+			StageUploads: 	meta.StageUploads,
+			StageIOin:		meta.StageIOin,
+			StageIOout:		meta.StageIOout,
 		}
 		managedStorages[key] = holdMeta
 	}
