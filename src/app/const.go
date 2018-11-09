@@ -28,9 +28,9 @@ var (
 	HTTP_PORT                    int
 	CLIENT_TYPE                  int //client类型，1:storage client, 2:other client, 3:dashboard client
 	STORAGE_CLIENT_EXPIRE_TIME   = time.Second * 60
-	SYNC_MEMBER_INTERVAL         = time.Second * 60
-	PULL_NEW_FILE_INTERVAL       = time.Second * 10 //每5s取一次同步任务
-	SYNC_STATISTIC_INTERVAL 	 = time.Second * 15 //每5s取一次同步任务
+	SYNC_MEMBER_INTERVAL         = time.Second * 5 // 60
+	PULL_NEW_FILE_INTERVAL       = time.Second * 10
+	SYNC_STATISTIC_INTERVAL 	 = time.Second * 6 // 65
 	PATH_REGEX                   = "^/([0-9a-zA-Z_]{1,10})/([0-9a-zA-Z_]{1,10})/([MS])/([0-9a-fA-F]{32})$"
 	MD5_REGEX                   = "^[0-9a-fA-F]{32}$"
 	UUID                         = ""
@@ -76,23 +76,27 @@ func UpdateIOIN(len int64) {
 	ioinLock.Lock()
 	defer ioinLock.Unlock()
 	IOIN += len
+	STAGE_IOIN += len
 }
 func UpdateIOOUT(len int64) {
 	iooutLock.Lock()
 	defer iooutLock.Unlock()
 	IOOUT += len
+	STAGE_IOOUT += len
 }
 
 func UpdateUploads() {
 	updownLock.Lock()
 	defer updownLock.Unlock()
 	UPLOADS++
+	STAGE_UPLOADS++
 }
 
 func UpdateDownloads() {
 	updownLock.Lock()
 	defer updownLock.Unlock()
 	DOWNLOADS++
+	STAGE_DOWNLOADS++
 }
 
 func UpdateFileTotalCount(value int) {

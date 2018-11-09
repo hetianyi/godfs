@@ -435,16 +435,17 @@ func (tracker *TrackerInstance) ExecTask(task *bridge.Task) (bool, error) {
 			Finish:        app.FILE_FINISH,
 			IOin:          app.IOIN,
 			IOout:         app.IOOUT,
-			StageIOin:		app.STAGE_IOIN,
-			StageIOout:		app.STAGE_IOOUT,
-			StageDownloads: app.STAGE_DOWNLOADS,
-			StageUploads:   app.STAGE_UPLOADS,
 			DiskUsage:     app.DISK_USAGE,
 			Downloads:     app.DOWNLOADS,
 			Uploads:       app.UPLOADS,
 			StartTime:     app.START_TIME,
 			Memory:        app.MEMORY,
 			ReadOnly:      !app.UPLOAD_ENABLE,
+
+			StageIOin:		app.STAGE_IOIN,
+			StageIOout:		app.STAGE_IOOUT,
+			StageDownloads: app.STAGE_DOWNLOADS,
+			StageUploads:   app.STAGE_UPLOADS,
 		}
 		// reg client
 		e2 := connBridge.SendRequest(bridge.O_SYNC_MEMBERS, regClientMeta, 0, nil)

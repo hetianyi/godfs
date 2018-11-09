@@ -43,6 +43,13 @@ func updateStatistic(trackerUUID string, statistic []bridge.ServerStatistic) {
                 InstanceId: statistic[i].InstanceId,
                 Group: statistic[i].Group,
                 Status: app.STATUS_ENABLED,
+                Memory: statistic[i].Memory,
+
+                LogTime: statistic[i].LogTime,
+                StageDownloads: statistic[i].StageDownloads,
+                StageUploads: 	statistic[i].StageUploads,
+                StageIOin:		statistic[i].StageIOin,
+                StageIOout:		statistic[i].StageIOout,
             }
             arr[i] = item
         }

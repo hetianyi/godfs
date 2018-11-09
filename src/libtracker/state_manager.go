@@ -14,6 +14,7 @@ import (
 )
 
 var managedStorages = make(map[string]*storageMeta)
+var managedStorageStatistics = make(map[string]*list.List)
 
 var operationLock = *new(sync.Mutex)
 const ipv4Pattern          = "^((25[0-5]|2[0-4]\\d|[0-1]?\\d\\d?)\\.){3}(25[0-5]|2[0-4]\\d|[0-1]?\\d\\d?)$"
@@ -44,6 +45,7 @@ type storageMeta struct {
 	StageUploads int
 	StageIOin       int64
 	StageIOout      int64
+	LogTime  	int64
 }
 
 // 定时任务，剔除过期的storage服务器
@@ -96,11 +98,13 @@ func AddStorageServer(meta *bridge.OperationRegisterStorageClientRequest) {
 		StageUploads: 	meta.StageUploads,
 		StageIOin:		meta.StageIOin,
 		StageIOout:		meta.StageIOout,
+		LogTime: timeutil.GetTimestamp(time.Now()),
 	}
 	if managedStorages[key] == nil {
 		logger.Debug("register storage server:", key)
 	}
 	managedStorages[key] = holdMeta
+	queueStatistics(holdMeta)
 }
 
 // 执行即将过期storage服务器
@@ -155,7 +159,7 @@ func IsInstanceIdUnique(meta *bridge.OperationRegisterStorageClientRequest) bool
 	return true
 }
 
-// 获取组内成员
+// fetch group members
 func GetGroupMembers(meta *bridge.OperationRegisterStorageClientRequest) []bridge.Member {
 	operationLock.Lock()
 	defer operationLock.Unlock()
@@ -177,7 +181,7 @@ func GetGroupMembers(meta *bridge.OperationRegisterStorageClientRequest) []bridg
 	return members
 }
 
-// 获取组内成员
+// fetch all storage server for client
 func GetAllStorages() []bridge.Member {
 	operationLock.Lock()
 	defer operationLock.Unlock()
@@ -196,34 +200,7 @@ func GetAllStorages() []bridge.Member {
 }
 
 func GetSyncStatistic() []bridge.ServerStatistic {
-	operationLock.Lock()
-	defer operationLock.Unlock()
-	var res = make([]bridge.ServerStatistic, len(managedStorages))
-	i := 0
-	for _, v := range managedStorages {
-		item := bridge.ServerStatistic {
-			UUID:		   v.UUID,
-			AdvertiseAddr: v.Host,
-			Group:         v.Group,
-			InstanceId:    v.InstanceId,
-			Port:          v.Port,
-			HttpPort:      v.HttpPort,
-			HttpEnable:    v.HttpEnable,
-			TotalFiles:    v.TotalFiles,
-			Finish:        v.Finish,
-			IOin:          v.IOin,
-			IOout:         v.IOout,
-			DiskUsage:     v.DiskUsage,
-			Downloads:     v.Downloads,
-			Uploads:       v.Uploads,
-			StartTime:     v.StartTime,
-			Memory:        v.Memory,
-			ReadOnly:      v.ReadOnly,
-		}
-		res[i] = item
-		i++
-	}
-	return res
+	return collectQueueStatistics()
 }
 
 // advAddr: storage configuration parameter 'advertise_addr'
@@ -253,3 +230,66 @@ func parseAdvertiseAddr(advAddr string, port int) (string, int) {
 	}
 	return "", port
 }
+
+func queueStatistics(meta *storageMeta) {
+	if meta == nil {
+		return
+	}
+	ls := managedStorageStatistics[meta.UUID]
+	if ls == nil {
+		logger.Info("statistic queue is null, create new list")
+		ls = list.New()
+		managedStorageStatistics[meta.UUID] = ls
+	}
+	if ls.Len() >= 10 {
+		logger.Info("statistic queue full, remove head")
+		ls.Remove(ls.Front())
+		ls.PushBack(meta)
+	} else {
+		ls.PushBack(meta)
+	}
+}
+
+
+func collectQueueStatistics() []bridge.ServerStatistic {
+	operationLock.Lock()
+	defer operationLock.Unlock()
+	ret := make([]bridge.ServerStatistic, len(managedStorageStatistics))
+	i := 0
+	for _, ls := range managedStorageStatistics {
+		if ls == nil || ls.Len() == 0 {
+			continue
+		}
+		v := ls.Remove(ls.Front()).(*storageMeta)
+		item := bridge.ServerStatistic {
+			UUID:		   v.UUID,
+			AdvertiseAddr: v.Host,
+			Group:         v.Group,
+			InstanceId:    v.InstanceId,
+			Port:          v.Port,
+			HttpPort:      v.HttpPort,
+			HttpEnable:    v.HttpEnable,
+			TotalFiles:    v.TotalFiles,
+			Finish:        v.Finish,
+			IOin:          v.IOin,
+			IOout:         v.IOout,
+			DiskUsage:     v.DiskUsage,
+			Downloads:     v.Downloads,
+			Uploads:       v.Uploads,
+			StartTime:     v.StartTime,
+			Memory:        v.Memory,
+			ReadOnly:      v.ReadOnly,
+
+			LogTime: v.LogTime,
+			StageDownloads: v.StageDownloads,
+			StageUploads: 	v.StageUploads,
+			StageIOin:		v.StageIOin,
+			StageIOout:		v.StageIOout,
+		}
+		ret[i] = item
+		i++
+	}
+	return ret
+}
+
+

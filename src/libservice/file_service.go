@@ -1297,6 +1297,48 @@ func parseHostAndPort(trackerUUID string) (string, int) {
 	return tmp[0], port
 }
 
+
+func getWebStorageStatusByTracker(trackerId int, dao *db.DAO) (*list.List, error) {
+	if dao == nil {
+		dao, ef := dbPool.GetDB()
+		if ef != nil {
+			return nil, ef
+		}
+		defer dbPool.ReturnDB(dao)
+	}
+	ls := list.New()
+	e := dao.Query(func(rows *sql.Rows) error {
+		if rows != nil {
+			for rows.Next() {
+				ret := &bridge.WebStorage{}
+				e1 := rows.Scan(&ret.Id, &ret.Status, &ret.UUID)
+				if e1 != nil {
+					return e1
+				}
+				ls.PushBack(ret)
+			}
+		}
+		return nil
+	}, get_web_storage_status, trackerId)
+	if e != nil {
+		return nil, e
+	}
+	return ls, nil
+}
+
+func removeAliveWebStorage(ls *list.List, uuid string) {
+	if ls == nil || ls.Len() == 0 || uuid == "" {
+		return
+	}
+	for ele := ls.Front(); ele != nil; ele = ele.Next() {
+		item := ele.Value.(*bridge.WebStorage)
+		if item.UUID == uuid {
+			ls.Remove(ele)
+			break
+		}
+	}
+}
+
 func AddWebStorage(trackerUUID string, storage []*bridge.WebStorage) error {
 	dao, ef := dbPool.GetDB()
 	if ef != nil {
@@ -1314,28 +1356,107 @@ func AddWebStorage(trackerUUID string, storage []*bridge.WebStorage) error {
 	if et != nil {
 		return et
 	}
+	if tracker == nil {
+		return errors.New("error add web storage: tracker not exist")
+	}
+
+	oldStorages, ewst := getWebStorageStatusByTracker(tracker.Id, dao)
+	if ewst != nil {
+		return ewst
+	}
 
 	for i := 0; i < len(storage); i++ {
+		removeAliveWebStorage(oldStorages, storage[i].UUID)
 		webStorage, e1 := GetWebStorageByUUID(storage[i].UUID, tracker.Id, dao)
 		if e1 != nil {
 			return e1
 		}
 		if webStorage != nil {
-			UpdateWebStorage(storage[i], tracker.Id, dao)
-		} else {
 			dao.DoTransaction(func(tx *sql.Tx) error {
+				state, e2 := tx.Prepare(update_web_storage)
+				if e2 != nil {
+					return e2
+				}
+				_, e3 := state.Exec(storage[i].Host, storage[i].Port, app.STATUS_ENABLED, storage[i].TotalFiles, storage[i].Group, storage[i].InstanceId,
+					storage[i].HttpPort, storage[i].HttpEnable, storage[i].StartTime, storage[i].Downloads, storage[i].Uploads, storage[i].DiskUsage, storage[i].ReadOnly, storage[i].UUID, tracker.Id)
+				if e3 != nil {
+					return e3
+				}
+				state1, e4 := tx.Prepare(insert_storage_log)
+				if e4 != nil {
+					return e4
+				}
+				_, e5 := state1.Exec(webStorage.Id, storage[i].LogTime, storage[i].StageIOin, storage[i].StageIOout, storage[i].DiskUsage, storage[i].Memory, storage[i].StageDownloads, storage[i].StageUploads)
+				if e5 != nil {
+					return e5
+				}
+				return nil
+			})
+		} else {
+			e6 := dao.DoTransaction(func(tx *sql.Tx) error {
 				state, e2 := tx.Prepare(insert_web_storage)
 				if e2 != nil {
 					return e2
 				}
-				_, e3 := state.Exec(storage[i].Host, storage[i].Port, app.STATUS_ENABLED, tracker.Id, storage[i].UUID, storage[i].TotalFiles,
+				ret, e3 := state.Exec(storage[i].Host, storage[i].Port, app.STATUS_ENABLED, tracker.Id, storage[i].UUID, storage[i].TotalFiles,
 					storage[i].Group, storage[i].InstanceId, storage[i].HttpPort, storage[i].HttpEnable, storage[i].StartTime, storage[i].Downloads, storage[i].Uploads,
 					storage[i].DiskUsage, storage[i].ReadOnly)
 				if e3 != nil {
 					return e3
 				}
+				lastId, e11 := ret.LastInsertId()
+				if e11 != nil {
+					return e11
+				}
+				state1, e4 := tx.Prepare(insert_storage_log)
+				if e4 != nil {
+					return e4
+				}
+				_, e5 := state1.Exec(lastId, storage[i].LogTime, storage[i].StageIOin, storage[i].StageIOout, storage[i].DiskUsage, storage[i].Memory, storage[i].StageDownloads, storage[i].StageUploads)
+				if e5 != nil {
+					return e5
+				}
+
 				return nil
 			})
+			if e6 != nil {
+				logger.Error("error insert web storage statistic:", e6)
+			}
+		}
+	}
+
+	var uuids bytes.Buffer
+	i := 0
+	// mark dead web storage
+	if oldStorages != nil && oldStorages.Len() > 0 {
+		for ele := oldStorages.Front(); ele != nil; ele = ele.Next() {
+			item := ele.Value.(*bridge.WebStorage)
+			logger.Info("web storage mark as offline:(", item.UUID, "|",item.Group, "|", item.Host, ":", item.Port,")")
+			if i == oldStorages.Len() - 1 {
+				uuids.Read([]byte("'"))
+				uuids.Read([]byte(item.UUID))
+				uuids.Read([]byte("'"))
+			} else {
+				uuids.Read([]byte("'"))
+				uuids.Read([]byte(item.UUID))
+				uuids.Read([]byte("'"))
+				uuids.Read([]byte(","))
+			}
+			i++
+		}
+		e6 := dao.DoTransaction(func(tx *sql.Tx) error {
+			state, e2 := tx.Prepare(mark_dead_web_storage)
+			if e2 != nil {
+				return e2
+			}
+			_, e3 := state.Exec(tracker.Id, uuids.String())
+			if e3 != nil {
+				return e3
+			}
+			return nil
+		})
+		if e6 != nil {
+			logger.Error("error insert web storage statistic log:", e6)
 		}
 	}
 	return nil
