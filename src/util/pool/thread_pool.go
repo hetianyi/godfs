@@ -62,7 +62,7 @@ func initPool(MaxActiveSize int, MaxWaitSize int) (*Pool, error) {
 func (pool *Pool) Exec(t func()) error {
 	logger.Trace("pool get new task")
 	// if no free thread found then put the task in 'pool.WaitingList'.
-	if pool.WaitingTaskList.Len() >= pool.MaxWaitSize {
+	if pool.WaitingTaskList.Len() + pool.modifyActiveCount(0) >= pool.MaxActiveSize + pool.MaxWaitSize {
 		return errors.New("pool is full, can not take any more")
 	}
 	logger.Trace("push task into waiting list")

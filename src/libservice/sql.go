@@ -71,13 +71,13 @@ const (
 
 
 	insert_web_storage = `insert into web_storages(host, port, status, tracker, uuid, total_files, grop, instance_id, http_port, 
-													http_enable, start_time, downloads, uploads, disk, read_only) 
-							values(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+													http_enable, start_time, downloads, uploads, disk, read_only, ioin, ioout) 
+							values(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
 	update_web_storage = `update web_storages set host = ?, port = ?, status = ?, total_files = ?, grop = ?, instance_id = ?, 
-                                                        http_port = ?, http_enable = ?, start_time = ?, downloads = ?, uploads = ?, disk = ?, read_only = ?
+                            http_port = ?, http_enable = ?, start_time = ?, downloads = ?, uploads = ?, disk = ?, read_only = ?, ioin = ?, ioout = ?
                                     where uuid = ? and tracker = ?`
 	custom_get_web_storages = `select a.id, a.host, a.port, a.status, a.tracker, a.uuid, a.total_files, a.grop, a.instance_id, 
-								a.http_port, a.http_enable, a.start_time, a.downloads, a.uploads, a.disk, a.read_only from web_storages a where `
+								a.http_port, a.http_enable, a.start_time, a.downloads, a.uploads, a.disk, a.read_only, a.ioin, a.ioout from web_storages a where `
 	get_web_storage_status = `select a.id, a.status, a.uuid from web_storages a where a.tracker = ?`
 	mark_dead_web_storage = `update web_storages set status = ? where tracker = ? and uuid in(?) `
 	check_web_storages = `select count(*) from web_storages a where a.uuid = ? and a.tracker = ?`

@@ -256,6 +256,9 @@ type WebStorage struct {
 	TotalFiles      int		  	`json:"totalFiles"`
 	UUID            string  	`json:"uuid"`
 
+	IOin       int64  `json:"in"`
+	IOout      int64  `json:"out"`
+
 	Group      string `json:"group"`
 	InstanceId string `json:"instance_id"`
 	HttpPort   int    `json:"httpPort"`

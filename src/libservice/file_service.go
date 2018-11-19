@@ -1253,7 +1253,7 @@ func GetWebStorageByUUID(uuid string, trackerId int, dao *db.DAO) (*bridge.WebSt
 			for rows.Next() {
 				ret = &bridge.WebStorage{}
 				e1 := rows.Scan(&ret.Id, &ret.Host, &ret.Port, &ret.Status, &ret.Tracker, &ret.UUID, &ret.TotalFiles, &ret.Group, &ret.InstanceId, &ret.HttpPort,
-					&ret.HttpEnable, &ret.StartTime, &ret.Downloads, &ret.Uploads, &ret.DiskUsage, &ret.ReadOnly)
+					&ret.HttpEnable, &ret.StartTime, &ret.Downloads, &ret.Uploads, &ret.DiskUsage, &ret.ReadOnly, &ret.IOin, &ret.IOout)
 				if e1 != nil {
 					return e1
 				}
@@ -1378,7 +1378,7 @@ func AddWebStorage(trackerUUID string, storage []*bridge.WebStorage) error {
 					return e2
 				}
 				_, e3 := state.Exec(storage[i].Host, storage[i].Port, app.STATUS_ENABLED, storage[i].TotalFiles, storage[i].Group, storage[i].InstanceId,
-					storage[i].HttpPort, storage[i].HttpEnable, storage[i].StartTime, storage[i].Downloads, storage[i].Uploads, storage[i].DiskUsage, storage[i].ReadOnly, storage[i].UUID, tracker.Id)
+					storage[i].HttpPort, storage[i].HttpEnable, storage[i].StartTime, storage[i].Downloads, storage[i].Uploads, storage[i].DiskUsage, storage[i].ReadOnly, storage[i].IOin, storage[i].IOout, storage[i].UUID, tracker.Id)
 				if e3 != nil {
 					return e3
 				}
@@ -1400,7 +1400,7 @@ func AddWebStorage(trackerUUID string, storage []*bridge.WebStorage) error {
 				}
 				ret, e3 := state.Exec(storage[i].Host, storage[i].Port, app.STATUS_ENABLED, tracker.Id, storage[i].UUID, storage[i].TotalFiles,
 					storage[i].Group, storage[i].InstanceId, storage[i].HttpPort, storage[i].HttpEnable, storage[i].StartTime, storage[i].Downloads, storage[i].Uploads,
-					storage[i].DiskUsage, storage[i].ReadOnly)
+					storage[i].DiskUsage, storage[i].ReadOnly, storage[i].IOin, storage[i].IOout)
 				if e3 != nil {
 					return e3
 				}
