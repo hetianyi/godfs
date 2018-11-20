@@ -84,6 +84,17 @@ const (
 
 	insert_storage_log = `insert into web_storage_logs(storage, log_time, ioin, ioout, disk, mem, download, upload) values(?, ?, ?, ?, ?, ?, ?, ?)`
 
+	get_file_count = `select count(*) from files`
+	update_web_tracker_file_count = `update web_trackers set files = ? where host = ? and port = ?`
+
+	get_index_statistic = `select
+                (select count(*) from web_trackers where status=1)  as tracker_count,
+                (select count(*) from web_storages where status=1)  as storage_count,
+                (select sum(files) from web_trackers where status=1)  as total_files,
+                (select sum(ioin) from web_storages where status=1)  as ioin,
+                (select sum(ioout) from web_storages where status=1)  as ioout,
+                (select sum(downloads) from web_storages where status=1)  as downloads,
+                (select sum(uploads) from web_storages where status=1)  as uploads`
 
 
 )

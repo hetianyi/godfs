@@ -180,6 +180,7 @@ func syncStatistic(request *bridge.Meta, connBridge *bridge.Bridge) error {
 	ret := GetSyncStatistic()
 	response.Status = bridge.STATUS_OK
 	response.Statistic = ret
+	response.FileCount, _ = libservice.GetFileCount(nil)
 	e2 := connBridge.SendResponse(response, 0, nil)
 	if e2 != nil {
 		return e2

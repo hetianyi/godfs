@@ -10,12 +10,14 @@ import (
 	"strconv"
     "io"
     "app"
+    "util/timeutil"
+    "time"
 )
 
 type HttpResponse struct {
-	Code    int         `json:"uuid"`
-	Message string      `json:"uuid"`
-	Result  interface{} `json:"uuid"`
+	Code    int         `json:"code"`
+	Message string      `json:"message"`
+	Result  interface{} `json:"result"`
 }
 
 
@@ -32,6 +34,7 @@ func validateInsertWebTracker(tracker *bridge.WebTracker) bool {
 	}
 	return true
 }
+
 func validateDeleteWebTracker(tracker *bridge.WebTracker) bool {
 	if tracker == nil {
 		return false
@@ -84,11 +87,11 @@ func addWebTrackerHandler(writer http.ResponseWriter, request *http.Request) {
                         writer.WriteHeader(http.StatusInternalServerError)
                         writer.Write([]byte(strconv.Itoa(http.StatusInternalServerError) + " " + e4.Error() + "."))
                     } else {
-                        resp := HttpResponse{
+                        resp := &HttpResponse{
                             Code: 200,
                             Message: "success",
                         }
-                        bs, e5 := httputil.MarshalHttpResponseEntity(resp)
+                        bs, e5 := MarshalHttpResponseEntity(resp)
                         if e5 != nil {
                             logger.Error(e5)
                             return
@@ -138,11 +141,11 @@ func deleteWebTrackerHandler(writer http.ResponseWriter, request *http.Request) 
                         return
                     }
                     if libservice.UpdateWebTrackerStatus(webTracker.Id, app.STATUS_DELETED, nil) {
-                        resp := HttpResponse{
+                        resp := &HttpResponse{
                             Code: 200,
                             Message: "success",
                         }
-                        bs, e5 := httputil.MarshalHttpResponseEntity(resp)
+                        bs, e5 := MarshalHttpResponseEntity(resp)
                         if e5 != nil {
                             logger.Error(e5)
                             return
@@ -155,5 +158,42 @@ func deleteWebTrackerHandler(writer http.ResponseWriter, request *http.Request) 
     }
 }
 
+
+
+
+func indexStatistic(writer http.ResponseWriter, request *http.Request) {
+    logger.Info("perform fetch indexStatistic")
+    if !httputil.MethodAllow(http.MethodGet, writer, request) {
+        return
+    }
+    indexStatistic, e1 := libservice.GetIndexStatistic()
+    if e1 != nil {
+        logger.Error(e1)
+        logger.Error("query error")
+        writer.WriteHeader(http.StatusInternalServerError)
+        writer.Write([]byte(strconv.Itoa(http.StatusInternalServerError) + " query error."))
+        return
+    }
+    now := time.Now()
+    indexStatistic.UpTime = timeutil.GetLongHumanReadableDuration(time.Unix(app.START_TIME / 1000, 0), now)
+    resp := &HttpResponse{
+        Code: 200,
+        Message: "success",
+        Result: *indexStatistic,
+    }
+    bs, e5 := MarshalHttpResponseEntity(resp)
+    if e5 != nil {
+        logger.Error(e5)
+        return
+    }
+    writer.Write(bs)
+}
+
+
+
+
+func MarshalHttpResponseEntity(i *HttpResponse) ([]byte, error) {
+    return json.Marshal(*i)
+}
 
 

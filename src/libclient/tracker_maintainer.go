@@ -406,7 +406,7 @@ func (tracker *TrackerInstance) checkTaskTypeCount(taskType int) int {
 	return count
 }
 
-// 启动任务收集器
+// start task collector
 func (tracker *TrackerInstance) startTaskCollector() {
 	for ele := tracker.Collectors.Front(); ele != nil; ele = ele.Next() {
 		go ele.Value.(*TaskCollector).Start(tracker)
@@ -452,8 +452,6 @@ func (tracker *TrackerInstance) ExecTask(task *bridge.Task) (bool, error) {
 
 		app.STAGE_DOWNLOADS = 0
 		app.STAGE_UPLOADS = 0
-		app.IOIN = 0
-		app.IOOUT = 0
 		app.STAGE_IOIN = 0
 		app.STAGE_IOOUT = 0
 
@@ -638,7 +636,7 @@ func (tracker *TrackerInstance) ExecTask(task *bridge.Task) (bool, error) {
 			if validateResp.Status != bridge.STATUS_OK {
 				return errors.New("error sync statistic from tracker server, server response status:" + strconv.Itoa(validateResp.Status))
 			}
-			updateStatistic(tracker.ConnStr, validateResp.Statistic)
+			updateStatistic(tracker.ConnStr, validateResp.FileCount, validateResp.Statistic)
 			return nil
 		})
 		if e5 != nil {

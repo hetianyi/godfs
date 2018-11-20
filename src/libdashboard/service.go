@@ -54,8 +54,9 @@ func startTrackerMaintainer(trackers string) {
 
 
 func startWebService() {
-	http.HandleFunc("/webtracker/add", addWebTrackerHandler)
-	http.HandleFunc("/webtracker/delete", deleteWebTrackerHandler)
+	http.HandleFunc("/dashboard/webtracker/add", addWebTrackerHandler)
+	http.HandleFunc("/dashboard/webtracker/delete", deleteWebTrackerHandler)
+	http.HandleFunc("/dashboard/index", indexStatistic)
 
 	s := &http.Server{
 		Addr: ":" + strconv.Itoa(app.HTTP_PORT),

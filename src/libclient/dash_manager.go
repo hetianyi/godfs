@@ -19,7 +19,7 @@ var (
 )
 
 // trackerUUID -> host:port
-func updateStatistic(trackerUUID string, statistic []bridge.ServerStatistic) {
+func updateStatistic(trackerUUID string, fileCount int, statistic []bridge.ServerStatistic) {
     ret, _ := json.Marshal(statistic)
     logger.Info("update statistic info:( ", string(ret), ")")
     managedStatistic[trackerUUID] = statistic
@@ -55,7 +55,7 @@ func updateStatistic(trackerUUID string, statistic []bridge.ServerStatistic) {
             }
             arr[i] = item
         }
-        e := libservice.AddWebStorage(trackerUUID, arr)
+        e := libservice.AddWebStorage(trackerUUID, fileCount, arr)
         if e != nil {
             logger.Error("error insert web storage items:", e)
         }

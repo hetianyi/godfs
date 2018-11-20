@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"strconv"
 	"util/logger"
-	"encoding/json"
 )
 
 
@@ -40,10 +39,4 @@ func MethodAllow(expectMethod string, writer http.ResponseWriter, request *http.
 	}
 	return true
 }
-
-
-func MarshalHttpResponseEntity(i interface{}) ([]byte, error) {
-	return json.Marshal(i)
-}
-
 
