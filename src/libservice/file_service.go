@@ -1508,7 +1508,6 @@ func AddWebStorage(trackerUUID string, fileCount int, storage []*bridge.WebStora
 
 
 func GetIndexStatistic() (*bridge.IndexStatistic, error) {
-	var ls list.List
 	dao, ef := dbPool.GetDB()
 	if ef != nil {
 		return nil, ef
@@ -1518,11 +1517,36 @@ func GetIndexStatistic() (*bridge.IndexStatistic, error) {
 	e := dao.Query(func(rows *sql.Rows) error {
 		if rows != nil {
 			for rows.Next() {
-				e1 := rows.Scan(&ret.Tracker, &ret.Storage, &ret.Files, &ret.IOin, &ret.IOout, &ret.Downloads, &ret.Uploads)
+				var a interface{}
+				var b interface{}
+				var c interface{}
+				var d interface{}
+				var e interface{}
+				e1 := rows.Scan(&ret.Tracker, &ret.Storage, &a, &b, &c, &d, &e)
+				if a == nil {
+					a = 0
+				}
+				if b == nil {
+					b = 0
+				}
+				if c == nil {
+					c = 0
+				}
+				if d == nil {
+					d = 0
+				}
+				if e == nil {
+					e = 0
+				}
+				ret.Files = a.(int)
+				ret.IOin = int64(b.(int))
+				ret.IOout = int64(c.(int))
+				ret.Downloads = d.(int)
+				ret.Uploads = e.(int)
+
 				if e1 != nil {
 					return e1
 				}
-				ls.PushBack(ret)
 			}
 		}
 		return nil
