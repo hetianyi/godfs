@@ -96,12 +96,13 @@ func UpdateTrackerInstanceState(connStr string, secret string, nextRun bool, tra
     if managedTrackerInstance[connStr] == nil {
         logger.Info("tracker instance not exists")
         if nextRun {
+            logger.Info("start new tracker instance:", connStr)
             temp := make(map[string]string)
             temp[connStr] = secret
             trackerMaintainer.Maintain(temp)
         }
     } else {
-        logger.Info("unload tracker instance:", connStr)
+        //logger.Info("unload tracker instance:", connStr)
         ins := managedTrackerInstance[connStr]
         ins.nextRun = nextRun
     }

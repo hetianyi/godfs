@@ -129,6 +129,7 @@ func clientHandler(conn net.Conn) {
 		}
 	}, func(i interface{}) {
 		logger.Error("connection error:", i)
+		panic(i)
 	})
 	FutureExpireStorageServer(storageClient)
 }

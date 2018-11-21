@@ -116,5 +116,7 @@ func (t *Task) Run(pool *Pool) {
 		t.f()
 	}, func(i interface{}) {
 		logger.Error("exec task error: ", i)
+
+		panic(i)
 	})
 }
