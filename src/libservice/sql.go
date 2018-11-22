@@ -79,7 +79,7 @@ const (
 	custom_get_web_storages = `select a.id, a.host, a.port, a.status, a.tracker, a.uuid, a.total_files, a.grop, a.instance_id, 
 								a.http_port, a.http_enable, a.start_time, a.downloads, a.uploads, a.disk, a.read_only, a.ioin, a.ioout from web_storages a where `
 	get_web_storage_status = `select a.id, a.status, a.uuid from web_storages a where a.tracker = ?`
-	mark_dead_web_storage = `update web_storages set status = ? where tracker = ? and uuid in(?) `
+	mark_dead_web_storage = `update web_storages set status = ? where tracker = ? and uuid  `
 	check_web_storages = `select count(*) from web_storages a where a.uuid = ? and a.tracker = ?`
 
 	insert_storage_log = `insert into web_storage_logs(storage, log_time, ioin, ioout, disk, mem, download, upload) values(?, ?, ?, ?, ?, ?, ?, ?)`

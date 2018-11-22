@@ -242,7 +242,7 @@ func queueStatistics(meta *storageMeta) {
 		managedStorageStatistics[meta.UUID] = ls
 	}
 	if ls.Len() >= 10 {
-		logger.Info("statistic queue full, remove head")
+		logger.Debug("statistic queue full, remove head")
 		ls.Remove(ls.Front())
 		ls.PushBack(meta)
 	} else {
@@ -254,8 +254,7 @@ func queueStatistics(meta *storageMeta) {
 func collectQueueStatistics() []bridge.ServerStatistic {
 	operationLock.Lock()
 	defer operationLock.Unlock()
-	ret := make([]bridge.ServerStatistic, len(managedStorageStatistics))
-	i := 0
+	var temp list.List
 	for _, ls := range managedStorageStatistics {
 		if ls == nil || ls.Len() == 0 {
 			continue
@@ -286,7 +285,12 @@ func collectQueueStatistics() []bridge.ServerStatistic {
 			StageIOin:		v.StageIOin,
 			StageIOout:		v.StageIOout,
 		}
-		ret[i] = item
+		temp.PushBack(item)
+	}
+	ret := make([]bridge.ServerStatistic, temp.Len())
+	i := 0
+	for ele := temp.Front(); ele != nil; ele = ele.Next() {
+		ret[i] = ele.Value.(bridge.ServerStatistic)
 		i++
 	}
 	return ret

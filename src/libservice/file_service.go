@@ -1423,7 +1423,7 @@ func AddWebStorage(trackerUUID string, fileCount int, storage []*bridge.WebStora
 	}
 
 	// update each web storage statistic info
-	for i := 0; i < len(storage); i++ {
+	for i := range storage {
 		removeAliveWebStorage(oldStorages, storage[i].UUID)
 		webStorage, e1 := GetWebStorageByUUID(storage[i].UUID, tracker.Id, dao)
 		if e1 != nil {
@@ -1489,32 +1489,34 @@ func AddWebStorage(trackerUUID string, fileCount int, storage []*bridge.WebStora
 	if oldStorages != nil && oldStorages.Len() > 0 {
 		for ele := oldStorages.Front(); ele != nil; ele = ele.Next() {
 			item := ele.Value.(*bridge.WebStorage)
-			logger.Info("web storage mark as offline:(", item.UUID, ")")
+			if item.Status == app.STATUS_ENABLED {
+				logger.Info("web storage mark as offline:(", item.UUID, ")")
+			}
 			if i == oldStorages.Len() - 1 {
-				uuids.Read([]byte("'"))
-				uuids.Read([]byte(item.UUID))
-				uuids.Read([]byte("'"))
+				uuids.Write([]byte("'"))
+				uuids.Write([]byte(item.UUID))
+				uuids.Write([]byte("'"))
 			} else {
-				uuids.Read([]byte("'"))
-				uuids.Read([]byte(item.UUID))
-				uuids.Read([]byte("'"))
-				uuids.Read([]byte(","))
+				uuids.Write([]byte("'"))
+				uuids.Write([]byte(item.UUID))
+				uuids.Write([]byte("'"))
+				uuids.Write([]byte(","))
 			}
 			i++
 		}
 		e6 := dao.DoTransaction(func(tx *sql.Tx) error {
-			state, e2 := tx.Prepare(mark_dead_web_storage)
+			state, e2 := tx.Prepare(mark_dead_web_storage + "in("+ uuids.String() +")")
 			if e2 != nil {
 				return e2
 			}
-			_, e3 := state.Exec(app.STATUS_DISABLED, tracker.Id, uuids.String())
+			_, e3 := state.Exec(app.STATUS_DISABLED, tracker.Id)
 			if e3 != nil {
 				return e3
 			}
 			return nil
 		})
 		if e6 != nil {
-			logger.Error("error insert web storage statistic log:", e6)
+			logger.Error("error update web storage status:", e6)
 		}
 	}
 	return nil

@@ -27,6 +27,9 @@ func updateStatistic(trackerUUID string, fileCount int, statistic []bridge.Serve
     if statistic != nil {
         arr := make([]*bridge.WebStorage, len(statistic))
         for i := 0; i < len(statistic); i++ {
+            if statistic[i].UUID == "" {
+                continue
+            }
             item := &bridge.WebStorage{
                 Host: statistic[i].AdvertiseAddr,
                 Port: statistic[i].Port,
