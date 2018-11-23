@@ -60,7 +60,6 @@ type ITracker interface {
 	SetConnBridge()
 	GetTaskSize() int
 	GetTask() *bridge.Task
-	//FailReturnTask(task *bridge.Task)
 	checkTaskTypeCount(taskType int)
 	startTaskCollector()
 	ExecTask(task *bridge.Task, connBridge *bridge.Bridge) (bool, error)
@@ -341,12 +340,9 @@ func AddTask(task *bridge.Task, tracker *TrackerInstance) bool {
 	} else if task.TaskType == app.TASK_REPORT_FILE {
 		if tracker.checkTaskTypeCount(task.TaskType) == 0 {
 			logger.Trace("push task type 2")
-			if tracker.taskList.Front() != nil && tracker.taskList.Front().Value.(*bridge.Task).TaskType == app.TASK_SYNC_MEMBER {
-				// tracker.taskList.InsertAfter(task, tracker.taskList.Front()) // bug
-				tracker.taskList.PushFront(task)
-			} else {
-				tracker.taskList.PushFront(task)
-			}
+			tracker.listIteLock.Lock()
+			tracker.taskList.PushFront(task)
+			tracker.listIteLock.Unlock()
 			return true
 		} else {
 			logger.Debug("can't push task type " + strconv.Itoa(task.TaskType) + ": task type exists")
@@ -355,7 +351,9 @@ func AddTask(task *bridge.Task, tracker *TrackerInstance) bool {
 	} else if task.TaskType == app.TASK_PULL_NEW_FILE {
 		if tracker.checkTaskTypeCount(task.TaskType) == 0 {
 			logger.Trace("push task type 3")
+			tracker.listIteLock.Lock()
 			tracker.taskList.PushBack(task)
+			tracker.listIteLock.Unlock()
 			return true
 		} else {
 			logger.Debug("can't push task type 3: task type exists")
@@ -384,6 +382,8 @@ func AddTask(task *bridge.Task, tracker *TrackerInstance) bool {
 			return false
 		}
 	} else if task.TaskType == app.TASK_SYNC_STATISTIC {
+		tracker.listIteLock.Lock()
+		defer tracker.listIteLock.Unlock()
 		if tracker.checkTaskTypeCount(task.TaskType) == 0 {
 			logger.Trace("push task type:", strconv.Itoa(task.TaskType))
 			tracker.taskList.PushFront(task)
@@ -397,12 +397,13 @@ func AddTask(task *bridge.Task, tracker *TrackerInstance) bool {
 }
 
 // check task count of this type
+// TODO bug: nil
 func (tracker *TrackerInstance) checkTaskTypeCount(taskType int) int {
 	tracker.listIteLock.Lock()
 	defer tracker.listIteLock.Unlock()
 	count := 0
 	for e := tracker.taskList.Front(); e != nil; e = e.Next() {
-		if e.Value.(*bridge.Task).TaskType == taskType {
+		if e.Value != nil && e.Value.(*bridge.Task).TaskType == taskType {
 			count++
 		}
 	}
@@ -686,6 +687,7 @@ func QueryDownloadFileTaskCollector(tracker *TrackerInstance) {
 	}
 	if taskList == nil || taskList.Len() == 0 {
 		logger.Debug("no file need to sync.")
+		return
 	}
 	for ele := taskList.Front(); ele != nil; ele = ele.Next() {
 		if !existsDownloadingFile(ele.Value.(*bridge.Task).FileId) {
