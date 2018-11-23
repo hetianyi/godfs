@@ -247,7 +247,7 @@ func initDbStatistic() {
 			logger.Info("+---------------------------+")
 			logger.Info("* file count       :", app.FILE_TOTAL)
 			logger.Info("* sync finish count:", app.FILE_FINISH)
-			logger.Info("* disk usage       :", libcommon.HumanReadable(app.DISK_USAGE, 1000))//TODO not right
+			logger.Info("* disk usage       :", libcommon.HumanReadable(app.DISK_USAGE, 1000)) //TODO not right
 			logger.Info("+---------------------------+")
 			break
 		}

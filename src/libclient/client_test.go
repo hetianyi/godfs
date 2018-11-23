@@ -7,6 +7,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"io"
+	"libcommon"
 	"libcommon/bridge"
 	"net/http"
 	"regexp"
@@ -16,7 +17,6 @@ import (
 	"util/file"
 	"util/logger"
 	"util/timeutil"
-	"libcommon"
 )
 
 func Init() *Client {

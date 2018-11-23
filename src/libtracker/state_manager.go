@@ -4,21 +4,22 @@ import (
 	"app"
 	"container/list"
 	"libcommon/bridge"
+	"regexp"
 	"strconv"
 	"sync"
 	"time"
+	"util/common"
 	"util/logger"
 	"util/timeutil"
-	"regexp"
-	"util/common"
 )
 
 var managedStorages = make(map[string]*storageMeta)
 var managedStorageStatistics = make(map[string]*list.List)
 
 var operationLock = *new(sync.Mutex)
-const ipv4Pattern          = "^((25[0-5]|2[0-4]\\d|[0-1]?\\d\\d?)\\.){3}(25[0-5]|2[0-4]\\d|[0-1]?\\d\\d?)$"
-const ipv4WithPortPattern  = "^(((25[0-5]|2[0-4]\\d|[0-1]?\\d\\d?)\\.){3}(25[0-5]|2[0-4]\\d|[0-1]?\\d\\d?)):([0-9]{1,5})$"
+
+const ipv4Pattern = "^((25[0-5]|2[0-4]\\d|[0-1]?\\d\\d?)\\.){3}(25[0-5]|2[0-4]\\d|[0-1]?\\d\\d?)$"
+const ipv4WithPortPattern = "^(((25[0-5]|2[0-4]\\d|[0-1]?\\d\\d?)\\.){3}(25[0-5]|2[0-4]\\d|[0-1]?\\d\\d?)):([0-9]{1,5})$"
 
 type storageMeta struct {
 	ExpireTime int64
@@ -42,10 +43,10 @@ type storageMeta struct {
 	ReadOnly   bool
 
 	StageDownloads int
-	StageUploads int
-	StageIOin       int64
-	StageIOout      int64
-	LogTime  	int64
+	StageUploads   int
+	StageIOin      int64
+	StageIOout     int64
+	LogTime        int64
 }
 
 // 定时任务，剔除过期的storage服务器
@@ -75,7 +76,7 @@ func AddStorageServer(meta *bridge.OperationRegisterStorageClientRequest) {
 	host, port := parseAdvertiseAddr(meta.AdvertiseAddr, meta.Port)
 	key := host + ":" + strconv.Itoa(port)
 	holdMeta := &storageMeta{
-		UUID:		meta.UUID,
+		UUID:       meta.UUID,
 		ExpireTime: timeutil.GetTimestamp(time.Now().Add(time.Hour * 876000)), // set to 100 years
 		Group:      meta.Group,
 		InstanceId: meta.InstanceId,
@@ -95,10 +96,10 @@ func AddStorageServer(meta *bridge.OperationRegisterStorageClientRequest) {
 		ReadOnly:   meta.ReadOnly,
 
 		StageDownloads: meta.StageDownloads,
-		StageUploads: 	meta.StageUploads,
-		StageIOin:		meta.StageIOin,
-		StageIOout:		meta.StageIOout,
-		LogTime: timeutil.GetTimestamp(time.Now()),
+		StageUploads:   meta.StageUploads,
+		StageIOin:      meta.StageIOin,
+		StageIOout:     meta.StageIOout,
+		LogTime:        timeutil.GetTimestamp(time.Now()),
 	}
 	if managedStorages[key] == nil {
 		logger.Debug("register storage server:", key)
@@ -117,7 +118,7 @@ func FutureExpireStorageServer(meta *bridge.OperationRegisterStorageClientReques
 		key := host + ":" + strconv.Itoa(port)
 		logger.Info("expire storage client:", key, "in", app.STORAGE_CLIENT_EXPIRE_TIME)
 		holdMeta := &storageMeta{
-			UUID:		meta.UUID,
+			UUID:       meta.UUID,
 			ExpireTime: timeutil.GetTimestamp(time.Now().Add(app.STORAGE_CLIENT_EXPIRE_TIME)),
 			Group:      meta.Group,
 			InstanceId: meta.InstanceId,
@@ -137,9 +138,9 @@ func FutureExpireStorageServer(meta *bridge.OperationRegisterStorageClientReques
 			ReadOnly:   meta.ReadOnly,
 
 			StageDownloads: meta.StageDownloads,
-			StageUploads: 	meta.StageUploads,
-			StageIOin:		meta.StageIOin,
-			StageIOout:		meta.StageIOout,
+			StageUploads:   meta.StageUploads,
+			StageIOin:      meta.StageIOin,
+			StageIOout:     meta.StageIOout,
 		}
 		managedStorages[key] = holdMeta
 	}
@@ -250,7 +251,6 @@ func queueStatistics(meta *storageMeta) {
 	}
 }
 
-
 func collectQueueStatistics() []bridge.ServerStatistic {
 	operationLock.Lock()
 	defer operationLock.Unlock()
@@ -260,8 +260,8 @@ func collectQueueStatistics() []bridge.ServerStatistic {
 			continue
 		}
 		v := ls.Remove(ls.Front()).(*storageMeta)
-		item := bridge.ServerStatistic {
-			UUID:		   v.UUID,
+		item := bridge.ServerStatistic{
+			UUID:          v.UUID,
 			AdvertiseAddr: v.Host,
 			Group:         v.Group,
 			InstanceId:    v.InstanceId,
@@ -279,11 +279,11 @@ func collectQueueStatistics() []bridge.ServerStatistic {
 			Memory:        v.Memory,
 			ReadOnly:      v.ReadOnly,
 
-			LogTime: v.LogTime,
+			LogTime:        v.LogTime,
 			StageDownloads: v.StageDownloads,
-			StageUploads: 	v.StageUploads,
-			StageIOin:		v.StageIOin,
-			StageIOout:		v.StageIOout,
+			StageUploads:   v.StageUploads,
+			StageIOin:      v.StageIOin,
+			StageIOout:     v.StageIOout,
 		}
 		temp.PushBack(item)
 	}
@@ -295,5 +295,3 @@ func collectQueueStatistics() []bridge.ServerStatistic {
 	}
 	return ret
 }
-
-

@@ -5,6 +5,7 @@ import (
 	"container/list"
 	"encoding/json"
 	"fmt"
+	"libcommon/bridge"
 	"math"
 	"strconv"
 	"sync"
@@ -12,7 +13,6 @@ import (
 	"time"
 	"util/db"
 	"util/logger"
-	"libcommon/bridge"
 )
 
 func initParam() {
@@ -142,7 +142,6 @@ func Test141(t *testing.T) {
 	ls.PushBack(2)
 }
 
-
 func Test1422(t *testing.T) {
 	initParam()
 	ls, _ := GetExistsWebTrackers()
@@ -157,10 +156,10 @@ func Test1422(t *testing.T) {
 func Test142(t *testing.T) {
 	initParam()
 	a := &bridge.WebTracker{
-		UUID: "xxxxxxxx",
+		UUID:   "xxxxxxxx",
 		Secret: "123456",
-		Host: "192.168.1.100",
-		Port: 1122,
+		Host:   "192.168.1.100",
+		Port:   1122,
 		Status: 1,
 		Remark: "asdasd",
 	}
@@ -172,19 +171,19 @@ func Test143(t *testing.T) {
 	arr := make([]*bridge.WebStorage, 1)
 	for i := 0; i < 1; i++ {
 		item := &bridge.WebStorage{
-			Host: "192.168.1.100",
-			Port: 1024,
+			Host:       "192.168.1.100",
+			Port:       1024,
 			TotalFiles: 111,
-			UUID: "xxxxxxxx",
-			Group: "G01",
+			UUID:       "xxxxxxxx",
+			Group:      "G01",
 			InstanceId: "001",
-			HttpPort: 8001,
+			HttpPort:   8001,
 			HttpEnable: true,
-			StartTime: 1000020,
-			Downloads: 100,
-			Uploads: 101,
-			DiskUsage: 100021,
-			ReadOnly: true,
+			StartTime:  1000020,
+			Downloads:  100,
+			Uploads:    101,
+			DiskUsage:  100021,
+			ReadOnly:   true,
 		}
 		arr[i] = item
 	}

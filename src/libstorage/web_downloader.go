@@ -37,7 +37,7 @@ func DownloadHandler(writer http.ResponseWriter, request *http.Request) {
 	method := request.Method
 	if method != http.MethodGet && method != http.MethodOptions {
 		writer.WriteHeader(http.StatusMethodNotAllowed)
-		writer.Write([]byte(strconv.Itoa(http.StatusMethodNotAllowed) + " Method '"+ method +"' not allowed."))
+		writer.Write([]byte(strconv.Itoa(http.StatusMethodNotAllowed) + " Method '" + method + "' not allowed."))
 		return
 	}
 

@@ -23,9 +23,9 @@ type Task struct {
 }
 
 type IPool interface {
-	Exec(task *func()) error // add a new task to task list
-	runTask(f func())        // keep trying to fetch task
-	taskFinish()             // call when a task is finish
+	Exec(task *func()) error      // add a new task to task list
+	runTask(f func())             // keep trying to fetch task
+	taskFinish()                  // call when a task is finish
 	modifyActiveCount(m int) *int // modify current active task size
 }
 
@@ -62,7 +62,7 @@ func initPool(MaxActiveSize int, MaxWaitSize int) (*Pool, error) {
 func (pool *Pool) Exec(t func()) error {
 	logger.Trace("pool get new task")
 	// if no free thread found then put the task in 'pool.WaitingList'.
-	if pool.WaitingTaskList.Len() + pool.modifyActiveCount(0) >= pool.MaxActiveSize + pool.MaxWaitSize {
+	if pool.WaitingTaskList.Len()+pool.modifyActiveCount(0) >= pool.MaxActiveSize+pool.MaxWaitSize {
 		return errors.New("pool is full, can not take any more")
 	}
 	logger.Trace("push task into waiting list")

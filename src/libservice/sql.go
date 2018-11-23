@@ -59,16 +59,13 @@ const (
                             (select count(*) finish from files a where a.finish = 1),
                             (select case when sum(b.size) is null then 0 else sum(b.size) end disk from parts b)  )`
 
-
-
 	// web manager
-	insert_web_tracker = `insert into web_trackers(host, port, status, secret, remark) values(?, ?, ?, ?, ?)`
+	insert_web_tracker        = `insert into web_trackers(host, port, status, secret, remark) values(?, ?, ?, ?, ?)`
 	update_web_tracker_status = `update web_trackers set status = ? where id = ?`
-	get_all_web_trackers = `select id, host, port, status, remark, secret from web_trackers`
-	get_exists_trackers = `select id, host, port, status, remark, secret from web_trackers where status != ?`
-	custom_get_web_tracker = `select id, host, port, status, remark, secret from web_trackers a where `
-	check_web_trackers = `select count(*) from web_trackers a where a.host = ? and a.port = ?`
-
+	get_all_web_trackers      = `select id, host, port, status, remark, secret from web_trackers`
+	get_exists_trackers       = `select id, host, port, status, remark, secret from web_trackers where status != ?`
+	custom_get_web_tracker    = `select id, host, port, status, remark, secret from web_trackers a where `
+	check_web_trackers        = `select count(*) from web_trackers a where a.host = ? and a.port = ?`
 
 	insert_web_storage = `insert into web_storages(host, port, status, tracker, uuid, total_files, grop, instance_id, http_port, 
 													http_enable, start_time, downloads, uploads, disk, read_only, ioin, ioout) 
@@ -79,12 +76,12 @@ const (
 	custom_get_web_storages = `select a.id, a.host, a.port, a.status, a.tracker, a.uuid, a.total_files, a.grop, a.instance_id, 
 								a.http_port, a.http_enable, a.start_time, a.downloads, a.uploads, a.disk, a.read_only, a.ioin, a.ioout from web_storages a where `
 	get_web_storage_status = `select a.id, a.status, a.uuid from web_storages a where a.tracker = ?`
-	mark_dead_web_storage = `update web_storages set status = ? where tracker = ? and uuid  `
-	check_web_storages = `select count(*) from web_storages a where a.uuid = ? and a.tracker = ?`
+	mark_dead_web_storage  = `update web_storages set status = ? where tracker = ? and uuid  `
+	check_web_storages     = `select count(*) from web_storages a where a.uuid = ? and a.tracker = ?`
 
 	insert_storage_log = `insert into web_storage_logs(storage, log_time, ioin, ioout, disk, mem, download, upload) values(?, ?, ?, ?, ?, ?, ?, ?)`
 
-	get_file_count = `select count(*) from files`
+	get_file_count                = `select count(*) from files`
 	update_web_tracker_file_count = `update web_trackers set files = ? where host = ? and port = ?`
 
 	get_index_statistic = `select
@@ -95,8 +92,6 @@ const (
                 (select sum(ioout) from web_storages where status=1)  as ioout,
                 (select sum(downloads) from web_storages where status=1)  as downloads,
                 (select sum(uploads) from web_storages where status=1)  as uploads`
-
-
 )
 
 var dbPool *db.DbConnPool

@@ -51,7 +51,7 @@ func main() {
 	// the file to be upload
 	var setConfig = flag.String("set", "", "set global configuration with pattern \"name=value\".")
 	// the file to be upload
-	var uploadFile = flag.String("u", "", "the file to be upload,\nif you want upload many file once,\nquote file paths using \"\"\" and split with \",\"" +
+	var uploadFile = flag.String("u", "", "the file to be upload,\nif you want upload many file once,\nquote file paths using \"\"\" and split with \",\""+
 		"\nexample:\nclient -u \"/home/foo/bar1.tar.gz, /home/foo/bar1.tar.gz\"")
 	// the file to download
 	var downFile = flag.String("d", "", "the file to be download")

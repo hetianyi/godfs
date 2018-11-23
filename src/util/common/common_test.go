@@ -2,13 +2,13 @@ package common
 
 import (
 	"fmt"
-	"testing"
 	"regexp"
 	"strconv"
+	"testing"
 )
 
-const ipv4Pattern          = "^((25[0-5]|2[0-4]\\d|[0-1]?\\d\\d?)\\.){3}(25[0-5]|2[0-4]\\d|[0-1]?\\d\\d?)$"
-const ipv4WithPortPattern  = "^(((25[0-5]|2[0-4]\\d|[0-1]?\\d\\d?)\\.){3}(25[0-5]|2[0-4]\\d|[0-1]?\\d\\d?)):([0-9]{1,5})$"
+const ipv4Pattern = "^((25[0-5]|2[0-4]\\d|[0-1]?\\d\\d?)\\.){3}(25[0-5]|2[0-4]\\d|[0-1]?\\d\\d?)$"
+const ipv4WithPortPattern = "^(((25[0-5]|2[0-4]\\d|[0-1]?\\d\\d?)\\.){3}(25[0-5]|2[0-4]\\d|[0-1]?\\d\\d?)):([0-9]{1,5})$"
 
 func Test1(t *testing.T) {
 	for i := 0; i < 10; i++ {

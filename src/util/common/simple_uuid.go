@@ -2,8 +2,8 @@ package common
 
 import (
 	"math/rand"
-	"time"
 	"strconv"
+	"time"
 )
 
 var seeds = []rune("abcdefghijklmnopqrstuvwxyz1234567890")
@@ -22,11 +22,10 @@ func UUID() string {
 	return string(buffer)
 }
 
-
 // encode input string to ascii
 func EncodeASCII(input string) string {
 	ret := strconv.QuoteToASCII(input)
-	return ret[1:len(ret) - 1]
+	return ret[1 : len(ret)-1]
 }
 
 // decode result of EncodeASCII()

@@ -5,26 +5,25 @@ import (
 	"bytes"
 	"container/list"
 	"database/sql"
+	"errors"
 	"libcommon/bridge"
 	"strconv"
+	"strings"
 	"util/db"
 	"util/logger"
-	"errors"
-	"strings"
 )
-
 
 // get file id by md5
 func GetFileId(md5 string, dao *db.DAO) (int, error) {
 	var id = 0
-    if dao == nil {
-        dao1, ef := dbPool.GetDB()
-        if ef != nil {
-            return 0, ef
-        }
-        dao = dao1
-        defer dbPool.ReturnDB(dao)
-    }
+	if dao == nil {
+		dao1, ef := dbPool.GetDB()
+		if ef != nil {
+			return 0, ef
+		}
+		dao = dao1
+		defer dbPool.ReturnDB(dao)
+	}
 	e := dao.Query(func(rows *sql.Rows) error {
 		if rows != nil {
 			for rows.Next() {
@@ -45,14 +44,14 @@ func GetFileId(md5 string, dao *db.DAO) (int, error) {
 // get part id by md5
 func GetPartId(md5 string, dao *db.DAO) (int, error) {
 	var id = 0
-    if dao == nil {
-        dao1, ef := dbPool.GetDB()
-        if ef != nil {
-            return 0, ef
-        }
-        dao = dao1
-        defer dbPool.ReturnDB(dao)
-    }
+	if dao == nil {
+		dao1, ef := dbPool.GetDB()
+		if ef != nil {
+			return 0, ef
+		}
+		dao = dao1
+		defer dbPool.ReturnDB(dao)
+	}
 	e := dao.Query(func(rows *sql.Rows) error {
 		if rows != nil {
 			for rows.Next() {
@@ -1032,9 +1031,6 @@ func createBatchPartSQL(parts []bridge.FilePart) string {
 	return string(sql.Bytes())
 }
 
-
-
-
 //---------------------------------------------------------web tracker ↓↓↓
 
 func AddWebTracker(tracker *bridge.WebTracker) error {
@@ -1072,31 +1068,29 @@ func AddWebTracker(tracker *bridge.WebTracker) error {
 	}
 }
 
-
 func UpdateWebTrackerStatus(trackerId int, status int, dao *db.DAO) bool {
 
-    if dao == nil {
-        dao1, ef := dbPool.GetDB()
-        if ef != nil {
-            return false
-        }
-        dao = dao1
-        defer dbPool.ReturnDB(dao)
-    }
+	if dao == nil {
+		dao1, ef := dbPool.GetDB()
+		if ef != nil {
+			return false
+		}
+		dao = dao1
+		defer dbPool.ReturnDB(dao)
+	}
 
-    return dao.DoTransaction(func(tx *sql.Tx) error {
-        state, e2 := tx.Prepare(update_web_tracker_status)
-        if e2 != nil {
-            return e2
-        }
-        _, e3 := state.Exec(status, trackerId)
-        if e3 != nil {
-            return e3
-        }
-        return nil
-    }) == nil
+	return dao.DoTransaction(func(tx *sql.Tx) error {
+		state, e2 := tx.Prepare(update_web_tracker_status)
+		if e2 != nil {
+			return e2
+		}
+		_, e3 := state.Exec(status, trackerId)
+		if e3 != nil {
+			return e3
+		}
+		return nil
+	}) == nil
 }
-
 
 func GetAllWebTrackers() (*list.List, error) {
 	var ls list.List
@@ -1150,16 +1144,15 @@ func GetExistsWebTrackers() (*list.List, error) {
 	return &ls, nil
 }
 
-
 func CheckWebTrackerExists(host string, port int, dao *db.DAO) (bool, error) {
-    if dao == nil {
-        dao1, ef := dbPool.GetDB()
-        if ef != nil {
-            return false, ef
-        }
-        dao = dao1
-        defer dbPool.ReturnDB(dao)
-    }
+	if dao == nil {
+		dao1, ef := dbPool.GetDB()
+		if ef != nil {
+			return false, ef
+		}
+		dao = dao1
+		defer dbPool.ReturnDB(dao)
+	}
 	var count int
 	e := dao.Query(func(rows *sql.Rows) error {
 		if rows != nil {
@@ -1205,17 +1198,16 @@ func GetFileCount(dao *db.DAO) (int, error) {
 	return count, e
 }
 
-
 func GetWebTrackerByHostAndPort(host string, port int, dao *db.DAO) (*bridge.WebTracker, error) {
 
-    if dao == nil {
-        dao1, ef := dbPool.GetDB()
-        if ef != nil {
-            return nil, ef
-        }
-        dao = dao1
-        defer dbPool.ReturnDB(dao)
-    }
+	if dao == nil {
+		dao1, ef := dbPool.GetDB()
+		if ef != nil {
+			return nil, ef
+		}
+		dao = dao1
+		defer dbPool.ReturnDB(dao)
+	}
 	var ret *bridge.WebTracker
 	e := dao.Query(func(rows *sql.Rows) error {
 		if rows != nil {
@@ -1228,32 +1220,22 @@ func GetWebTrackerByHostAndPort(host string, port int, dao *db.DAO) (*bridge.Web
 			}
 		}
 		return nil
-	}, custom_get_web_tracker + "host = ? and port = ?", host, port)
+	}, custom_get_web_tracker+"host = ? and port = ?", host, port)
 	return ret, e
 }
 
-
-
-
-
-
-
-
-
-
 //---------------------------------------------------------web storage ↓↓↓
-
 
 func CheckWebStorageExists(uuid string, dao *db.DAO) (bool, error) {
 
-    if dao == nil {
-        dao1, ef := dbPool.GetDB()
-        if ef != nil {
-            return false, ef
-        }
-        dao = dao1
-        defer dbPool.ReturnDB(dao)
-    }
+	if dao == nil {
+		dao1, ef := dbPool.GetDB()
+		if ef != nil {
+			return false, ef
+		}
+		dao = dao1
+		defer dbPool.ReturnDB(dao)
+	}
 	var count int
 	e := dao.Query(func(rows *sql.Rows) error {
 		if rows != nil {
@@ -1272,18 +1254,16 @@ func CheckWebStorageExists(uuid string, dao *db.DAO) (bool, error) {
 	return count > 0, e
 }
 
-
-
 func GetWebStorageByUUID(uuid string, trackerId int, dao *db.DAO) (*bridge.WebStorage, error) {
 
-    if dao == nil {
-        dao1, ef := dbPool.GetDB()
-        if ef != nil {
-            return nil, ef
-        }
-        dao = dao1
-        defer dbPool.ReturnDB(dao)
-    }
+	if dao == nil {
+		dao1, ef := dbPool.GetDB()
+		if ef != nil {
+			return nil, ef
+		}
+		dao = dao1
+		defer dbPool.ReturnDB(dao)
+	}
 	var ret *bridge.WebStorage
 	e := dao.Query(func(rows *sql.Rows) error {
 		if rows != nil {
@@ -1297,24 +1277,23 @@ func GetWebStorageByUUID(uuid string, trackerId int, dao *db.DAO) (*bridge.WebSt
 			}
 		}
 		return nil
-	}, custom_get_web_storages + "a.uuid = ? and a.tracker = ?", uuid, trackerId)
+	}, custom_get_web_storages+"a.uuid = ? and a.tracker = ?", uuid, trackerId)
 	return ret, e
 }
 
-
 func UpdateWebStorage(webStorage *bridge.WebStorage, trackerId int, dao *db.DAO) bool {
 
-    if dao == nil {
-        dao1, ef := dbPool.GetDB()
-        if ef != nil {
-            return false
-        }
-        dao = dao1
-        defer dbPool.ReturnDB(dao)
-    }
+	if dao == nil {
+		dao1, ef := dbPool.GetDB()
+		if ef != nil {
+			return false
+		}
+		dao = dao1
+		defer dbPool.ReturnDB(dao)
+	}
 	//const update_web_storage string = `update web_storages a set a.host = ?, a.port = ?, a.status = ?, a.total_files = ?, a.group = ?, a.instance_id = ?,
-    //                                                    a.http_port = ?, a.http_enable = ?, a.start_time = ?, a.downloads = ?, a.uploads = ?, a.disk = ?, a.read_only = ?
-    //                                where a.uuid = ? and a.tracker = ?`
+	//                                                    a.http_port = ?, a.http_enable = ?, a.start_time = ?, a.downloads = ?, a.uploads = ?, a.disk = ?, a.read_only = ?
+	//                                where a.uuid = ? and a.tracker = ?`
 	return dao.DoTransaction(func(tx *sql.Tx) error {
 		state, e2 := tx.Prepare(update_web_storage)
 		if e2 != nil {
@@ -1329,24 +1308,22 @@ func UpdateWebStorage(webStorage *bridge.WebStorage, trackerId int, dao *db.DAO)
 	}) == nil
 }
 
-
 func parseHostAndPort(trackerUUID string) (string, int) {
 	tmp := strings.Split(trackerUUID, ":")
 	port, _ := strconv.Atoi(tmp[1])
 	return tmp[0], port
 }
 
-
 func getWebStorageStatusByTracker(trackerId int, dao *db.DAO) (*list.List, error) {
 
-    if dao == nil {
-        dao1, ef := dbPool.GetDB()
-        if ef != nil {
-            return nil, ef
-        }
-        dao = dao1
-        defer dbPool.ReturnDB(dao)
-    }
+	if dao == nil {
+		dao1, ef := dbPool.GetDB()
+		if ef != nil {
+			return nil, ef
+		}
+		dao = dao1
+		defer dbPool.ReturnDB(dao)
+	}
 	ls := list.New()
 	e := dao.Query(func(rows *sql.Rows) error {
 		if rows != nil {
@@ -1492,7 +1469,7 @@ func AddWebStorage(trackerUUID string, fileCount int, storage []*bridge.WebStora
 			if item.Status == app.STATUS_ENABLED {
 				logger.Info("web storage mark as offline:(", item.UUID, ")")
 			}
-			if i == oldStorages.Len() - 1 {
+			if i == oldStorages.Len()-1 {
 				uuids.Write([]byte("'"))
 				uuids.Write([]byte(item.UUID))
 				uuids.Write([]byte("'"))
@@ -1505,7 +1482,7 @@ func AddWebStorage(trackerUUID string, fileCount int, storage []*bridge.WebStora
 			i++
 		}
 		e6 := dao.DoTransaction(func(tx *sql.Tx) error {
-			state, e2 := tx.Prepare(mark_dead_web_storage + "in("+ uuids.String() +")")
+			state, e2 := tx.Prepare(mark_dead_web_storage + "in(" + uuids.String() + ")")
 			if e2 != nil {
 				return e2
 			}
@@ -1521,8 +1498,6 @@ func AddWebStorage(trackerUUID string, fileCount int, storage []*bridge.WebStora
 	}
 	return nil
 }
-
-
 
 func GetIndexStatistic() (*bridge.IndexStatistic, error) {
 	dao, ef := dbPool.GetDB()
@@ -1573,9 +1548,3 @@ func GetIndexStatistic() (*bridge.IndexStatistic, error) {
 	}
 	return ret, nil
 }
-
-
-
-
-
-

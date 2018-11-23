@@ -175,8 +175,7 @@ func GetHumanReadableDuration(start time.Time, end time.Time) string {
 	return format2(int(h)) + ":" + format2(int(m)) + ":" + format2(int(s))
 }
 
-
 func GetLongHumanReadableDuration(start time.Time, end time.Time) string {
 	v := int(GetTimestamp(end)/1000 - GetTimestamp(start)/1000) // seconds
-	return strconv.Itoa(v / 86400) + "d " + strconv.Itoa(v % 86400 / 3600) + "h " + strconv.Itoa(v % 3600 / 60) + "m " + strconv.Itoa(v % 60) + "s"
+	return strconv.Itoa(v/86400) + "d " + strconv.Itoa(v%86400/3600) + "h " + strconv.Itoa(v%3600/60) + "m " + strconv.Itoa(v%60) + "s"
 }

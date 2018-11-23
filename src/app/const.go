@@ -10,47 +10,47 @@ const (
 )
 
 var (
-	RUN_WITH                     int //启动模式，1：storage，2：tracker，3：client, 4:dashboard
-	ASSIGN_DISK_SPACE            int64
-	SLICE_SIZE                   int64
-	LOG_INTERVAL                 string //log文件精度：h/d/w/m/y
-	BASE_PATH                    string
-	GROUP                        string
-	INSTANCE_ID                  string
-	SECRET                       string
-	ADVERTISE_ADDRESS            string
-	TRACKERS                     string
-	HTTP_ENABLE                  bool
-	MIME_TYPES_ENABLE            bool
-	UPLOAD_ENABLE                bool
-	LOG_ENABLE                   bool
-	PORT                         int
-	HTTP_PORT                    int
-	CLIENT_TYPE                  int //client类型，1:storage client, 2:other client, 3:dashboard client
-	STORAGE_CLIENT_EXPIRE_TIME   = time.Second * 60
-	SYNC_MEMBER_INTERVAL         = time.Second * 5 // 60
-	PULL_NEW_FILE_INTERVAL       = time.Second * 10
-	SYNC_STATISTIC_INTERVAL 	 = time.Second * 6 // 65
-	PATH_REGEX                   = "^/([0-9a-zA-Z_]{1,10})/([0-9a-zA-Z_]{1,10})/([MS])/([0-9a-fA-F]{32})$"
-	MD5_REGEX                   = "^[0-9a-fA-F]{32}$"
-	UUID                         = ""
+	RUN_WITH                   int //启动模式，1：storage，2：tracker，3：client, 4:dashboard
+	ASSIGN_DISK_SPACE          int64
+	SLICE_SIZE                 int64
+	LOG_INTERVAL               string //log文件精度：h/d/w/m/y
+	BASE_PATH                  string
+	GROUP                      string
+	INSTANCE_ID                string
+	SECRET                     string
+	ADVERTISE_ADDRESS          string
+	TRACKERS                   string
+	HTTP_ENABLE                bool
+	MIME_TYPES_ENABLE          bool
+	UPLOAD_ENABLE              bool
+	LOG_ENABLE                 bool
+	PORT                       int
+	HTTP_PORT                  int
+	CLIENT_TYPE                int //client类型，1:storage client, 2:other client, 3:dashboard client
+	STORAGE_CLIENT_EXPIRE_TIME = time.Second * 60
+	SYNC_MEMBER_INTERVAL       = time.Second * 5 // 60
+	PULL_NEW_FILE_INTERVAL     = time.Second * 10
+	SYNC_STATISTIC_INTERVAL    = time.Second * 6 // 65
+	PATH_REGEX                 = "^/([0-9a-zA-Z_]{1,10})/([0-9a-zA-Z_]{1,10})/([MS])/([0-9a-fA-F]{32})$"
+	MD5_REGEX                  = "^[0-9a-fA-F]{32}$"
+	UUID                       = ""
 
 	HTTP_AUTH = ""
 
 	// statistic info
-	IOIN        int64
-	IOOUT       int64
-	STAGE_IOIN        int64
-	STAGE_IOOUT       int64
-	DOWNLOADS   int
-	UPLOADS     int
-	STAGE_DOWNLOADS   int
-	STAGE_UPLOADS     int
-	START_TIME  int64
-	FILE_TOTAL  int
-	FILE_FINISH int
-	DISK_USAGE  int64
-	MEMORY      uint64
+	IOIN            int64
+	IOOUT           int64
+	STAGE_IOIN      int64
+	STAGE_IOOUT     int64
+	DOWNLOADS       int
+	UPLOADS         int
+	STAGE_DOWNLOADS int
+	STAGE_UPLOADS   int
+	START_TIME      int64
+	FILE_TOTAL      int
+	FILE_FINISH     int
+	DISK_USAGE      int64
+	MEMORY          uint64
 )
 
 const (
@@ -62,10 +62,9 @@ const (
 	TASK_SYNC_STATISTIC    = 6 // dashboard同步所有的tracker统计信息
 	DB_POOL_SIZE           = 20
 
-
-	STATUS_ENABLED		   = 1
-	STATUS_DISABLED		   = 0
-	STATUS_DELETED		   = 3
+	STATUS_ENABLED  = 1
+	STATUS_DISABLED = 0
+	STATUS_DELETED  = 3
 )
 
 var ioinLock sync.Mutex

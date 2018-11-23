@@ -427,7 +427,7 @@ func (tracker *TrackerInstance) ExecTask(task *bridge.Task) (bool, error) {
 	if task.TaskType == app.TASK_SYNC_MEMBER {
 		// register storage client to tracker server
 		regClientMeta := &bridge.OperationRegisterStorageClientRequest{
-			UUID:		   app.UUID,
+			UUID:          app.UUID,
 			AdvertiseAddr: app.ADVERTISE_ADDRESS,
 			Group:         app.GROUP,
 			InstanceId:    app.INSTANCE_ID,
@@ -445,8 +445,8 @@ func (tracker *TrackerInstance) ExecTask(task *bridge.Task) (bool, error) {
 			Memory:        app.MEMORY,
 			ReadOnly:      !app.UPLOAD_ENABLE,
 
-			StageIOin:		app.STAGE_IOIN,
-			StageIOout:		app.STAGE_IOOUT,
+			StageIOin:      app.STAGE_IOIN,
+			StageIOout:     app.STAGE_IOOUT,
 			StageDownloads: app.STAGE_DOWNLOADS,
 			StageUploads:   app.STAGE_UPLOADS,
 		}

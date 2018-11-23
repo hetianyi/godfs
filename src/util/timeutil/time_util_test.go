@@ -63,7 +63,7 @@ func Test6(t *testing.T) {
 	endTime := time.Now().Add(time.Hour * 33)
 	fmt.Println(GetLongHumanReadableDuration(start, endTime))
 
-	a := time.Unix(int64(GetTimestamp(start))/ 1000, 0)
+	a := time.Unix(int64(GetTimestamp(start))/1000, 0)
 	fmt.Println(GetTimestamp(start))
 	fmt.Println(GetTimestamp(a))
 }

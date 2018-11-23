@@ -1,6 +1,7 @@
 package main
 
 import (
+	"app"
 	"flag"
 	"libstorage"
 	"os"
@@ -9,7 +10,6 @@ import (
 	"util/file"
 	"util/logger"
 	"validate"
-	"app"
 )
 
 // 当客户端下载文件的时候，如果文件尚未在组内全部同步完成，

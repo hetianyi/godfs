@@ -2,17 +2,17 @@ package libdashboard
 
 import (
 	"app"
-	"util/timeutil"
-	"time"
-	"libclient"
 	"container/list"
-	"util/pool"
-	"util/logger"
-	"net/http"
-	"strconv"
+	"libclient"
 	"libcommon"
 	"libservice"
+	"net/http"
+	"strconv"
+	"time"
 	"util/db"
+	"util/logger"
+	"util/pool"
+	"util/timeutil"
 )
 
 // max client connection set to 1000
@@ -25,8 +25,6 @@ func StartService(config map[string]string) {
 	go startTrackerMaintainer(app.TRACKERS)
 	startWebService()
 }
-
-
 
 func startTrackerMaintainer(trackers string) {
 
@@ -51,15 +49,13 @@ func startTrackerMaintainer(trackers string) {
 	go libclient.SyncTrackerAliveStatus(maintainer)
 }
 
-
-
 func startWebService() {
 	http.HandleFunc("/dashboard/webtracker/add", addWebTrackerHandler)
 	http.HandleFunc("/dashboard/webtracker/delete", deleteWebTrackerHandler)
 	http.HandleFunc("/dashboard/index", indexStatistic)
 
 	s := &http.Server{
-		Addr: ":" + strconv.Itoa(app.HTTP_PORT),
+		Addr:              ":" + strconv.Itoa(app.HTTP_PORT),
 		ReadHeaderTimeout: 10 * time.Second,
 		WriteTimeout:      0,
 		MaxHeaderBytes:    1 << 20,

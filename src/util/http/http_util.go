@@ -8,7 +8,6 @@ import (
 	"util/logger"
 )
 
-
 func GetResponseBodyContent(resp *http.Response) (c string, e error) {
 	body := resp.Body
 	defer body.Close()
@@ -34,9 +33,8 @@ func MethodAllow(expectMethod string, writer http.ResponseWriter, request *http.
 	if expectMethod != method {
 		logger.Warn("405 method not allowed:", request.RequestURI)
 		writer.WriteHeader(http.StatusMethodNotAllowed)
-		writer.Write([]byte(strconv.Itoa(http.StatusMethodNotAllowed) + " Method '"+ method +"' not allowed."))
+		writer.Write([]byte(strconv.Itoa(http.StatusMethodNotAllowed) + " Method '" + method + "' not allowed."))
 		return false
 	}
 	return true
 }
-

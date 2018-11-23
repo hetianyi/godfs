@@ -1,6 +1,7 @@
 package main
 
 import (
+	"app"
 	"flag"
 	"libtracker"
 	"os"
@@ -9,7 +10,6 @@ import (
 	"util/file"
 	"util/logger"
 	"validate"
-	"app"
 )
 
 func main() {

@@ -18,12 +18,12 @@ import (
 	"os"
 	"regexp"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 	"util/common"
 	"util/logger"
 	"util/timeutil"
-	"strings"
 )
 
 const ContentDispositionPattern = "^Content-Disposition: form-data; name=\"([^\"]*)\"(; filename=\"([^\"]*)\".*)?$"
@@ -483,7 +483,7 @@ func WebUploadHandlerV1(writer http.ResponseWriter, request *http.Request) {
 	method := request.Method
 	if method != http.MethodPost && method != http.MethodOptions {
 		writer.WriteHeader(http.StatusMethodNotAllowed)
-		writer.Write([]byte(strconv.Itoa(http.StatusMethodNotAllowed) + " Method '"+ method +"' not allowed."))
+		writer.Write([]byte(strconv.Itoa(http.StatusMethodNotAllowed) + " Method '" + method + "' not allowed."))
 		return
 	}
 
@@ -504,7 +504,6 @@ func WebUploadHandlerV1(writer http.ResponseWriter, request *http.Request) {
 		writer.WriteHeader(205)
 		return
 	}
-
 
 	// check if client really want to upload file to this group.
 	params := request.URL.Query()
