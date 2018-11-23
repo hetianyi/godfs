@@ -330,7 +330,9 @@ func AddTask(task *bridge.Task, tracker *TrackerInstance) bool {
 	if task.TaskType == app.TASK_SYNC_MEMBER || task.TaskType == app.TASK_SYNC_ALL_STORAGES {
 		if tracker.checkTaskTypeCount(task.TaskType) == 0 {
 			logger.Trace("push task type:", strconv.Itoa(task.TaskType))
+			tracker.listIteLock.Lock()
 			tracker.taskList.PushFront(task)
+			tracker.listIteLock.Unlock()
 			return true
 		} else {
 			logger.Trace("can't push task type " + strconv.Itoa(task.TaskType) + ": task type exists")
@@ -340,7 +342,8 @@ func AddTask(task *bridge.Task, tracker *TrackerInstance) bool {
 		if tracker.checkTaskTypeCount(task.TaskType) == 0 {
 			logger.Trace("push task type 2")
 			if tracker.taskList.Front() != nil && tracker.taskList.Front().Value.(*bridge.Task).TaskType == app.TASK_SYNC_MEMBER {
-				tracker.taskList.InsertAfter(task, tracker.taskList.Front())
+				// tracker.taskList.InsertAfter(task, tracker.taskList.Front()) // bug
+				tracker.taskList.PushFront(task)
 			} else {
 				tracker.taskList.PushFront(task)
 			}
@@ -681,12 +684,12 @@ func QueryDownloadFileTaskCollector(tracker *TrackerInstance) {
 		logger.Error(e1)
 		return
 	}
-	if taskList.Len() == 0 {
+	if taskList == nil || taskList.Len() == 0 {
 		logger.Debug("no file need to sync.")
 	}
-	for e := taskList.Front(); e != nil; e = e.Next() {
-		if !existsDownloadingFile(e.Value.(*bridge.Task).FileId) {
-			AddTask(e.Value.(*bridge.Task), tracker)
+	for ele := taskList.Front(); ele != nil; ele = ele.Next() {
+		if !existsDownloadingFile(ele.Value.(*bridge.Task).FileId) {
+			AddTask(ele.Value.(*bridge.Task), tracker)
 		}
 	}
 }
