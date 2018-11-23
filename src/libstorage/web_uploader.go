@@ -15,7 +15,6 @@ import (
 	"libcommon/bridge"
 	"libservice"
 	"net/http"
-	"net/url"
 	"os"
 	"regexp"
 	"strconv"
@@ -202,7 +201,7 @@ func (handler *FileUploadHandlerV1) beginUpload() (*HttpUploadResponse, error) {
 							fileName := ""
 							if mat2 {
 								fileName = regexp.MustCompile(ContentDispositionPattern).ReplaceAllString(contentDisposition, "${3}")
-								fileName = url.QueryEscape(fileName)
+								fileName = common.EncodeASCII(fileName)
 								logger.Debug("read file field", paramName, "=", fileName)
 							}
 
@@ -404,7 +403,7 @@ func readFileBody(reader *FileFormReader, buffer []byte, separator string, md ha
 	} else {
 		stateUploadStatus.path = app.GROUP + "/" + app.INSTANCE_ID + "/S/" + sMd5
 	}
-	logger.Debug("http upload fid is", stateUploadStatus.path)
+	logger.Info("http upload fid is", stateUploadStatus.path)
 	app.UpdateUploads()
 	return stateUploadStatus, nil
 }
