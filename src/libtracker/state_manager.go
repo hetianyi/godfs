@@ -4,7 +4,6 @@ import (
 	"app"
 	"container/list"
 	"libcommon/bridge"
-	"regexp"
 	"strconv"
 	"sync"
 	"time"
@@ -208,7 +207,10 @@ func GetSyncStatistic() []bridge.ServerStatistic {
 // port: storage real serve port
 // return parsed ip address and port
 func parseAdvertiseAddr(advAddr string, port int) (string, int) {
-	m, e := regexp.Match(ipv4Pattern, []byte(advAddr))
+	return advAddr, port
+
+	// bug: if use domain, always return empty host
+	/*m, e := regexp.Match(ipv4Pattern, []byte(advAddr))
 	// if parse error, use serve port and parsed ip address
 	if e != nil {
 		return "", port
@@ -229,7 +231,7 @@ func parseAdvertiseAddr(advAddr string, port int) (string, int) {
 		adPort, _ := strconv.Atoi(regxp.ReplaceAllString(advAddr, "${5}"))
 		return adAddr, adPort
 	}
-	return "", port
+	return "", port*/
 }
 
 func queueStatistics(meta *storageMeta) {
