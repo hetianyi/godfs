@@ -29,8 +29,8 @@ go build -i -o $PWD/bin/tracker ./src/tracker.go
 echo "step 4/6: build storage..."
 go build -i -o $PWD/bin/storage ./src/storage.go
 
-echo "step 5/6: build bashboard..."
-go build -i -o $PWD/bin/bashboard ./src/bashboard.go
+echo "step 5/6: build dashboard..."
+go build -i -o $PWD/bin/dashboard ./src/dashboard.go
 
 echo "step 6/6: build client..."
 go build -i -o $PWD/bin/client ./src/client.go
