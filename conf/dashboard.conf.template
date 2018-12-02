@@ -6,7 +6,8 @@
 # -base_path
 #   └logs
 #   └data
-base_path=/godfs
+base_path=E:/godfs-storage/dashboard
+#base_path=/godfs
 
 # 是否开启日志，true or false
 log_enable=true

@@ -7,6 +7,9 @@ case $1 in
     storage)
         bin/storage $*
     ;;
+    bashboard)
+        bin/bashboard $*
+    ;;
     *)
         echo "unknown command: $1"
 esac

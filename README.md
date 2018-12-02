@@ -52,6 +52,7 @@ After the build is successful, three files will be generated under the `````./bi
 ./bin/client
 ./bin/storage
 ./bin/tracker
+./bin/bashboard
 ```
 
 Install godfs binary files to ```/usr/local/godfs```:
@@ -219,13 +220,15 @@ We are here using apache [jmeter-5.0](http://jmeter.apache.org/download_jmeter.c
 
 In the test, we used 20 threads to download 4 files of different sizes (less than 1MB), each thread running 100000 times, a total of 800000.
 
-|Label|	# Samples|	Average	|Median	|90% Line|	95% Line|	99% Line|	Min|	Max|	Error %|	Throughput|	Received KB/sec|	Sent KB/sec|
-|-|-|-|-|-|-|-|-|-|-|-|-|-|
-|1|	200000|	78|	72|	116| 135| 195|	5|	8377|	0.00%|	79.88966|	20079.84|	13.65|
-|2|	200000|	39|	36|	66| 76| 106|	2|	2715|	0.00%|	79.89087|	11202.43|	13.65|
-|3|	200000|	76|	65|	125| 154|	238|	5|	8641|	0.00%|	79.89052|	37493.62|	13.65|
-|4|	200000|	55|	49|	91|	111|	171|	4|	2789|	0.00%|	79.891|	23045.82|	13.65|
-|Total|	800000|	62|	55|	104|	126|	193|	2|	8641|	0.00%|	319.55492|	91819.69|	54.61|
+
+| Label | # Samples | Average | Median | 90% Line | 95% Line | 99% Line | Min  | Max  | Error % | Throughput | Received KB/sec | Sent KB/sec |
+| ----- | --------- | ------- | ------ | -------- | -------- | -------- | ---- | ---- | ------- | ---------- | --------------- | ----------- |
+| 1     | 200000    | 78      | 72     | 116      | 135      | 195      | 5    | 8377 | 0.00%   | 79.88966   | 20079.84        | 13.65       |
+| 2     | 200000    | 39      | 36     | 66       | 76       | 106      | 2    | 2715 | 0.00%   | 79.89087   | 11202.43        | 13.65       |
+| 3     | 200000    | 76      | 65     | 125      | 154      | 238      | 5    | 8641 | 0.00%   | 79.89052   | 37493.62        | 13.65       |
+| 4     | 200000    | 55      | 49     | 91       | 111      | 171      | 4    | 2789 | 0.00%   | 79.891     | 23045.82        | 13.65       |
+| Total | 800000    | 62      | 55     | 104      | 126      | 193      | 2    | 8641 | 0.00%   | 319.55492  | 91819.69        | 54.61       |
+
 
 ![architecture](/doc/response-time.png)
 
