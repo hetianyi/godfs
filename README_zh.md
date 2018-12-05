@@ -30,6 +30,7 @@ godfs
 - 更好的文件迁移解决方案
 - 支持读写和只读文件节点
 - 文件组内自动同步
+- 仪表盘支持(beta, 开发中)
 
 ## 安装
 
@@ -162,6 +163,26 @@ docker run -d -p 1024:1024 -p 80:8001 --name storage -v /godfs/data:/godfs/data 
     client --set "tracker=127.0.0.1:1022"
     client --set "log_level=info"
 ```
+
+
+
+## 监控
+
+godfs 仪表盘监控项目地址： [这里](https://github.com/hetianyi/godfs-dashboard)
+
+这个项目目前处于开发中，能够监控godfs的一些基本状态信息。
+
+可以通过docker达到开箱即用([这里](https://github.com/hetianyi/godfs-dashboard)).
+
+```shell
+# 开启监控
+docker run -d -p 8080:80 --restart always --name godfs-dashboard hehety/godfs-dashboard
+```
+
+![architecture](D:/Hetianyi/svn/godfs/doc/20181205154643.png)
+
+![architecture](D:/Hetianyi/svn/godfs/doc/20181205154909.png)
+
 
 
 ### 在vultr上做的简单压力测试

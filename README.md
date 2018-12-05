@@ -13,6 +13,10 @@ godfs
 You can pull the image on docker hub:
 [https://hub.docker.com/r/hehety/godfs/](https://hub.docker.com/r/hehety/godfs/)
 
+##### [2018-12-05 UPDATE] Godfs is now support dashboard for monitoring godfs running state!
+
+project is here:[https://github.com/hetianyi/godfs-dashboard](https://github.com/hetianyi/godfs-dashboard)
+
 ![architecture](/doc/20180830151005.png)
 
 ## Features
@@ -32,6 +36,7 @@ You can pull the image on docker hub:
 - Better data migration solution.
 - Support readonly node.
 - File synchronization in same group.
+- Support dashboard(beta, in development)
 
 ## Install
 
@@ -167,6 +172,27 @@ client usage:
     client --set "tracker=127.0.0.1:1022"
     client --set "log_level=info"
 ```
+
+
+
+## Monitoring
+
+godfs monitoring project is now avaliable at [HERE](https://github.com/hetianyi/godfs-dashboard)
+
+This project is currently under development and can monitor some basic status information of godfs.
+
+You can use it out of the box by docker([HERE](https://github.com/hetianyi/godfs-dashboard)).
+
+```shell
+# run the dashboard
+docker run -d -p 8080:80 --restart always --name godfs-dashboard hehety/godfs-dashboard
+```
+
+![architecture](/doc/20181205154643.png)
+
+![architecture](/doc/20181205154909.png)
+
+
 
 
 
