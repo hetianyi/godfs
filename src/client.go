@@ -216,9 +216,11 @@ func Init() *libclient.Client {
 }
 
 func clientMonitorCollector(tracker *libclient.TrackerInstance) {
+	logger.Debug("create sync task for tracker:", tracker.ConnStr)
 	task := &bridge.Task{
 		TaskType: app.TASK_SYNC_ALL_STORAGES,
 		Callback: func(task *bridge.Task, e error) {
+			logger.Debug("finish a tracker:", tracker.ConnStr)
 			checkChan <- 1
 		},
 	}

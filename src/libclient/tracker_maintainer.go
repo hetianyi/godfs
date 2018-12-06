@@ -100,10 +100,26 @@ func trackTaskFilter(allCollectors *list.List, index int) *list.List {
 	}
 	for ele := allCollectors.Front(); ele != nil; ele = ele.Next() {
 		if !ele.Value.(*TaskCollector).Single {
-			ret.PushBack(ele.Value)
+			// bug: use copied object in case that the lock be use in two different goroutine which cause dead lock.
+			ret.PushBack(copyTaskCollector(ele.Value.(*TaskCollector)))
 		}
 	}
 	return &ret
+}
+
+func copyTaskCollector(collector *TaskCollector) *TaskCollector {
+	if collector == nil {
+		return nil
+	}
+	return &TaskCollector{
+		Interval: collector.Interval,
+		FirstDelay: collector.FirstDelay,
+		ExecTimes: collector.ExecTimes,
+		Name: collector.Name,
+		Single: collector.Single,
+		Job: collector.Job,
+	}
+
 }
 
 // communication with tracker
@@ -173,6 +189,7 @@ func (maintainer *TrackerMaintainer) track(tracker string, secret string, index 
 					}
 					task := trackerInstance.GetTask()
 					if task == nil {
+						logger.Debug("no task...", tracker)
 						time.Sleep(time.Second * 1)
 						continue
 					}
@@ -258,6 +275,7 @@ func (collector *TaskCollector) Start(tracker *TrackerInstance) {
 }
 
 func (tracker *TrackerInstance) Init() {
+	logger.Debug("init tracker instance:", tracker.ConnStr)
 	tracker.listIteLock = new(sync.Mutex)
 	tracker.startTaskCollector()
 	tracker.nextRun = true
