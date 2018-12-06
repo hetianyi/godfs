@@ -207,6 +207,7 @@ docker run -d -p 8080:80 --restart always --name godfs-dashboard hehety/godfs-da
 ### HTTP 下载测试
 
 storage server 配置(California)
+
 | Name     | Value   |
 | -------- | ------- |
 | OS       | CentOS7 |
@@ -215,6 +216,7 @@ storage server 配置(California)
 | DISK     | SSD     |
 
 下载客户端机器配置(Los Angeles)
+
 | Name     | Value   |
 | -------- | ------- |
 | OS       | CentOS7 |
