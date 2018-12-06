@@ -179,10 +179,9 @@ godfs 仪表盘监控项目地址： [这里](https://github.com/hetianyi/godfs-
 docker run -d -p 8080:80 --restart always --name godfs-dashboard hehety/godfs-dashboard
 ```
 
-![architecture](D:/Hetianyi/svn/godfs/doc/20181205154643.png)
+![architecture](/doc/20181205154643.png)
 
-![architecture](D:/Hetianyi/svn/godfs/doc/20181205154909.png)
-
+![architecture](/doc/20181205154909.png)
 
 
 ### 在vultr上做的简单压力测试
