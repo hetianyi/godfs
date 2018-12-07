@@ -90,8 +90,8 @@ type TaskCollector struct {
 }
 
 // 类型为TASK_DOWNLOAD_FILE的任务只能在一个trackerInstance里面执行
-func trackTaskFilter(allCollectors *list.List, index int) *list.List {
-	if index == 0 {
+func trackTaskFilter(allCollectors *list.List) *list.List {
+	if trackerIndex == 0 {
 		return allCollectors
 	}
 	var ret list.List
@@ -122,6 +122,7 @@ func copyTaskCollector(collector *TaskCollector) *TaskCollector {
 
 }
 
+var trackerIndex = 1
 // communication with tracker
 // k,v => <connection string, secret>
 func (maintainer *TrackerMaintainer) Maintain(trackers map[string]string) {
@@ -133,18 +134,17 @@ func (maintainer *TrackerMaintainer) Maintain(trackers map[string]string) {
 		}
 		return
 	}
-	index := 0
 	for k, v := range trackers {
-		go maintainer.track(k, v, index)
-		index++
+		go maintainer.track(k, v)
+		trackerIndex++
 	}
 }
 
 // connect to each tracker
-func (maintainer *TrackerMaintainer) track(tracker string, secret string, index int) {
+func (maintainer *TrackerMaintainer) track(tracker string, secret string) {
 	logger.Debug("start tracker conn with tracker server:", tracker)
 	retry := 0
-	trackerInstance := &TrackerInstance{Collectors: *trackTaskFilter(&maintainer.Collectors, index), ConnStr: tracker}
+	trackerInstance := &TrackerInstance{Collectors: *trackTaskFilter(&maintainer.Collectors), ConnStr: tracker}
 	trackerInstance.Init()
 	if app.CLIENT_TYPE == 1 {
 		initDownloadClient(maintainer)
