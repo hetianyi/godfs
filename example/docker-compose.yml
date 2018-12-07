@@ -36,7 +36,7 @@ services:
       - http_port=8001
       - group=G01
       - instance_id=01
-      - advertise_addr=ssh.foxmaz.com
+      - advertise_addr=192.168.1.100
       - trackers=tracker1:1022
     volumes:
       - storage1:/godfs/data
@@ -54,7 +54,7 @@ services:
       - http_port=8002
       - group=G02
       - instance_id=02
-      - advertise_addr=ssh.foxmaz.com
+      - advertise_addr=192.168.1.100
       - trackers=tracker2:1023
     volumes:
       - storage2:/godfs/data
@@ -73,7 +73,7 @@ services:
       - http_port=8003
       - group=G01
       - instance_id=03
-      - advertise_addr=ssh.foxmaz.com
+      - advertise_addr=192.168.1.100
       - trackers=tracker1:1022
     volumes:
       - storage3:/godfs/data
@@ -91,7 +91,7 @@ services:
       - http_port=8004
       - group=G02
       - instance_id=04
-      - advertise_addr=ssh.foxmaz.com
+      - advertise_addr=192.168.1.100
       - trackers=tracker2:1023
     volumes:
       - storage4:/godfs/data
