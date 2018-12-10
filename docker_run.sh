@@ -7,10 +7,11 @@ case $1 in
     storage)
         bin/storage $*
     ;;
-    bashboard)
-        bin/bashboard $*
+    dashboard)
+        bin/dashboard $*
     ;;
     *)
         echo "unknown command: $1"
+    ;;
 esac
 exit 0
