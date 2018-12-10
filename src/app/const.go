@@ -31,7 +31,7 @@ var (
 	SYNC_MEMBER_INTERVAL       = time.Second * 5 // 60
 	PULL_NEW_FILE_INTERVAL     = time.Second * 10
 	SYNC_STATISTIC_INTERVAL    = time.Second * 6 // 65
-	PATH_REGEX                 = "^/([0-9a-zA-Z_]{1,10})/([0-9a-zA-Z_]{1,10})/([MS])/([0-9a-fA-F]{32})$"
+	PATH_REGEX                 = "^/([0-9a-zA-Z_]{1,10})/([0-9a-zA-Z_]{1,30})/([MS])/([0-9a-fA-F]{32})$"
 	MD5_REGEX                  = "^[0-9a-fA-F]{32}$"
 	UUID                       = ""
 

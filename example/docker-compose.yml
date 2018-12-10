@@ -4,8 +4,8 @@ services:
   tracker1:
     image: hehety/godfs:1.0.4-beta
     command: tracker
-    ports:
-      - "1022:1022"
+#    ports:
+#      - "1022:1022"
     environment:
       - port=1022
     volumes:
@@ -22,8 +22,8 @@ services:
   tracker2:
     image: hehety/godfs:1.0.4-beta
     command: tracker
-    ports:
-      - "1023:1023"
+#    ports:
+#      - "1023:1023"
     environment:
       - port=1023
     volumes:
@@ -99,14 +99,12 @@ services:
     volumes:
       - ./nginx.conf:/etc/nginx/nginx.conf
     networks:
-      - godfs
+      - host
 
 # ----------------------------------------------
 
 
 networks:
-  godfs:
-    driver: overlay
   host:
     external: true
 
