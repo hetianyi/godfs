@@ -1,6 +1,6 @@
 version: '3.0'
 services:
-
+# ----------------------------------------------
   tracker1:
     image: hehety/godfs:1.0.3-beta
     command: tracker
@@ -10,6 +10,12 @@ services:
       - port=1022
     volumes:
       - tracker1:/godfs/data
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role = tracker
     networks:
       - godfs
 
@@ -22,8 +28,16 @@ services:
       - port=1023
     volumes:
       - tracker2:/godfs/data
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role = tracker
     networks:
       - godfs
+
+# ----------------------------------------------
 
   storage1:
     image: hehety/godfs:1.0.3-beta
@@ -40,8 +54,14 @@ services:
       - trackers=tracker1:1022
     volumes:
       - storage1:/godfs/data
+    deploy:
+      mode: global
+      placement:
+        constraints:
+          - node.role = storage
     networks:
       - godfs
+
 
   storage2:
     image: hehety/godfs:1.0.3-beta
@@ -54,50 +74,19 @@ services:
       - http_port=8002
       - group=G02
       - instance_id=02
-      - advertise_addr=192.168.1.100
       - trackers=tracker2:1023
     volumes:
       - storage2:/godfs/data
+    deploy:
+      mode: global
+      placement:
+        constraints:
+          - node.role = storage
     networks:
       - godfs
 
 
-  storage3:
-    image: hehety/godfs:1.0.3-beta
-    command: storage
-    ports:
-      - "1026:1026"
-      - "8003:8003"
-    environment:
-      - port=1026
-      - http_port=8003
-      - group=G01
-      - instance_id=03
-      - advertise_addr=192.168.1.100
-      - trackers=tracker1:1022
-    volumes:
-      - storage3:/godfs/data
-    networks:
-      - godfs
-
-  storage4:
-    image: hehety/godfs:1.0.3-beta
-    command: storage
-    ports:
-      - "1027:1027"
-      - "8004:8004"
-    environment:
-      - port=1027
-      - http_port=8004
-      - group=G02
-      - instance_id=04
-      - advertise_addr=192.168.1.100
-      - trackers=tracker2:1023
-    volumes:
-      - storage4:/godfs/data
-    networks:
-      - godfs
-
+# ----------------------------------------------
   gateway:
     image: nginx
     ports:
@@ -107,6 +96,7 @@ services:
     networks:
       - godfs
 
+# ----------------------------------------------
 
 
 networks:
@@ -118,7 +108,5 @@ volumes:
   tracker2:
   storage1:
   storage2:
-  storage3:
-  storage4:
 
 

@@ -15,7 +15,7 @@ import (
 var (
 	az                   = []rune{'A', 'B', 'C', 'D', 'E', 'F'}
 	i09                  = []rune{'0', '1', '2', '3', '4', '5', '6', '7', '8', '9'}
-	GroupInstancePattern = "^[0-9a-zA-Z_]{1,10}$" // group name and instance id pattern
+	GroupInstancePattern = "^[0-9a-zA-Z_]{0,30}$" // group name and instance id pattern
 )
 
 // check configuration file parameter.

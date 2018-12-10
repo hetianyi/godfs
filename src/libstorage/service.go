@@ -71,6 +71,12 @@ func StartService(config map[string]string) {
 	}
 	app.UUID = uuid
 	logger.Info("instance start with uuid:", app.UUID)
+	if app.INSTANCE_ID == "" {
+		// 2018/12/10 if instance_id not set, use app.UUID as instance_id instead.
+		// this feature is mainly used in the docker clustering environment.
+		logger.Warn("app instance_id not set, use app.UUID as instance_id instead")
+		app.INSTANCE_ID = app.UUID
+	}
 
 	initDbStatistic()
 	// start statistic service.
