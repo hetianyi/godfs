@@ -15,7 +15,7 @@ import (
 )
 
 const (
-	pathRegexRestful = "^/download/([0-9a-zA-Z_]{1,10})/([0-9a-zA-Z_]{1,10})/([MS])/([0-9a-fA-F]{32})(/([^/]*))?$"
+	pathRegexRestful = "^/download/([0-9a-zA-Z_]{1,10})/([0-9a-zA-Z_]{1,30})/([MS])/([0-9a-fA-F]{32})(/([^/]*))?$"
 	rangeHeader      = "^bytes=([0-9]+)-([0-9]+)?$"
 )
 
