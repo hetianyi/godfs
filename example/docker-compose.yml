@@ -49,8 +49,7 @@ services:
       - port=1024
       - http_port=8001
       - group=G01
-      - instance_id=01
-      - advertise_addr=192.168.1.100
+      #- instance_id=01
       - trackers=tracker1:1022
     volumes:
       - storage1:/godfs/data
@@ -73,7 +72,7 @@ services:
       - port=1025
       - http_port=8002
       - group=G02
-      - instance_id=02
+      #- instance_id=02
       - trackers=tracker2:1023
     volumes:
       - storage2:/godfs/data
