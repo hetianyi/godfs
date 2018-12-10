@@ -14,7 +14,7 @@ const (
 	getDownloadFiles  = `select id from files a where a.finish=0 limit ?`
 	getFullFileSQL1   = `select b.id, b.md5, grop, b.instance, parts_num from files b where b.md5=? `
 	getFullFileSQL11  = `select b.id, b.md5, grop, b.instance, parts_num from files b where b.id=? `
-	getFullFileSQL12  = `select b.id, b.md5, grop, b.instance, parts_num from files b where b.id > ? limit 50`
+	getFullFileSQL12  = `select b.id, b.md5, grop, b.instance, parts_num from files b where b.id > ? and b.instance=? limit 50`
 	getFullFileSQL13  = `select b.id, b.md5, grop, b.instance, parts_num from files b where b.id in`
 	getFullFileSQL2   = `select d.md5, d.size
                         from files b

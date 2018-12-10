@@ -1,11 +1,9 @@
-version: '3.0'
+version: '3.5'
 services:
 # ----------------------------------------------
   tracker1:
     image: hehety/godfs:1.0.4-beta
     command: tracker
-#    ports:
-#      - "1022:1022"
     environment:
       - port=1022
     volumes:
@@ -22,8 +20,6 @@ services:
   tracker2:
     image: hehety/godfs:1.0.4-beta
     command: tracker
-#    ports:
-#      - "1023:1023"
     environment:
       - port=1023
     volumes:
@@ -42,14 +38,10 @@ services:
   storage1:
     image: hehety/godfs:1.0.4-beta
     command: storage
-#    ports:
-#      - "1024:1024"
-#      - "8001:8001"
     environment:
       - port=1024
       - http_port=8001
       - group=G01
-      #- instance_id=01
       - trackers=192.168.1.141:1022
     volumes:
       - storage1:/godfs/data
@@ -65,14 +57,10 @@ services:
   storage2:
     image: hehety/godfs:1.0.4-beta
     command: storage
-#    ports:
-#      - "1025:1025"
-#      - "8002:8002"
     environment:
       - port=1025
       - http_port=8002
       - group=G02
-      #- instance_id=02
       - trackers=192.168.1.141:1023
     volumes:
       - storage2:/godfs/data
@@ -88,8 +76,6 @@ services:
 # ----------------------------------------------
   gateway:
     image: nginx
-    ports:
-      - "8888:80"
     deploy:
       mode: replicated
       replicas: 1

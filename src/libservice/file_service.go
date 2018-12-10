@@ -751,7 +751,7 @@ func GetFilesBasedOnId(fid int) (*list.List, error) {
 			}
 		}
 		return nil
-	}, getFullFileSQL12, fid)
+	}, getFullFileSQL12, fid, app.INSTANCE_ID)
 
 	if e1 != nil {
 		return nil, e1
