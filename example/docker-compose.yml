@@ -15,7 +15,7 @@ services:
       replicas: 1
       placement:
         constraints:
-          - node.role == tracker
+          - node.labels.role == tracker
     networks:
       - godfs
 
@@ -33,7 +33,7 @@ services:
       replicas: 1
       placement:
         constraints:
-          - node.role == tracker
+          - node.labels.role == tracker
     networks:
       - godfs
 
@@ -57,7 +57,7 @@ services:
       mode: global
       placement:
         constraints:
-          - node.role == storage
+          - node.labels.role == storage
     networks:
       - godfs
 
@@ -80,7 +80,7 @@ services:
       mode: global
       placement:
         constraints:
-          - node.role == storage
+          - node.labels.role == storage
     networks:
       - godfs
 
@@ -90,6 +90,12 @@ services:
     image: nginx
     ports:
       - "8888:80"
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.labels.role == tracker
     volumes:
       - ./nginx.conf:/etc/nginx/nginx.conf
     networks:
