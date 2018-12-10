@@ -33,4 +33,4 @@ RUN tar -xzf /godfs.tar.gz -C / && rm -f /godfs.tar.gz && \
     #echo "http://mirrors.aliyun.com/alpine/v3.8/community/" >> /etc/apk/repositories && \
     apk add tzdata
 WORKDIR /godfs
-CMD ["sh", "docker_run.sh"]
+ENTRYPOINT ["sh", "docker_run.sh"]
