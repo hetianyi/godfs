@@ -2,7 +2,7 @@ version: '3.0'
 services:
 # ----------------------------------------------
   tracker1:
-    image: hehety/godfs:1.0.3-beta
+    image: hehety/godfs:1.0.4-beta
     command: tracker
     ports:
       - "1022:1022"
@@ -20,7 +20,7 @@ services:
       - godfs
 
   tracker2:
-    image: hehety/godfs:1.0.3-beta
+    image: hehety/godfs:1.0.4-beta
     command: tracker
     ports:
       - "1023:1023"
@@ -40,7 +40,7 @@ services:
 # ----------------------------------------------
 
   storage1:
-    image: hehety/godfs:1.0.3-beta
+    image: hehety/godfs:1.0.4-beta
     command: storage
     ports:
       - "1024:1024"
@@ -64,7 +64,7 @@ services:
 
 
   storage2:
-    image: hehety/godfs:1.0.3-beta
+    image: hehety/godfs:1.0.4-beta
     command: storage
     ports:
       - "1025:1025"
