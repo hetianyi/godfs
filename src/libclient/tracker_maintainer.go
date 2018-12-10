@@ -510,7 +510,7 @@ func (tracker *TrackerInstance) ExecTask(task *bridge.Task) (bool, error) {
         }
         return false, nil
     } else if task.TaskType == app.TASK_REPORT_FILE {
-        files, e1 := libservice.GetFilesBasedOnId(task.FileId)
+        files, e1 := libservice.GetFilesBasedOnId(task.FileId, true)
         if e1 != nil {
             return false, e1
         }

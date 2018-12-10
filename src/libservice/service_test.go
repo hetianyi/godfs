@@ -68,7 +68,7 @@ func Test9(t *testing.T) {
 
 func Test10(t *testing.T) {
 	initParam()
-	ret, _ := GetFilesBasedOnId(0)
+	ret, _ := GetFilesBasedOnId(0, false)
 	fmt.Println(ret.Len())
 	s, _ := json.Marshal(*ret)
 	fmt.Println(string(s))

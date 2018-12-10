@@ -146,7 +146,7 @@ func pullNewFile(request *bridge.Meta, connBridge *bridge.Bridge) error {
 		connBridge.SendResponse(response, 0, nil)
 		return e1
 	}
-	ret, e2 := libservice.GetFilesBasedOnId(queryMeta.BaseId)
+	ret, e2 := libservice.GetFilesBasedOnId(queryMeta.BaseId, false)
 	if e2 != nil {
 		response.Status = bridge.STATUS_INTERNAL_SERVER_ERROR
 		// ignore if it write success

@@ -728,30 +728,50 @@ func UpdateFileStatus(fid int) error {
 }
 
 // storage查询tracker新文件，基于tracker服务器的Id作为起始
-func GetFilesBasedOnId(fid int) (*list.List, error) {
+func GetFilesBasedOnId(fid int, onlyMyself bool) (*list.List, error) {
 	var files list.List
 	dao, ef := dbPool.GetDB()
 	if ef != nil {
 		return nil, ef
 	}
 	defer dbPool.ReturnDB(dao)
+	var e1 error = nil
 	// query file
-	e1 := dao.Query(func(rows *sql.Rows) error {
-		if rows != nil {
-			for rows.Next() {
-				var id, partNu int
-				var md5, group, instance string
-				e1 := rows.Scan(&id, &md5, &group, &instance, &partNu)
-				if e1 != nil {
-					return e1
-				} else {
-					fi := &bridge.File{Id: id, Md5: md5, Group: group, Instance: instance, PartNum: partNu}
-					files.PushBack(fi)
+	if onlyMyself {
+		e1 = dao.Query(func(rows *sql.Rows) error {
+			if rows != nil {
+				for rows.Next() {
+					var id, partNu int
+					var md5, group, instance string
+					e1 := rows.Scan(&id, &md5, &group, &instance, &partNu)
+					if e1 != nil {
+						return e1
+					} else {
+						fi := &bridge.File{Id: id, Md5: md5, Group: group, Instance: instance, PartNum: partNu}
+						files.PushBack(fi)
+					}
 				}
 			}
-		}
-		return nil
-	}, getFullFileSQL12, fid, app.INSTANCE_ID)
+			return nil
+		}, getFullFileSQL12, fid, app.INSTANCE_ID)
+	} else {
+		e1 = dao.Query(func(rows *sql.Rows) error {
+			if rows != nil {
+				for rows.Next() {
+					var id, partNu int
+					var md5, group, instance string
+					e1 := rows.Scan(&id, &md5, &group, &instance, &partNu)
+					if e1 != nil {
+						return e1
+					} else {
+						fi := &bridge.File{Id: id, Md5: md5, Group: group, Instance: instance, PartNum: partNu}
+						files.PushBack(fi)
+					}
+				}
+			}
+			return nil
+		}, getFullFileSQL12_1, fid)
+	}
 
 	if e1 != nil {
 		return nil, e1
