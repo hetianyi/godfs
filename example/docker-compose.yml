@@ -17,7 +17,7 @@ services:
         constraints:
           - node.labels.role == tracker
     networks:
-      - godfs
+      - host
 
   tracker2:
     image: hehety/godfs:1.0.4-beta
@@ -35,22 +35,22 @@ services:
         constraints:
           - node.labels.role == tracker
     networks:
-      - godfs
+      - host
 
 # ----------------------------------------------
 
   storage1:
     image: hehety/godfs:1.0.4-beta
     command: storage
-    ports:
-      - "1024:1024"
-      - "8001:8001"
+#    ports:
+#      - "1024:1024"
+#      - "8001:8001"
     environment:
       - port=1024
       - http_port=8001
       - group=G01
       #- instance_id=01
-      - trackers=tracker1:1022
+      - trackers=192.168.1.141:1022
     volumes:
       - storage1:/godfs/data
     deploy:
@@ -59,21 +59,21 @@ services:
         constraints:
           - node.labels.role == storage
     networks:
-      - godfs
+      - host
 
 
   storage2:
     image: hehety/godfs:1.0.4-beta
     command: storage
-    ports:
-      - "1025:1025"
-      - "8002:8002"
+#    ports:
+#      - "1025:1025"
+#      - "8002:8002"
     environment:
       - port=1025
       - http_port=8002
       - group=G02
       #- instance_id=02
-      - trackers=tracker2:1023
+      - trackers=192.168.1.141:1023
     volumes:
       - storage2:/godfs/data
     deploy:
@@ -82,7 +82,7 @@ services:
         constraints:
           - node.labels.role == storage
     networks:
-      - godfs
+      - host
 
 
 # ----------------------------------------------
@@ -107,6 +107,8 @@ services:
 networks:
   godfs:
     driver: overlay
+  host:
+    external: true
 
 volumes:
   tracker1:
