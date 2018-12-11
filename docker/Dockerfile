@@ -31,6 +31,6 @@ RUN tar -xzf /godfs.tar.gz -C / && rm -f /godfs.tar.gz && \
     # faster in china
     #echo "http://mirrors.aliyun.com/alpine/v3.8/main/" > /etc/apk/repositories && \
     #echo "http://mirrors.aliyun.com/alpine/v3.8/community/" >> /etc/apk/repositories && \
-    apk add tzdata
+    apk add tzdata && apk add libc6-compat
 WORKDIR /godfs
 ENTRYPOINT ["sh", "docker_run.sh"]
