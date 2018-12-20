@@ -79,14 +79,9 @@ then you can using command ```client``` directly in command line to upload and d
 client --set "trackers=host1:port1[,host2:port2]"
 ```
 
-For example:
+For example, you can upload file by:
 ```shell
 # upload a file
-client -u /you/upload/file
-```
-
-You can upload file by:
-```shell
 client -u /f/project.rar
 ```
 ![architecture](/doc/20180828095840.png)
@@ -124,7 +119,7 @@ if upload success, server will return a json string like this:
 }
 ```
 
-> The ```formData``` contains all parameters of your posted form, the file will be replaced by a remote path.
+> The ```formData``` contains all parameters of your posted form, the file will be replaced by a remote path(none english characters will encode to hex string, such as '图片' --> '\\u56fe\\u7247').
 If you want to upload file to specified group, you can add parameter ```?group=<groupID>``` to the request path.
 
 ```shell

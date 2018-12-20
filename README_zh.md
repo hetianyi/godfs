@@ -73,9 +73,8 @@ cd godfs
 client --set "trackers=host1:port1[,host2:port2]"
 ```
 
-举个栗子:
+举个栗子，上传一个文件:
 
-上传一个文件:
 ```shell
  client -u /you/upload/file
 ```
@@ -115,7 +114,7 @@ curl -F "file=@/your/file" "http://your.host:http_port/upload"
 }
 ```
 
-> 其中， ```formData``` 是post表单中的所有字段的name-value信息，文件已被替换为上传之后的路径地址。
+> 其中， ```formData``` 是post表单中的所有字段的name-value信息，文件已被替换为上传之后的路径地址(非英文字符将编码为十六进制字符串, 例如 '图片' --> '\\u56fe\\u7247')。
 如果你想上传文件到指定的group，可以在路径上加参数```?group=<groupID>```
 
 ```shell
