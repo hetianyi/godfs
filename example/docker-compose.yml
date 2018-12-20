@@ -6,8 +6,8 @@ services:
     command: tracker
     environment:
       - port=1022
-    volumes:
-      - tracker1:/godfs/data
+#    volumes:
+#      - tracker1:/godfs/data
     deploy:
       mode: replicated
       replicas: 1
@@ -22,8 +22,8 @@ services:
     command: tracker
     environment:
       - port=1023
-    volumes:
-      - tracker2:/godfs/data
+#    volumes:
+#      - tracker2:/godfs/data
     deploy:
       mode: replicated
       replicas: 1
@@ -42,9 +42,9 @@ services:
       - port=1024
       - http_port=8001
       - group=G01
-      - trackers=192.168.1.141:1022
-    volumes:
-      - storage1:/godfs/data
+      - trackers=192.168.1.141:1022,192.168.1.141:1023
+#    volumes:
+#      - storage1:/godfs/data
     deploy:
       mode: global
       placement:
@@ -61,9 +61,9 @@ services:
       - port=1025
       - http_port=8002
       - group=G02
-      - trackers=192.168.1.141:1023
-    volumes:
-      - storage2:/godfs/data
+      - trackers=192.168.1.141:1022,192.168.1.141:1023
+#    volumes:
+#      - storage2:/godfs/data
     deploy:
       mode: global
       placement:
@@ -93,11 +93,11 @@ services:
 networks:
   host:
     external: true
-
-volumes:
-  tracker1:
-  tracker2:
-  storage1:
-  storage2:
-
+#
+#volumes:
+#  tracker1:
+#  tracker2:
+#  storage1:
+#  storage2:
+#
 

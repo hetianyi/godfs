@@ -265,6 +265,7 @@ func TrackerAddFile(meta *bridge.OperationRegisterFileRequest) error {
 
 	for i := range meta.Files {
 		fi := meta.Files[i]
+		logger.Info("register file:", fi.Md5)
 		fid, e = GetFileId(fi.Md5, dao)
 		if e != nil {
 			return e
@@ -727,8 +728,8 @@ func UpdateFileStatus(fid int) error {
 	})
 }
 
-// storage查询tracker新文件，基于tracker服务器的Id作为起始
-func GetFilesBasedOnId(fid int, onlyMyself bool) (*list.List, error) {
+// query newly upload files which are only from this instance or not
+func GetFilesBasedOnId(fid int, onlyMyself bool, group string) (*list.List, error) {
 	var files list.List
 	dao, ef := dbPool.GetDB()
 	if ef != nil {
@@ -770,7 +771,7 @@ func GetFilesBasedOnId(fid int, onlyMyself bool) (*list.List, error) {
 				}
 			}
 			return nil
-		}, getFullFileSQL12_1, fid)
+		}, getFullFileSQL12_1, fid, group)
 	}
 
 	if e1 != nil {

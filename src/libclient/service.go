@@ -252,13 +252,13 @@ func download(path string, start int64, offset int64, fromSrc bool, excludes *li
 			if !fromSrc {
 				return NO_STORAGE_ERROR
 			} else {
-				logger.Debug("source server is not available:", mem.AdvertiseAddr+":"+strconv.Itoa(mem.Port))
+				logger.Debug("source server is not available("+ instanceId +")")
 				fromSrc = false
 				continue
 			}
 		}
 		// TODO when download is busy and no connection available, shall skip current download task.
-		logger.Debug("using storage server:", mem.AdvertiseAddr+":"+strconv.Itoa(mem.Port))
+		logger.Debug("using storage server:", mem.AdvertiseAddr + ":" + strconv.Itoa(mem.Port))
 		cb, e12 := client.connPool.GetConnBridge(mem)
 		if e12 != nil {
 			logger.Error(e12)
@@ -274,7 +274,7 @@ func download(path string, start int64, offset int64, fromSrc bool, excludes *li
 		member = mem
 		break
 	}
-	logger.Debug("download from:", *member)
+	logger.Info("download from:", member.AdvertiseAddr + ":" + strconv.Itoa(member.Port))
 
 	e2 := connBridge.SendRequest(bridge.O_DOWNLOAD_FILE, downloadMeta, 0, nil)
 	if e2 != nil {
@@ -283,6 +283,7 @@ func download(path string, start int64, offset int64, fromSrc bool, excludes *li
 		return download(path, start, offset, false, excludes, client, writerHandler)
 	}
 
+	var responseCode = bridge.STATUS_INTERNAL_SERVER_ERROR
 	// receive response
 	e3 := connBridge.ReceiveResponse(func(response *bridge.Meta, in io.Reader) error {
 		if response.Err != nil {
@@ -293,6 +294,7 @@ func download(path string, start int64, offset int64, fromSrc bool, excludes *li
 		if e4 != nil {
 			return e4
 		}
+		responseCode = downloadResponse.Status
 		if downloadResponse.Status == bridge.STATUS_NOT_FOUND {
 			return bridge.FILE_NOT_FOUND_ERROR
 		}
@@ -303,7 +305,11 @@ func download(path string, start int64, offset int64, fromSrc bool, excludes *li
 		return writerHandler(path, response.BodyLength, connBridge.GetConn())
 	})
 	if e3 != nil {
-		client.connPool.ReturnBrokenConnBridge(member, connBridge)
+		if responseCode == bridge.STATUS_NOT_FOUND || responseCode == bridge.STATUS_OK {
+			client.connPool.ReturnConnBridge(member, connBridge)
+		} else {
+			client.connPool.ReturnBrokenConnBridge(member, connBridge)
+		}
 		// if download fail, try to download from other storage server
 		return download(path, start, offset, false, excludes, client, writerHandler)
 	} else {

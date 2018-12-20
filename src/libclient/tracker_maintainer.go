@@ -510,7 +510,7 @@ func (tracker *TrackerInstance) ExecTask(task *bridge.Task) (bool, error) {
         }
         return false, nil
     } else if task.TaskType == app.TASK_REPORT_FILE {
-        files, e1 := libservice.GetFilesBasedOnId(task.FileId, true)
+        files, e1 := libservice.GetFilesBasedOnId(task.FileId, true, "")
         if e1 != nil {
             return false, e1
         }
@@ -571,6 +571,7 @@ func (tracker *TrackerInstance) ExecTask(task *bridge.Task) (bool, error) {
         // register storage client to tracker server
         pullMeta := &bridge.OperationPullFileRequest{
             BaseId: config.TrackerSyncId,
+            Group: app.GROUP,
         }
         logger.Debug("try to pull new file from tracker server:", tracker.connBridge.GetConn().RemoteAddr().String(), ", base id is", config.TrackerSyncId)
         // reg client
@@ -704,6 +705,7 @@ func QueryDownloadFileTaskCollector(tracker *TrackerInstance) {
     members := collectMemberInstanceId()
     // no member, no server for download.
     if members == "" {
+        logger.Debug("no storage server available, skip collect download task")
         return
     }
     taskList, e1 := libservice.GetDownloadFileTask(app.TASK_DOWNLOAD_FILE)
@@ -790,7 +792,7 @@ func downloadFile(fullFi *bridge.File) {
                 som = "M"
             }
             logger.Debug("download part of ", strconv.Itoa(i + 1) + "/" + strconv.Itoa(len(fullFi.Parts)), ": /" + app.GROUP + "/" + fullFi.Instance + "/" + som + "/" + fullFi.Md5, " -> ", part.Md5)
-            e2 := download("/"+app.GROUP+"/"+fullFi.Instance+"/"+som+"/"+fullFi.Md5,
+            e2 := download("/" + app.GROUP + "/" + fullFi.Instance + "/" + som + "/" + fullFi.Md5,
                 start, part.FileSize, true, new(list.List), getDownloadClient(),
                 func(realPath string, fileLen uint64, reader io.Reader) error {
                     if uint64(part.FileSize) != fileLen {
@@ -817,7 +819,7 @@ func downloadFile(fullFi *bridge.File) {
                         file.Delete(fi.Name())
                         return e5
                     }
-                    logger.Debug("download part success", strconv.Itoa(i+1) + "/" + strconv.Itoa(len(fullFi.Parts)) + " ->" + part.Md5)
+                    logger.Info("download part success", strconv.Itoa(i+1) + "/" + strconv.Itoa(len(fullFi.Parts)) + " ->" + part.Md5)
                     return nil
                 })
             if e2 != nil {
@@ -827,13 +829,13 @@ func downloadFile(fullFi *bridge.File) {
             start += part.FileSize
         }
         if dirty > 0 {
-            logger.Error("error download full file, broken parts:" + strconv.Itoa(dirty) + "/" + strconv.Itoa(len(fullFi.Parts)))
+            logger.Error("error download full file("+ fullFi.Md5 +"), broken parts:" + strconv.Itoa(dirty) + "/" + strconv.Itoa(len(fullFi.Parts)))
         } else {
             ee := libservice.UpdateFileStatus(fullFi.Id)
             if ee != nil {
                 logger.Error(ee)
             } else {
-                logger.Info("download file success")
+                logger.Info("download file success("+ fullFi.Md5 +")")
             }
         }
     }, func(i interface{}) {
