@@ -45,7 +45,7 @@ services:
       - advertise_port=2033
       # replace this address by your proxy server
       - advertise_addr=192.168.1.187
-      - trackers=tracker1:1022,tracker:1023
+      - trackers=tracker1:1022,tracker2:1023
 #    volumes:
 #      - storage1:/godfs/data
     deploy:
@@ -67,7 +67,7 @@ services:
       - advertise_port=2034
       # replace this address by your proxy server
       - advertise_addr=192.168.1.187
-      - trackers=tracker1:1022,tracker:1023
+      - trackers=tracker1:1022,tracker2:1023
 #    volumes:
 #      - storage2:/godfs/data
     deploy:
