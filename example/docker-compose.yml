@@ -8,12 +8,6 @@ services:
       - port=1022
 #    volumes:
 #      - tracker1:/godfs/data
-    deploy:
-      mode: replicated
-      replicas: 1
-      placement:
-        constraints:
-          - node.labels.role == tracker
     networks:
       - godfs
 
@@ -24,12 +18,6 @@ services:
       - port=1023
 #    volumes:
 #      - tracker2:/godfs/data
-    deploy:
-      mode: replicated
-      replicas: 1
-      placement:
-        constraints:
-          - node.labels.role == tracker
     networks:
       - godfs
 
@@ -44,15 +32,10 @@ services:
       - group=G01
       - advertise_port=2033
       # replace this address by your proxy server
-      - advertise_addr=192.168.1.187
+      - advertise_addr=192.168.0.105
       - trackers=tracker1:1022,tracker2:1023
 #    volumes:
 #      - storage1:/godfs/data
-    deploy:
-      mode: global
-      placement:
-        constraints:
-          - node.labels.role == storage
     networks:
       - godfs
 
@@ -66,34 +49,23 @@ services:
       - group=G02
       - advertise_port=2034
       # replace this address by your proxy server
-      - advertise_addr=192.168.1.187
+      - advertise_addr=192.168.0.105
       - trackers=tracker1:1022,tracker2:1023
 #    volumes:
 #      - storage2:/godfs/data
-    deploy:
-      mode: global
-      placement:
-        constraints:
-          - node.labels.role == storage
     networks:
       - godfs
 
 
 # ----------------------------------------------
   gateway:
-    image: nginx
+    image: hehety/nginx
     ports:
       - "80:80"
       - "2033:2033"
       - "2034:2034"
-    deploy:
-      mode: replicated
-      replicas: 1
-      placement:
-        constraints:
-          - node.labels.role == tracker
     volumes:
-      - ./nginx.conf:/etc/nginx/nginx.conf
+      - ./nginx.conf:/usr/local/nginx/conf/nginx.conf
     networks:
       - godfs
 
