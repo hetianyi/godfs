@@ -15,7 +15,7 @@ services:
         constraints:
           - node.labels.role == tracker
     networks:
-      - host
+      - godfs
 
   tracker2:
     image: hehety/godfs:1.0.4-beta
@@ -31,18 +31,21 @@ services:
         constraints:
           - node.labels.role == tracker
     networks:
-      - host
+      - godfs
 
 # ----------------------------------------------
 
-  storage1:
+  storage_group1:
     image: hehety/godfs:1.0.4-beta
     command: storage
     environment:
       - port=1024
       - http_port=8001
       - group=G01
-      - trackers=192.168.1.141:1022,192.168.1.141:1023
+      - advertise_port=2033
+      # replace this address by your proxy server
+      - advertise_addr=192.168.1.187
+      - trackers=tracker1:1022,tracker:1023
 #    volumes:
 #      - storage1:/godfs/data
     deploy:
@@ -51,17 +54,20 @@ services:
         constraints:
           - node.labels.role == storage
     networks:
-      - host
+      - godfs
 
 
-  storage2:
+  storage_group2:
     image: hehety/godfs:1.0.4-beta
     command: storage
     environment:
       - port=1025
       - http_port=8002
       - group=G02
-      - trackers=192.168.1.141:1022,192.168.1.141:1023
+      - advertise_port=2034
+      # replace this address by your proxy server
+      - advertise_addr=192.168.1.187
+      - trackers=tracker1:1022,tracker:1023
 #    volumes:
 #      - storage2:/godfs/data
     deploy:
@@ -70,12 +76,16 @@ services:
         constraints:
           - node.labels.role == storage
     networks:
-      - host
+      - godfs
 
 
 # ----------------------------------------------
   gateway:
     image: nginx
+    ports:
+      - "80:80"
+      - "2033:2033"
+      - "2034:2034"
     deploy:
       mode: replicated
       replicas: 1
@@ -85,19 +95,12 @@ services:
     volumes:
       - ./nginx.conf:/etc/nginx/nginx.conf
     networks:
-      - host
+      - godfs
 
 # ----------------------------------------------
 
 
 networks:
-  host:
-    external: true
-#
-#volumes:
-#  tracker1:
-#  tracker2:
-#  storage1:
-#  storage2:
-#
+  godfs:
+    driver: overlay
 

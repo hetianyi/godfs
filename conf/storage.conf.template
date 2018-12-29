@@ -20,6 +20,10 @@ advertise_addr=
 # 服务监听端口
 port=1025
 
+# 用于tracker传播时其他节用于连接到此节点的端口，此端口可以是一个代理端口
+# 如果为空，则使用port作为默认通信端口
+advertise_port=1029
+
 # 服务基目录，将log和data保存的目录
 # 如果没有设置，默认情况下，
 # 在当前工作目录下创建“godfs”文件夹作为base_path
@@ -30,7 +34,7 @@ port=1025
 base_path=E:/godfs-storage/storage1
 
 
-trackers=192.168.1.141:1022,192.168.1.141:1023
+trackers=127.0.0.1:1022
 
 # secret用于服务通信时校验身份
 # 服务之间建立通信时会校验secret

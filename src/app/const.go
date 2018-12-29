@@ -25,6 +25,7 @@ var (
 	UPLOAD_ENABLE              bool
 	LOG_ENABLE                 bool
 	PORT                       int
+	ADVERTISE_PORT             int
 	HTTP_PORT                  int
 	CLIENT_TYPE                int //client类型，1:storage client, 2:other client, 3:dashboard client
 	STORAGE_CLIENT_EXPIRE_TIME = time.Second * 60

@@ -138,10 +138,10 @@ func startStorageService(port string) {
 		for {
 			common.Try(func() {
 				listener, e := net.Listen("tcp", ":"+strconv.Itoa(pt))
-				logger.Info("service listening on port:", pt)
 				if e != nil {
 					panic(e)
 				} else {
+					logger.Info("service listening on port:", pt)
 					// keep accept connections.
 					for {
 						conn, e1 := listener.Accept()
@@ -163,7 +163,7 @@ func startStorageService(port string) {
 					}
 				}
 			}, func(i interface{}) {
-				logger.Error("["+strconv.Itoa(tryTimes)+"] error shutdown service duo to:", i)
+				logger.Error("[" + strconv.Itoa(tryTimes) + "] error shutdown service duo to:", i)
 				time.Sleep(time.Second * 10)
 			})
 		}
@@ -191,7 +191,7 @@ func startHttpDownloadService() {
 		WriteTimeout:      0,
 		MaxHeaderBytes:    1 << 20,
 	}
-	logger.Info("http server listen on port:", app.HTTP_PORT)
+	logger.Info("http server listening on port:", app.HTTP_PORT)
 	go s.ListenAndServe()
 }
 

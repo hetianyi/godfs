@@ -95,6 +95,7 @@ func (client *Client) Upload(path string, group string, startTime time.Time, ski
 			logger.Info("using storage server:", mem.AdvertiseAddr+":"+strconv.Itoa(mem.Port))
 			cb, e12 := client.connPool.GetConnBridge(mem)
 			if e12 != nil {
+				logger.Info("error connect to storage server:", mem.AdvertiseAddr + ":" + strconv.Itoa(mem.Port))
 				excludes.PushBack(mem)
 				continue
 			}

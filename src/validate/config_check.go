@@ -81,10 +81,41 @@ func Check(m map[string]string, runWith int) {
 		logger.SetEnable(false)
 	}
 
+	if runWith == 1 || runWith == 2 {
+		// check port
+		port, e := strconv.Atoi(m["port"])
+		if e == nil {
+			if port <= 0 || port > 65535 {
+				logger.Fatal("invalid port range:", m["port"])
+			}
+			app.PORT = port
+		} else {
+			logger.Fatal("invalid port ", m["port"], ":", e)
+		}
+	}
+
 	if runWith == 1 {
 		// check: advertise_addr
 		advertise_addr := strings.TrimSpace(m["advertise_addr"])
 		app.ADVERTISE_ADDRESS = advertise_addr
+
+
+		if strings.TrimSpace(m["advertise_port"]) == "" {
+			app.ADVERTISE_PORT = app.PORT
+		} else {
+			advertise_port, e := strconv.Atoi(strings.TrimSpace(m["advertise_port"]))
+			if e == nil {
+				if advertise_port <= 0 || advertise_port > 65535 {
+					logger.Warn("invalid advertise_port range:", m["advertise_port"] + ", use default port", app.PORT)
+					app.ADVERTISE_PORT = app.PORT
+				} else {
+					app.ADVERTISE_PORT = advertise_port
+				}
+			} else {
+				logger.Fatal("invalid advertise_port ", m["advertise_port"], ":", e, ", use default port", app.PORT)
+				app.ADVERTISE_PORT = app.PORT
+			}
+		}
 
 		// check GROUP
 		m["group"] = strings.TrimSpace(m["group"])
@@ -185,21 +216,6 @@ func Check(m map[string]string, runWith int) {
 		}
 
 		//--
-	} else if runWith == 2 {
-
-	}
-
-	if runWith == 1 || runWith == 2 {
-		// check port
-		port, e := strconv.Atoi(m["port"])
-		if e == nil {
-			if port <= 0 || port > 65535 {
-				logger.Fatal("invalid port range:", m["port"])
-			}
-			app.PORT = port
-		} else {
-			logger.Fatal("invalid port ", m["port"], ":", e)
-		}
 	}
 
 	if runWith == 1 || runWith == 4 {

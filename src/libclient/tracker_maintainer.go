@@ -458,7 +458,7 @@ func (tracker *TrackerInstance) ExecTask(task *bridge.Task) (bool, error) {
             AdvertiseAddr: app.ADVERTISE_ADDRESS,
             Group:         app.GROUP,
             InstanceId:    app.INSTANCE_ID,
-            Port:          app.PORT,
+            Port:          app.ADVERTISE_PORT,
             HttpPort:      app.HTTP_PORT,
             HttpEnable:    app.HTTP_ENABLE,
             TotalFiles:    app.FILE_TOTAL,
