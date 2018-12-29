@@ -2,7 +2,7 @@ version: '3.5'
 services:
 # ----------------------------------------------
   tracker1:
-    image: hehety/godfs:1.0.4-beta
+    image: hehety/godfs:1.0.5-beta
     command: tracker
     environment:
       - port=1022
@@ -18,7 +18,7 @@ services:
       - godfs
 
   tracker2:
-    image: hehety/godfs:1.0.4-beta
+    image: hehety/godfs:1.0.5-beta
     command: tracker
     environment:
       - port=1023
@@ -36,7 +36,7 @@ services:
 # ----------------------------------------------
 
   storage_group1:
-    image: hehety/godfs:1.0.4-beta
+    image: hehety/godfs:1.0.5-beta
     command: storage
     environment:
       - port=1024
@@ -58,7 +58,7 @@ services:
 
 
   storage_group2:
-    image: hehety/godfs:1.0.4-beta
+    image: hehety/godfs:1.0.5-beta
     command: storage
     environment:
       - port=1025
