@@ -31,7 +31,7 @@ services:
       - http_port=8001
       - group=G01
       # replace this address by your proxy server
-      - advertise_addr=192.168.0.105
+      - advertise_addr=$PROXY_HOST
       - advertise_port=2033
       - trackers=tracker1:1022,tracker2:1023
 #    volumes:
@@ -48,7 +48,7 @@ services:
       - http_port=8002
       - group=G02
       # replace this address by your proxy server
-      - advertise_addr=192.168.0.105
+      - advertise_addr=$PROXY_HOST
       - advertise_port=2034
       - trackers=tracker1:1022,tracker2:1023
 #    volumes:
