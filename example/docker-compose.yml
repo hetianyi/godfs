@@ -30,9 +30,9 @@ services:
       - port=1024
       - http_port=8001
       - group=G01
-      - advertise_port=2033
       # replace this address by your proxy server
       - advertise_addr=192.168.0.105
+      - advertise_port=2033
       - trackers=tracker1:1022,tracker2:1023
 #    volumes:
 #      - storage1:/godfs/data
@@ -47,9 +47,9 @@ services:
       - port=1025
       - http_port=8002
       - group=G02
-      - advertise_port=2034
       # replace this address by your proxy server
       - advertise_addr=192.168.0.105
+      - advertise_port=2034
       - trackers=tracker1:1022,tracker2:1023
 #    volumes:
 #      - storage2:/godfs/data
@@ -61,9 +61,14 @@ services:
   gateway:
     image: hehety/nginx
     ports:
+      # http upload and download port
       - "80:80"
+      # expose storage server tcp ports
       - "2033:2033"
       - "2034:2034"
+      # expose tracker server tcp ports
+      - "1022:1022"
+      - "1023:1023"
     volumes:
       - ./nginx.conf:/usr/local/nginx/conf/nginx.conf
     networks:
