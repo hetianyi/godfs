@@ -23,7 +23,7 @@ services:
 
 # ----------------------------------------------
 
-  storage_group1:
+  storage1:
     image: hehety/godfs:1.0.5-beta
     command: storage
     environment:
@@ -40,7 +40,7 @@ services:
       - godfs
 
 
-  storage_group2:
+  storage2:
     image: hehety/godfs:1.0.5-beta
     command: storage
     environment:
