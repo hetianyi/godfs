@@ -66,6 +66,8 @@ const (
 	STATUS_ENABLED  = 1
 	STATUS_DISABLED = 0
 	STATUS_DELETED  = 3
+
+	TCP_DIALOG_TIMEOUT = time.Second * 15
 )
 
 var ioinLock sync.Mutex

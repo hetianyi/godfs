@@ -78,8 +78,9 @@ func (pool *ClientConnectionPool) testGetConnBridge(server *bridge.ExpireMember)
 }
 
 func (pool *ClientConnectionPool) newConnection(server *bridge.ExpireMember) (*bridge.Bridge, error) {
-	logger.Debug("connecting to storage server...")
-	con, e := net.Dial("tcp", server.AdvertiseAddr+":"+strconv.Itoa(server.Port))
+	logger.Debug("connecting to storage server " + server.AdvertiseAddr + ":" + strconv.Itoa(server.Port) + "...")
+	d := net.Dialer{Timeout: app.TCP_DIALOG_TIMEOUT}
+	con, e := d.Dial("tcp", server.AdvertiseAddr+":"+strconv.Itoa(server.Port))
 	if e != nil {
 		return nil, e
 	}

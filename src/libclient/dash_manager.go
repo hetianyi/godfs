@@ -75,6 +75,7 @@ func registerTrackerInstance(instance *TrackerInstance) {
 	if managedTrackerInstance[instance.ConnStr] != nil {
 		logger.Info("tracker instance already started, ignore registration")
 	} else {
+		logger.Debug("register tracker instance", instance.ConnStr)
 		managedTrackerInstance[instance.ConnStr] = instance
 	}
 }

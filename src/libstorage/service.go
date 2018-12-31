@@ -163,7 +163,7 @@ func startStorageService(port string) {
 					}
 				}
 			}, func(i interface{}) {
-				logger.Error("[" + strconv.Itoa(tryTimes) + "] error shutdown service duo to:", i)
+				logger.Error("["+strconv.Itoa(tryTimes)+"] error shutdown service duo to:", i)
 				time.Sleep(time.Second * 10)
 			})
 		}

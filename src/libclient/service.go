@@ -50,7 +50,7 @@ func NewClient(MaxConnPerServer int) *Client {
 	return &Client{connPool: connPool}
 }
 
-//client demo for upload file to storage server.
+// client demo for upload file to storage server.
 func (client *Client) Upload(path string, group string, startTime time.Time, skipCheck bool) (string, error) {
 	fi, e := file.GetFile(path)
 	if e == nil {
@@ -95,7 +95,7 @@ func (client *Client) Upload(path string, group string, startTime time.Time, ski
 			logger.Info("using storage server:", mem.AdvertiseAddr+":"+strconv.Itoa(mem.Port))
 			cb, e12 := client.connPool.GetConnBridge(mem)
 			if e12 != nil {
-				logger.Info("error connect to storage server:", mem.AdvertiseAddr + ":" + strconv.Itoa(mem.Port))
+				logger.Info("error connect to storage server:", mem.AdvertiseAddr+":"+strconv.Itoa(mem.Port))
 				excludes.PushBack(mem)
 				continue
 			}
@@ -253,13 +253,13 @@ func download(path string, start int64, offset int64, fromSrc bool, excludes *li
 			if !fromSrc {
 				return NO_STORAGE_ERROR
 			} else {
-				logger.Debug("source server is not available("+ instanceId +")")
+				logger.Debug("source server is not available(" + instanceId + ")")
 				fromSrc = false
 				continue
 			}
 		}
 		// TODO when download is busy and no connection available, shall skip current download task.
-		logger.Debug("using storage server:", mem.AdvertiseAddr + ":" + strconv.Itoa(mem.Port))
+		logger.Debug("using storage server:", mem.AdvertiseAddr+":"+strconv.Itoa(mem.Port))
 		cb, e12 := client.connPool.GetConnBridge(mem)
 		if e12 != nil {
 			logger.Error(e12)
@@ -275,7 +275,7 @@ func download(path string, start int64, offset int64, fromSrc bool, excludes *li
 		member = mem
 		break
 	}
-	logger.Info("download from:", member.AdvertiseAddr + ":" + strconv.Itoa(member.Port))
+	logger.Info("download from:", member.AdvertiseAddr+":"+strconv.Itoa(member.Port))
 
 	e2 := connBridge.SendRequest(bridge.O_DOWNLOAD_FILE, downloadMeta, 0, nil)
 	if e2 != nil {

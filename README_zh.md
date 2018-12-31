@@ -159,7 +159,7 @@ docker run -d -p 1024:1024 -p 80:8001 --name storage -v /godfs/data:/godfs/data 
     custom download file name
 --set string
     set client config, for example: 
-    client --set "tracker=127.0.0.1:1022"
+    client --set "trackers=127.0.0.1:1022"
     client --set "log_level=info"
 ```
 

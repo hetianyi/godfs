@@ -4,6 +4,8 @@ services:
   tracker1:
     image: hehety/godfs:1.0.5-beta
     command: tracker
+    ports:
+      - "1022:1022"
     environment:
       - port=1022
 #    volumes:
@@ -14,6 +16,8 @@ services:
   tracker2:
     image: hehety/godfs:1.0.5-beta
     command: tracker
+    ports:
+      - "1023:1023"
     environment:
       - port=1023
 #    volumes:
@@ -26,13 +30,17 @@ services:
   storage1:
     image: hehety/godfs:1.0.5-beta
     command: storage
+    ports:
+      - "1024:1024"
+    deploy:
+      mode: global
     environment:
       - port=1024
       - http_port=8001
       - group=G01
       # replace this address by your proxy server
-      - advertise_addr=$PROXY_HOST
-      - advertise_port=2033
+      - advertise_addr=${PROXY_HOST}
+      - advertise_port=1024
       - trackers=tracker1:1022,tracker2:1023
 #    volumes:
 #      - storage1:/godfs/data
@@ -43,13 +51,17 @@ services:
   storage2:
     image: hehety/godfs:1.0.5-beta
     command: storage
+    ports:
+      - "1025:1025"
+    deploy:
+      mode: global
     environment:
       - port=1025
       - http_port=8002
       - group=G02
       # replace this address by your proxy server
-      - advertise_addr=$PROXY_HOST
-      - advertise_port=2034
+      - advertise_addr=${PROXY_HOST}
+      - advertise_port=1025
       - trackers=tracker1:1022,tracker2:1023
 #    volumes:
 #      - storage2:/godfs/data
@@ -61,22 +73,14 @@ services:
   gateway:
     image: hehety/nginx
     ports:
-      # http upload and download port
       - "80:80"
-      # expose storage server tcp ports
-      - "2033:2033"
-      - "2034:2034"
-      # expose tracker server tcp ports
-      - "1022:1022"
-      - "1023:1023"
     volumes:
       - ./nginx.conf:/usr/local/nginx/conf/nginx.conf
     networks:
       - godfs
 
+
 # ----------------------------------------------
-
-
 networks:
   godfs:
     driver: overlay

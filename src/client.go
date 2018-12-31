@@ -112,7 +112,7 @@ func main() {
 		fmt.Println("\t-n string \n\t    custom download file name")
 		fmt.Println("\t-g string \n\t    custom upload group, use with command parameter '-u'")
 		fmt.Println("\t--set string \n\t    set client config, for example: \n\t" +
-			"    client --set \"tracker=127.0.0.1:1022\"\n\t" +
+			"    client --set \"trackers=127.0.0.1:1022\"\n\t" +
 			"    client --set \"log_level=info\"")
 	}
 }

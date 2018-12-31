@@ -99,14 +99,13 @@ func Check(m map[string]string, runWith int) {
 		advertise_addr := strings.TrimSpace(m["advertise_addr"])
 		app.ADVERTISE_ADDRESS = advertise_addr
 
-
 		if strings.TrimSpace(m["advertise_port"]) == "" {
 			app.ADVERTISE_PORT = app.PORT
 		} else {
 			advertise_port, e := strconv.Atoi(strings.TrimSpace(m["advertise_port"]))
 			if e == nil {
 				if advertise_port <= 0 || advertise_port > 65535 {
-					logger.Warn("invalid advertise_port range:", m["advertise_port"] + ", use default port", app.PORT)
+					logger.Warn("invalid advertise_port range:", m["advertise_port"]+", use default port", app.PORT)
 					app.ADVERTISE_PORT = app.PORT
 				} else {
 					app.ADVERTISE_PORT = advertise_port
