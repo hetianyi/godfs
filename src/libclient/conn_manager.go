@@ -63,7 +63,7 @@ func (pool *ClientConnectionPool) GetConnBridge(server *bridge.ExpireMember) (*b
 		bridge, e := pool.newConnection(server)
 		if e != nil {
 			logger.Debug("switch connection flag to advertise address")
-			server.SetAccessFlag(app.ACCESS_FLAG_ADVERTISE)
+			server.SwitchAccessFlag()
 			return pool.newConnection(server)
 		}
 		return bridge, e
@@ -82,7 +82,7 @@ func (pool *ClientConnectionPool) testGetConnBridge(server *bridge.ExpireMember)
 		bridge, e := pool.newConnection(server)
 		if e != nil {
 			logger.Debug("switch connection flag to advertise address")
-			server.SetAccessFlag(app.ACCESS_FLAG_ADVERTISE)
+			server.SwitchAccessFlag()
 			return pool.newConnection(server)
 		}
 		return bridge, e

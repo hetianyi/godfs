@@ -243,7 +243,8 @@ func download(path string, start int64, offset int64, fromSrc bool, excludes *li
 		if fromSrc {
 			mem = selectStorageServer(group, instanceId, excludes, false)
 			if mem != nil {
-				logger.Debug("try to download file from source server:", mem.AdvertiseAddr+":"+strconv.Itoa(mem.Port))
+				host, port := mem.GetHostAndPortByAccessFlag()
+				logger.Debug("try to download file from source server:", host+":"+strconv.Itoa(port))
 			}
 		} else {
 			mem = selectStorageServer(group, "", excludes, false)

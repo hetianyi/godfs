@@ -51,23 +51,34 @@ func (expireMember *ExpireMember) From(member *Member) {
 	expireMember.HttpEnable = member.HttpEnable
 	expireMember.LookBackAddress = member.LookBackAddress
 	expireMember.AdvertisePort = member.AdvertisePort
-	expireMember.AccessFlag = app.ACCESS_FLAG_LOOKBACK
+	expireMember.AccessFlag = app.ACCESS_FLAG_NONE
 }
 
 
-func (expireMember *ExpireMember) SetAccessFlag(value int) {
-    if value == app.ACCESS_FLAG_LOOKBACK || value == app.ACCESS_FLAG_ADVERTISE {
-        expireMember.AccessFlag = value
-    }
+func (expireMember *ExpireMember) SwitchAccessFlag() {
+	if expireMember.AccessFlag == app.ACCESS_FLAG_LOOKBACK {
+		expireMember.AccessFlag = app.ACCESS_FLAG_ADVERTISE
+	} else {
+		expireMember.AccessFlag = app.ACCESS_FLAG_LOOKBACK
+	}
 }
 
 
 
 func (expireMember *ExpireMember) GetHostAndPortByAccessFlag() (host string, port int) {
-    if expireMember.AccessFlag == app.ACCESS_FLAG_LOOKBACK {
+    if expireMember.AccessFlag == app.ACCESS_FLAG_NONE {
+    	// if run as client, always try from advertise ip
+    	if app.RUN_WITH == 3 {
+			expireMember.AccessFlag = app.ACCESS_FLAG_ADVERTISE
+			return expireMember.AdvertiseAddr, expireMember.AdvertisePort
+		}
+		expireMember.AccessFlag = app.ACCESS_FLAG_LOOKBACK
         return expireMember.LookBackAddress, expireMember.Port
     }
-    return expireMember.AdvertiseAddr, expireMember.AdvertisePort
+    if expireMember.AccessFlag == app.ACCESS_FLAG_LOOKBACK {
+		return expireMember.LookBackAddress, expireMember.Port
+	}
+	return expireMember.AdvertiseAddr, expireMember.AdvertisePort
 }
 
 
