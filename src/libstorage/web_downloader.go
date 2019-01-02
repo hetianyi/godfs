@@ -95,8 +95,6 @@ func DownloadHandler(writer http.ResponseWriter, request *http.Request) {
 		}
 	}
 	logger.Debug("custom download file name is:", fn)
-	ext := file.GetFileExt(fn)
-	headers.Set("Content-Type", *app.GetContentTypeHeader(ext))
 
 	// 304 Not Modified
 	eTag := request.Header["If-None-Match"]
@@ -122,6 +120,8 @@ func DownloadHandler(writer http.ResponseWriter, request *http.Request) {
 		writer.Write([]byte("500 Internal Server Error"))
 		return
 	}
+	ext := file.GetFileExt(fn)
+	headers.Set("Content-Type", *app.GetContentTypeHeader(ext))
 
 	var fileSize int64 = 0
 	for i := range fullFile.Parts {
