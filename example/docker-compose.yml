@@ -30,8 +30,6 @@ services:
   storage1:
     image: hehety/godfs:1.0.6-beta
     command: storage
-    ports:
-      - "1024:1024"
     deploy:
       mode: global
     environment:
@@ -40,7 +38,7 @@ services:
       - group=G01
       # replace this address by your proxy server
       - advertise_addr=${PROXY_HOST}
-      - advertise_port=1024
+      - advertise_port=2024
       - trackers=tracker1:1022,tracker2:1023
 #    volumes:
 #      - storage1:/godfs/data
@@ -51,8 +49,6 @@ services:
   storage2:
     image: hehety/godfs:1.0.6-beta
     command: storage
-    ports:
-      - "1025:1025"
     deploy:
       mode: global
     environment:
@@ -61,7 +57,7 @@ services:
       - group=G02
       # replace this address by your proxy server
       - advertise_addr=${PROXY_HOST}
-      - advertise_port=1025
+      - advertise_port=2025
       - trackers=tracker1:1022,tracker2:1023
 #    volumes:
 #      - storage2:/godfs/data
@@ -74,6 +70,8 @@ services:
     image: hehety/nginx
     ports:
       - "80:80"
+      - "2024:2024"
+      - "2025:2025"
     volumes:
       - ./nginx.conf:/usr/local/nginx/conf/nginx.conf
     networks:
