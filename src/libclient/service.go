@@ -92,14 +92,16 @@ func (client *Client) Upload(path string, group string, startTime time.Time, ski
 			if mem == nil {
 				return "", NO_STORAGE_ERROR
 			}
-			host, port := mem.GetHostAndPortByAccessFlag()
-			logger.Info("using storage server:", host+":"+strconv.Itoa(port))
 			cb, e12 := client.connPool.GetConnBridge(mem)
 			if e12 != nil {
+				host, port := mem.GetHostAndPortByAccessFlag()
 				logger.Info("error connect to storage server:", host+":"+strconv.Itoa(port))
 				excludes.PushBack(mem)
 				continue
 			}
+
+			host, port := mem.GetHostAndPortByAccessFlag()
+			logger.Info("using storage server:", host+":"+strconv.Itoa(port))
 			connBridge = cb
 			member = mem
 			break
