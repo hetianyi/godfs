@@ -80,6 +80,7 @@ func syncStorageMemberHandler(request *bridge.Meta, conn net.Conn, connBridge *b
 		logger.Debug("storage server not send bind address, using", remoteAddr)
 		meta.AdvertiseAddr = remoteAddr
 	}
+	meta.LookBackAddress = remoteAddr
 	if !IsInstanceIdUnique(meta) {
 		logger.Error("register failed: instance_id is not unique")
 		valid = false

@@ -92,10 +92,11 @@ func (client *Client) Upload(path string, group string, startTime time.Time, ski
 			if mem == nil {
 				return "", NO_STORAGE_ERROR
 			}
-			logger.Info("using storage server:", mem.AdvertiseAddr+":"+strconv.Itoa(mem.Port))
+			host, port := mem.GetHostAndPortByAccessFlag()
+			logger.Info("using storage server:", host+":"+strconv.Itoa(port))
 			cb, e12 := client.connPool.GetConnBridge(mem)
 			if e12 != nil {
-				logger.Info("error connect to storage server:", mem.AdvertiseAddr+":"+strconv.Itoa(mem.Port))
+				logger.Info("error connect to storage server:", host+":"+strconv.Itoa(port))
 				excludes.PushBack(mem)
 				continue
 			}
@@ -259,7 +260,8 @@ func download(path string, start int64, offset int64, fromSrc bool, excludes *li
 			}
 		}
 		// TODO when download is busy and no connection available, shall skip current download task.
-		logger.Debug("using storage server:", mem.AdvertiseAddr+":"+strconv.Itoa(mem.Port))
+		host, port := mem.GetHostAndPortByAccessFlag()
+		logger.Debug("using storage server:", host+":"+strconv.Itoa(port))
 		cb, e12 := client.connPool.GetConnBridge(mem)
 		if e12 != nil {
 			logger.Error(e12)
@@ -269,7 +271,7 @@ func download(path string, start int64, offset int64, fromSrc bool, excludes *li
 			    }
 			}*/
 			excludes.PushBack(mem)
-			return NO_STORAGE_ERROR
+			continue
 		}
 		connBridge = cb
 		member = mem

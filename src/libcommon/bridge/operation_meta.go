@@ -1,6 +1,9 @@
 package bridge
 
-import "time"
+import (
+    "time"
+    "app"
+)
 
 const (
 	STATUS_OK                    = 0
@@ -12,24 +15,30 @@ const (
 )
 
 type Member struct {
-	AdvertiseAddr string `json:"addr"`
-	InstanceId    string `json:"instance_id"`
-	Group         string `json:"group"`
-	Port          int    `json:"port"`
-	HttpPort      int    `json:"httpPort"`
-	HttpEnable    bool   `json:"httpEnable"`
-	ReadOnly      bool   `json:"readonly"`
+    LookBackAddress string `json:"lookBackAddr"`
+    Port          int    `json:"port"`
+    AdvertiseAddr string `json:"addr"`
+    AdvertisePort int    `json:"advertise_port"`
+    InstanceId    string `json:"instance_id"`
+    Group         string `json:"group"`
+    HttpPort      int    `json:"httpPort"`
+    HttpEnable    bool   `json:"httpEnable"`
+    ReadOnly      bool   `json:"readonly"`
 }
 
 type ExpireMember struct {
-	AdvertiseAddr string
-	InstanceId    string
-	Group         string
-	Port          int
-	HttpPort      int
-	HttpEnable    bool
-	ExpireTime    time.Time
-	ReadOnly      bool
+    LookBackAddress string
+    Port          int
+    AdvertiseAddr string
+    AdvertisePort int
+    InstanceId    string
+    Group         string
+    HttpPort      int
+    HttpEnable    bool
+    ExpireTime    time.Time
+    ReadOnly      bool
+    // 1: use LookBackAddress:Port 2: use AdvertiseAddr:AdvertisePort
+    AccessFlag int
 }
 
 func (expireMember *ExpireMember) From(member *Member) {
@@ -40,8 +49,27 @@ func (expireMember *ExpireMember) From(member *Member) {
 	expireMember.ReadOnly = member.ReadOnly
 	expireMember.HttpPort = member.HttpPort
 	expireMember.HttpEnable = member.HttpEnable
-
+	expireMember.LookBackAddress = member.LookBackAddress
+	expireMember.AdvertisePort = member.AdvertisePort
+	expireMember.AccessFlag = app.ACCESS_FLAG_LOOKBACK
 }
+
+
+func (expireMember *ExpireMember) SetAccessFlag(value int) {
+    if value == app.ACCESS_FLAG_LOOKBACK || value == app.ACCESS_FLAG_ADVERTISE {
+        expireMember.AccessFlag = value
+    }
+}
+
+
+
+func (expireMember *ExpireMember) GetHostAndPortByAccessFlag() (host string, port int) {
+    if expireMember.AccessFlag == app.ACCESS_FLAG_LOOKBACK {
+        return expireMember.LookBackAddress, expireMember.Port
+    }
+    return expireMember.AdvertiseAddr, expireMember.AdvertisePort
+}
+
 
 type FilePart struct {
 	Fid      int    `json:"fid"`  // 分片所属文件的id
@@ -119,6 +147,7 @@ type OperationRegisterStorageClientRequest struct {
 	AdvertiseAddr string `json:"addr"`
 	Group         string `json:"group"`
 	InstanceId    string `json:"instance_id"`
+	AdvertisePort int    `json:"advertise_port"`
 	Port          int    `json:"port"`
 	HttpPort      int    `json:"httpPort"`
 	HttpEnable    bool   `json:"httpEnable"`
@@ -140,6 +169,14 @@ type OperationRegisterStorageClientRequest struct {
 	DiskUsage int64  `json:"disk"`
 	Memory    uint64 `json:"mem"`
 	ReadOnly  bool   `json:"readonly"`
+
+	// add at 2019/01/02
+    // consider using in docker stack environment
+    // if 'advertise_addr' is not satisfied for docker stack environment when a group has multiple instances,
+    // then the client(include storage client, java client and native client) can only get a single address of a group,
+    // this address is usually the 'advertise_addr' parameter specified in docker compose file.
+    // client always use LookBackAddress to synchronize files between each other first, the 'advertise_addr' is secondary choice.
+	LookBackAddress string `json:"lookBackAddr"`
 }
 
 // validate operation response.
@@ -272,6 +309,9 @@ type WebStorage struct {
 	StageIOin      int64 `json:"stageIOin"`
 	StageIOout     int64 `json:"stageIOout"`
 	LogTime        int64 `json:"logTime"`
+    AdvertisePort int    `json:"advertise_port"`
+
+    LookBackAddress string `json:"lookBackAddr"`
 }
 
 type IndexStatistic struct {

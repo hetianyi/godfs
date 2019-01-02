@@ -46,6 +46,9 @@ type storageMeta struct {
 	StageIOin      int64
 	StageIOout     int64
 	LogTime        int64
+	AdvertisePort  int
+
+	AdvertiseAddress string
 }
 
 // 定时任务，剔除过期的storage服务器
@@ -72,8 +75,8 @@ func ExpirationDetection() {
 func AddStorageServer(meta *bridge.OperationRegisterStorageClientRequest) {
 	operationLock.Lock()
 	defer operationLock.Unlock()
-	host, port := parseAdvertiseAddr(meta.AdvertiseAddr, meta.Port)
-	key := host + ":" + strconv.Itoa(port)
+	host, port := parseAdvertiseAddr(meta.LookBackAddress, meta.Port)
+	key := meta.InstanceId + "@" + host + ":" + strconv.Itoa(port)
 	holdMeta := &storageMeta{
 		UUID:       meta.UUID,
 		ExpireTime: timeutil.GetTimestamp(time.Now().Add(time.Hour * 876000)), // set to 100 years
@@ -81,6 +84,8 @@ func AddStorageServer(meta *bridge.OperationRegisterStorageClientRequest) {
 		InstanceId: meta.InstanceId,
 		Host:       host,
 		Port:       port,
+		AdvertiseAddress: meta.AdvertiseAddr,
+		AdvertisePort: meta.AdvertisePort,
 		HttpPort:   meta.HttpPort,
 		HttpEnable: meta.HttpEnable,
 		TotalFiles: meta.TotalFiles,
@@ -113,8 +118,8 @@ func FutureExpireStorageServer(meta *bridge.OperationRegisterStorageClientReques
 	operationLock.Lock()
 	defer operationLock.Unlock()
 	if meta != nil {
-		host, port := parseAdvertiseAddr(meta.AdvertiseAddr, meta.Port)
-		key := host + ":" + strconv.Itoa(port)
+		host, port := parseAdvertiseAddr(meta.LookBackAddress, meta.Port)
+		key := meta.InstanceId + "@" + host + ":" + strconv.Itoa(port)
 		logger.Info("expire storage client:", key, "in", app.STORAGE_CLIENT_EXPIRE_TIME)
 		holdMeta := &storageMeta{
 			UUID:       meta.UUID,
@@ -123,6 +128,8 @@ func FutureExpireStorageServer(meta *bridge.OperationRegisterStorageClientReques
 			InstanceId: meta.InstanceId,
 			Host:       host,
 			Port:       port,
+			AdvertiseAddress: meta.AdvertiseAddr,
+			AdvertisePort: meta.AdvertisePort,
 			HttpPort:   meta.HttpPort,
 			HttpEnable: meta.HttpEnable,
 			TotalFiles: meta.TotalFiles,
@@ -135,7 +142,6 @@ func FutureExpireStorageServer(meta *bridge.OperationRegisterStorageClientReques
 			StartTime:  meta.StartTime,
 			Memory:     meta.Memory,
 			ReadOnly:   meta.ReadOnly,
-
 			StageDownloads: meta.StageDownloads,
 			StageUploads:   meta.StageUploads,
 			StageIOin:      meta.StageIOin,
@@ -149,8 +155,8 @@ func FutureExpireStorageServer(meta *bridge.OperationRegisterStorageClientReques
 func IsInstanceIdUnique(meta *bridge.OperationRegisterStorageClientRequest) bool {
 	operationLock.Lock()
 	defer operationLock.Unlock()
-	host, port := parseAdvertiseAddr(meta.AdvertiseAddr, meta.Port)
-	key := host + ":" + strconv.Itoa(port)
+	host, port := parseAdvertiseAddr(meta.LookBackAddress, meta.Port)
+	key := meta.InstanceId + "@" + host + ":" + strconv.Itoa(port)
 	for k, v := range managedStorages {
 		if k != key && v.Group == meta.Group && v.InstanceId == meta.InstanceId {
 			return false
@@ -164,11 +170,21 @@ func GetGroupMembers(meta *bridge.OperationRegisterStorageClientRequest) []bridg
 	operationLock.Lock()
 	defer operationLock.Unlock()
 	host, port := parseAdvertiseAddr(meta.AdvertiseAddr, meta.Port)
-	key := host + ":" + strconv.Itoa(port)
+	key := meta.InstanceId + "@" + host + ":" + strconv.Itoa(port)
 	var mList list.List
 	for k, v := range managedStorages {
 		if k != key && v.Group == meta.Group { // 过期
-			m := bridge.Member{AdvertiseAddr: v.Host, Port: v.Port, InstanceId: v.InstanceId, Group: v.Group, ReadOnly: v.ReadOnly, HttpEnable: v.HttpEnable, HttpPort: v.HttpPort}
+			m := bridge.Member{
+				LookBackAddress: v.Host,
+				Port: v.Port,
+				AdvertiseAddr: v.AdvertiseAddress,
+				AdvertisePort: v.AdvertisePort,
+				InstanceId: v.InstanceId,
+				Group: v.Group,
+				ReadOnly: v.ReadOnly,
+				HttpEnable: v.HttpEnable,
+				HttpPort: v.HttpPort,
+			}
 			mList.PushBack(m)
 		}
 	}
@@ -187,7 +203,17 @@ func GetAllStorages() []bridge.Member {
 	defer operationLock.Unlock()
 	var mList list.List
 	for _, v := range managedStorages {
-		m := bridge.Member{AdvertiseAddr: v.Host, Port: v.Port, InstanceId: v.InstanceId, Group: v.Group, ReadOnly: v.ReadOnly, HttpEnable: v.HttpEnable, HttpPort: v.HttpPort}
+		m := bridge.Member{
+			LookBackAddress: v.Host,
+			Port: v.Port,
+			AdvertiseAddr: v.AdvertiseAddress,
+			AdvertisePort: v.AdvertisePort,
+			InstanceId: v.InstanceId,
+			Group: v.Group,
+			ReadOnly: v.ReadOnly,
+			HttpEnable: v.HttpEnable,
+			HttpPort: v.HttpPort,
+		}
 		mList.PushBack(m)
 	}
 	var members = make([]bridge.Member, mList.Len())

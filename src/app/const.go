@@ -68,6 +68,9 @@ const (
 	STATUS_DELETED  = 3
 
 	TCP_DIALOG_TIMEOUT = time.Second * 15
+
+	ACCESS_FLAG_LOOKBACK = 1
+	ACCESS_FLAG_ADVERTISE = 2
 )
 
 var ioinLock sync.Mutex

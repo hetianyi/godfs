@@ -45,8 +45,9 @@ func (pool *ClientConnectionPool) Init(maxConnPerServer int) {
 	pool.maxConnPerServer = maxConnPerServer
 }
 
+// UID = InstanceId@AdvertiseAddr:AdvertisePort!Group
 func GetStorageServerUID(server *bridge.ExpireMember) string {
-	return server.AdvertiseAddr + ":" + strconv.Itoa(server.Port) + ":" + server.Group + ":" + server.InstanceId
+	return server.InstanceId + "@" + server.AdvertiseAddr + ":" + strconv.Itoa(server.AdvertisePort) + "!" + server.Group
 }
 
 // connection pool has not been implemented.
@@ -59,7 +60,13 @@ func (pool *ClientConnectionPool) GetConnBridge(server *bridge.ExpireMember) (*b
 		return list.Remove(list.Front()).(*bridge.Bridge), nil
 	}
 	if pool.IncreaseActiveConnection(server, 0) < pool.maxConnPerServer {
-		return pool.newConnection(server)
+		bridge, e := pool.newConnection(server)
+		if e != nil {
+			logger.Debug("switch connection flag to advertise address")
+			server.SetAccessFlag(app.ACCESS_FLAG_ADVERTISE)
+			return pool.newConnection(server)
+		}
+		return bridge, e
 	}
 	return nil, MAX_CONN_EXCEED_ERROR
 }
@@ -72,21 +79,30 @@ func (pool *ClientConnectionPool) testGetConnBridge(server *bridge.ExpireMember)
 		return list.Remove(list.Front()).(*bridge.Bridge), nil
 	}
 	if pool.IncreaseActiveConnection(server, 0) < pool.maxConnPerServer {
-		return pool.newConnection(server)
+		bridge, e := pool.newConnection(server)
+		if e != nil {
+			logger.Debug("switch connection flag to advertise address")
+			server.SetAccessFlag(app.ACCESS_FLAG_ADVERTISE)
+			return pool.newConnection(server)
+		}
+		return bridge, e
 	}
 	return nil, MAX_CONN_EXCEED_ERROR
 }
 
 func (pool *ClientConnectionPool) newConnection(server *bridge.ExpireMember) (*bridge.Bridge, error) {
-	logger.Debug("connecting to storage server " + server.AdvertiseAddr + ":" + strconv.Itoa(server.Port) + "...")
+	host, port := server.GetHostAndPortByAccessFlag()
+	logger.Debug("connecting to storage server " + host + ":" + strconv.Itoa(port) + "...")
 	d := net.Dialer{Timeout: app.TCP_DIALOG_TIMEOUT}
-	con, e := d.Dial("tcp", server.AdvertiseAddr+":"+strconv.Itoa(server.Port))
+	con, e := d.Dial("tcp", host+":"+strconv.Itoa(port))
 	if e != nil {
+		logger.Debug("error connect to storage server " + host + ":" + strconv.Itoa(port), ">", e.Error())
 		return nil, e
 	}
 	connBridge := bridge.NewBridge(con)
 	isNew, e1 := connBridge.ValidateConnection(app.SECRET)
 	if e1 != nil {
+		logger.Debug("error validate with storage server " + host + ":" + strconv.Itoa(port), ">", e1.Error())
 		connBridge.Close()
 		return nil, e1
 	}
