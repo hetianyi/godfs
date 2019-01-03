@@ -15,7 +15,7 @@ import (
 	"util/file"
 	"util/logger"
 )
-
+// TODO use framework
 // db write lock
 // when write event happens, the sys will lock by program in case if error occurs such 'database is locked'
 var dbWriteLock *sync.Mutex
