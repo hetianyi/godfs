@@ -93,7 +93,7 @@ func uploadHandler(request *bridge.Meta, md hash.Hash, conn io.ReadCloser, connB
 			//TODO check
 			tmpPart := &bridge.FilePart{Md5: sMd5, FileSize: sliceReadSize}
 			fileParts.PushBack(tmpPart)
-			logger.Info("upload finish, read bytes", readBodySize, " MD5= ", md5)
+			logger.Info("upload finish, total read bytes", readBodySize, " | MD5 is", md5)
 			app.UpdateUploads()
 
 			stoe := libservice.StorageAddFile(md5, app.GROUP, &fileParts)

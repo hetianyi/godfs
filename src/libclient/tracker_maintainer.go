@@ -817,7 +817,7 @@ func downloadFile(fullFi *bridge.File) {
 						file.Delete(fi.Name())
 						return e5
 					}
-					logger.Info("download part success", strconv.Itoa(i+1)+"/"+strconv.Itoa(len(fullFi.Parts))+" ->"+part.Md5)
+					logger.Info("download part success", strconv.Itoa(i+1)+"/"+strconv.Itoa(len(fullFi.Parts))+" -> "+part.Md5)
 					return nil
 				})
 			if e2 != nil {
