@@ -197,7 +197,7 @@ func (maintainer *TrackerMaintainer) track(tracker string, secret string) {
 					}
 					task := trackerInstance.GetTask()
 					if task == nil {
-						logger.Debug("no task...", tracker)
+						logger.Trace("no task...", tracker)
 						time.Sleep(time.Second * 1)
 						continue
 					}

@@ -3,7 +3,6 @@ package db
 import (
 	"container/list"
 	"errors"
-	"fmt"
 	"sync"
 	"time"
 	"util/logger"
@@ -57,7 +56,7 @@ func (pool *DbConnPool) GetDB() (*DAO, error) {
 			if waits > 30 {
 				return nil, errors.New("cannot fetch db connection from pool: wait time out")
 			}
-			fmt.Print("\nwaiting for db connection...\n")
+			logger.Warn("\nwaiting for db connection...\n")
 			logger.Debug("no connection available")
 			time.Sleep(time.Millisecond * 100)
 			waits++

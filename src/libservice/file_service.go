@@ -241,7 +241,7 @@ func StorageAddTrackerPulledFile(fis []bridge.File, trackerUUID string) error {
 				return ee
 			}
 			// no need any more.
-			//return AddSyncTask(fid, app.TASK_DOWNLOAD_FILE, tx)
+			// return AddSyncTask(fid, app.TASK_DOWNLOAD_FILE, tx)
 			return nil
 		})
 		if e8 != nil {
