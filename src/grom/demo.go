@@ -3,6 +3,7 @@ package grom
 import (
     _ "github.com/jinzhu/gorm/dialects/sqlite"
     "github.com/jinzhu/gorm"
+    "libcommon"
 )
 
 type PartDO struct {
@@ -38,5 +39,4 @@ func InsertFileDO(partDO *PartDO) {
     // Delete - delete product
     db.Delete(&product)
 
-    db.Begin()
 }
