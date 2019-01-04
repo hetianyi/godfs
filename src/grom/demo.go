@@ -38,4 +38,5 @@ func InsertFileDO(partDO *PartDO) {
     // Delete - delete product
     db.Delete(&product)
 
+    db.Begin()
 }

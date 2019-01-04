@@ -99,6 +99,7 @@ func resetLogFile(now time.Time) {
 
 func SetLogLevel(level int) {
 	logLevel = level
+	app.LOG_LEVEL = logLevel
 }
 
 // enable log
