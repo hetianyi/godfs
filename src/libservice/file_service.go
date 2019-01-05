@@ -1007,7 +1007,7 @@ func RegisterStorageClient(uuid string) error {
 	})
 }
 
-/// 查询数据库统计信息
+// 查询数据库统计信息
 func QueryStatistic() (int, int, int64, error) {
 	dao, ef := dbPool.GetDB()
 	if ef != nil {
