@@ -478,13 +478,16 @@ func SaveStorageClient(client *libcommon.StorageClientDO) error {
 }
 
 
+// query system statistic:
+// - file count
+// - finish file count
+// - total group disk space (include placeholder)
 func QuerySystemStatistic() (*libcommon.Statistic, error) {
 	dao, ef := dbPool.GetDB()
 	if ef != nil {
 		return nil, ef
 	}
 	defer dbPool.ReturnDB(dao)
-
 
 	var statistic libcommon.Statistic
 	err := dao.Query(func(db *gorm.DB) error {
@@ -501,7 +504,20 @@ func QuerySystemStatistic() (*libcommon.Statistic, error) {
 }
 
 
-
+func InsertWebTracker(webTracker *libcommon.WebTrackerDO, dao *DAO) error {
+	if dao == nil {
+		dao1, ef := dbPool.GetDB()
+		if ef != nil {
+			return ef
+		}
+		dao = dao1
+		defer dbPool.ReturnDB(dao)
+	}
+	webTracker.Id = 0
+	return dao.DoTransaction(func(db *gorm.DB) error {
+		db.Table("web_tracker").Where("")
+	})
+}
 
 
 
