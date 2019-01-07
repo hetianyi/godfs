@@ -6,7 +6,6 @@ import (
 	"container/list"
 	"app"
 	"errors"
-	"fmt"
 )
 
 var dbPool *DbConnPool
@@ -435,19 +434,18 @@ func GetFullFilesFromId(id int64, onlymine bool, group string, limit int) (*list
 
 
 // get client info by client uuid
-func GetStorageClientByUUID(uuid string) (*libcommon.StorageClientDO, error) {
+func GetStorageClientByUUID(uuid string) (*libcommon.StorageDO, error) {
 	dao, ef := dbPool.GetDB()
 	if ef != nil {
 		return nil, ef
 	}
 	defer dbPool.ReturnDB(dao)
 
-	var clientDO libcommon.StorageClientDO
+	var clientDO libcommon.StorageDO
 	var rowAffect int64
 	err := dao.Query(func(db *gorm.DB) error {
 		result := db.Table("storage_client").Where("uuid", uuid).First(&clientDO)
 		if transformNotFoundErr(result.Error) != nil {
-			fmt.Println(result.Error.Error())
 			return result.Error
 		}
 		rowAffect = result.RowsAffected
@@ -461,7 +459,7 @@ func GetStorageClientByUUID(uuid string) (*libcommon.StorageClientDO, error) {
 
 
 // save or update storage client info
-func SaveStorageClient(client *libcommon.StorageClientDO) error {
+func SaveStorageClient(client *libcommon.StorageDO) error {
 	dao, ef := dbPool.GetDB()
 	if ef != nil {
 		return ef
@@ -504,6 +502,7 @@ func QuerySystemStatistic() (*libcommon.Statistic, error) {
 }
 
 
+// insert web tracker
 func InsertWebTracker(webTracker *libcommon.WebTrackerDO, dao *DAO) error {
 	if dao == nil {
 		dao1, ef := dbPool.GetDB()
@@ -513,9 +512,60 @@ func InsertWebTracker(webTracker *libcommon.WebTrackerDO, dao *DAO) error {
 		dao = dao1
 		defer dbPool.ReturnDB(dao)
 	}
-	webTracker.Id = 0
 	return dao.DoTransaction(func(db *gorm.DB) error {
-		db.Table("web_tracker").Where("")
+		result := db.Table("web_tracker").Save(webTracker)
+		if result.RowsAffected == 0 {
+			return errors.New("error insert web tracker")
+		}
+		return result.Error
+	})
+}
+
+
+// insert web tracker
+func UpdateWebTrackerStatus(trackerUuid string, status int, dao *DAO) error {
+	if dao == nil {
+		dao1, ef := dbPool.GetDB()
+		if ef != nil {
+			return ef
+		}
+		dao = dao1
+		defer dbPool.ReturnDB(dao)
+	}
+	return dao.DoTransaction(func(db *gorm.DB) error {
+		result := db.Table("web_tracker").Update("status", status)
+		if transformNotFoundErr(result.Error) != nil {
+			return result.Error
+		}
+		return nil
+	})
+}
+
+
+// insert web storage and relation with web tracker
+func InsertWebStorage(trackerUuid string, webStorage *libcommon.WebStorageDO, dao *DAO) error {
+	if dao == nil {
+		dao1, ef := dbPool.GetDB()
+		if ef != nil {
+			return ef
+		}
+		dao = dao1
+		defer dbPool.ReturnDB(dao)
+	}
+	return dao.DoTransaction(func(db *gorm.DB) error {
+		result := db.Table("web_storage").Save(webStorage)
+		if result.Error != nil {
+			return result.Error
+		}
+		relation :=&libcommon.RelationWebTrackerStorageDO{
+			TrackerUuid: trackerUuid,
+			StorageUuid: webStorage.Uuid,
+		}
+		result1 := db.Table("relation_web_tracker_storage").Save(relation)
+		if result1.Error != nil {
+			return result1.Error
+		}
+		return nil
 	})
 }
 

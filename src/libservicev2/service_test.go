@@ -104,10 +104,25 @@ func TestGetClientByUUID(t *testing.T) {
 	PrintResult(GetStorageClientByUUID("123"))
 }
 func TestSaveStorageClient(t *testing.T) {
-	SaveStorageClient(&libcommon.StorageClientDO{"123", "123", 1, 1, 123, 1, "123", "123", 12, true, 0, 12, 123, 13, true, 1, 1, 1})
+	SaveStorageClient(&libcommon.StorageDO{"123", "123", 1, 1, 123, 1, "123", "123", 12, true, 0, 12, 123, 13, true, 1, 1, 1})
 }
-
 
 func TestQuerySystemStatistic(t *testing.T) {
 	PrintResult(QuerySystemStatistic())
 }
+
+func TestInsertWebTracker(t *testing.T) {
+	storage := &libcommon.WebTrackerDO{
+		Uuid: "xxxxxx",
+		Host: "xxx",
+		Port: 1024,
+		Status: 1,
+		Secret: "123456",
+		TotalFiles: 3,
+		Remark: "asdasd",
+		AddTime: time.Now(),
+	}
+	PrintResult(InsertWebTracker(storage, nil))
+}
+
+

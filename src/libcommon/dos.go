@@ -22,7 +22,7 @@ func (FileDO) TableName() string {
 }
 
 // table clients
-type StorageClientDO struct {
+type StorageDO struct {
 	Uuid       string `gorm:"primary_key" json:"uuid"`
 	Host       string `gorm:"column:host" json:"host""`
 	Port       int    `gorm:"column:port" json:"port"`
@@ -43,8 +43,8 @@ type StorageClientDO struct {
 	IOout      int64  `gorm:"column:ioout" json:"ioout"`
 }
 
-func (StorageClientDO) TableName() string {
-	return "storage_client"
+func (StorageDO) TableName() string {
+	return "storage"
 }
 
 // table part
@@ -93,15 +93,14 @@ func (TrackerDO) TableName() string {
 
 // table web_storage_log
 type WebStorageLogsDO struct {
-	Id        int64 `gorm:"column:id;auto_increment;primary_key" json:"id"`
-	StorageId int64 `gorm:"column:storage" json:"storage"`
-	LogTime   int64 `gorm:"column:log_time" json:"log_time"`
-	IOin      int64 `gorm:"column:ioin" json:"ioin"`
-	IOout     int64 `gorm:"column:ioout" json:"ioout"`
-	Disk      int64 `gorm:"column:disk" json:"disk"`
-	Memory    int64 `gorm:"column:mem" json:"mem"`
-	Download  int64 `gorm:"column:download" json:"download"`
-	Upload    int64 `gorm:"column:upload" json:"upload"`
+	StorageUuid int64 `gorm:"column:storage;primary_key" json:"storage"`
+	LogTime     int64 `gorm:"column:log_time" json:"log_time"`
+	IOin        int64 `gorm:"column:ioin" json:"ioin"`
+	IOout       int64 `gorm:"column:ioout" json:"ioout"`
+	Disk        int64 `gorm:"column:disk" json:"disk"`
+	Memory      int64 `gorm:"column:mem" json:"mem"`
+	Download    int64 `gorm:"column:download" json:"download"`
+	Upload      int64 `gorm:"column:upload" json:"upload"`
 }
 
 func (WebStorageLogsDO) TableName() string {
@@ -110,43 +109,50 @@ func (WebStorageLogsDO) TableName() string {
 
 // table web_storage
 type WebStorageDO struct {
-	Id         int64  `gorm:"column:id;auto_increment;primary_key" json:"id"`
-	Host       string `gorm:"column:host" json:"host""`
-	Port       int    `gorm:"column:port" json:"port"`
-	Status     int    `gorm:"column:status" json:"status"`
-	TrackerId  int64  `gorm:"column:tracker" json:"tracker"`
-	Uuid       string `gorm:"column:uuid" json:"uuid"`
-	TotalFiles int    `gorm:"column:total_files" json:"total_files"`
-	Group      string `gorm:"column:grop" json:"group"`
-	InstanceId string `gorm:"column:instance_id" json:"instance_id"`
-	HttpPort   int    `gorm:"column:http_port" json:"http_port"`
-	HttpEnable bool   `gorm:"column:http_enable" json:"http_enable"`
-	IOin       int64  `gorm:"column:ioin" json:"ioin"`
-	IOout      int64  `gorm:"column:ioout" json:"ioout"`
-	Disk       int64  `gorm:"column:disk" json:"disk"`
-	StartTime  int64  `gorm:"column:start_time" json:"start_time"`
-	Download   int64  `gorm:"column:downloads" json:"downloads"`
-	Upload     int64  `gorm:"column:uploads" json:"uploads"`
-	ReadOnly   bool   `gorm:"column:read_only" json:"read_only"`
-	Finish     int    `gorm:"column:finish" json:"finish"`
+	Uuid        string `gorm:"column:uuid;primary_key" json:"uuid"`
+	Host        string `gorm:"column:host" json:"host""`
+	Port        int    `gorm:"column:port" json:"port"`
+	Status      int    `gorm:"column:status" json:"status"`
+	TotalFiles  int    `gorm:"column:total_files" json:"total_files"`
+	Group       string `gorm:"column:grop" json:"group"`
+	InstanceId  string `gorm:"column:instance_id" json:"instance_id"`
+	HttpPort    int    `gorm:"column:http_port" json:"http_port"`
+	HttpEnable  bool   `gorm:"column:http_enable" json:"http_enable"`
+	IOin        int64  `gorm:"column:ioin" json:"ioin"`
+	IOout       int64  `gorm:"column:ioout" json:"ioout"`
+	Disk        int64  `gorm:"column:disk" json:"disk"`
+	StartTime   int64  `gorm:"column:start_time" json:"start_time"`
+	Download    int64  `gorm:"column:downloads" json:"downloads"`
+	Upload      int64  `gorm:"column:uploads" json:"uploads"`
+	ReadOnly    bool   `gorm:"column:read_only" json:"read_only"`
+	Finish      int    `gorm:"column:finish" json:"finish"`
 }
 
 func (WebStorageDO) TableName() string {
 	return "web_storage"
 }
 
+type RelationWebTrackerStorageDO struct {
+	TrackerUuid string `gorm:"column:tracker" json:"tracker"`
+	StorageUuid string `gorm:"column:storage" json:"storage"`
+}
+
+func (RelationWebTrackerStorageDO) TableName() string {
+	return "relation_web_tracker_storage"
+}
+
 // table web_tracker
 type WebTrackerDO struct {
-	Id      int64     `gorm:"column:id" json:"id"`
-	Uuid    string    `gorm:"column:uuid" json:"uuid"`
-	Host    string    `gorm:"column:host" json:"host"`
-	Port    int       `gorm:"column:port" json:"port"`
-	Status  int       `gorm:"column:status" json:"status"` // 0: disabled,  1:enabled, 3: deleted
-	Secret  string    `gorm:"column:secret" json:"secret"`
-	TotalFiles int    `gorm:"column:files" json:"files"`
-	Remark  string    `gorm:"column:remark" json:"remark"`
-	AddTime time.Time `gorm:"column:add_time" json:"add_time"`
+	Uuid       string    `gorm:"column:uuid;primary_key" json:"uuid"`
+	Host       string    `gorm:"column:host" json:"host"`
+	Port       int       `gorm:"column:port" json:"port"`
+	Status     int       `gorm:"column:status" json:"status"` // 0: disabled,  1:enabled, 3: deleted
+	Secret     string    `gorm:"column:secret" json:"secret"`
+	TotalFiles int       `gorm:"column:files" json:"files"`
+	Remark     string    `gorm:"column:remark" json:"remark"`
+	AddTime    time.Time `gorm:"column:add_time" json:"add_time"`
 }
+
 func (WebTrackerDO) TableName() string {
 	return "web_tracker"
 }
@@ -236,13 +242,3 @@ type Statistic struct {
 	FinishCount int   `gorm:"column:finish" json:"finish"`
 	DiskSpace   int64 `gorm:"column:disk" json:"disk"`
 }
-
-
-
-
-
-
-
-
-
-
