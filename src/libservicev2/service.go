@@ -502,6 +502,35 @@ func QuerySystemStatistic() (*libcommon.Statistic, error) {
 }
 
 
+// get all web trackers which is not deleted.
+func GetAllWebTrackers() (*list.List, error) {
+	dao, ef := dbPool.GetDB()
+	if ef != nil {
+		return nil, ef
+	}
+	defer dbPool.ReturnDB(dao)
+
+	var trackers = list.New()
+	err := dao.Query(func(db *gorm.DB) error {
+		rows, e := db.Table("web_tracker").Where("status != ?", app.STATUS_DELETED).Rows()
+		if transformNotFoundErr(e) != nil {
+			return e
+		}
+		defer rows.Close()
+		for rows.Next() {
+			webTracker := &libcommon.WebTrackerDO{}
+			e1 := db.ScanRows(rows, webTracker)
+			if e1 != nil {
+				return e1
+			}
+			trackers.PushBack(webTracker)
+		}
+		return nil
+	})
+	return trackers, err
+}
+
+
 // insert web tracker
 func InsertWebTracker(webTracker *libcommon.WebTrackerDO, dao *DAO) error {
 	if dao == nil {
@@ -533,7 +562,7 @@ func UpdateWebTrackerStatus(trackerUuid string, status int, dao *DAO) error {
 		defer dbPool.ReturnDB(dao)
 	}
 	return dao.DoTransaction(func(db *gorm.DB) error {
-		result := db.Table("web_tracker").Update("status", status)
+		result := db.Table("web_tracker").Where("uuid = ?", trackerUuid).Update("status", status)
 		if transformNotFoundErr(result.Error) != nil {
 			return result.Error
 		}
@@ -570,8 +599,66 @@ func InsertWebStorage(trackerUuid string, webStorage *libcommon.WebStorageDO, da
 }
 
 
+// insert into table web_storage_log
+func InsertWebStorageLog(webStorage *libcommon.WebStorageLogDO, dao *DAO) error {
+	if dao == nil {
+		dao1, ef := dbPool.GetDB()
+		if ef != nil {
+			return ef
+		}
+		dao = dao1
+		defer dbPool.ReturnDB(dao)
+	}
+	webStorage.Id = 0
+	return dao.DoTransaction(func(db *gorm.DB) error {
+		return db.Table("web_storage_log").Create(webStorage).Error
+	})
+}
 
 
 
+// method is used by tracker for statistic
+func GetFileCount() int {
+	dao, ef := dbPool.GetDB()
+	if ef != nil {
+		return 0
+	}
+	defer dbPool.ReturnDB(dao)
+
+	total := &libcommon.Total{}
+	total.Count = 0
+	dao.Query(func(db *gorm.DB) error {
+		db.Raw("select count(*) from file").Scan(total)
+		return nil
+	})
+	return total.Count
+}
+
+
+// used by dashboard
+func GetIndexStatistic() (*libcommon.DashboardIndexStatistic, error) {
+	dao, ef := dbPool.GetDB()
+	if ef != nil {
+		return nil, ef
+	}
+	defer dbPool.ReturnDB(dao)
+
+	var statistic libcommon.DashboardIndexStatistic
+	err := dao.Query(func(db *gorm.DB) error {
+		result := db.Raw(`select
+                (select count(*) from web_tracker where status=1)  as trackers,
+                (select count(*) from web_storage where status=1)  as storages,
+                (select sum(files) from web_tracker where status=1)  as files,
+                (select sum(ioin) from web_storage where status=1)  as ioin,
+                (select sum(ioout) from web_storage where status=1)  as ioout,
+                (select sum(downloads) from web_storage where status=1)  as downloads,
+                (select sum(uploads) from web_storage where status=1)  as uploads`).Scan(&statistic)
+		if transformNotFoundErr(result.Error) != nil {
+			return result.Error
+		}
+		return nil
+	})
+	return &statistic, err
+}
 
 

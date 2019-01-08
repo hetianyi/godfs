@@ -10,12 +10,13 @@ import (
 	"fmt"
 	"encoding/json"
 	"time"
+	"util/timeutil"
 )
 
 func init() {
+	logger.SetLogLevel(2)
 	app.BASE_PATH = "E:\\godfs-storage\\storage1"
 	SetPool(NewPool(1))
-	logger.SetLogLevel(1)
 }
 
 func PrintResult(result... interface{}) {
@@ -111,8 +112,12 @@ func TestQuerySystemStatistic(t *testing.T) {
 	PrintResult(QuerySystemStatistic())
 }
 
+func TestGetAllWebTrackers(t *testing.T) {
+	PrintResult(GetAllWebTrackers())
+}
+
 func TestInsertWebTracker(t *testing.T) {
-	storage := &libcommon.WebTrackerDO{
+	tracker := &libcommon.WebTrackerDO{
 		Uuid: "xxxxxx",
 		Host: "xxx",
 		Port: 1024,
@@ -122,7 +127,61 @@ func TestInsertWebTracker(t *testing.T) {
 		Remark: "asdasd",
 		AddTime: time.Now(),
 	}
-	PrintResult(InsertWebTracker(storage, nil))
+	PrintResult(InsertWebTracker(tracker, nil))
+}
+
+func TestUpdateWebTrackerStatus(t *testing.T) {
+	PrintResult(UpdateWebTrackerStatus("xxxxxx", 1, nil))
+}
+
+func TestInsertWebStorage(t *testing.T) {
+	storage := &libcommon.WebStorageDO{
+		Uuid: "ssssss",
+		Host: "xxxx",
+		Port: 1234,
+		Status: 1,
+		TotalFiles: 123,
+		Group: "G01",
+		InstanceId: "asd",
+		HttpPort: 1234,
+		HttpEnable: true,
+		IOin: 1,
+		IOout: 11,
+		Disk: 111,
+		StartTime: timeutil.GetTimestamp(time.Now()),
+		Download: 1,
+		Upload: 1,
+		ReadOnly: false,
+		Finish: 1,
+	}
+	PrintResult(InsertWebStorage("xxxxxx", storage, nil))
+}
+
+func TestInsertWebStorageLog(t *testing.T) {
+	webStorage  := &libcommon.WebStorageLogDO {
+		StorageUuid: "ssssss",
+		LogTime: timeutil.GetTimestamp(time.Now()),
+		IOin: 1,
+		IOout: 1,
+		Disk: 1,
+		Memory: 1,
+		Download: 1,
+		Upload: 1,
+	}
+	PrintResult(InsertWebStorageLog(webStorage, nil))
 }
 
 
+
+func TestGetFileCount(t *testing.T) {
+	total := 0
+	for ;; {
+		fmt.Println(GetFileCount(), "   ", total)
+		total++
+	}
+}
+
+
+func TestGetIndexStatistic(t *testing.T) {
+	PrintResult(GetIndexStatistic())
+}
