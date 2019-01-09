@@ -16,12 +16,12 @@ type BridgeServer struct {
 }
 
 // create a new instance for bridgev2.Server
-func NewServer(host string, port int) (*BridgeServer, error) {
+func NewServer(host string, port int) *BridgeServer {
 	server := &BridgeServer {
 		Host: host,
 		Port: port,
 	}
-	return server, nil
+	return server
 }
 
 
@@ -42,8 +42,8 @@ func (server *BridgeServer) Listen() error {
 	for {
 		conn, e1 := listener.Accept()
 		manager := &ConnectionManager{
-			conn: conn,
-			side: SERVER_SIDE,
+			Conn: conn,
+			Side: SERVER_SIDE,
 		}
 		if e1 != nil {
 			logger.Error("accept new conn error:", e1)
@@ -60,11 +60,11 @@ func (server *BridgeServer) Listen() error {
 
 // server socket serve a single connection
 func Serve(manager *ConnectionManager) {
-	if manager.md == nil {
-		manager.md = md5.New()
+	if manager.Md == nil {
+		manager.Md = md5.New()
 	}
 	side := ""
-	if manager.side == SERVER_SIDE {
+	if manager.Side == SERVER_SIDE {
 		side = "server"
 	} else {
 		side = "client"
@@ -74,18 +74,23 @@ func Serve(manager *ConnectionManager) {
 		manager.Close()
 	}()
 	common.Try(func() {
-
 		for ;; {
 			frame, err := manager.Receive()
 			if err != nil {
 				break
 			}
-
+			handler := GetOperationHandler(frame.GetOperation())
+			if handler != nil || handler.MetaHandler == nil {
+				panic(errors.New("no handler for operation: " + strconv.Itoa(int(frame.GetOperation()))))
+				break
+			}
+			if e2 := handler.MetaHandler(manager, frame) ; e2 != nil {
+				panic(e2)
+				break
+			}
 		}
-
-
 	}, func(i interface{}) {
-		logger.Error("connection error:", i)
+		logger.Error("server serve error:", i)
 	})
 }
 

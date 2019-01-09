@@ -1,9 +1,16 @@
 package bridgev2
 
-import "testing"
+import (
+	"testing"
+)
 
-func Test1(t *testing.T) {
-	var frame Frame
-	frame.SetOperation(FRAME_OPERATION_CONNECT)
+func TestServer(t *testing.T) {
+	server := NewServer("", 1022)
+	server.Listen()
+}
+
+
+
+func TestClient(t *testing.T) {
 
 }

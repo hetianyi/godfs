@@ -1,4 +1,4 @@
-package libclient
+package libcommon
 
 import (
 	"app"

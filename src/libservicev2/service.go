@@ -1,11 +1,11 @@
 package libservicev2
 
 import (
-	"libcommon"
 	"github.com/jinzhu/gorm"
 	"container/list"
 	"app"
 	"errors"
+	"util/common"
 )
 
 var dbPool *DbConnPool
@@ -31,7 +31,7 @@ func GetFileIdByMd5(md5 string, dao *DAO) (id int64, e error) {
 		dao = dao1
 		defer dbPool.ReturnDB(dao)
 	}
-	var fileDO libcommon.FileDO
+	var fileDO app.FileDO
 	e = dao.Query(func(db *gorm.DB) error {
 		return transformNotFoundErr(db.Table("file").Select("id").Where("md5 = ?", md5).Scan(&fileDO).Error)
 	})
@@ -49,7 +49,7 @@ func GetPartIdByMd5(md5 string, dao *DAO) (id int64, e error) {
 		dao = dao1
 		defer dbPool.ReturnDB(dao)
 	}
-	var partDO libcommon.PartDO
+	var partDO app.PartDO
 	e = dao.Query(func(db *gorm.DB) error {
 		return transformNotFoundErr(db.Table("part").Select("id").Where("md5 = ?", md5).Scan(&partDO).Error)
 	})
@@ -59,7 +59,7 @@ func GetPartIdByMd5(md5 string, dao *DAO) (id int64, e error) {
 
 // insert new file to table file,
 // if file exists, file id will replaced by existing id.
-func InsertFile(file *libcommon.FileVO, dao *DAO) error {
+func InsertFile(file *app.FileVO, dao *DAO) error {
 	if dao == nil {
 		dao1, ef := dbPool.GetDB()
 		if ef != nil {
@@ -69,7 +69,7 @@ func InsertFile(file *libcommon.FileVO, dao *DAO) error {
 		defer dbPool.ReturnDB(dao)
 	}
 	return dao.DoTransaction(func(db *gorm.DB) error {
-		e1 := db.Where(libcommon.FileDO{Md5: file.Md5}).FirstOrCreate(file).Error
+		e1 := db.Where(app.FileDO{Md5: file.Md5}).FirstOrCreate(file).Error
 		if e1 != nil && transformNotFoundErr(e1) != nil {
 			return e1
 		}
@@ -78,7 +78,7 @@ func InsertFile(file *libcommon.FileVO, dao *DAO) error {
 			if e2 != nil {
 				return e2
 			}
-			relation := &libcommon.FilePartRelationDO{FileId: file.Id, PartId: file.Parts[i].Id}
+			relation := &app.FilePartRelationDO{FileId: file.Id, PartId: file.Parts[i].Id}
 			e3 := insertFilePartRelation(relation, db)
 			if e3 != nil {
 				return e3
@@ -90,14 +90,14 @@ func InsertFile(file *libcommon.FileVO, dao *DAO) error {
 
 // insert new file to table part,
 // if part exists, part id will replaced by existing id.
-func insertFilePart(part *libcommon.PartDO, tx *gorm.DB) error {
-	return transformNotFoundErr(tx.Where(libcommon.PartDO{Md5: part.Md5}).FirstOrCreate(part).Error)
+func insertFilePart(part *app.PartDO, tx *gorm.DB) error {
+	return transformNotFoundErr(tx.Where(app.PartDO{Md5: part.Md5}).FirstOrCreate(part).Error)
 }
 
 // insert new file_part relation to table relation_file_part,
 // if relation exists, relation id will replaced by existing id.
-func insertFilePartRelation(relation *libcommon.FilePartRelationDO, tx *gorm.DB) error {
-	return transformNotFoundErr(tx.Where(libcommon.FilePartRelationDO{FileId: relation.FileId, PartId: relation.PartId}).FirstOrCreate(relation).Error)
+func insertFilePartRelation(relation *app.FilePartRelationDO, tx *gorm.DB) error {
+	return transformNotFoundErr(tx.Where(app.FilePartRelationDO{FileId: relation.FileId, PartId: relation.PartId}).FirstOrCreate(relation).Error)
 }
 
 // save current app uuid to table sys,
@@ -108,15 +108,15 @@ func ConfirmAppUUID(uuid string) (ret string, e error) {
 		return "", ef
 	}
 	defer dbPool.ReturnDB(dao)
-	uuidDO := &libcommon.SysDO{Key: "uuid", Value: uuid}
+	uuidDO := &app.SysDO{Key: "uuid", Value: uuid}
 	return uuidDO.Value, dao.Query(func(db *gorm.DB) error {
-		return transformNotFoundErr(db.Where(libcommon.SysDO{Key: "uuid"}).FirstOrCreate(uuidDO).Error)
+		return transformNotFoundErr(db.Where(app.SysDO{Key: "uuid"}).FirstOrCreate(uuidDO).Error)
 	})
 }
 
 
 // update table tracker
-func UpdateTrackerInfo(tracker *libcommon.TrackerDO) error {
+func UpdateTrackerInfo(tracker *app.TrackerDO) error {
 	dao, ef := dbPool.GetDB()
 	if ef != nil {
 		return ef
@@ -128,14 +128,14 @@ func UpdateTrackerInfo(tracker *libcommon.TrackerDO) error {
 }
 
 // update table tracker
-func GetTrackerInfo(uuid string) (*libcommon.TrackerDO, error) {
+func GetTrackerInfo(uuid string) (*app.TrackerDO, error) {
 	dao, ef := dbPool.GetDB()
 	if ef != nil {
 		return nil, ef
 	}
 	defer dbPool.ReturnDB(dao)
 
-	var ret libcommon.TrackerDO
+	var ret app.TrackerDO
 	var rowAffect int64
 	e := dao.Query(func(db *gorm.DB) error {
 		result := db.Table("tracker").Where("uuid = ?", uuid).First(&ret)
@@ -160,7 +160,7 @@ func GetReadyPushFiles(trackerUUID string) (*list.List, error) {
 	var files = list.New()
 	
 	return files, dao.Query(func(db *gorm.DB) error {
-		total := &libcommon.Total{}
+		total := &app.Total{}
 		result := db.Raw("select count(*) as count from file f where f.id > (select local_push_id from tracker a where a.uuid = ?)", trackerUUID).Scan(total)
 		if transformNotFoundErr(result.Error) != nil {
 			return result.Error
@@ -180,7 +180,7 @@ func GetReadyPushFiles(trackerUUID string) (*list.List, error) {
 		}
 		defer rows.Close()
 		for rows.Next() {
-			file := &libcommon.FileVO{}
+			file := &app.FileVO{}
 			e1 := db.ScanRows(rows, file)
 			if e1 != nil {
 				return e1
@@ -190,7 +190,7 @@ func GetReadyPushFiles(trackerUUID string) (*list.List, error) {
 		fileIds := make([]int64, files.Len())
 		index := 0
 		for ele := files.Front(); ele != nil; ele = ele.Next() {
-			fileIds[index] = ele.Value.(*libcommon.FileVO).Id
+			fileIds[index] = ele.Value.(*app.FileVO).Id
 			index++
 		}
 		rows2, e2 := db.Raw("select a.*, r.fid from relation_file_part r left join part a " +
@@ -201,7 +201,7 @@ func GetReadyPushFiles(trackerUUID string) (*list.List, error) {
 		defer rows2.Close()
 		var parts = list.New()
 		for rows2.Next() {
-			part := &libcommon.PartVO{}
+			part := &app.PartVO{}
 			e1 := db.ScanRows(rows2, part)
 			if e1 != nil {
 				return e1
@@ -209,10 +209,10 @@ func GetReadyPushFiles(trackerUUID string) (*list.List, error) {
 			parts.PushBack(part)
 		}
 		for fileEle := files.Front(); fileEle != nil; fileEle = fileEle.Next() {
-			file := fileEle.Value.(*libcommon.FileVO)
+			file := fileEle.Value.(*app.FileVO)
 			ls := list.New()
 			for partEle := parts.Front(); partEle != nil; partEle = partEle.Next() {
-				part := partEle.Value.(*libcommon.PartVO)
+				part := partEle.Value.(*app.PartVO)
 				if part.FileId == file.Id {
 					ls.PushBack(part)
 				}
@@ -228,7 +228,7 @@ func GetReadyPushFiles(trackerUUID string) (*list.List, error) {
 // finish:
 // 0|1 : file download finish flag
 // 2   : not add 'finish' query parameter
-func GetFullFileByMd5(md5 string, finish int) (*libcommon.FileVO, error) {
+func GetFullFileByMd5(md5 string, finish int) (*app.FileVO, error) {
 	dao, ef := dbPool.GetDB()
 	if ef != nil {
 		return nil, ef
@@ -242,7 +242,7 @@ func GetFullFileByMd5(md5 string, finish int) (*libcommon.FileVO, error) {
 		addOn = " and finish = 0"
 	}
 
-	var file libcommon.FileVO
+	var file app.FileVO
 	var rowAffect int64 = 0
 	err := dao.Query(func(db *gorm.DB) error {
 		result := db.Model(&file).Where("md5 = ? " + addOn, md5).First(&file)
@@ -261,7 +261,7 @@ func GetFullFileByMd5(md5 string, finish int) (*libcommon.FileVO, error) {
 		defer rows.Close()
 		var parts = list.New()
 		for rows.Next() {
-			part := &libcommon.PartDO{}
+			part := &app.PartDO{}
 			e1 := db.ScanRows(rows, part)
 			if e1 != nil {
 				return e1
@@ -281,7 +281,7 @@ func GetFullFileByMd5(md5 string, finish int) (*libcommon.FileVO, error) {
 // finish:
 // 0|1 : file download finish flag
 // 2   : not add 'finish' query parameter
-func GetFullFileById(fid int64, finish int) (*libcommon.FileVO, error) {
+func GetFullFileById(fid int64, finish int) (*app.FileVO, error) {
 	dao, ef := dbPool.GetDB()
 	if ef != nil {
 		return nil, ef
@@ -295,7 +295,7 @@ func GetFullFileById(fid int64, finish int) (*libcommon.FileVO, error) {
 		addOn = " and finish = 0"
 	}
 
-	var file libcommon.FileVO
+	var file app.FileVO
 	var rowAffect int64 = 0
 	err := dao.Query(func(db *gorm.DB) error {
 		result := db.Model(&file).Where("id = ? " + addOn, fid).First(&file)
@@ -314,7 +314,7 @@ func GetFullFileById(fid int64, finish int) (*libcommon.FileVO, error) {
 		defer rows.Close()
 		var parts = list.New()
 		for rows.Next() {
-			part := &libcommon.PartDO{}
+			part := &app.PartDO{}
 			e1 := db.ScanRows(rows, part)
 			if e1 != nil {
 				return e1
@@ -354,7 +354,7 @@ func UpdateFileFinishStatus(id int64, status int, dao *DAO) error {
 
 
 // get files start from specify id,
-// onlymine: used by storage client when push file.
+// onlymine: used by storage when push file.
 func GetFullFilesFromId(id int64, onlymine bool, group string, limit int) (*list.List, error) {
 	dao, ef := dbPool.GetDB()
 	if ef != nil {
@@ -384,7 +384,7 @@ func GetFullFilesFromId(id int64, onlymine bool, group string, limit int) (*list
 		}
 		defer rows.Close()
 		for rows.Next() {
-			file := &libcommon.FileVO{}
+			file := &app.FileVO{}
 			e1 := db.ScanRows(rows, file)
 			if e1 != nil {
 				return e1
@@ -397,7 +397,7 @@ func GetFullFilesFromId(id int64, onlymine bool, group string, limit int) (*list
 		fileIds := make([]int64, files.Len())
 		index := 0
 		for ele := files.Front(); ele != nil; ele = ele.Next() {
-			fileIds[index] = ele.Value.(*libcommon.FileVO).Id
+			fileIds[index] = ele.Value.(*app.FileVO).Id
 			index++
 		}
 		rows2, e2 := db.Raw("select a.*, r.fid from relation_file_part r left join part a " +
@@ -408,7 +408,7 @@ func GetFullFilesFromId(id int64, onlymine bool, group string, limit int) (*list
 		defer rows2.Close()
 		var parts = list.New()
 		for rows2.Next() {
-			part := &libcommon.PartVO{}
+			part := &app.PartVO{}
 			e1 := db.ScanRows(rows2, part)
 			if e1 != nil {
 				return e1
@@ -416,10 +416,10 @@ func GetFullFilesFromId(id int64, onlymine bool, group string, limit int) (*list
 			parts.PushBack(part)
 		}
 		for fileEle := files.Front(); fileEle != nil; fileEle = fileEle.Next() {
-			file := fileEle.Value.(*libcommon.FileVO)
+			file := fileEle.Value.(*app.FileVO)
 			ls := list.New()
 			for partEle := parts.Front(); partEle != nil; partEle = partEle.Next() {
-				part := partEle.Value.(*libcommon.PartVO)
+				part := partEle.Value.(*app.PartVO)
 				if part.FileId == file.Id {
 					ls.PushBack(part)
 				}
@@ -433,18 +433,18 @@ func GetFullFilesFromId(id int64, onlymine bool, group string, limit int) (*list
 }
 
 
-// get client info by client uuid
-func GetStorageClientByUUID(uuid string) (*libcommon.StorageDO, error) {
+// get storage info by uuid
+func GetStorageByUUID(uuid string) (*app.StorageDO, error) {
 	dao, ef := dbPool.GetDB()
 	if ef != nil {
 		return nil, ef
 	}
 	defer dbPool.ReturnDB(dao)
 
-	var clientDO libcommon.StorageDO
+	var storageDO app.StorageDO
 	var rowAffect int64
 	err := dao.Query(func(db *gorm.DB) error {
-		result := db.Table("storage_client").Where("uuid", uuid).First(&clientDO)
+		result := db.Table("storage").Where("uuid", uuid).First(&storageDO)
 		if transformNotFoundErr(result.Error) != nil {
 			return result.Error
 		}
@@ -454,12 +454,35 @@ func GetStorageClientByUUID(uuid string) (*libcommon.StorageDO, error) {
 	if rowAffect == 0 {
 		return nil, err
 	}
-	return &clientDO, err
+	return &storageDO, err
 }
 
 
-// save or update storage client info
-func SaveStorageClient(client *libcommon.StorageDO) error {
+func ExistsStorage(uuid string) (bool, error) {
+	dao, ef := dbPool.GetDB()
+	if ef != nil {
+		return false, ef
+	}
+	defer dbPool.ReturnDB(dao)
+
+	total := &app.Total{}
+	total.Count = 0
+	err := dao.Query(func(db *gorm.DB) error {
+		result := db.Raw("select count(*) as count from storage f where f.uuid = ?", uuid).Scan(total)
+		if transformNotFoundErr(result.Error) != nil {
+			return result.Error
+		}
+		return nil
+	})
+	if err != nil {
+		return false, err
+	}
+	return common.ConvertBoolFromInt(total.Count), err
+}
+
+
+// save or update storage info
+func SaveStorage(storage *app.StorageDO) error {
 	dao, ef := dbPool.GetDB()
 	if ef != nil {
 		return ef
@@ -467,9 +490,9 @@ func SaveStorageClient(client *libcommon.StorageDO) error {
 	defer dbPool.ReturnDB(dao)
 
 	return dao.DoTransaction(func(db *gorm.DB) error {
-		result := db.Model(client).Save(client)
+		result := db.Model(storage).Save(storage)
 		if result.RowsAffected == 0 {
-			return errors.New("error insert storage client: row affect is 0")
+			return errors.New("error insert storage: row affect is 0")
 		}
 		return nil
 	})
@@ -480,14 +503,14 @@ func SaveStorageClient(client *libcommon.StorageDO) error {
 // - file count
 // - finish file count
 // - total group disk space (include placeholder)
-func QuerySystemStatistic() (*libcommon.Statistic, error) {
+func QuerySystemStatistic() (*app.Statistic, error) {
 	dao, ef := dbPool.GetDB()
 	if ef != nil {
 		return nil, ef
 	}
 	defer dbPool.ReturnDB(dao)
 
-	var statistic libcommon.Statistic
+	var statistic app.Statistic
 	err := dao.Query(func(db *gorm.DB) error {
 		result := db.Raw(`select * from (
 						(select count(*) files from file a),
@@ -518,7 +541,7 @@ func GetAllWebTrackers() (*list.List, error) {
 		}
 		defer rows.Close()
 		for rows.Next() {
-			webTracker := &libcommon.WebTrackerDO{}
+			webTracker := &app.WebTrackerDO{}
 			e1 := db.ScanRows(rows, webTracker)
 			if e1 != nil {
 				return e1
@@ -532,7 +555,7 @@ func GetAllWebTrackers() (*list.List, error) {
 
 
 // insert web tracker
-func InsertWebTracker(webTracker *libcommon.WebTrackerDO, dao *DAO) error {
+func InsertWebTracker(webTracker *app.WebTrackerDO, dao *DAO) error {
 	if dao == nil {
 		dao1, ef := dbPool.GetDB()
 		if ef != nil {
@@ -572,7 +595,7 @@ func UpdateWebTrackerStatus(trackerUuid string, status int, dao *DAO) error {
 
 
 // insert web storage and relation with web tracker
-func InsertWebStorage(trackerUuid string, webStorage *libcommon.WebStorageDO, dao *DAO) error {
+func InsertWebStorage(trackerUuid string, webStorage *app.WebStorageDO, dao *DAO) error {
 	if dao == nil {
 		dao1, ef := dbPool.GetDB()
 		if ef != nil {
@@ -586,7 +609,7 @@ func InsertWebStorage(trackerUuid string, webStorage *libcommon.WebStorageDO, da
 		if result.Error != nil {
 			return result.Error
 		}
-		relation :=&libcommon.RelationWebTrackerStorageDO{
+		relation :=&app.RelationWebTrackerStorageDO{
 			TrackerUuid: trackerUuid,
 			StorageUuid: webStorage.Uuid,
 		}
@@ -600,7 +623,7 @@ func InsertWebStorage(trackerUuid string, webStorage *libcommon.WebStorageDO, da
 
 
 // insert into table web_storage_log
-func InsertWebStorageLog(webStorage *libcommon.WebStorageLogDO, dao *DAO) error {
+func InsertWebStorageLog(webStorage *app.WebStorageLogDO, dao *DAO) error {
 	if dao == nil {
 		dao1, ef := dbPool.GetDB()
 		if ef != nil {
@@ -625,7 +648,7 @@ func GetFileCount() int {
 	}
 	defer dbPool.ReturnDB(dao)
 
-	total := &libcommon.Total{}
+	total := &app.Total{}
 	total.Count = 0
 	dao.Query(func(db *gorm.DB) error {
 		db.Raw("select count(*) from file").Scan(total)
@@ -636,14 +659,14 @@ func GetFileCount() int {
 
 
 // used by dashboard
-func GetIndexStatistic() (*libcommon.DashboardIndexStatistic, error) {
+func GetIndexStatistic() (*app.DashboardIndexStatistic, error) {
 	dao, ef := dbPool.GetDB()
 	if ef != nil {
 		return nil, ef
 	}
 	defer dbPool.ReturnDB(dao)
 
-	var statistic libcommon.DashboardIndexStatistic
+	var statistic app.DashboardIndexStatistic
 	err := dao.Query(func(db *gorm.DB) error {
 		result := db.Raw(`select
                 (select count(*) from web_tracker where status=1)  as trackers,

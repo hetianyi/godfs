@@ -16,6 +16,8 @@ import (
 	"time"
 	"util/file"
 	"util/logger"
+	"crypto/md5"
+	"libcommon/bridgev2"
 )
 
 // each client has one tcp connection with storage server,
@@ -37,7 +39,7 @@ type IClient interface {
 }
 
 type Client struct {
-	//operationLock *sync.Mutex
+	// operationLock *sync.Mutex
 	TrackerMaintainer *TrackerMaintainer
 	connPool          *ClientConnectionPool
 	MaxConnPerServer  int // 客户端和每个服务建立的最大连接数，web项目中建议设置为和最大线程相同的数量
@@ -84,15 +86,15 @@ func (client *Client) Upload(path string, group string, startTime time.Time, ski
 		}
 
 		var excludes list.List
-		var connBridge *bridge.Bridge
-		var member *bridge.ExpireMember
+		var connBridge *bridgev2.ConnectionManager
+		var member *app.Member
 		for {
 			mem := selectStorageServer(group, "", &excludes, true)
 			// no available storage
 			if mem == nil {
 				return "", NO_STORAGE_ERROR
 			}
-			cb, e12 := client.connPool.GetConnBridge(mem)
+			conn, e12 := client.connPool.GetConn(mem)
 			if e12 != nil {
 				host, port := mem.GetHostAndPortByAccessFlag()
 				logger.Info("error connect to storage server:", host+":"+strconv.Itoa(port))
@@ -102,7 +104,11 @@ func (client *Client) Upload(path string, group string, startTime time.Time, ski
 
 			host, port := mem.GetHostAndPortByAccessFlag()
 			logger.Info("using storage server:", host+":"+strconv.Itoa(port))
-			connBridge = cb
+			connBridge = &bridgev2.ConnectionManager{
+				Conn: conn,
+				Side: bridgev2.CLIENT_SIDE,
+				Md: md5.New(),
+			}
 			member = mem
 			break
 		}

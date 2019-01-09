@@ -3,7 +3,6 @@ package libservicev2
 import (
 	"testing"
 	"util/logger"
-	"libcommon"
 	"app"
 	"container/list"
 	"strconv"
@@ -32,14 +31,14 @@ func PrintResult(result... interface{}) {
 }
 
 func TestInsertFile(t *testing.T) {
-	file := &libcommon.FileVO{Md5: "eeeeee", PartNumber: 1, Group: "G01", Instance: "01", Finish: 1}
+	file := &app.FileVO{Md5: "eeeeee", PartNumber: 1, Group: "G01", Instance: "01", Finish: 1}
 	ls := list.New()
 	for i := 0; i < 3; i++ {
-		part := &libcommon.PartDO{Md5: "rrrr_" + strconv.Itoa(i), Size: int64(1000+i)}
+		part := &app.PartDO{Md5: "rrrr_" + strconv.Itoa(i), Size: int64(1000+i)}
 		ls.PushBack(part)
 	}
 	for ele := ls.Front(); ele != nil; ele = ele.Next() {
-		fmt.Println(ele.Value.(*libcommon.PartDO).Md5)
+		fmt.Println(ele.Value.(*app.PartDO).Md5)
 	}
 	file.SetParts(ls)
 	InsertFile(file, nil)
@@ -65,7 +64,7 @@ func TestGetPartIdByMd5(t *testing.T) {
 }
 
 func TestUpdateTrackerInfo(t *testing.T) {
-	logger.Error(UpdateTrackerInfo(&libcommon.TrackerDO{Uuid: "xxxxxx", TrackerSyncId: 12, LastRegTime: time.Now(), LocalPushId: 11}))
+	logger.Error(UpdateTrackerInfo(&app.TrackerDO{Uuid: "xxxxxx", TrackerSyncId: 12, LastRegTime: time.Now(), LocalPushId: 11}))
 }
 
 func TestGetTrackerInfo(t *testing.T) {
@@ -78,7 +77,7 @@ func TestGetReadyPushFiles(t *testing.T) {
 		logger.Error(e)
 	} else {
 		for fileEle := ret.Front(); fileEle != nil; fileEle = fileEle.Next() {
-			bs, _ := json.Marshal(fileEle.Value.(*libcommon.FileVO))
+			bs, _ := json.Marshal(fileEle.Value.(*app.FileVO))
 			fmt.Println(string(bs))
 		}
 
@@ -101,11 +100,33 @@ func TestGetFullFilesFromId(t *testing.T) {
 	PrintResult(GetFullFilesFromId(4, false, "G01", 10))
 }
 
-func TestGetClientByUUID(t *testing.T) {
-	PrintResult(GetStorageClientByUUID("123"))
+func TestGetStorageByUUID(t *testing.T) {
+	PrintResult(GetStorageByUUID("123"))
 }
-func TestSaveStorageClient(t *testing.T) {
-	SaveStorageClient(&libcommon.StorageDO{"123", "123", 1, 1, 123, 1, "123", "123", 12, true, 0, 12, 123, 13, true, 1, 1, 1})
+func TestExistsStorage(t *testing.T) {
+	PrintResult(ExistsStorage("789"))
+}
+func TestSaveStorage(t *testing.T) {
+	storage := &app.StorageDO{
+		Uuid: "123",
+		Host: "",
+		Port: 0,
+		Status: app.STATUS_ENABLED,
+		TotalFiles: 0,
+		Group: "",
+		InstanceId: "",
+		HttpPort: 0,
+		HttpEnable: false,
+		StartTime: 0,
+		Download: 0,
+		Upload: 0,
+		Disk: 0,
+		ReadOnly: false,
+		Finish: 0,
+		IOin: 0,
+		IOout: 0,
+	}
+	SaveStorage(storage)
 }
 
 func TestQuerySystemStatistic(t *testing.T) {
@@ -117,7 +138,7 @@ func TestGetAllWebTrackers(t *testing.T) {
 }
 
 func TestInsertWebTracker(t *testing.T) {
-	tracker := &libcommon.WebTrackerDO{
+	tracker := &app.WebTrackerDO{
 		Uuid: "xxxxxx",
 		Host: "xxx",
 		Port: 1024,
@@ -135,7 +156,7 @@ func TestUpdateWebTrackerStatus(t *testing.T) {
 }
 
 func TestInsertWebStorage(t *testing.T) {
-	storage := &libcommon.WebStorageDO{
+	storage := &app.WebStorageDO{
 		Uuid: "ssssss",
 		Host: "xxxx",
 		Port: 1234,
@@ -158,7 +179,7 @@ func TestInsertWebStorage(t *testing.T) {
 }
 
 func TestInsertWebStorageLog(t *testing.T) {
-	webStorage  := &libcommon.WebStorageLogDO {
+	webStorage  := &app.WebStorageLogDO {
 		StorageUuid: "ssssss",
 		LogTime: timeutil.GetTimestamp(time.Now()),
 		IOin: 1,

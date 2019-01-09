@@ -16,25 +16,26 @@ var connectionPool, _ = pool.NewPool(1000, 0)
 
 // common connection manager
 type ConnectionManager struct {
-    conn net.Conn // connection that being managed
+    Conn net.Conn // connection that being managed
     // represent this connection is server side(1) or client side(2)
-    side int
-    md hash.Hash
+    Side int
+    Md hash.Hash
 }
 
 
 func (manager *ConnectionManager) Close() error {
-    if manager.conn != nil {
-        return manager.conn.Close()
+    if manager.Conn != nil {
+        return manager.Conn.Close()
     }
     return nil
 }
 
-
+// receive data frame from server/client
 func (manager *ConnectionManager) Receive() (*Frame, error) {
     return readFrame(manager)
 }
 
+// send data to from server/client
 func (manager *ConnectionManager) Send(frame *Frame) error {
     return writeFrame(manager, frame)
 }

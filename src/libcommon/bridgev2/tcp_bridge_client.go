@@ -1,16 +1,16 @@
 package bridgev2
 
 import (
-    "libclient"
     "util/logger"
     "strconv"
     "crypto/md5"
     "errors"
     "app"
     "util/json"
+    "libcommon"
 )
 
-var connPool *libclient.ClientConnectionPool
+var connPool *libcommon.ClientConnectionPool
 
 type BridgeClient struct {
     // storage server info
@@ -25,7 +25,7 @@ type BridgeClient struct {
 }
 
 func init() {
-    connPool = &libclient.ClientConnectionPool{}
+    connPool = &libcommon.ClientConnectionPool{}
     connPool.Init(50)
 }
 
@@ -38,7 +38,7 @@ func NewClient(member *app.Member) (*BridgeClient, error) {
 
 func (client *BridgeClient) Close() {
     if client.connManager != nil {
-        connPool.ReturnBrokenConnBridge(client.member, client.connManager.conn)
+        connPool.ReturnBrokenConnBridge(client.member, client.connManager.Conn)
     }
 }
 
@@ -51,9 +51,9 @@ func (client *BridgeClient) Connect() error {
     h, p := client.member.GetHostAndPortByAccessFlag()
     logger.Debug("connect to", h + ":" + strconv.Itoa(p), "success")
     client.connManager = &ConnectionManager{
-        conn: conn,
-        side: CLIENT_SIDE,
-        md: md5.New(),
+        Conn: conn,
+        Side: CLIENT_SIDE,
+        Md: md5.New(),
     }
     client.state = 1
     return nil

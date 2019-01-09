@@ -27,7 +27,6 @@ type StorageDO struct {
     Host       string `gorm:"column:host" json:"host""`
     Port       int    `gorm:"column:port" json:"port"`
     Status     int    `gorm:"column:status" json:"status"`
-    TrackerId  int64  `gorm:"column:tracker" json:"tracker"`
     TotalFiles int    `gorm:"column:total_files" json:"total_files"`
     Group      string `gorm:"column:grop" json:"group"`
     InstanceId string `gorm:"column:instance_id" json:"instance_id"`

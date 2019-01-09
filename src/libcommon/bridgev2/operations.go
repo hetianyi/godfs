@@ -35,7 +35,7 @@ func TranslateResponseMsg(code byte) string {
 
 type OperationHandler struct {
     OperationCode     byte
-    MetaHandler func(frame *Frame) error
+    MetaHandler func(manager *ConnectionManager, frame *Frame) error
     BodyReaderHandler func(frame *Frame, reader io.Reader) error
     BodyWriterHandler func(frame *Frame, writer io.Writer) error
 }

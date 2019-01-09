@@ -4,7 +4,7 @@ import (
     "errors"
     "util/json"
     "app"
-    "libservice"
+    "libservicev2"
 )
 
 var NULL_FRAME_ERR = errors.New("frame is null")
@@ -32,7 +32,7 @@ func ValidateClientHandler(manager *ConnectionManager, frame *Frame) error {
     if meta.Secret == app.SECRET {
         responseFrame.SetStatus(SUCCESS)
         responseFrame.SetMeta(response)
-        exist, e2 := libservice.QueryExistsStorageClient(meta.UUID)
+        exist, e2 :=libservicev2.ExistsStorage(meta.UUID)
         if e2 != nil {
             responseFrame.SetStatus(INTERNAL_ERROR)
         } else {
@@ -44,8 +44,27 @@ func ValidateClientHandler(manager *ConnectionManager, frame *Frame) error {
         }
         // only valid client uuid (means storage client) will log into db.
         if meta.UUID != "" && len(meta.UUID) == 30 {
-            e1 = libservice.RegisterStorageClient(meta.UUID)
-            if e1 != nil {
+            storage := &app.StorageDO{
+                Uuid: meta.UUID,
+                Host: "",
+                Port: 0,
+                Status: app.STATUS_ENABLED,
+                TotalFiles: 0,
+                Group: "",
+                InstanceId: "",
+                HttpPort: 0,
+                HttpEnable: false,
+                StartTime: 0,
+                Download: 0,
+                Upload: 0,
+                Disk: 0,
+                ReadOnly: false,
+                Finish: 0,
+                IOin: 0,
+                IOout: 0,
+            }
+            e3 := libservicev2.SaveStorage(storage)
+            if e3 != nil {
                 responseFrame.SetStatus(INTERNAL_ERROR)
             }
         }
