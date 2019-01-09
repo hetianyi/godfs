@@ -1,4 +1,4 @@
-package libcommon
+package app
 
 import (
     "time"
@@ -254,3 +254,43 @@ type DashboardIndexStatistic struct {
     Files     int    `gorm:"column:files" json:"files"`
     UpTime    string `gorm:"column:up_time" json:"up_time"`
 }
+
+type Member struct {
+    LookBackAddress string `json:"lookBackAddr"`
+    Port            int    `json:"port"`
+    AdvertiseAddr   string `json:"addr"`
+    AdvertisePort   int    `json:"advertise_port"`
+    InstanceId      string `json:"instance_id"`
+    Group           string `json:"group"`
+    HttpPort        int    `json:"httpPort"`
+    HttpEnable      bool   `json:"httpEnable"`
+    ExpireTime      time.Time
+    ReadOnly        bool   `json:"readonly"`
+    // 1: use LookBackAddress:Port 2: use AdvertiseAddr:AdvertisePort
+    AccessFlag int `json:"access_flag"`
+}
+
+func (expireMember *Member) SwitchAccessFlag() {
+    if expireMember.AccessFlag == ACCESS_FLAG_LOOKBACK {
+        expireMember.AccessFlag = ACCESS_FLAG_ADVERTISE
+    } else {
+        expireMember.AccessFlag = ACCESS_FLAG_LOOKBACK
+    }
+}
+
+func (expireMember *Member) GetHostAndPortByAccessFlag() (host string, port int) {
+    if expireMember.AccessFlag == ACCESS_FLAG_NONE {
+        // if run as client, always try from advertise ip
+        if RUN_WITH == 3 {
+            expireMember.AccessFlag = ACCESS_FLAG_ADVERTISE
+            return expireMember.AdvertiseAddr, expireMember.AdvertisePort
+        }
+        expireMember.AccessFlag = ACCESS_FLAG_LOOKBACK
+        return expireMember.LookBackAddress, expireMember.Port
+    }
+    if expireMember.AccessFlag == ACCESS_FLAG_LOOKBACK {
+        return expireMember.LookBackAddress, expireMember.Port
+    }
+    return expireMember.AdvertiseAddr, expireMember.AdvertisePort
+}
+

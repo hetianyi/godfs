@@ -41,9 +41,9 @@ type Pool struct {
 
 // initial pool
 func initPool(MaxActiveSize int, MaxWaitSize int) (*Pool, error) {
-	logger.Trace("initial thread pool...")
+	logger.Debug("initial thread pool...")
 	if MaxActiveSize <= 0 {
-		return nil, errors.New("ThreadSize must be positive")
+		return nil, errors.New("thread pool size value must be positive")
 	}
 	p := &Pool{
 		MaxActiveSize:        MaxActiveSize,

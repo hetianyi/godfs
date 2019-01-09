@@ -12,5 +12,9 @@ func Test1(t *testing.T) {
 	fmt.Print(rune('\n'))
 	fmt.Print(rune('\r'))
 	fmt.Print(rune('\r'))
-
+	fmt.Println()
+	fmt.Println()
+	var a byte = 1
+	fmt.Println(int(a))
 }
+
