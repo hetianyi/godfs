@@ -11,6 +11,7 @@ const (
     FRAME_OPERATION_NONE          byte = 0 // none operation, means no operation specified
     FRAME_OPERATION_VALIDATE      byte = 2 // operation for connect/validate
     FRAME_OPERATION_TEST_SEND_MSG byte = 3 // operation : test send msg
+    FRAME_OPERATION_SYNC_STORAGE_MEMBERS byte = 4 // operation : test send msg
 )
 
 // operation handler mapping
@@ -25,7 +26,7 @@ func init() {
     responseCodeMap[CONNECTION_POOL_FULL] = "connection pool is full"
 
 
-    operationHandlerMap[FRAME_OPERATION_VALIDATE] = &OperationHandler{FRAME_OPERATION_VALIDATE, ValidateClientHandler, nil, nil}
+    operationHandlerMap[FRAME_OPERATION_VALIDATE] = &OperationHandler{FRAME_OPERATION_VALIDATE, ValidateConnectionHandler, nil, nil}
 }
 
 func TranslateResponseMsg(code byte) string {

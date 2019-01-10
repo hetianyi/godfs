@@ -34,13 +34,14 @@ func NewClient(server *app.ServerInfo) *BridgeClient {
     return &BridgeClient {server, nil, 0}
 }
 
-
+// shutdown this client and close connection
 func (client *BridgeClient) Close() {
     if client.connManager != nil {
         connPool.ReturnBrokenConnBridge(client.server, client.connManager.Conn)
     }
 }
 
+// shutdown this client not close connection
 func (client *BridgeClient) Destroy() {
     if client.connManager != nil {
         connPool.ReturnConnBridge(client.server, client.connManager.Conn)
