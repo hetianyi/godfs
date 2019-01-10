@@ -49,6 +49,7 @@ func (server *BridgeServer) Listen() error {
 			logger.Error("accept new conn error:", e1)
 			manager.Close()
 		} else {
+			logger.Debug("accept a new connection from remote addr:", conn.RemoteAddr().String())
 			connectionPool.Exec(func() {
 				Serve(manager)
 			})
@@ -74,16 +75,19 @@ func Serve(manager *ConnectionManager) {
 		manager.Close()
 	}()
 	common.Try(func() {
+		logger.Debug("ready for client request event")
 		for ;; {
 			frame, err := manager.Receive()
 			if err != nil {
+				panic(err)
 				break
 			}
 			handler := GetOperationHandler(frame.GetOperation())
-			if handler != nil || handler.MetaHandler == nil {
+			if handler == nil || handler.MetaHandler == nil {
 				panic(errors.New("no handler for operation: " + strconv.Itoa(int(frame.GetOperation()))))
 				break
 			}
+			logger.Debug("receive a new request from remote client, operation:", frame.GetOperation())
 			if e2 := handler.MetaHandler(manager, frame) ; e2 != nil {
 				panic(e2)
 				break

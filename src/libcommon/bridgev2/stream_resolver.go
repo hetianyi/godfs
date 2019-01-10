@@ -62,11 +62,11 @@ func readFrame(manager *ConnectionManager) (*Frame, error) {
     headerBytes, _ := MakeBytes(FRAME_HEAD_SIZE, false, 0, false) // meta header size
     defer RecycleBytes(headerBytes)
     // read header meta data
-    len, e := ReadBytes(headerBytes, FRAME_HEAD_SIZE, manager)
-    if e == nil && len == FRAME_HEAD_SIZE {
+    _, e := ReadBytes(headerBytes, FRAME_HEAD_SIZE, manager)
+    if e == nil {
         // read meta and body size
-        bMetaSize := headerBytes[2:10]
-        bBodySize := headerBytes[10:18]
+        bMetaSize := headerBytes[3:11]
+        bBodySize := headerBytes[11:19]
         metaLength := binary.BigEndian.Uint64(bMetaSize)
         bodyLength := binary.BigEndian.Uint64(bBodySize)
         metaBodyBytes, e1 := readFrameMeta(int(metaLength), manager)
@@ -75,7 +75,7 @@ func readFrame(manager *ConnectionManager) (*Frame, error) {
         }
         frame := &Frame{
             frameHead: headerBytes[0:2],
-            frameStatus: headerBytes[3],
+            frameStatus: headerBytes[2],
             metaLength: int(metaLength),
             bodyLength: int64(bodyLength),
             frameMeta: metaBodyBytes,
@@ -93,7 +93,7 @@ func readFrame(manager *ConnectionManager) (*Frame, error) {
         }
         return frame, nil
     }
-    return nil, READ_ERROR
+    return nil, e
 }
 
 
@@ -103,6 +103,9 @@ func writeFrame(manager *ConnectionManager, frame *Frame) error {
     tmpBuf, _ := MakeBytes(8, false, 0, false)
     defer RecycleBytes(tmpBuf)
     var headerBuff bytes.Buffer
+    if frame.GetOperation() == FRAME_OPERATION_NONE {
+        frame.SetOperation(FRAME_OPERATION_NONE)
+    }
     headerBuff.Write(frame.frameHead)
     headerBuff.WriteByte(frame.frameStatus)
     metaLenBytes := common.ConvertLen2Bytes(int64(frame.metaLength), &tmpBuf)
@@ -110,8 +113,10 @@ func writeFrame(manager *ConnectionManager, frame *Frame) error {
     bodyLenBytes := common.ConvertLen2Bytes(frame.bodyLength, &tmpBuf)
     headerBuff.Write(*bodyLenBytes)
     headerBuff.Write(frame.frameMeta)
+
+    bs := headerBuff.Bytes()
     // write frame meta
-    len1, e2 := manager.Conn.Write(headerBuff.Bytes())
+    len1, e2 := manager.Conn.Write(bs)
     if e2 != nil {
         manager.Close()
         return e2

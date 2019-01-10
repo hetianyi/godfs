@@ -293,3 +293,51 @@ func (expireMember *Member) GetHostAndPortByAccessFlag() (host string, port int)
     return expireMember.AdvertiseAddr, expireMember.AdvertisePort
 }
 
+
+// server info of storage server and tracker server info
+type ServerInfo struct {
+    LookBackAddress string
+    Port int
+    Group string
+    InstanceId string
+    AccessFlag int
+    AdvertiseAddr   string
+    AdvertisePort   int
+    IsTracker bool
+}
+
+func (server *ServerInfo) FromMember(member *Member) {
+    server.LookBackAddress = member.LookBackAddress
+    server.Port = member.Port
+    server.InstanceId = member.InstanceId
+    server.Group = member.Group
+    server.AccessFlag = member.AccessFlag
+    server.AdvertiseAddr = member.AdvertiseAddr
+    server.AdvertisePort = member.AdvertisePort
+    server.IsTracker = false
+}
+
+func (server *ServerInfo) SwitchAccessFlag() {
+    if server.AccessFlag == ACCESS_FLAG_LOOKBACK {
+        server.AccessFlag = ACCESS_FLAG_ADVERTISE
+    } else {
+        server.AccessFlag = ACCESS_FLAG_LOOKBACK
+    }
+}
+
+func (server *ServerInfo) GetHostAndPortByAccessFlag() (host string, port int) {
+    if server.AccessFlag == ACCESS_FLAG_NONE {
+        // if run as client, always try from advertise ip
+        if RUN_WITH == 3 {
+            server.AccessFlag = ACCESS_FLAG_ADVERTISE
+            return server.AdvertiseAddr, server.AdvertisePort
+        }
+        server.AccessFlag = ACCESS_FLAG_LOOKBACK
+        return server.LookBackAddress, server.Port
+    }
+    if server.AccessFlag == ACCESS_FLAG_LOOKBACK {
+        return server.LookBackAddress, server.Port
+    }
+    return server.AdvertiseAddr, server.AdvertisePort
+}
+

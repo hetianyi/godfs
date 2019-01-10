@@ -34,14 +34,14 @@ func (pool *ClientConnectionPool) Init(maxConnPerServer int) {
 }
 
 // key = InstanceId@AdvertiseAddr:AdvertisePort!Group
-func GetServerKey(server *app.Member) string {
+func GetServerKey(server *app.ServerInfo) string {
 	host, port := server.GetHostAndPortByAccessFlag()
 	return server.InstanceId + "@" + host + ":" + strconv.Itoa(port) + "!" + server.Group
 }
 
 // connection pool has not been implemented.
 // for now, one client only support single connection with each storage.
-func (pool *ClientConnectionPool) GetConn(server *app.Member) (net.Conn, error) {
+func (pool *ClientConnectionPool) GetConn(server *app.ServerInfo) (net.Conn, error) {
 	pool.getLock.Lock()
 	defer pool.getLock.Unlock()
 	list := pool.getConnMap(server)
@@ -50,7 +50,7 @@ func (pool *ClientConnectionPool) GetConn(server *app.Member) (net.Conn, error) 
 	}
 	if pool.IncreaseActiveConnection(server, 0) < pool.maxConnPerServer {
 		bridge, e := pool.newConnection(server)
-		if e != nil {
+		if e != nil && !server.IsTracker {
 			logger.Debug("switch connection flag to advertise address")
 			server.SwitchAccessFlag()
 			return pool.newConnection(server)
@@ -61,9 +61,9 @@ func (pool *ClientConnectionPool) GetConn(server *app.Member) (net.Conn, error) 
 }
 
 // only connect but not validate this connection
-func (pool *ClientConnectionPool) newConnection(server *app.Member) (net.Conn, error) {
+func (pool *ClientConnectionPool) newConnection(server *app.ServerInfo) (net.Conn, error) {
 	host, port := server.GetHostAndPortByAccessFlag()
-	logger.Debug("connecting to storage server " + host + ":" + strconv.Itoa(port) + "...")
+	logger.Debug("connecting to server " + host + ":" + strconv.Itoa(port) + "...")
 	d := net.Dialer{Timeout: app.TCP_DIALOG_TIMEOUT}
 	conn, e := d.Dial("tcp", host+":"+strconv.Itoa(port))
 	if e != nil {
@@ -75,7 +75,7 @@ func (pool *ClientConnectionPool) newConnection(server *app.Member) (net.Conn, e
 }
 
 // finish using tcp connection bridge and return it to connection pool.
-func (pool *ClientConnectionPool) ReturnConnBridge(server *app.Member, conn net.Conn) {
+func (pool *ClientConnectionPool) ReturnConnBridge(server *app.ServerInfo, conn net.Conn) {
 	pool.getLock.Lock()
 	defer pool.getLock.Unlock()
 	connList := pool.getConnMap(server)
@@ -84,7 +84,7 @@ func (pool *ClientConnectionPool) ReturnConnBridge(server *app.Member, conn net.
 }
 
 // finish using tcp connection bridge and return it to connection pool.
-func (pool *ClientConnectionPool) ReturnBrokenConnBridge(server *app.Member, conn net.Conn) {
+func (pool *ClientConnectionPool) ReturnBrokenConnBridge(server *app.ServerInfo, conn net.Conn) {
 	pool.getLock.Lock()
 	defer pool.getLock.Unlock()
 	conn.Close()
@@ -92,7 +92,7 @@ func (pool *ClientConnectionPool) ReturnBrokenConnBridge(server *app.Member, con
 	logger.Trace("return broken connection:", pool.connMap[GetServerKey(server)].Len())
 }
 
-func (pool *ClientConnectionPool) IncreaseActiveConnection(server *app.Member, value int) int {
+func (pool *ClientConnectionPool) IncreaseActiveConnection(server *app.ServerInfo, value int) int {
 	pool.statusLock.Lock()
 	defer pool.statusLock.Unlock()
 	pool.totalActiveConn += value
@@ -101,7 +101,7 @@ func (pool *ClientConnectionPool) IncreaseActiveConnection(server *app.Member, v
 	return oldVal + value
 }
 
-func (pool *ClientConnectionPool) getConnMap(server *app.Member) *list.List {
+func (pool *ClientConnectionPool) getConnMap(server *app.ServerInfo) *list.List {
 	uid := GetServerKey(server)
 	connList := pool.connMap[uid]
 	if connList == nil {

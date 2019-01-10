@@ -14,7 +14,7 @@ var connPool *libcommon.ClientConnectionPool
 
 type BridgeClient struct {
     // storage server info
-    member *app.Member
+    server *app.ServerInfo
     connManager *ConnectionManager
     // connect state
     // 0: not connect
@@ -30,25 +30,33 @@ func init() {
 }
 
 // create a new instance for bridgev2.Server
-func NewClient(member *app.Member) (*BridgeClient, error) {
-    client := &BridgeClient {member, nil, 0}
-    return client, nil
+func NewClient(server *app.ServerInfo) *BridgeClient {
+    return &BridgeClient {server, nil, 0}
 }
 
 
 func (client *BridgeClient) Close() {
     if client.connManager != nil {
-        connPool.ReturnBrokenConnBridge(client.member, client.connManager.Conn)
+        connPool.ReturnBrokenConnBridge(client.server, client.connManager.Conn)
+    }
+}
+
+func (client *BridgeClient) Destroy() {
+    if client.connManager != nil {
+        connPool.ReturnConnBridge(client.server, client.connManager.Conn)
     }
 }
 
 
 func (client *BridgeClient) Connect() error {
-    conn, err := connPool.GetConn(client.member)
+    if client.state > 0 {
+        panic(errors.New("already connected"))
+    }
+    conn, err := connPool.GetConn(client.server)
     if err != nil {
         return err
     }
-    h, p := client.member.GetHostAndPortByAccessFlag()
+    h, p := client.server.GetHostAndPortByAccessFlag()
     logger.Debug("connect to", h + ":" + strconv.Itoa(p), "success")
     client.connManager = &ConnectionManager{
         Conn: conn,
@@ -70,6 +78,7 @@ func (client *BridgeClient) Validate() (*ConnectResponseMeta, error) {
     frame := &Frame{}
     frame.SetOperation(FRAME_OPERATION_VALIDATE)
     frame.SetMeta(meta)
+    frame.SetMetaBodyLength(0)
     if err := client.connManager.Send(frame); err != nil {
         return nil, err
     }

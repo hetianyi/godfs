@@ -50,6 +50,7 @@ func (frame *Frame) SetMeta(meta interface{}) error {
 		return e
 	}
 	frame.frameMeta = bs
+	frame.metaLength = len(bs)
 	return nil
 }
 
@@ -57,6 +58,10 @@ func (frame *Frame) GetMeta() ([]byte) {
 	return frame.frameMeta
 }
 
+
+func (frame *Frame) SetMetaBodyLength(bodyLength int64)  {
+	frame.bodyLength = bodyLength
+}
 
 
 

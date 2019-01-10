@@ -8,7 +8,7 @@ const (
     BAD_SECRET           byte = 3
     CONNECTION_POOL_FULL byte = 4
 
-    FRAME_OPERATION_NONE          byte = 1 // none operation, means no operation specified
+    FRAME_OPERATION_NONE          byte = 0 // none operation, means no operation specified
     FRAME_OPERATION_VALIDATE      byte = 2 // operation for connect/validate
     FRAME_OPERATION_TEST_SEND_MSG byte = 3 // operation : test send msg
 )

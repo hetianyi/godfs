@@ -31,7 +31,6 @@ func ValidateClientHandler(manager *ConnectionManager, frame *Frame) error {
 
     if meta.Secret == app.SECRET {
         responseFrame.SetStatus(SUCCESS)
-        responseFrame.SetMeta(response)
         exist, e2 :=libservicev2.ExistsStorage(meta.UUID)
         if e2 != nil {
             responseFrame.SetStatus(INTERNAL_ERROR)
@@ -68,6 +67,7 @@ func ValidateClientHandler(manager *ConnectionManager, frame *Frame) error {
                 responseFrame.SetStatus(INTERNAL_ERROR)
             }
         }
+        responseFrame.SetMeta(response)
     } else {
         responseFrame.SetStatus(INTERNAL_ERROR)
     }
