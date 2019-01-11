@@ -58,7 +58,7 @@ func ReadBytes(buff []byte, len int, manager *ConnectionManager) (int, error) {
 
 
 // read head bytes.
-func readFrame(manager *ConnectionManager) (*Frame, error) {
+func ReadFrame(manager *ConnectionManager) (*Frame, error) {
     headerBytes, _ := MakeBytes(FRAME_HEAD_SIZE, false, 0, false) // meta header size
     defer RecycleBytes(headerBytes)
     // read header meta data
@@ -74,17 +74,17 @@ func readFrame(manager *ConnectionManager) (*Frame, error) {
             return nil, e1
         }
         frame := &Frame{
-            frameHead: headerBytes[0:2],
-            frameStatus: headerBytes[2],
-            metaLength: int(metaLength),
-            bodyLength: int64(bodyLength),
-            frameMeta: metaBodyBytes,
+            FrameHead: headerBytes[0:2],
+            FrameStatus: headerBytes[2],
+            MetaLength: int(metaLength),
+            BodyLength: int64(bodyLength),
+            FrameMeta: metaBodyBytes,
         }
 
-        if frame.frameStatus != SUCCESS && manager.Side == CLIENT_SIDE {
-            logger.Debug("server response error code " + strconv.Itoa(int(frame.frameStatus)) + " ("+ TranslateResponseMsg(frame.frameStatus) +")")
-            if frame.frameStatus != SUCCESS {
-                return nil, errors.New("server response error code " + strconv.Itoa(int(frame.frameStatus)) + " ("+ TranslateResponseMsg(frame.frameStatus) +")")
+        if frame.FrameStatus != STATUS_SUCCESS && manager.Side == CLIENT_SIDE {
+            logger.Debug("server response error code " + strconv.Itoa(int(frame.FrameStatus)) + " ("+ TranslateResponseMsg(frame.FrameStatus) +")")
+            if frame.FrameStatus != STATUS_SUCCESS {
+                return nil, errors.New("server response error code " + strconv.Itoa(int(frame.FrameStatus)) + " ("+ TranslateResponseMsg(frame.FrameStatus) +")")
             }
         }
         bodyReaderHandler := GetOperationHandler(frame.GetOperation())
@@ -98,7 +98,7 @@ func readFrame(manager *ConnectionManager) (*Frame, error) {
 
 
 
-func writeFrame(manager *ConnectionManager, frame *Frame) error {
+func WriteFrame(manager *ConnectionManager, frame *Frame) error {
     // prepare frame meta
     tmpBuf, _ := MakeBytes(8, false, 0, false)
     defer RecycleBytes(tmpBuf)
@@ -106,13 +106,13 @@ func writeFrame(manager *ConnectionManager, frame *Frame) error {
     if frame.GetOperation() == FRAME_OPERATION_NONE {
         frame.SetOperation(FRAME_OPERATION_NONE)
     }
-    headerBuff.Write(frame.frameHead)
-    headerBuff.WriteByte(frame.frameStatus)
-    metaLenBytes := common.ConvertLen2Bytes(int64(frame.metaLength), &tmpBuf)
+    headerBuff.Write(frame.FrameHead)
+    headerBuff.WriteByte(frame.FrameStatus)
+    metaLenBytes := common.ConvertLen2Bytes(int64(frame.MetaLength), &tmpBuf)
     headerBuff.Write(*metaLenBytes)
-    bodyLenBytes := common.ConvertLen2Bytes(frame.bodyLength, &tmpBuf)
+    bodyLenBytes := common.ConvertLen2Bytes(frame.BodyLength, &tmpBuf)
     headerBuff.Write(*bodyLenBytes)
-    headerBuff.Write(frame.frameMeta)
+    headerBuff.Write(frame.FrameMeta)
 
     bs := headerBuff.Bytes()
     // write frame meta
@@ -127,7 +127,7 @@ func writeFrame(manager *ConnectionManager, frame *Frame) error {
     }
     app.UpdateIOOUT(int64(headerBuff.Len()))
     bodyWriterHandler := GetOperationHandler(frame.GetOperation())
-    if frame.bodyLength > 0 && bodyWriterHandler != nil && bodyWriterHandler.BodyReaderHandler != nil {
+    if frame.BodyLength > 0 && bodyWriterHandler != nil && bodyWriterHandler.BodyReaderHandler != nil {
         return bodyWriterHandler.BodyReaderHandler(frame, manager.Conn)
     }
     return nil

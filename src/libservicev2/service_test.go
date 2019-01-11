@@ -13,7 +13,7 @@ import (
 )
 
 func init() {
-	logger.SetLogLevel(2)
+	logger.SetLogLevel(1)
 	app.BASE_PATH = "E:\\godfs-storage\\storage1"
 	SetPool(NewPool(1))
 }
@@ -63,12 +63,8 @@ func TestGetPartIdByMd5(t *testing.T) {
 	logger.Error(GetPartIdByMd5("xxxxxx", nil))
 }
 
-func TestUpdateTrackerInfo(t *testing.T) {
-	logger.Error(UpdateTrackerInfo(&app.TrackerDO{Uuid: "xxxxxx", TrackerSyncId: 12, LastRegTime: time.Now(), LocalPushId: 11}))
-}
-
 func TestGetTrackerInfo(t *testing.T) {
-	logger.Error(GetTrackerInfo("xxxxxx"))
+	logger.Error(GetTracker("xxxxxx"))
 }
 
 func TestGetReadyPushFiles(t *testing.T) {
@@ -100,6 +96,24 @@ func TestGetFullFilesFromId(t *testing.T) {
 	PrintResult(GetFullFilesFromId(4, false, "G01", 10))
 }
 
+
+func TestUpdateTrackerInfo(t *testing.T) {
+	logger.Error(UpdateTracker(&app.TrackerDO{
+		Uuid: "xxx",
+		TrackerSyncId: 1,
+		LastRegTime: timeutil.GetTimestamp(time.Now()),
+		LocalPushId: 1 ,
+		Host: "456",
+		Port: 111,
+		Status: 1,
+		Secret: "123456",
+		TotalFiles: 1,
+		Remark: "asd",
+		AddTime: timeutil.GetTimestamp(time.Now()),
+	}))
+}
+
+
 func TestGetStorageByUUID(t *testing.T) {
 	PrintResult(GetStorageByUUID("123"))
 }
@@ -126,7 +140,7 @@ func TestSaveStorage(t *testing.T) {
 		IOin: 0,
 		IOout: 0,
 	}
-	SaveStorage(storage)
+	SaveStorage("", storage, nil)
 }
 
 func TestQuerySystemStatistic(t *testing.T) {
@@ -134,52 +148,15 @@ func TestQuerySystemStatistic(t *testing.T) {
 }
 
 func TestGetAllWebTrackers(t *testing.T) {
-	PrintResult(GetAllWebTrackers())
+	PrintResult(GetAllTrackers())
 }
 
-func TestInsertWebTracker(t *testing.T) {
-	tracker := &app.WebTrackerDO{
-		Uuid: "xxxxxx",
-		Host: "xxx",
-		Port: 1024,
-		Status: 1,
-		Secret: "123456",
-		TotalFiles: 3,
-		Remark: "asdasd",
-		AddTime: time.Now(),
-	}
-	PrintResult(InsertWebTracker(tracker, nil))
+func TestUpdateTrackerStatus(t *testing.T) {
+	PrintResult(UpdateTrackerStatus("xxx", 0, nil))
 }
 
-func TestUpdateWebTrackerStatus(t *testing.T) {
-	PrintResult(UpdateWebTrackerStatus("xxxxxx", 1, nil))
-}
-
-func TestInsertWebStorage(t *testing.T) {
-	storage := &app.WebStorageDO{
-		Uuid: "ssssss",
-		Host: "xxxx",
-		Port: 1234,
-		Status: 1,
-		TotalFiles: 123,
-		Group: "G01",
-		InstanceId: "asd",
-		HttpPort: 1234,
-		HttpEnable: true,
-		IOin: 1,
-		IOout: 11,
-		Disk: 111,
-		StartTime: timeutil.GetTimestamp(time.Now()),
-		Download: 1,
-		Upload: 1,
-		ReadOnly: false,
-		Finish: 1,
-	}
-	PrintResult(InsertWebStorage("xxxxxx", storage, nil))
-}
-
-func TestInsertWebStorageLog(t *testing.T) {
-	webStorage  := &app.WebStorageLogDO {
+func TestInsertStorageStatisticLog(t *testing.T) {
+	webStorage  := &app.StorageStatisticLogDO {
 		StorageUuid: "ssssss",
 		LogTime: timeutil.GetTimestamp(time.Now()),
 		IOin: 1,
@@ -189,7 +166,7 @@ func TestInsertWebStorageLog(t *testing.T) {
 		Download: 1,
 		Upload: 1,
 	}
-	PrintResult(InsertWebStorageLog(webStorage, nil))
+	PrintResult(InsertStorageStatisticLog(webStorage, nil))
 }
 
 

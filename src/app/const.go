@@ -44,8 +44,8 @@ var (
 	IOOUT           int64
 	STAGE_IOIN      int64
 	STAGE_IOOUT     int64
-	DOWNLOADS       int
-	UPLOADS         int
+	DOWNLOADS       int64
+	UPLOADS         int64
 	STAGE_DOWNLOADS int
 	STAGE_UPLOADS   int
 	START_TIME      int64
@@ -57,7 +57,7 @@ var (
 
 const (
 	TASK_SYNC_MEMBER       = 1 // storage同步自己的组内成员
-	TASK_REPORT_FILE       = 2
+	TASK_PUSH_FILE       = 2
 	TASK_PULL_NEW_FILE     = 3
 	TASK_DOWNLOAD_FILE     = 4
 	TASK_SYNC_ALL_STORAGES = 5 // client 同步所有的storage

@@ -1,0 +1,253 @@
+package libclient
+
+import (
+	"app"
+	"container/list"
+	"errors"
+	"io"
+	"libcommon/bridge"
+	"libcommon/bridgev2"
+	"libservice"
+	"strconv"
+	"sync"
+	"util/logger"
+)
+
+type TrackerInstance struct {
+	taskList    list.List
+	listIteLock *sync.Mutex
+	client  *bridgev2.BridgeClient
+	Collectors  list.List
+	Ready       bool
+	nextRun     bool
+	ConnStr     string
+	trackerUUID string
+}
+
+// init tracker instance and start it's task collectors
+func (tracker *TrackerInstance) Init() {
+	logger.Debug("init tracker instance:", tracker.ConnStr)
+	tracker.listIteLock = new(sync.Mutex)
+	tracker.startTaskCollector()
+	tracker.nextRun = true
+}
+
+func (tracker *TrackerInstance) SetConnBridgeClient(client *bridgev2.BridgeClient) {
+	tracker.client = client
+}
+
+// get task size in waiting list
+func (tracker *TrackerInstance) GetTaskSize() int {
+	return tracker.taskList.Len()
+}
+
+// start eac task collectors of a tracker instance
+func (tracker *TrackerInstance) startTaskCollector() {
+	for ele := tracker.Collectors.Front(); ele != nil; ele = ele.Next() {
+		go ele.Value.(*TaskCollector).Start(tracker)
+	}
+}
+
+func (tracker *TrackerInstance) GetTask() *bridge.Task {
+	logger.Debug("get task for tracker", tracker.ConnStr)
+	tracker.listIteLock.Lock()
+	defer tracker.listIteLock.Unlock()
+	if tracker.GetTaskSize() > 0 {
+		ret := tracker.taskList.Remove(tracker.taskList.Front())
+		if ret != nil {
+			return ret.(*bridge.Task)
+		}
+	}
+	return nil
+}
+
+
+// check task count of this type
+func (tracker *TrackerInstance) checkTaskTypeCount(taskType int) int {
+	tracker.listIteLock.Lock()
+	defer tracker.listIteLock.Unlock()
+	count := 0
+	for e := tracker.taskList.Front(); e != nil; e = e.Next() {
+		if e.Value != nil && e.Value.(*bridge.Task).TaskType == taskType {
+			count++
+		}
+	}
+	return count
+}
+
+
+// exec task
+// return bool if the connection is forced close and need reconnect
+func (tracker *TrackerInstance) ExecTask(task *bridge.Task) (bool, error) {
+	logger.Debug("exec task:", task.TaskType)
+	if task.TaskType == app.TASK_SYNC_MEMBER {
+		return TaskSyncMemberHandler(tracker)
+	} else if task.TaskType == app.TASK_PUSH_FILE {
+		files, e1 := libservice.GetFilesBasedOnId(task.FileId, true, "")
+		if e1 != nil {
+			return false, e1
+		}
+		if files == nil || files.Len() == 0 {
+			return false, nil
+		}
+		fs := make([]bridge.File, files.Len())
+		i := 0
+		maxId := 0
+		for ele := files.Front(); ele != nil; ele = ele.Next() {
+			fs[i] = *ele.Value.(*bridge.File)
+			if maxId < fs[i].Id {
+				maxId = fs[i].Id
+			}
+			i++
+		}
+		// register storage client to tracker server
+		regFileMeta := &bridge.OperationRegisterFileRequest{
+			Files: fs,
+		}
+		logger.Info("register", files.Len(), "files to tracker server")
+		// reg client
+		e2 := connBridge.SendRequest(bridge.O_REG_FILE, regFileMeta, 0, nil)
+		if e2 != nil {
+			return true, e2
+		}
+		e5 := connBridge.ReceiveResponse(func(response *bridge.Meta, in io.Reader) error {
+			if response.Err != nil {
+				return response.Err
+			}
+			var regResp = &bridge.OperationRegisterFileResponse{}
+			e3 := json.Unmarshal(response.MetaBody, regResp)
+			if e3 != nil {
+				return e3
+			}
+			if regResp.Status != bridge.STATUS_OK {
+				return errors.New("error register file " + strconv.Itoa(task.FileId) + " to tracker server, server response status:" + strconv.Itoa(regResp.Status))
+			}
+			// update table trackers and set local_push_fid to new id
+			e7 := libservice.FinishLocalFilePushTask(maxId, tracker.connBridge.UUID)
+			if e7 != nil {
+				return e7
+			}
+			return nil
+		})
+		if e5 != nil {
+			return true, e5
+		}
+		return false, nil
+	} else if task.TaskType == app.TASK_PULL_NEW_FILE {
+		config, e1 := libservice.GetTrackerConfig(tracker.connBridge.UUID)
+		if e1 != nil {
+			return false, e1
+		}
+		if config == nil {
+			config = &bridge.TrackerConfig{TrackerSyncId: 0}
+		}
+		// register storage client to tracker server
+		pullMeta := &bridge.OperationPullFileRequest{
+			BaseId: config.TrackerSyncId,
+			Group:  app.GROUP,
+		}
+		logger.Debug("try to pull new file from tracker server:", tracker.connBridge.GetConn().RemoteAddr().String(), ", base id is", config.TrackerSyncId)
+		// reg client
+		e2 := connBridge.SendRequest(bridge.O_PULL_NEW_FILES, pullMeta, 0, nil)
+		if e2 != nil {
+			return true, e2
+		}
+		e5 := connBridge.ReceiveResponse(func(response *bridge.Meta, in io.Reader) error {
+			if response.Err != nil {
+				return response.Err
+			}
+			var pullResp = &bridge.OperationPullFileResponse{}
+			e3 := json.Unmarshal(response.MetaBody, pullResp)
+			if e3 != nil {
+				return e3
+			}
+			if pullResp.Status != bridge.STATUS_OK {
+				return errors.New("error register file " + strconv.Itoa(task.FileId) + " to tracker server, server response status:" + strconv.Itoa(pullResp.Status))
+			}
+
+			files := pullResp.Files
+			if len(files) > 0 {
+				logger.Info("pull", len(files), "files from tracker server:", tracker.connBridge.GetConn().RemoteAddr().String())
+			} else {
+				logger.Debug("no file pull from tracker server:", tracker.connBridge.GetConn().RemoteAddr().String())
+			}
+			return libservice.StorageAddTrackerPulledFile(files, tracker.connBridge.UUID)
+		})
+		if e5 != nil {
+			return true, e5
+		}
+		return false, nil
+	} else if task.TaskType == app.TASK_DOWNLOAD_FILE {
+		logger.Debug("trying download file from other storage server...")
+		if increaseActiveDownload(0) >= ParallelDownload {
+			logger.Debug("ParallelDownload reached")
+			// AddTask(task, tracker)
+			return false, nil
+		}
+		fi, e1 := libservice.GetFullFileByFid(task.FileId, 0)
+		if e1 != nil {
+			return false, e1
+		}
+		if fi == nil || len(fi.Parts) == 0 {
+			return false, nil
+		}
+		addDownloadingFile(fi.Id, false)
+		go downloadFile(fi)
+		return false, nil
+	} else if task.TaskType == app.TASK_SYNC_ALL_STORAGES {
+		regClientMeta := &bridge.OperationGetStorageServerRequest{}
+		e2 := connBridge.SendRequest(bridge.O_SYNC_STORAGE, regClientMeta, 0, nil)
+		if e2 != nil {
+			return true, e2
+		}
+		e5 := connBridge.ReceiveResponse(func(response *bridge.Meta, in io.Reader) error {
+			if response.Err != nil {
+				return response.Err
+			}
+			logger.Debug("sync all storage server response from tracker", tracker.ConnStr, ": ", string(response.MetaBody))
+			var validateResp = &bridge.OperationGetStorageServerResponse{}
+			e3 := json.Unmarshal(response.MetaBody, validateResp)
+			if e3 != nil {
+				return e3
+			}
+			if validateResp.Status != bridge.STATUS_OK {
+				return errors.New("error register to tracker server " + tracker.ConnStr + ", server response status:" + strconv.Itoa(validateResp.Status))
+			}
+			// connect success
+			addMember(validateResp.GroupMembers)
+			return nil
+		})
+		if e5 != nil {
+			return true, e5
+		}
+		return false, nil
+	} else if task.TaskType == app.TASK_SYNC_STATISTIC {
+		regClientMeta := &bridge.OperationSyncStatisticRequest{}
+		e2 := connBridge.SendRequest(bridge.O_SYNC_STATISTIC, regClientMeta, 0, nil)
+		if e2 != nil {
+			return true, e2
+		}
+		e5 := connBridge.ReceiveResponse(func(response *bridge.Meta, in io.Reader) error {
+			if response.Err != nil {
+				return response.Err
+			}
+			logger.Debug("sync statistic response:", string(response.MetaBody))
+			var validateResp = &bridge.OperationSyncStatisticResponse{}
+			e3 := json.Unmarshal(response.MetaBody, validateResp)
+			if e3 != nil {
+				return e3
+			}
+			if validateResp.Status != bridge.STATUS_OK {
+				return errors.New("error sync statistic from tracker server, server response status:" + strconv.Itoa(validateResp.Status))
+			}
+			updateStatistic(tracker.ConnStr, validateResp.FileCount, validateResp.Statistic)
+			return nil
+		})
+		if e5 != nil {
+			return true, e5
+		}
+		return false, nil
+	}
+	return false, nil
+}
+

@@ -251,7 +251,7 @@ type OperationRegisterFileRequest struct {
 
 // register file response.
 type OperationRegisterFileResponse struct {
-	Status int `json:"status"`
+	LastId int `json:"last_id"` // last insert id
 }
 
 // register file operation request.

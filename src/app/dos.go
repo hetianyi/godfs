@@ -1,8 +1,9 @@
 package app
 
 import (
-	"time"
 	"container/list"
+	"strconv"
+	"strings"
 )
 
 // include all ORM struct
@@ -24,23 +25,36 @@ func (FileDO) TableName() string {
 // table clients
 // TODO: merge all storage include StorageDO WebStorage and Member
 type StorageDO struct {
-	Uuid       string `gorm:"primary_key" json:"uuid"`
-	Host       string `gorm:"column:host" json:"host""`
-	Port       int    `gorm:"column:port" json:"port"`
-	Status     int    `gorm:"column:status" json:"status"`
-	TotalFiles int    `gorm:"column:total_files" json:"total_files"`
-	Group      string `gorm:"column:grop" json:"group"`
-	InstanceId string `gorm:"column:instance_id" json:"instance_id"`
-	HttpPort   int    `gorm:"column:http_port" json:"http_port"`
-	HttpEnable bool   `gorm:"column:http_enable" json:"http_enable"`
-	StartTime  int64  `gorm:"column:start_time" json:"start_time"`
-	Download   int64  `gorm:"column:downloads" json:"downloads"`
-	Upload     int64  `gorm:"column:uploads" json:"uploads"`
-	Disk       int64  `gorm:"column:disk" json:"disk"`
-	ReadOnly   bool   `gorm:"column:read_only" json:"read_only"`
-	Finish     int    `gorm:"column:finish" json:"finish"`
-	IOin       int64  `gorm:"column:ioin" json:"ioin"`
-	IOout      int64  `gorm:"column:ioout" json:"ioout"`
+	Uuid          string `gorm:"primary_key" json:"uuid"`
+	Host          string `gorm:"column:host" json:"host""`
+	Port          int    `gorm:"column:port" json:"port"`
+	AdvertiseAddr string `gorm:"column:advertise_addr" json:"advertise_addr"`
+	AdvertisePort int    `gorm:"column:advertise_port" json:"advertise_port"`
+	Status        int    `gorm:"column:status" json:"status"`
+	Group         string `gorm:"column:grop" json:"group"`
+	InstanceId    string `gorm:"column:instance_id" json:"instance_id"`
+	HttpPort      int    `gorm:"column:http_port" json:"http_port"`
+	HttpEnable    bool   `gorm:"column:http_enable" json:"http_enable"`
+	StartTime     int64  `gorm:"column:start_time" json:"start_time"`
+	Download      int64  `gorm:"column:downloads" json:"downloads"`
+	Upload        int64  `gorm:"column:uploads" json:"uploads"`
+	Disk          int64  `gorm:"column:disk" json:"disk"`
+	ReadOnly      bool   `gorm:"column:read_only" json:"read_only"`
+	TotalFiles    int    `gorm:"column:total_files" json:"total_files"`
+	Finish        int    `gorm:"column:finish" json:"finish"`
+	IOin          int64  `gorm:"column:ioin" json:"ioin"`
+	IOout         int64  `gorm:"column:ioout" json:"ioout"`
+	// 1: use LookBackAddress:Port 2: use AdvertiseAddr:AdvertisePort
+	AccessFlag int `gorm:"column:access_flag" json:"access_flag"`
+	LogTime        int64  `gorm:column:log_time json:"log_time"`
+
+	// not store in db
+	ExpireTime     int64  `gorm:"-" json:"expire_time"`
+	StageDownloads int    `gorm:"-" json:"stageDownloads"`
+	StageUploads   int    `gorm:"-" json:"stageUploads"`
+	StageIOin      int64  `gorm:"-" json:"stageIOin"`
+	StageIOout     int64  `gorm:"-" json:"stageIOout"`
+	Memory         uint64 `gorm:"-" json:"mem"`
 }
 
 func (StorageDO) TableName() string {
@@ -83,8 +97,16 @@ func (SysDO) TableName() string {
 type TrackerDO struct {
 	Uuid          string    `gorm:"column:uuid;primary_key" json:"uuid"`
 	TrackerSyncId int64     `gorm:"column:tracker_sync_id" json:"tracker_sync_id"`
-	LastRegTime   time.Time `gorm:"column:last_reg_time" json:"last_reg_time"`
+	LastRegTime   int64 `gorm:"column:last_reg_time" json:"last_reg_time"`
 	LocalPushId   int64     `gorm:"column:local_push_id" json:"local_push_id"`
+
+	Host       string    `gorm:"column:host" json:"host"`
+	Port       int       `gorm:"column:port" json:"port"`
+	Status     int       `gorm:"column:status" json:"status"` // 0: disabled,  1:enabled, 3: deleted
+	Secret     string    `gorm:"column:secret" json:"secret"`
+	TotalFiles int       `gorm:"column:files" json:"files"`
+	Remark     string    `gorm:"column:remark" json:"remark"`
+	AddTime    int64 `gorm:"column:add_time" json:"add_time"`
 }
 
 func (TrackerDO) TableName() string {
@@ -92,7 +114,7 @@ func (TrackerDO) TableName() string {
 }
 
 // table web_storage_log
-type WebStorageLogDO struct {
+type StorageStatisticLogDO struct {
 	Id          int64  `gorm:"column:id;auto_increment;primary_key" json:"id"`
 	StorageUuid string `gorm:"column:storage" json:"storage"`
 	LogTime     int64  `gorm:"column:log_time" json:"log_time"`
@@ -104,58 +126,17 @@ type WebStorageLogDO struct {
 	Upload      int64  `gorm:"column:upload" json:"upload"`
 }
 
-func (WebStorageLogDO) TableName() string {
-	return "web_storage_log"
+func (StorageStatisticLogDO) TableName() string {
+	return "storage_statistic_log"
 }
 
-// table web_storage
-type WebStorageDO struct {
-	Uuid       string `gorm:"column:uuid;primary_key" json:"uuid"`
-	Host       string `gorm:"column:host" json:"host""`
-	Port       int    `gorm:"column:port" json:"port"`
-	Status     int    `gorm:"column:status" json:"status"`
-	TotalFiles int    `gorm:"column:total_files" json:"total_files"`
-	Group      string `gorm:"column:grop" json:"group"`
-	InstanceId string `gorm:"column:instance_id" json:"instance_id"`
-	HttpPort   int    `gorm:"column:http_port" json:"http_port"`
-	HttpEnable bool   `gorm:"column:http_enable" json:"http_enable"`
-	IOin       int64  `gorm:"column:ioin" json:"ioin"`
-	IOout      int64  `gorm:"column:ioout" json:"ioout"`
-	Disk       int64  `gorm:"column:disk" json:"disk"`
-	StartTime  int64  `gorm:"column:start_time" json:"start_time"`
-	Download   int64  `gorm:"column:downloads" json:"downloads"`
-	Upload     int64  `gorm:"column:uploads" json:"uploads"`
-	ReadOnly   bool   `gorm:"column:read_only" json:"read_only"`
-	Finish     int    `gorm:"column:finish" json:"finish"`
-}
-
-func (WebStorageDO) TableName() string {
-	return "web_storage"
-}
-
-type RelationWebTrackerStorageDO struct {
+type RelationTrackerStorageDO struct {
 	TrackerUuid string `gorm:"column:tracker" json:"tracker"`
 	StorageUuid string `gorm:"column:storage" json:"storage"`
 }
 
-func (RelationWebTrackerStorageDO) TableName() string {
-	return "relation_web_tracker_storage"
-}
-
-// table web_tracker
-type WebTrackerDO struct {
-	Uuid       string    `gorm:"column:uuid;primary_key" json:"uuid"`
-	Host       string    `gorm:"column:host" json:"host"`
-	Port       int       `gorm:"column:port" json:"port"`
-	Status     int       `gorm:"column:status" json:"status"` // 0: disabled,  1:enabled, 3: deleted
-	Secret     string    `gorm:"column:secret" json:"secret"`
-	TotalFiles int       `gorm:"column:files" json:"files"`
-	Remark     string    `gorm:"column:remark" json:"remark"`
-	AddTime    time.Time `gorm:"column:add_time" json:"add_time"`
-}
-
-func (WebTrackerDO) TableName() string {
-	return "web_tracker"
+func (RelationTrackerStorageDO) TableName() string {
+	return "relation_tracker_storage"
 }
 
 // table files
@@ -255,67 +236,35 @@ type DashboardIndexStatistic struct {
 	UpTime    string `gorm:"column:up_time" json:"up_time"`
 }
 
-type Member struct {
-	Host          string `json:"host"`
-	Port          int    `json:"port"`
-	AdvertiseAddr string `json:"advertise_addr"`
-	AdvertisePort int    `json:"advertise_port"`
-	InstanceId    string `json:"instance_id"`
-	Uuid          string `json:"uuid"`
-	Group         string `json:"group"`
-	HttpPort      int    `json:"httpPort"`
-	HttpEnable    bool   `json:"httpEnable"`
-	ExpireTime    int64  `json:"expire_time"`
-	ReadOnly      bool   `json:"readonly"`
-	// 1: use LookBackAddress:Port 2: use AdvertiseAddr:AdvertisePort
-	AccessFlag int `json:"access_flag"`
-}
-
-func (expireMember *Member) SwitchAccessFlag() {
-	if expireMember.AccessFlag == ACCESS_FLAG_LOOKBACK {
-		expireMember.AccessFlag = ACCESS_FLAG_ADVERTISE
-	} else {
-		expireMember.AccessFlag = ACCESS_FLAG_LOOKBACK
-	}
-}
-
-func (expireMember *Member) GetHostAndPortByAccessFlag() (host string, port int) {
-	if expireMember.AccessFlag == ACCESS_FLAG_NONE {
-		// if run as client, always try from advertise ip
-		if RUN_WITH == 3 {
-			expireMember.AccessFlag = ACCESS_FLAG_ADVERTISE
-			return expireMember.AdvertiseAddr, expireMember.AdvertisePort
-		}
-		expireMember.AccessFlag = ACCESS_FLAG_LOOKBACK
-		return expireMember.Host, expireMember.Port
-	}
-	if expireMember.AccessFlag == ACCESS_FLAG_LOOKBACK {
-		return expireMember.Host, expireMember.Port
-	}
-	return expireMember.AdvertiseAddr, expireMember.AdvertisePort
-}
-
 // server info of storage server and tracker server info
 type ServerInfo struct {
-	Host string
-	Port            int
-	Group           string
-	InstanceId      string
-	AccessFlag      int
-	AdvertiseAddr   string
-	AdvertisePort   int
-	IsTracker       bool
+	Host          string
+	Port          int
+	Group         string
+	InstanceId    string
+	AccessFlag    int
+	AdvertiseAddr string
+	AdvertisePort int
+	IsTracker     bool
 }
 
-func (server *ServerInfo) FromMember(member *Member) {
-	server.Host = member.Host
-	server.Port = member.Port
-	server.InstanceId = member.InstanceId
-	server.Group = member.Group
-	server.AccessFlag = member.AccessFlag
-	server.AdvertiseAddr = member.AdvertiseAddr
-	server.AdvertisePort = member.AdvertisePort
+func (server *ServerInfo) FromStorage(storage *StorageDO) *ServerInfo {
+	server.Host = storage.Host
+	server.Port = storage.Port
+	server.InstanceId = storage.InstanceId
+	server.Group = storage.Group
+	server.AccessFlag = storage.AccessFlag
+	server.AdvertiseAddr = storage.AdvertiseAddr
+	server.AdvertisePort = storage.AdvertisePort
 	server.IsTracker = false
+	return server
+}
+
+func (server *ServerInfo) FromConnStr(connStr string) *ServerInfo {
+	server.Host = strings.Split(connStr, ":")[0]
+	server.Port, _ = strconv.Atoi(strings.Split(connStr, ":")[1])
+	server.IsTracker = true
+	return server
 }
 
 func (server *ServerInfo) SwitchAccessFlag() {
@@ -340,33 +289,4 @@ func (server *ServerInfo) GetHostAndPortByAccessFlag() (host string, port int) {
 		return server.Host, server.Port
 	}
 	return server.AdvertiseAddr, server.AdvertisePort
-}
-
-
-type CachedStorageServerStatistic struct {
-	UUID          string `json:"uuid"`
-	AdvertiseAddr string `json:"addr"`
-	Group         string `json:"group"`
-	InstanceId    string `json:"instance_id"`
-	Port          int    `json:"port"`
-	HttpPort      int    `json:"httpPort"`
-	HttpEnable    bool   `json:"httpEnable"`
-	// 统计信息
-	TotalFiles int   `json:"files"`
-	Finish     int   `json:"finish"`
-	StartTime  int64 `json:"startTime"`
-	Downloads  int   `json:"downloads"`
-	Uploads    int   `json:"uploads"`
-
-	StageDownloads int `json:"stageDownloads"`
-	StageUploads   int `json:"stageUploads"`
-
-	IOin       int64  `json:"in"`
-	IOout      int64  `json:"out"`
-	StageIOin  int64  `json:"stageIOin"`
-	StageIOout int64  `json:"stageIOout"`
-	DiskUsage  int64  `json:"disk"`
-	Memory     uint64 `json:"mem"`
-	ReadOnly   bool   `json:"readonly"`
-	LogTime    int64  `json:"logTime"`
 }

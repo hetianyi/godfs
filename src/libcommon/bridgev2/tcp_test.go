@@ -38,15 +38,15 @@ func TestServer(t *testing.T) {
 
 func TestClient(t *testing.T) {
 	app.UUID = "storage01"
-	member := &app.Member{
-		LookBackAddress: "localhost",
+	storage := &app.StorageDO{
+		Host: "localhost",
 		Port: 1022,
 		AdvertiseAddr: "192.168.1.142",
 		AdvertisePort: 1022,
 		AccessFlag: app.ACCESS_FLAG_NONE,
 	}
 	server := &app.ServerInfo{}
-	server.FromMember(member)
+	server.FromStorage(storage)
 	index := 0
 	for {
 		client := NewClient(server)

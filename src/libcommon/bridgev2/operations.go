@@ -1,12 +1,15 @@
 package bridgev2
 
-import "io"
+import (
+    "io"
+    "util/logger"
+)
 
 const (
-    SUCCESS              byte = 1
-    INTERNAL_ERROR       byte = 2
-    BAD_SECRET           byte = 3
-    CONNECTION_POOL_FULL byte = 4
+    STATUS_SUCCESS              byte = 1
+    STATUS_INTERNAL_ERROR       byte = 2
+    STATUS_BAD_SECRET           byte = 3
+    STATUS_CONNECTION_POOL_FULL byte = 4
 
     FRAME_OPERATION_NONE          byte = 0 // none operation, means no operation specified
     FRAME_OPERATION_VALIDATE      byte = 2 // operation for connect/validate
@@ -20,25 +23,36 @@ var operationHandlerMap = make(map[byte]*OperationHandler)
 var responseCodeMap = make(map[byte]string)
 
 func init() {
-    responseCodeMap[SUCCESS] = "operation success"
-    responseCodeMap[INTERNAL_ERROR] = "internal server error"
-    responseCodeMap[BAD_SECRET] = "bad secret"
-    responseCodeMap[CONNECTION_POOL_FULL] = "connection pool is full"
-
-
-    operationHandlerMap[FRAME_OPERATION_VALIDATE] = &OperationHandler{FRAME_OPERATION_VALIDATE, ValidateConnectionHandler, nil, nil}
+    responseCodeMap[STATUS_SUCCESS] = "operation success"
+    responseCodeMap[STATUS_INTERNAL_ERROR] = "internal server error"
+    responseCodeMap[STATUS_BAD_SECRET] = "bad secret"
+    responseCodeMap[STATUS_CONNECTION_POOL_FULL] = "connection pool is full"
 }
 
 func TranslateResponseMsg(code byte) string {
     return responseCodeMap[code]
 }
 
+// register handler dynamically from high level.
+// usually register all handlers at entry file, such as tracker.go, storage.go...
+func RegisterOperationHandler(handler *OperationHandler) {
+    if handler == nil {
+        return
+    }
+    if operationHandlerMap[handler.OperationCode] != nil {
+        logger.Warn("handler already registered:", handler.OperationCode)
+        return
+    }
+    logger.Debug("register operation handler:", handler.OperationCode)
+    operationHandlerMap[handler.OperationCode] = handler
+}
+
 
 type OperationHandler struct {
     OperationCode     byte
-    MetaHandler func(manager *ConnectionManager, frame *Frame) error
-    BodyReaderHandler func(frame *Frame, reader io.Reader) error
-    BodyWriterHandler func(frame *Frame, writer io.Writer) error
+    MetaHandler func(manager *ConnectionManager, frame *Frame) error // handler is used by server
+    BodyReaderHandler func(frame *Frame, reader io.Reader) error // handler is used by server
+    BodyWriterHandler func(frame *Frame, writer io.Writer) error // handler is used by client
 }
 
 

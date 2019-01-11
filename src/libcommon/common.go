@@ -182,7 +182,7 @@ func SeekWriteOut(in io.ReadSeeker, start int64, offset int64, buffer []byte, ou
 	return nil
 }
 
-func WriteOut(in io.Reader, offset int64, buffer []byte, out io.Writer, md hash.Hash, callback func(len int)) error {
+func WriteOut(in io.Reader, offset int64, buffer []byte, out io.Writer, md hash.Hash) error {
 	// total read bytes
 	var readBodySize int64 = 0
 	// next time bytes to read
@@ -200,7 +200,6 @@ func WriteOut(in io.Reader, offset int64, buffer []byte, out io.Writer, md hash.
 		len, e2 := in.Read(buffer[0:nextReadSize])
 		if e2 == nil {
 			wl, e5 := out.Write(buffer[0:len])
-			callback(len)
 			if md != nil {
 				mdwl, e6 := md.Write(buffer[0:len])
 				if e6 != nil || mdwl != len {

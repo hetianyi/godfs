@@ -12,31 +12,31 @@ const (
 )
 
 type Frame struct {
-	frameHead []byte
-	frameStatus byte
-	metaLength int
-	bodyLength int64
-	frameMeta []byte
+	FrameHead []byte
+	FrameStatus byte
+	MetaLength int
+	BodyLength int64
+	FrameMeta []byte
 }
 
 
 func (frame *Frame) SetOperation(operation byte) {
-	frame.frameHead = []byte{FRAME_HEAD_FLAG, operation}
+	frame.FrameHead = []byte{FRAME_HEAD_FLAG, operation}
 }
 
 func (frame *Frame) GetOperation() byte {
-	if frame.frameHead == nil || len(frame.frameHead) != 2 {
+	if frame.FrameHead == nil || len(frame.FrameHead) != 2 {
 		return FRAME_OPERATION_NONE
 	}
-	return frame.frameHead[1]
+	return frame.FrameHead[1]
 }
 
 func (frame *Frame) SetStatus(status byte) {
-	frame.frameStatus = status
+	frame.FrameStatus = status
 }
 
 func (frame *Frame) GetStatus() byte {
-	return frame.frameStatus
+	return frame.FrameStatus
 }
 
 
@@ -49,18 +49,18 @@ func (frame *Frame) SetMeta(meta interface{}) error {
 	if e != nil {
 		return e
 	}
-	frame.frameMeta = bs
-	frame.metaLength = len(bs)
+	frame.FrameMeta = bs
+	frame.MetaLength = len(bs)
 	return nil
 }
 
 func (frame *Frame) GetMeta() ([]byte) {
-	return frame.frameMeta
+	return frame.FrameMeta
 }
 
 
 func (frame *Frame) SetMetaBodyLength(bodyLength int64)  {
-	frame.bodyLength = bodyLength
+	frame.BodyLength = bodyLength
 }
 
 

@@ -1,15 +1,21 @@
 package bridgev2
 
 import (
-    "util/logger"
-    "strconv"
+    "app"
     "crypto/md5"
     "errors"
-    "app"
-    "util/json"
     "libcommon"
+    "strconv"
+    "util/json"
+    "util/logger"
 )
 
+const (
+    state_not_connect = 0
+    state_connected = 1
+    state_validated = 2
+    state_disconnected = 3
+)
 var connPool *libcommon.ClientConnectionPool
 
 type BridgeClient struct {
@@ -24,33 +30,40 @@ type BridgeClient struct {
     state int
 }
 
+
 func init() {
     connPool = &libcommon.ClientConnectionPool{}
     connPool.Init(50)
 }
+
 
 // create a new instance for bridgev2.Server
 func NewClient(server *app.ServerInfo) *BridgeClient {
     return &BridgeClient {server, nil, 0}
 }
 
+
 // shutdown this client and close connection
 func (client *BridgeClient) Close() {
+    client.state = state_disconnected
     if client.connManager != nil {
         connPool.ReturnBrokenConnBridge(client.server, client.connManager.Conn)
     }
 }
 
+
 // shutdown this client not close connection
 func (client *BridgeClient) Destroy() {
+    client.state = state_disconnected
     if client.connManager != nil {
         connPool.ReturnConnBridge(client.server, client.connManager.Conn)
     }
 }
 
 
+// connect to server
 func (client *BridgeClient) Connect() error {
-    if client.state > 0 {
+    if client.state > state_not_connect {
         panic(errors.New("already connected"))
     }
     conn, err := connPool.GetConn(client.server)
@@ -69,17 +82,52 @@ func (client *BridgeClient) Connect() error {
 }
 
 
+// validate this connection.
 func (client *BridgeClient) Validate() (*ConnectResponseMeta, error) {
-    client.requireStatus(1)
     meta := &ConnectMeta{
         Secret: app.SECRET,
         UUID: app.UUID,
     }
+    frame, e := client.sendReceive(FRAME_OPERATION_VALIDATE, state_connected, meta, 0)
+    if e != nil {
+        return nil, e
+    }
+    var res = &ConnectResponseMeta{}
+    e1 := json.Unmarshal(frame.FrameMeta, res)
+    if e1 != nil {
+        return nil, e1
+    }
+    return res, nil
+}
 
+
+// synchronized storage members.
+func (client *BridgeClient) SyncStorageMembers(storage *app.StorageDO) (*SyncStorageMembersResponseMeta, error) {
+    frame, e := client.sendReceive(FRAME_OPERATION_SYNC_STORAGE_MEMBERS, state_validated, storage, 0)
+    if e != nil {
+        return nil, e
+    }
+    var res = &SyncStorageMembersResponseMeta{}
+    e1 := json.Unmarshal(frame.FrameMeta, res)
+    if e1 != nil {
+        return nil, e1
+    }
+    return res, nil
+}
+
+
+// send request and receive response,
+// returns response frame and error.
+func (client *BridgeClient) sendReceive(operation byte,
+                                        statusRequire int,
+                                        meta interface{},
+                                        bodyLength int64,
+                                        ) (*Frame, error) {
+    client.requireStatus(statusRequire)
     frame := &Frame{}
-    frame.SetOperation(FRAME_OPERATION_VALIDATE)
+    frame.SetOperation(operation)
     frame.SetMeta(meta)
-    frame.SetMetaBodyLength(0)
+    frame.SetMetaBodyLength(bodyLength)
     if err := client.connManager.Send(frame); err != nil {
         return nil, err
     }
@@ -88,17 +136,13 @@ func (client *BridgeClient) Validate() (*ConnectResponseMeta, error) {
         return nil, e
     }
     if response != nil {
-        var res = &ConnectResponseMeta{}
-        e := json.Unmarshal(response.frameMeta, res)
-        if e != nil {
-            return nil, e
-        }
-        return res, nil
+        return response, nil
     } else {
         return nil, errors.New("receive empty response from server")
     }
 }
 
+// assert status.
 func (client *BridgeClient) requireStatus(requiredState int) error {
     if client.state < requiredState {
         panic(errors.New("connect state not satisfied, expect " + strconv.Itoa(requiredState) + ", now is " + strconv.Itoa(client.state)))
