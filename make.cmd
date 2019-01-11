@@ -23,6 +23,10 @@ IF NOT EXIST bin mkdir bin
 
 echo step 2/6: install go-sqlite3 lib...
 go get github.com/mattn/go-sqlite3
+go get github.com/mattn/go-sqlite3
+go get github.com/jinzhu/gorm
+go get github.com/json-iterator/go
+
 set GOPATH=%gp%;%pwd%
 
 echo step 3/6: build tracker...
