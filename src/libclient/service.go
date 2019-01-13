@@ -18,6 +18,7 @@ import (
 	"util/logger"
 	"crypto/md5"
 	"libcommon/bridgev2"
+	"util/pool"
 )
 
 // each client has one tcp connection with storage server,
@@ -41,13 +42,13 @@ type IClient interface {
 type Client struct {
 	// operationLock *sync.Mutex
 	TrackerMaintainer *TrackerMaintainer
-	connPool          *ClientConnectionPool
+	connPool          *pool.ClientConnectionPool
 	MaxConnPerServer  int // 客户端和每个服务建立的最大连接数，web项目中建议设置为和最大线程相同的数量
 }
 
 func NewClient(MaxConnPerServer int) *Client {
 	logger.Debug("init godfs client.")
-	connPool := &ClientConnectionPool{}
+	connPool := &pool.ClientConnectionPool{}
 	connPool.Init(MaxConnPerServer)
 	return &Client{connPool: connPool}
 }
@@ -87,7 +88,7 @@ func (client *Client) Upload(path string, group string, startTime time.Time, ski
 
 		var excludes list.List
 		var connBridge *bridgev2.ConnectionManager
-		var member *app.Member
+		var member *app.StorageDO
 		for {
 			mem := selectStorageServer(group, "", &excludes, true)
 			// no available storage

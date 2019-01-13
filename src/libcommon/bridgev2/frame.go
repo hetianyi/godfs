@@ -17,6 +17,7 @@ type Frame struct {
 	MetaLength int
 	BodyLength int64
 	FrameMeta []byte
+	BodyWriterHandler func(manager *ConnectionManager, frame *Frame) error
 }
 
 

@@ -1,7 +1,6 @@
 package bridgev2
 
 import (
-    "io"
     "util/logger"
 )
 
@@ -15,6 +14,7 @@ const (
     FRAME_OPERATION_VALIDATE      byte = 2 // operation for connect/validate
     FRAME_OPERATION_TEST_SEND_MSG byte = 3 // operation : test send msg
     FRAME_OPERATION_SYNC_STORAGE_MEMBERS byte = 4 // operation : test send msg
+    FRAME_OPERATION_REGISTER_FILES byte = 5 // operation : test send msg
 )
 
 // operation handler mapping
@@ -50,9 +50,7 @@ func RegisterOperationHandler(handler *OperationHandler) {
 
 type OperationHandler struct {
     OperationCode     byte
-    MetaHandler func(manager *ConnectionManager, frame *Frame) error // handler is used by server
-    BodyReaderHandler func(frame *Frame, reader io.Reader) error // handler is used by server
-    BodyWriterHandler func(frame *Frame, writer io.Writer) error // handler is used by client
+    Handler func(manager *ConnectionManager, frame *Frame) error // handler is used by server
 }
 
 

@@ -82,101 +82,10 @@ func (tracker *TrackerInstance) ExecTask(task *bridge.Task) (bool, error) {
 	logger.Debug("exec task:", task.TaskType)
 	if task.TaskType == app.TASK_SYNC_MEMBER {
 		return TaskSyncMemberHandler(tracker)
-	} else if task.TaskType == app.TASK_PUSH_FILE {
-		files, e1 := libservice.GetFilesBasedOnId(task.FileId, true, "")
-		if e1 != nil {
-			return false, e1
-		}
-		if files == nil || files.Len() == 0 {
-			return false, nil
-		}
-		fs := make([]bridge.File, files.Len())
-		i := 0
-		maxId := 0
-		for ele := files.Front(); ele != nil; ele = ele.Next() {
-			fs[i] = *ele.Value.(*bridge.File)
-			if maxId < fs[i].Id {
-				maxId = fs[i].Id
-			}
-			i++
-		}
-		// register storage client to tracker server
-		regFileMeta := &bridge.OperationRegisterFileRequest{
-			Files: fs,
-		}
-		logger.Info("register", files.Len(), "files to tracker server")
-		// reg client
-		e2 := connBridge.SendRequest(bridge.O_REG_FILE, regFileMeta, 0, nil)
-		if e2 != nil {
-			return true, e2
-		}
-		e5 := connBridge.ReceiveResponse(func(response *bridge.Meta, in io.Reader) error {
-			if response.Err != nil {
-				return response.Err
-			}
-			var regResp = &bridge.OperationRegisterFileResponse{}
-			e3 := json.Unmarshal(response.MetaBody, regResp)
-			if e3 != nil {
-				return e3
-			}
-			if regResp.Status != bridge.STATUS_OK {
-				return errors.New("error register file " + strconv.Itoa(task.FileId) + " to tracker server, server response status:" + strconv.Itoa(regResp.Status))
-			}
-			// update table trackers and set local_push_fid to new id
-			e7 := libservice.FinishLocalFilePushTask(maxId, tracker.connBridge.UUID)
-			if e7 != nil {
-				return e7
-			}
-			return nil
-		})
-		if e5 != nil {
-			return true, e5
-		}
-		return false, nil
+	} else if task.TaskType == app.TASK_REGISTER_FILE {
+		return TaskRegisterFileHandler(tracker)
 	} else if task.TaskType == app.TASK_PULL_NEW_FILE {
-		config, e1 := libservice.GetTrackerConfig(tracker.connBridge.UUID)
-		if e1 != nil {
-			return false, e1
-		}
-		if config == nil {
-			config = &bridge.TrackerConfig{TrackerSyncId: 0}
-		}
-		// register storage client to tracker server
-		pullMeta := &bridge.OperationPullFileRequest{
-			BaseId: config.TrackerSyncId,
-			Group:  app.GROUP,
-		}
-		logger.Debug("try to pull new file from tracker server:", tracker.connBridge.GetConn().RemoteAddr().String(), ", base id is", config.TrackerSyncId)
-		// reg client
-		e2 := connBridge.SendRequest(bridge.O_PULL_NEW_FILES, pullMeta, 0, nil)
-		if e2 != nil {
-			return true, e2
-		}
-		e5 := connBridge.ReceiveResponse(func(response *bridge.Meta, in io.Reader) error {
-			if response.Err != nil {
-				return response.Err
-			}
-			var pullResp = &bridge.OperationPullFileResponse{}
-			e3 := json.Unmarshal(response.MetaBody, pullResp)
-			if e3 != nil {
-				return e3
-			}
-			if pullResp.Status != bridge.STATUS_OK {
-				return errors.New("error register file " + strconv.Itoa(task.FileId) + " to tracker server, server response status:" + strconv.Itoa(pullResp.Status))
-			}
-
-			files := pullResp.Files
-			if len(files) > 0 {
-				logger.Info("pull", len(files), "files from tracker server:", tracker.connBridge.GetConn().RemoteAddr().String())
-			} else {
-				logger.Debug("no file pull from tracker server:", tracker.connBridge.GetConn().RemoteAddr().String())
-			}
-			return libservice.StorageAddTrackerPulledFile(files, tracker.connBridge.UUID)
-		})
-		if e5 != nil {
-			return true, e5
-		}
-		return false, nil
+		return TaskPullFileHandler(tracker)
 	} else if task.TaskType == app.TASK_DOWNLOAD_FILE {
 		logger.Debug("trying download file from other storage server...")
 		if increaseActiveDownload(0) >= ParallelDownload {

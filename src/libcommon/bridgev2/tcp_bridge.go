@@ -32,12 +32,12 @@ func (manager *ConnectionManager) Close() error {
 
 // receive data frame from server/client
 func (manager *ConnectionManager) Receive() (*Frame, error) {
-    return ReadFrame(manager)
+    return readFrame(manager)
 }
 
 // send data to from server/client
 func (manager *ConnectionManager) Send(frame *Frame) error {
-    return WriteFrame(manager, frame)
+    return writeFrame(manager, frame)
 }
 
 

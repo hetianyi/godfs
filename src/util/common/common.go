@@ -1,6 +1,10 @@
 package common
 
-import "container/list"
+import (
+	"container/list"
+	"strings"
+	"strconv"
+)
 
 func ConvertBoolFromInt(input int) bool {
 	if input <= 0 {
@@ -21,4 +25,11 @@ func List2Array(ls *list.List) []interface{} {
 		index++
 	}
 	return arr
+}
+
+// parse host and port from connection string
+func ParseHostPortFromConnStr(connStr string) (string, int) {
+	host := strings.Split(connStr, ":")[0]
+	port, _ := strconv.Atoi(strings.Split(connStr, ":")[1])
+	return host, port
 }

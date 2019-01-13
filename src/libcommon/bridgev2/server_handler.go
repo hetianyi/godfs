@@ -3,13 +3,8 @@ package bridgev2
 import (
     "app"
     "errors"
-    "libcommon"
     "libservicev2"
-    "regexp"
-    "strings"
     "util/json"
-    "util/logger"
-    "validate"
 )
 
 var NULL_FRAME_ERR = errors.New("frame is null")
@@ -76,10 +71,8 @@ func ValidateConnectionHandler(manager *ConnectionManager, frame *Frame) error {
     } else {
         responseFrame.SetStatus(STATUS_INTERNAL_ERROR)
     }
-    return writeFrame(manager, responseFrame)
+    return manager.Send(responseFrame)
 }
-
-
 
 
 

@@ -76,19 +76,19 @@ func Serve(manager *ConnectionManager) {
 	}()
 	common.Try(func() {
 		logger.Debug("ready for client request event")
-		for ;; {
+		for {
 			frame, err := manager.Receive()
 			if err != nil {
 				panic(err)
 				break
 			}
 			handler := GetOperationHandler(frame.GetOperation())
-			if handler == nil || handler.MetaHandler == nil {
+			if handler == nil || handler.Handler == nil {
 				panic(errors.New("no handler for operation: " + strconv.Itoa(int(frame.GetOperation()))))
 				break
 			}
 			logger.Debug("receive a new request from remote client, operation:", frame.GetOperation())
-			if e2 := handler.MetaHandler(manager, frame) ; e2 != nil {
+			if e2 := handler.Handler(manager, frame) ; e2 != nil {
 				panic(e2)
 				break
 			}

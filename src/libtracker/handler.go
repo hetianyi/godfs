@@ -12,6 +12,16 @@ import (
 	"validate"
 )
 
+func init() {
+	registerOperationHandlers()
+}
+
+// register
+func registerOperationHandlers() {
+	bridgev2.RegisterOperationHandler(&bridgev2.OperationHandler{bridgev2.FRAME_OPERATION_VALIDATE, bridgev2.ValidateConnectionHandler})
+	bridgev2.RegisterOperationHandler(&bridgev2.OperationHandler{bridgev2.FRAME_OPERATION_SYNC_STORAGE_MEMBERS, SyncStorageMembersHandler})
+}
+
 // validate connection
 func SyncStorageMembersHandler(manager *bridgev2.ConnectionManager, frame *bridgev2.Frame) error {
 	if frame == nil {
@@ -51,7 +61,7 @@ func SyncStorageMembersHandler(manager *bridgev2.ConnectionManager, frame *bridg
 	}
 	if !valid {
 		responseFrame.SetStatus(bridgev2.STATUS_INTERNAL_ERROR)
-		if e2 := bridgev2.WriteFrame(manager, responseFrame); e2 != nil {
+		if e2 := manager.Send(responseFrame); e2 != nil {
 			return e2
 		}
 		return errors.New("invalid meta data")
@@ -63,7 +73,7 @@ func SyncStorageMembersHandler(manager *bridgev2.ConnectionManager, frame *bridg
 	}
 	responseFrame.SetStatus(bridgev2.STATUS_SUCCESS)
 	resMeta.GroupMembers = libcommon.GetGroupMembers(meta)
-	if e2 := bridgev2.WriteFrame(manager, responseFrame); e2 != nil {
+	if e2 := manager.Send(responseFrame); e2 != nil {
 		return e2
 	}
 	return nil

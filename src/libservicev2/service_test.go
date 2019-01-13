@@ -97,8 +97,8 @@ func TestGetFullFilesFromId(t *testing.T) {
 }
 
 
-func TestUpdateTrackerInfo(t *testing.T) {
-	logger.Error(UpdateTracker(&app.TrackerDO{
+func TestSaveTrackerInfo(t *testing.T) {
+	logger.Error(SaveTracker(&app.TrackerDO{
 		Uuid: "xxx",
 		TrackerSyncId: 1,
 		LastRegTime: timeutil.GetTimestamp(time.Now()),
@@ -169,8 +169,6 @@ func TestInsertStorageStatisticLog(t *testing.T) {
 	PrintResult(InsertStorageStatisticLog(webStorage, nil))
 }
 
-
-
 func TestGetFileCount(t *testing.T) {
 	total := 0
 	for ;; {
@@ -179,7 +177,28 @@ func TestGetFileCount(t *testing.T) {
 	}
 }
 
-
 func TestGetIndexStatistic(t *testing.T) {
 	PrintResult(GetIndexStatistic())
+}
+
+func TestInsertTrackerFile(t *testing.T) {
+	file := &app.FileVO{
+		Id: 2,
+		Md5: "xxxx",
+		PartNumber: 3,
+		Group: "G01",
+		Instance: "001",
+		Finish: 0,
+	}
+	part := &app.PartDO{
+		Id: 1,
+		Md5: "123",
+		Size: 1024,
+	}
+	parts := make([]app.PartDO, 1)
+	file.Parts = parts
+	parts[0] = *part
+	files := make([]app.FileVO, 1)
+	files[0] = *file
+	PrintResult(InsertTrackerFile("xxx", files, nil))
 }

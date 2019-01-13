@@ -154,9 +154,9 @@ func (FileVO) TableName() string {
 	return "file"
 }
 
-func (vo *FileVO) From(fileDO *FileDO) {
+func (vo *FileVO) From(fileDO *FileDO) *FileVO {
 	if fileDO == nil {
-		return
+		return nil
 	}
 	vo.Id = fileDO.Id
 	vo.Md5 = fileDO.Md5
@@ -164,6 +164,7 @@ func (vo *FileVO) From(fileDO *FileDO) {
 	vo.Group = fileDO.Group
 	vo.Instance = fileDO.Instance
 	vo.Finish = fileDO.Finish
+	return vo
 }
 
 // set file parts of fileVO,

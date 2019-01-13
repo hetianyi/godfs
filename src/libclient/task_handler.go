@@ -3,13 +3,13 @@ package libclient
 import (
 	"app"
 	"errors"
-	"io"
-	"libcommon/bridge"
 	"libcommon/bridgev2"
-	"libservice"
 	"libservicev2"
-	"strconv"
 	"util/logger"
+	"util/timeutil"
+	"time"
+	"util/common"
+	"libservice"
 )
 
 
@@ -65,7 +65,8 @@ func TaskSyncMemberHandler(tracker *TrackerInstance) (bool, error) {
 }
 
 
-func TaskPushFileHandler(tracker *TrackerInstance) (bool, error) {
+// register file to tracker
+func TaskRegisterFileHandler(tracker *TrackerInstance) (bool, error) {
 	client := *tracker.client
 
 	files, e1 := libservicev2.GetReadyPushFiles(tracker.trackerUUID)
@@ -76,47 +77,102 @@ func TaskPushFileHandler(tracker *TrackerInstance) (bool, error) {
 	if files == nil || files.Len() == 0 {
 		return false, nil
 	}
-	fs := make([]bridge.File, files.Len())
+	fs := make([]app.FileVO, files.Len())
 	i := 0
-	maxId := 0
+	var maxId int64 = 0
 	for ele := files.Front(); ele != nil; ele = ele.Next() {
-		fs[i] = *ele.Value.(*bridge.File)
+		fs[i] = *new(app.FileVO).From(ele.Value.(*app.FileDO))
 		if maxId < fs[i].Id {
 			maxId = fs[i].Id
 		}
 		i++
 	}
 	// register storage client to tracker server
-	regFileMeta := &bridge.OperationRegisterFileRequest{
+	regFileMeta := &bridgev2.RegisterFileMeta{
 		Files: fs,
 	}
 	logger.Info("register", files.Len(), "files to tracker server")
-	// reg client
-	e2 := connBridge.SendRequest(bridge.O_REG_FILE, regFileMeta, 0, nil)
+
+	responseMeta, e2 := client.RegisterFiles(regFileMeta)
 	if e2 != nil {
 		return true, e2
 	}
-	e5 := connBridge.ReceiveResponse(func(response *bridge.Meta, in io.Reader) error {
-		if response.Err != nil {
-			return response.Err
-		}
-		var regResp = &bridge.OperationRegisterFileResponse{}
-		e3 := json.Unmarshal(response.MetaBody, regResp)
-		if e3 != nil {
-			return e3
-		}
-		if regResp.Status != bridge.STATUS_OK {
-			return errors.New("error register file " + strconv.Itoa(task.FileId) + " to tracker server, server response status:" + strconv.Itoa(regResp.Status))
-		}
-		// update table trackers and set local_push_fid to new id
-		e7 := libservice.FinishLocalFilePushTask(maxId, tracker.connBridge.UUID)
-		if e7 != nil {
-			return e7
-		}
-		return nil
-	})
-	if e5 != nil {
-		return true, e5
+
+	e3 := libservicev2.UpdateTrackerWithMap(tracker.trackerUUID,
+		map[string]interface{}{"tracker_sync_id": responseMeta.LastInsertId, "local_push_id": maxId}, nil)
+	if e3 != nil {
+		return false, e2
 	}
 	return false, nil
 }
+
+
+
+// register file to tracker
+func TaskPullFileHandler(tracker *TrackerInstance) (bool, error) {
+	client := *tracker.client
+
+	config, e1 := libservicev2.GetTracker(tracker.trackerUUID)
+	// config, e1 := libservice.GetTrackerConfig(tracker.connBridge.UUID)
+	if e1 != nil {
+		return false, e1
+	}
+	if config == nil {
+		h, p := common.ParseHostPortFromConnStr(tracker.ConnStr)
+		config = &app.TrackerDO{
+			Uuid: tracker.trackerUUID,
+			TrackerSyncId: 0,
+			LastRegTime: timeutil.GetTimestamp(time.Now()),
+			LocalPushId: 0,
+			Host: h,
+			Port: p,
+			Status: app.STATUS_ENABLED,
+			Secret: app.SECRET,
+			TotalFiles: 0,
+			Remark: "",
+			AddTime: timeutil.GetTimestamp(time.Now()),
+		}
+		if e2 := libservicev2.SaveTracker(config); e2 != nil {
+			return false, e2
+		}
+	}
+	// register storage client to tracker server
+	pullMeta := &bridgev2.PullFileMeta{
+		BaseId: config.TrackerSyncId,
+		Group:  app.GROUP,
+	}
+
+	responseMeta, e2 := client.PullFiles(pullMeta)
+	if e2 != nil {
+		return true, e2
+	}
+	files := responseMeta.Files
+	if files == nil || len(files) > 0 {
+		logger.Info("pull", len(files), "files from tracker server:", tracker.ConnStr)
+		return false, nil
+	} else {
+		return false, libservicev2.InsertTrackerFile(tracker.trackerUUID, responseMeta.Files, nil)
+	}
+}
+
+
+func TaskDownloadFileHandler(tracker *TrackerInstance) (bool, error) {
+	client := *tracker.client
+	logger.Debug("trying download file from other storage server...")
+	if increaseActiveDownload(0) >= ParallelDownload {
+		logger.Debug("ParallelDownload reached")
+		// AddTask(task, tracker)
+		return false, nil
+	}
+	fi, e1 := libservice.GetFullFileByFid(task.FileId, 0)
+	if e1 != nil {
+		return false, e1
+	}
+	if fi == nil || len(fi.Parts) == 0 {
+		return false, nil
+	}
+	addDownloadingFile(fi.Id, false)
+	go downloadFile(fi)
+	return false, nil
+}
+

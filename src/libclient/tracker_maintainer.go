@@ -238,7 +238,7 @@ func AddTask(task *bridge.Task, tracker *TrackerInstance) bool {
 			logger.Trace("can't push task type " + strconv.Itoa(task.TaskType) + ": task type exists")
 			return false
 		}
-	} else if task.TaskType == app.TASK_PUSH_FILE {
+	} else if task.TaskType == app.TASK_REGISTER_FILE {
 		if tracker.checkTaskTypeCount(task.TaskType) == 0 {
 			tracker.listIteLock.Lock()
 			tracker.taskList.PushFront(task)

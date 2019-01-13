@@ -4,10 +4,10 @@ import (
     "app"
     "crypto/md5"
     "errors"
-    "libcommon"
     "strconv"
     "util/json"
     "util/logger"
+    "util/pool"
 )
 
 const (
@@ -16,7 +16,7 @@ const (
     state_validated = 2
     state_disconnected = 3
 )
-var connPool *libcommon.ClientConnectionPool
+var connPool *pool.ClientConnectionPool
 
 type BridgeClient struct {
     // storage server info
@@ -32,7 +32,7 @@ type BridgeClient struct {
 
 
 func init() {
-    connPool = &libcommon.ClientConnectionPool{}
+    connPool = &pool.ClientConnectionPool{}
     connPool.Init(50)
 }
 
@@ -114,6 +114,39 @@ func (client *BridgeClient) SyncStorageMembers(storage *app.StorageDO) (*SyncSto
     }
     return res, nil
 }
+
+// register files to tracker
+func (client *BridgeClient) RegisterFiles(meta *RegisterFileMeta) (*RegisterFileResponseMeta, error) {
+    frame, e := client.sendReceive(FRAME_OPERATION_REGISTER_FILES, state_validated, meta, 0)
+    if e != nil {
+        return nil, e
+    }
+    var res = &RegisterFileResponseMeta{}
+    e1 := json.Unmarshal(frame.FrameMeta, res)
+    if e1 != nil {
+        return nil, e1
+    }
+    return res, nil
+}
+
+
+// pull files from tracker
+func (client *BridgeClient) PullFiles(meta *PullFileMeta) (*PullFileResponseMeta, error) {
+    frame, e := client.sendReceive(FRAME_OPERATION_REGISTER_FILES, state_validated, meta, 0)
+    if e != nil {
+        return nil, e
+    }
+    var res = &PullFileResponseMeta{}
+    e1 := json.Unmarshal(frame.FrameMeta, res)
+    if e1 != nil {
+        return nil, e1
+    }
+    return res, nil
+}
+
+
+
+
 
 
 // send request and receive response,

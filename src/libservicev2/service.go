@@ -14,6 +14,9 @@ func SetPool(pool *DbConnPool) {
 }
 
 func transformNotFoundErr(err error) error {
+	if err == nil {
+		return nil
+	}
 	if gorm.IsRecordNotFoundError(err) {
 		return nil
 	}
@@ -87,16 +90,64 @@ func InsertFile(file *app.FileVO, dao *DAO) error {
 	})
 }
 
+
+// insert new file to table file,
+// if file exists, file id will replaced by existing id.
+func InsertTrackerFile(trackerUUID string, files []app.FileVO, dao *DAO) error {
+	if dao == nil {
+		dao1, ef := dbPool.GetDB()
+		if ef != nil {
+			return ef
+		}
+		dao = dao1
+		defer dbPool.ReturnDB(dao)
+	}
+
+	if files == nil || len(files) == 0 {
+		return nil
+	}
+
+	return dao.DoTransaction(func(db *gorm.DB) error {
+		var maxId int64 = 0
+		for i := range files {
+			file := files[i]
+			if maxId < file.Id {
+				maxId = file.Id
+			}
+			file.Id = 0
+			e1 := db.Table("file").Where("md5 = ?", file.Md5).FirstOrCreate(&file).Error
+			if e1 != nil && transformNotFoundErr(e1) != nil {
+				return e1
+			}
+			for i := range file.Parts {
+				e2 := insertFilePart(&file.Parts[i], db)
+				if e2 != nil {
+					return e2
+				}
+				relation := &app.FilePartRelationDO{FileId: file.Id, PartId: file.Parts[i].Id}
+				e3 := insertFilePartRelation(relation, db)
+				if e3 != nil {
+					return e3
+				}
+			}
+		}
+		return UpdateTrackerWithMap(trackerUUID, map[string]interface{}{"tracker_sync_id": maxId}, db)
+	})
+
+}
+
+
 // insert new file to table part,
 // if part exists, part id will replaced by existing id.
 func insertFilePart(part *app.PartDO, tx *gorm.DB) error {
-	return transformNotFoundErr(tx.Where(app.PartDO{Md5: part.Md5}).FirstOrCreate(part).Error)
+	part.Id = 0
+	return transformNotFoundErr(tx.Table("part").Where("md5 = ?", part.Md5).FirstOrCreate(part).Error)
 }
 
 // insert new file_part relation to table relation_file_part,
 // if relation exists, relation id will replaced by existing id.
 func insertFilePartRelation(relation *app.FilePartRelationDO, tx *gorm.DB) error {
-	return transformNotFoundErr(tx.Where(app.FilePartRelationDO{FileId: relation.FileId, PartId: relation.PartId}).FirstOrCreate(relation).Error)
+	return transformNotFoundErr(tx.Table("relation_file_part").Where("fid = ? and pid = ?", relation.FileId, relation.PartId).FirstOrCreate(relation).Error)
 }
 
 // save current app uuid to table sys,
@@ -116,7 +167,7 @@ func ConfirmAppUUID(uuid string) (ret string, e error) {
 
 // update table tracker
 // full update
-func UpdateTracker(tracker *app.TrackerDO) error {
+func SaveTracker(tracker *app.TrackerDO) error {
 	dao, ef := dbPool.GetDB()
 	if ef != nil {
 		return ef
@@ -125,6 +176,22 @@ func UpdateTracker(tracker *app.TrackerDO) error {
 	return dao.DoTransaction(func(db *gorm.DB) error {
 		return transformNotFoundErr(db.Table("tracker").Save(tracker).Error)
 	})
+}
+
+// update specify attributes of table tracker
+func UpdateTrackerWithMap(trackerUUID string, attrs map[string]interface{}, tx *gorm.DB) error {
+	if tx == nil {
+		dao, ef := dbPool.GetDB()
+		if ef != nil {
+			return ef
+		}
+		defer dbPool.ReturnDB(dao)
+		return dao.DoTransaction(func(tx *gorm.DB) error {
+			return transformNotFoundErr(tx.Table("tracker").Where("uuid = ?", trackerUUID).Updates(attrs).Error)
+		})
+	} else {
+		return transformNotFoundErr(tx.Table("tracker").Where("uuid = ?", trackerUUID).Updates(attrs).Error)
+	}
 }
 
 // update table tracker

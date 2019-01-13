@@ -57,8 +57,9 @@ func ReadBytes(buff []byte, len int, manager *ConnectionManager) (int, error) {
 
 
 
-// read head bytes.
-func ReadFrame(manager *ConnectionManager) (*Frame, error) {
+// read frame from server/client.
+// if frame containers body, then should read it later in custom handlers.
+func readFrame(manager *ConnectionManager) (*Frame, error) {
     headerBytes, _ := MakeBytes(FRAME_HEAD_SIZE, false, 0, false) // meta header size
     defer RecycleBytes(headerBytes)
     // read header meta data
@@ -87,18 +88,14 @@ func ReadFrame(manager *ConnectionManager) (*Frame, error) {
                 return nil, errors.New("server response error code " + strconv.Itoa(int(frame.FrameStatus)) + " ("+ TranslateResponseMsg(frame.FrameStatus) +")")
             }
         }
-        bodyReaderHandler := GetOperationHandler(frame.GetOperation())
-        if bodyLength > 0 && bodyReaderHandler != nil && bodyReaderHandler.BodyReaderHandler != nil {
-            return frame, bodyReaderHandler.BodyReaderHandler(frame, manager.Conn)
-        }
         return frame, nil
     }
     return nil, e
 }
 
 
-
-func WriteFrame(manager *ConnectionManager, frame *Frame) error {
+// write frame to server/client.
+func writeFrame(manager *ConnectionManager, frame *Frame) error {
     // prepare frame meta
     tmpBuf, _ := MakeBytes(8, false, 0, false)
     defer RecycleBytes(tmpBuf)
@@ -126,9 +123,9 @@ func WriteFrame(manager *ConnectionManager, frame *Frame) error {
         return SEND_HEAD_BYTES_ERROR
     }
     app.UpdateIOOUT(int64(headerBuff.Len()))
-    bodyWriterHandler := GetOperationHandler(frame.GetOperation())
-    if frame.BodyLength > 0 && bodyWriterHandler != nil && bodyWriterHandler.BodyReaderHandler != nil {
-        return bodyWriterHandler.BodyReaderHandler(frame, manager.Conn)
+    bodyWriterHandler := frame.BodyWriterHandler
+    if frame.BodyLength > 0 && bodyWriterHandler != nil {
+        return bodyWriterHandler(manager, frame)
     }
     return nil
 }

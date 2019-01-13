@@ -89,7 +89,7 @@ func QueryPushFileTaskCollector(tracker *TrackerInstance) {
 	if tracker.client == nil {
 		return
 	}
-	task, e1 := libservice.GetLocalPushFileTask(app.TASK_PUSH_FILE, tracker.trackerUUID)
+	task, e1 := libservice.GetLocalPushFileTask(app.TASK_REGISTER_FILE, tracker.trackerUUID)
 	if e1 != nil {
 		logger.Error(e1)
 		return

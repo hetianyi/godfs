@@ -27,9 +27,19 @@ type SyncStorageMembersResponseMeta struct {
 
 // register file operation request.
 type RegisterFileMeta struct {
-	Files []app.FileDO `json:"files"` // 文件md5
+	Files []app.FileVO `json:"files"` // 文件md5
 }
 type RegisterFileResponseMeta struct {
-	Files []app.FileDO `json:"files"` // 文件md5
+	LastInsertId int64 `json:"last_id"` // 文件md5
 }
 
+// register file operation request.
+type PullFileMeta struct {
+	BaseId int64    `json:"baseId"` // 上次同步的ID位置（tracker端的ID）
+	Group  string `json:"group"`
+}
+
+// register file response.
+type PullFileResponseMeta struct {
+	Files  []app.FileVO
+}

@@ -44,7 +44,7 @@ func CacheStorageServer(storage *app.StorageDO) error {
 	operationLock.Lock()
 	defer operationLock.Unlock()
 
-	storage.ExpireTime = timeutil.GetTimestamp(time.Now().Add(time.Hour * 8760000))
+	storage.ExpireTime = timeutil.GetTimestamp(time.Now().Add(time.Hour * 87600))
 	if managedStorage[storage.Uuid] == nil {
 		logger.Debug("register storage server", storage.Host + ":" + strconv.Itoa(storage.Port), "("+ storage.Uuid +")")
 	}
