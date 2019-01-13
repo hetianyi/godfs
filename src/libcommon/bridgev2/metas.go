@@ -35,11 +35,23 @@ type RegisterFileResponseMeta struct {
 
 // register file operation request.
 type PullFileMeta struct {
-	BaseId int64    `json:"baseId"` // 上次同步的ID位置（tracker端的ID）
+	BaseId int64  `json:"baseId"` // 上次同步的ID位置（tracker端的ID）
 	Group  string `json:"group"`
 }
 
 // register file response.
 type PullFileResponseMeta struct {
-	Files  []app.FileVO
+	Files []app.FileVO
+}
+
+// upload file operation request.
+type UploadFileMeta struct {
+	FileSize uint64 `json:"fileSize"` // file length
+	FileExt  string `json:"ext"`      // file extension name, exclude '.'
+	Md5      string `json:"md5"`      // file md5, if file exists, skip upload
+}
+
+// upload file response.
+type UploadFileResponseMeta struct {
+	Path string `json:"path"`
 }

@@ -10,6 +10,7 @@ import (
     "util/common"
     "util/logger"
     "strconv"
+    "hash"
 )
 
 var bytesPool *pool.BytesPool
@@ -29,7 +30,7 @@ func init() {
 }
 
 // common bytes reader, if error occurs, it will close automatically
-func ReadBytes(buff []byte, len int, manager *ConnectionManager) (int, error) {
+func ReadBytes(buff []byte, len int, manager *ConnectionManager, md hash.Hash) (int, error) {
     var read = 0
     for {
         if read >= len {
@@ -45,8 +46,8 @@ func ReadBytes(buff []byte, len int, manager *ConnectionManager) (int, error) {
             continue
         }
     }
-    if manager.Md != nil {
-        _, e1 := manager.Md.Write(buff[0:len])
+    if md != nil {
+        _, e1 := md.Write(buff[0:len])
         if e1 != nil {
             return 0, e1
         }
@@ -63,7 +64,7 @@ func readFrame(manager *ConnectionManager) (*Frame, error) {
     headerBytes, _ := MakeBytes(FRAME_HEAD_SIZE, false, 0, false) // meta header size
     defer RecycleBytes(headerBytes)
     // read header meta data
-    _, e := ReadBytes(headerBytes, FRAME_HEAD_SIZE, manager)
+    _, e := ReadBytes(headerBytes, FRAME_HEAD_SIZE, manager, manager.Md)
     if e == nil {
         // read meta and body size
         bMetaSize := headerBytes[3:11]
@@ -136,7 +137,7 @@ func readFrameMeta(metaSize int, manager *ConnectionManager) ([]byte, error) {
     if me != nil {
         return nil, me
     }
-    len, e := ReadBytes(tmp, metaSize, manager)
+    len, e := ReadBytes(tmp, metaSize, manager, manager.Md)
     if e != nil && e != io.EOF {
         return nil, e
     }
