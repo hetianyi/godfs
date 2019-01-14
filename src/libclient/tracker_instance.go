@@ -16,7 +16,7 @@ import (
 type TrackerInstance struct {
 	taskList    list.List
 	listIteLock *sync.Mutex
-	client  *bridgev2.BridgeClient
+	client  *bridgev2.TcpBridgeClient
 	Collectors  list.List
 	Ready       bool
 	nextRun     bool
@@ -32,7 +32,7 @@ func (tracker *TrackerInstance) Init() {
 	tracker.nextRun = true
 }
 
-func (tracker *TrackerInstance) SetConnBridgeClient(client *bridgev2.BridgeClient) {
+func (tracker *TrackerInstance) SetConnBridgeClient(client *bridgev2.TcpBridgeClient) {
 	tracker.client = client
 }
 

@@ -10,14 +10,14 @@ import (
 )
 
 
-type BridgeServer struct {
+type TcpBridgeServer struct {
 	Host string
 	Port int
 }
 
 // create a new instance for bridgev2.Server
-func NewServer(host string, port int) *BridgeServer {
-	server := &BridgeServer {
+func NewServer(host string, port int) *TcpBridgeServer {
+	server := &TcpBridgeServer {
 		Host: host,
 		Port: port,
 	}
@@ -27,7 +27,7 @@ func NewServer(host string, port int) *BridgeServer {
 
 // server start listening.
 // callback func will called when a server connection is closed by server/client.
-func (server *BridgeServer) Listen(callbacks... func(manager *ConnectionManager)) error {
+func (server *TcpBridgeServer) Listen(callbacks... func(manager *ConnectionManager)) error {
 
 	if server.Port <= 0 || server.Port > 65535 {
 		return errors.New("invalid port range: " + strconv.Itoa(server.Port))

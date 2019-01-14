@@ -114,7 +114,7 @@ func (maintainer *TrackerMaintainer) track(tracker string, secret string) {
 		serverInfo := &app.ServerInfo{}
 		serverInfo.FromConnStr(tracker)
 		// using new client
-		client := bridgev2.NewClient(serverInfo)
+		client := bridgev2.NewTcpClient(serverInfo)
 
 		e := client.Connect()
 

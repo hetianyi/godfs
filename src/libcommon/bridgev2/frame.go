@@ -64,9 +64,3 @@ func (frame *Frame) SetMetaBodyLength(bodyLength int64)  {
 	frame.BodyLength = bodyLength
 }
 
-
-
-
-
-
-

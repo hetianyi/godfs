@@ -51,133 +51,187 @@ func NewClient(MaxConnPerServer int) *Client {
 // client demo for upload file to storage server.
 func (client *Client) Upload(path string, group string, startTime time.Time, skipCheck bool) (string, error) {
 	fi, e := file.GetFile(path)
-	if e == nil {
-		defer fi.Close()
-		logger.Info("upload file:", fi.Name())
-		if !skipCheck {
-			logger.Debug("pre check file md5:", fi.Name())
-			md5, ee := file.GetFileMd5(path)
-			if ee == nil {
-				qfi, ee1 := client.QueryFile(md5)
-				if qfi != nil {
-					sm := "S"
-					if qfi.PartNum > 1 {
-						sm = "M"
-					}
-					logger.Debug("file already exists, skip upload.")
-					return qfi.Group + "/" + qfi.Instance + "/" + sm + "/" + qfi.Md5, nil
-				} else {
-					logger.Debug("error query file info from tracker server:", ee1)
+	if e != nil {
+		return "", errors.New("error upload file " + path + " due to " + e.Error())
+	}
+	defer fi.Close()
+
+	fileMd5 := ""
+	logger.Info("upload file:", fi.Name())
+
+	if !skipCheck {
+		logger.Debug("pre check file md5:", fi.Name())
+		md5, ee := file.GetFileMd5(path)
+		if ee == nil {
+			fileMd5 = md5
+			qfi, ee1 := client.QueryFile(md5)
+			if qfi != nil {
+				sm := "S"
+				if qfi.PartNum > 1 {
+					sm = "M"
 				}
+				logger.Debug("file already exists, skip upload.")
+				return qfi.Group + "/" + qfi.Instance + "/" + sm + "/" + qfi.Md5, nil
 			} else {
-				logger.Debug("error check file md5:", ee, ", skip pre check.")
+				logger.Debug("error query file info from tracker server:", ee1)
 			}
+		} else {
+			logger.Debug("error check file md5:", ee, ", skip pre check.")
 		}
+	}
 
-		fInfo, _ := fi.Stat()
-		uploadMeta := &bridge.OperationUploadFileRequest{
-			FileSize: uint64(fInfo.Size()),
-			FileExt:  file.GetFileExt(fInfo.Name()),
-			Md5:      "",
+	var excludes list.List
+	var connBridge *bridgev2.ConnectionManager
+	var member *app.StorageDO
+	server := &app.ServerInfo{}
+	var tcpClient *bridgev2.TcpBridgeClient
+
+	for {
+		// select a storage server which match the given regulation from all members
+		member = selectStorageServer(group, "", &excludes, true)
+		// no available storage server
+		if member == nil {
+			return "", NO_STORAGE_ERROR
 		}
-
-		var excludes list.List
-		var connBridge *bridgev2.ConnectionManager
-		var member *app.StorageDO
-		for {
-			mem := selectStorageServer(group, "", &excludes, true)
-			// no available storage
-			if mem == nil {
-				return "", NO_STORAGE_ERROR
-			}
-			conn, e12 := client.connPool.GetConn(mem)
-			if e12 != nil {
-				host, port := mem.GetHostAndPortByAccessFlag()
-				logger.Info("error connect to storage server:", host+":"+strconv.Itoa(port))
-				excludes.PushBack(mem)
-				continue
-			}
-
-			host, port := mem.GetHostAndPortByAccessFlag()
-			logger.Info("using storage server:", host+":"+strconv.Itoa(port))
-			connBridge = &bridgev2.ConnectionManager{
-				Conn: conn,
-				Side: bridgev2.CLIENT_SIDE,
-				Md: md5.New(),
-			}
-			member = mem
-			break
+		// construct server info from storage member
+		server.FromStorage(member)
+		tcpClient = bridgev2.NewTcpClient(server)
+		// connect to storage server
+		e1 := tcpClient.Connect()
+		if e1 != nil {
+			h, p := server.GetHostAndPortByAccessFlag()
+			logger.Error("error connect to storage server", h + ":" + strconv.Itoa(p), "due to:", e1.Error())
+			excludes.PushBack(member)
+			continue
 		}
-
-		e2 := connBridge.SendRequest(bridge.O_UPLOAD, uploadMeta, uint64(fInfo.Size()), func(out io.WriteCloser) error {
-			// begin upload file body bytes
-			buff, _ := bridge.MakeBytes(app.BUFF_SIZE, false, 0, false)
-			var finish, total int64
-			var stopFlag = false
-			defer func() {
-				stopFlag = true
-				bridge.RecycleBytes(buff)
-			}()
-			total = fInfo.Size()
-			finish = 0
-			go libcommon.ShowPercent(&total, &finish, &stopFlag, startTime)
-			for {
-				len5, e4 := fi.Read(buff)
-				if e4 != nil && e4 != io.EOF {
-					return e4
-				}
-				if len5 > 0 {
-					len3, e5 := out.Write(buff[0:len5])
-					finish += int64(len5)
-					if e5 != nil || len3 != len(buff[0:len5]) {
-						return e5
-					}
-					if e5 == io.EOF {
-						logger.Debug("upload finish")
-					}
-				} else {
-					if e4 != io.EOF {
-						return e4
-					} else {
-						logger.Debug("upload finish")
-					}
-					break
-				}
-			}
-			return nil
-		})
+		// validate connection
+		_, e2 := tcpClient.Validate()
 		if e2 != nil {
-			client.connPool.ReturnBrokenConnBridge(member, connBridge)
-			return "", e2
+			h, p := server.GetHostAndPortByAccessFlag()
+			logger.Error("error validate with storage server", h + ":" + strconv.Itoa(p), "due to:", e2.Error())
+			excludes.PushBack(member)
+			continue
 		}
+		// connection and validate success, continue works below
+		break
+	}
 
-		var fid string
-		// receive response
-		e3 := connBridge.ReceiveResponse(func(response *bridge.Meta, in io.Reader) error {
-			if response.Err != nil {
-				return response.Err
-			}
-			var uploadResponse = &bridge.OperationUploadFileResponse{}
-			e4 := json.Unmarshal(response.MetaBody, uploadResponse)
-			if e4 != nil {
+	h, p := server.GetHostAndPortByAccessFlag()
+	logger.Info("using storage server", h + ":" + strconv.Itoa(p), "(" + member.Uuid + ")")
+
+	fInfo, _ := fi.Stat()
+	uploadMeta := &bridgev2.UploadFileMeta{
+		FileSize: fInfo.Size(),
+		FileExt:  file.GetFileExt(fInfo.Name()),
+		Md5:      fileMd5,
+	}
+
+	resMeta, err := tcpClient.UploadFile(uploadMeta, func(manager *bridgev2.ConnectionManager, frame *bridgev2.Frame) error {
+		// begin upload file body bytes
+		buff, _ := bridgev2.MakeBytes(app.BUFF_SIZE, false, 0, false)
+		var finish, total int64
+		var stopFlag = false
+		defer func() {
+			stopFlag = true
+			bridgev2.RecycleBytes(buff)
+		}()
+		total = fInfo.Size()
+		finish = 0
+		go libcommon.ShowPercent(&total, &finish, &stopFlag, startTime)
+		for {
+			len5, e4 := fi.Read(buff)
+			if e4 != nil && e4 != io.EOF {
 				return e4
 			}
-			if uploadResponse.Status != bridge.STATUS_OK {
-				return errors.New("error connect to server, server response status:" + strconv.Itoa(uploadResponse.Status))
+			if len5 > 0 {
+				len3, e5 := manager.Conn.Write(buff[0:len5])
+				finish += int64(len5)
+				if e5 != nil || len3 != len(buff[0:len5]) {
+					return e5
+				}
+				if e5 == io.EOF {
+					logger.Debug("upload finish")
+				}
+			} else {
+				if e4 != io.EOF {
+					return e4
+				} else {
+					logger.Debug("upload finish")
+				}
+				break
 			}
-			fid = uploadResponse.Path
-			// connect success
-			return nil
-		})
-		if e3 != nil {
-			client.connPool.ReturnBrokenConnBridge(member, connBridge)
-			return "", e3
 		}
-		client.connPool.ReturnConnBridge(member, connBridge)
-		return fid, nil
-	} else {
-		return "", e
+		return nil
+	})
+
+
+
+	e2 := connBridge.SendRequest(bridge.O_UPLOAD, uploadMeta, uint64(fInfo.Size()), func(out io.WriteCloser) error {
+		// begin upload file body bytes
+		buff, _ := bridge.MakeBytes(app.BUFF_SIZE, false, 0, false)
+		var finish, total int64
+		var stopFlag = false
+		defer func() {
+			stopFlag = true
+			bridge.RecycleBytes(buff)
+		}()
+		total = fInfo.Size()
+		finish = 0
+		go libcommon.ShowPercent(&total, &finish, &stopFlag, startTime)
+		for {
+			len5, e4 := fi.Read(buff)
+			if e4 != nil && e4 != io.EOF {
+				return e4
+			}
+			if len5 > 0 {
+				len3, e5 := out.Write(buff[0:len5])
+				finish += int64(len5)
+				if e5 != nil || len3 != len(buff[0:len5]) {
+					return e5
+				}
+				if e5 == io.EOF {
+					logger.Debug("upload finish")
+				}
+			} else {
+				if e4 != io.EOF {
+					return e4
+				} else {
+					logger.Debug("upload finish")
+				}
+				break
+			}
+		}
+		return nil
+	})
+	if e2 != nil {
+		client.connPool.ReturnBrokenConnBridge(member, connBridge)
+		return "", e2
 	}
+
+	var fid string
+	// receive response
+	e3 := connBridge.ReceiveResponse(func(response *bridge.Meta, in io.Reader) error {
+		if response.Err != nil {
+			return response.Err
+		}
+		var uploadResponse = &bridge.OperationUploadFileResponse{}
+		e4 := json.Unmarshal(response.MetaBody, uploadResponse)
+		if e4 != nil {
+			return e4
+		}
+		if uploadResponse.Status != bridge.STATUS_OK {
+			return errors.New("error connect to server, server response status:" + strconv.Itoa(uploadResponse.Status))
+		}
+		fid = uploadResponse.Path
+		// connect success
+		return nil
+	})
+	if e3 != nil {
+		client.connPool.ReturnBrokenConnBridge(member, connBridge)
+		return "", e3
+	}
+	client.connPool.ReturnConnBridge(member, connBridge)
+	return fid, nil
 }
 
 func (client *Client) QueryFile(pathOrMd5 string) (*bridge.File, error) {
@@ -328,12 +382,12 @@ func download(path string, start int64, offset int64, fromSrc bool, excludes *li
 
 // select a storage server matching given group and instanceId
 // excludes contains fail storage and not gonna use this time.
-func selectStorageServer(group string, instanceId string, excludes *list.List, upload bool) *bridge.ExpireMember {
+func selectStorageServer(group string, instanceId string, excludes *list.List, upload bool) *app.StorageDO {
 	memberIteLock.Lock()
 	defer memberIteLock.Unlock()
 	var pick list.List
 	for ele := GroupMembers.Front(); ele != nil; ele = ele.Next() {
-		b := ele.Value.(*bridge.ExpireMember)
+		b := ele.Value.(*app.StorageDO)
 		if containsMember(b, excludes) || (upload && b.ReadOnly) {
 			continue
 		}
@@ -356,20 +410,20 @@ func selectStorageServer(group string, instanceId string, excludes *list.List, u
 	index := 0
 	for ele := pick.Front(); ele != nil; ele = ele.Next() {
 		if index == rd {
-			return ele.Value.(*bridge.ExpireMember)
+			return ele.Value.(*app.StorageDO)
 		}
 		index++
 	}
 	return nil
 }
 
-func containsMember(mem *bridge.ExpireMember, excludes *list.List) bool {
+// query if a list contains the given storage server.
+func containsMember(mem *app.StorageDO, excludes *list.List) bool {
 	if excludes == nil {
 		return false
 	}
-	uid := GetStorageServerUID(mem)
 	for ele := excludes.Front(); ele != nil; ele = ele.Next() {
-		if GetStorageServerUID(ele.Value.(*bridge.ExpireMember)) == uid {
+		if ele.Value.(*app.StorageDO).Uuid == mem.Uuid {
 			return true
 		}
 	}

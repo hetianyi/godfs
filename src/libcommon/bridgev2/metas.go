@@ -44,7 +44,7 @@ type PullFileResponseMeta struct {
 
 // upload file operation request.
 type UploadFileMeta struct {
-	FileSize uint64 `json:"fileSize"` // file length
+	FileSize int64 `json:"fileSize"` // file length
 	FileExt  string `json:"ext"`      // file extension name, exclude '.'
 	Md5      string `json:"md5"`      // file md5, if file exists, skip upload
 }

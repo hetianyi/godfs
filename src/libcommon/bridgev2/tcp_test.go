@@ -49,7 +49,7 @@ func TestClient(t *testing.T) {
 	server.FromStorage(storage)
 	index := 0
 	for {
-		client := NewClient(server)
+		client := NewTcpClient(server)
 		if err := client.Connect(); err != nil {
 			panic(err)
 		}

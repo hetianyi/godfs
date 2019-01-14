@@ -12,7 +12,7 @@ import (
 
 var connPool *pool.ClientConnectionPool
 
-type BridgeClient struct {
+type TcpBridgeClient struct {
     // storage server info
     server *app.ServerInfo
     connManager *ConnectionManager
@@ -26,13 +26,13 @@ func init() {
 
 
 // create a new instance for bridgev2.Server
-func NewClient(server *app.ServerInfo) *BridgeClient {
-    return &BridgeClient {server, nil}
+func NewTcpClient(server *app.ServerInfo) *TcpBridgeClient {
+    return &TcpBridgeClient {server, nil}
 }
 
 
 // shutdown this client and close connection
-func (client *BridgeClient) Close() {
+func (client *TcpBridgeClient) Close() {
     client.connManager.state = STATE_DISCONNECTED
     if client.connManager != nil {
         connPool.ReturnBrokenConnBridge(client.server, client.connManager.Conn)
@@ -41,7 +41,7 @@ func (client *BridgeClient) Close() {
 
 
 // shutdown this client not close connection
-func (client *BridgeClient) Destroy() {
+func (client *TcpBridgeClient) Destroy() {
     client.connManager.state = STATE_DISCONNECTED
     if client.connManager != nil {
         connPool.ReturnConnBridge(client.server, client.connManager.Conn)
@@ -50,7 +50,7 @@ func (client *BridgeClient) Destroy() {
 
 
 // connect to server
-func (client *BridgeClient) Connect() error {
+func (client *TcpBridgeClient) Connect() error {
     if client.connManager.state > STATE_NOT_CONNECT {
         panic(errors.New("already connected"))
     }
@@ -71,30 +71,31 @@ func (client *BridgeClient) Connect() error {
 
 
 // validate this connection.
-func (client *BridgeClient) Validate() (*ConnectResponseMeta, error) {
+func (client *TcpBridgeClient) Validate() (*ConnectResponseMeta, error) {
     meta := &ConnectMeta{
         Secret: app.SECRET,
         UUID: app.UUID,
     }
-    frame, e := client.sendReceive(FRAME_OPERATION_VALIDATE, STATE_CONNECTED, meta, 0)
+    frame, e := client.sendReceive(FRAME_OPERATION_VALIDATE, STATE_CONNECTED, meta, 0, nil)
     if e != nil {
         return nil, e
-    }
-    if frame.GetStatus() == STATUS_SUCCESS {
-        client.connManager.state = STATE_VALIDATED
     }
     var res = &ConnectResponseMeta{}
     e1 := json.Unmarshal(frame.FrameMeta, res)
     if e1 != nil {
         return nil, e1
     }
+    if frame.GetStatus() == STATUS_SUCCESS {
+        client.connManager.state = STATE_VALIDATED
+        client.connManager.UUID = res.UUID
+    }
     return res, nil
 }
 
 
 // synchronized storage members.
-func (client *BridgeClient) SyncStorageMembers(storage *app.StorageDO) (*SyncStorageMembersResponseMeta, error) {
-    frame, e := client.sendReceive(FRAME_OPERATION_SYNC_STORAGE_MEMBERS, STATE_VALIDATED, storage, 0)
+func (client *TcpBridgeClient) SyncStorageMembers(storage *app.StorageDO) (*SyncStorageMembersResponseMeta, error) {
+    frame, e := client.sendReceive(FRAME_OPERATION_SYNC_STORAGE_MEMBERS, STATE_VALIDATED, storage, 0, nil)
     if e != nil {
         return nil, e
     }
@@ -107,8 +108,8 @@ func (client *BridgeClient) SyncStorageMembers(storage *app.StorageDO) (*SyncSto
 }
 
 // register files to tracker
-func (client *BridgeClient) RegisterFiles(meta *RegisterFileMeta) (*RegisterFileResponseMeta, error) {
-    frame, e := client.sendReceive(FRAME_OPERATION_REGISTER_FILES, STATE_VALIDATED, meta, 0)
+func (client *TcpBridgeClient) RegisterFiles(meta *RegisterFileMeta) (*RegisterFileResponseMeta, error) {
+    frame, e := client.sendReceive(FRAME_OPERATION_REGISTER_FILES, STATE_VALIDATED, meta, 0, nil)
     if e != nil {
         return nil, e
     }
@@ -122,8 +123,8 @@ func (client *BridgeClient) RegisterFiles(meta *RegisterFileMeta) (*RegisterFile
 
 
 // pull files from tracker
-func (client *BridgeClient) PullFiles(meta *PullFileMeta) (*PullFileResponseMeta, error) {
-    frame, e := client.sendReceive(FRAME_OPERATION_REGISTER_FILES, STATE_VALIDATED, meta, 0)
+func (client *TcpBridgeClient) PullFiles(meta *PullFileMeta) (*PullFileResponseMeta, error) {
+    frame, e := client.sendReceive(FRAME_OPERATION_REGISTER_FILES, STATE_VALIDATED, meta, 0, nil)
     if e != nil {
         return nil, e
     }
@@ -136,18 +137,38 @@ func (client *BridgeClient) PullFiles(meta *PullFileMeta) (*PullFileResponseMeta
 }
 
 
+func (client *TcpBridgeClient) UploadFile(meta *UploadFileMeta,
+                                          bodyWriterHandler func(manager *ConnectionManager, frame *Frame) error,
+                                         ) (*UploadFileResponseMeta, error) {
+    frame, e := client.sendReceive(FRAME_OPERATION_UPLOAD_FILE, STATE_VALIDATED, meta, meta.FileSize, bodyWriterHandler)
+    if e != nil {
+        return nil, e
+    }
+    var res = &UploadFileResponseMeta{}
+    e1 := json.Unmarshal(frame.FrameMeta, res)
+    if e1 != nil {
+        return nil, e1
+    }
+    return res, nil
+}
+
+
+
+
 // send request and receive response,
 // returns response frame and error.
-func (client *BridgeClient) sendReceive(operation byte,
+func (client *TcpBridgeClient) sendReceive(operation byte,
                                         statusRequire int,
                                         meta interface{},
                                         bodyLength int64,
+                                        bodyWriterHandler func(manager *ConnectionManager, frame *Frame) error,
                                         ) (*Frame, error) {
     client.connManager.RequireStatus(statusRequire)
     frame := &Frame{}
     frame.SetOperation(operation)
     frame.SetMeta(meta)
     frame.SetMetaBodyLength(bodyLength)
+    frame.BodyWriterHandler = bodyWriterHandler
     if err := client.connManager.Send(frame); err != nil {
         return nil, err
     }
