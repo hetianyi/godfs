@@ -7,10 +7,7 @@ import (
     "strconv"
     "util/json"
     "util/logger"
-    "util/pool"
 )
-
-var connPool *pool.ClientConnectionPool
 
 type TcpBridgeClient struct {
     // storage server info
@@ -18,36 +15,14 @@ type TcpBridgeClient struct {
     connManager *ConnectionManager
 }
 
-
-func init() {
-    connPool = &pool.ClientConnectionPool{}
-    connPool.Init(50)
-}
-
-
 // create a new instance for bridgev2.Server
 func NewTcpClient(server *app.ServerInfo) *TcpBridgeClient {
     return &TcpBridgeClient {server, nil}
 }
 
-
-// shutdown this client and close connection
-func (client *TcpBridgeClient) Close() {
-    client.connManager.state = STATE_DISCONNECTED
-    if client.connManager != nil {
-        connPool.ReturnBrokenConnBridge(client.server, client.connManager.Conn)
-    }
+func (client *TcpBridgeClient) GetConnManager() *ConnectionManager {
+	return client.connManager
 }
-
-
-// shutdown this client not close connection
-func (client *TcpBridgeClient) Destroy() {
-    client.connManager.state = STATE_DISCONNECTED
-    if client.connManager != nil {
-        connPool.ReturnConnBridge(client.server, client.connManager.Conn)
-    }
-}
-
 
 // connect to server
 func (client *TcpBridgeClient) Connect() error {
@@ -61,6 +36,7 @@ func (client *TcpBridgeClient) Connect() error {
     h, p := client.server.GetHostAndPortByAccessFlag()
     logger.Debug("connect to", h + ":" + strconv.Itoa(p), "success")
     client.connManager = &ConnectionManager{
+        server: client.server,
         Conn: conn,
         Side: CLIENT_SIDE,
         Md: md5.New(),

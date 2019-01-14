@@ -48,7 +48,7 @@ func NewClient(MaxConnPerServer int) *Client {
 	return &Client{connPool: connPool}
 }
 
-// client demo for upload file to storage server.
+// upload file to storage server.
 func (client *Client) Upload(path string, group string, startTime time.Time, skipCheck bool) (string, error) {
 	fi, e := file.GetFile(path)
 	if e != nil {
@@ -81,7 +81,6 @@ func (client *Client) Upload(path string, group string, startTime time.Time, ski
 	}
 
 	var excludes list.List
-	var connBridge *bridgev2.ConnectionManager
 	var member *app.StorageDO
 	server := &app.ServerInfo{}
 	var tcpClient *bridgev2.TcpBridgeClient
@@ -125,7 +124,7 @@ func (client *Client) Upload(path string, group string, startTime time.Time, ski
 		FileExt:  file.GetFileExt(fInfo.Name()),
 		Md5:      fileMd5,
 	}
-
+	destroy := false
 	resMeta, err := tcpClient.UploadFile(uploadMeta, func(manager *bridgev2.ConnectionManager, frame *bridgev2.Frame) error {
 		// begin upload file body bytes
 		buff, _ := bridgev2.MakeBytes(app.BUFF_SIZE, false, 0, false)
@@ -146,11 +145,13 @@ func (client *Client) Upload(path string, group string, startTime time.Time, ski
 			if len5 > 0 {
 				len3, e5 := manager.Conn.Write(buff[0:len5])
 				finish += int64(len5)
-				if e5 != nil || len3 != len(buff[0:len5]) {
+				if e5 != nil {
+					destroy = true
 					return e5
 				}
-				if e5 == io.EOF {
-					logger.Debug("upload finish")
+				if len3 != len(buff[0:len5]) {
+					destroy = true
+					return errors.New("could not write enough bytes")
 				}
 			} else {
 				if e4 != io.EOF {
@@ -164,76 +165,15 @@ func (client *Client) Upload(path string, group string, startTime time.Time, ski
 		return nil
 	})
 
-
-
-	e2 := connBridge.SendRequest(bridge.O_UPLOAD, uploadMeta, uint64(fInfo.Size()), func(out io.WriteCloser) error {
-		// begin upload file body bytes
-		buff, _ := bridge.MakeBytes(app.BUFF_SIZE, false, 0, false)
-		var finish, total int64
-		var stopFlag = false
-		defer func() {
-			stopFlag = true
-			bridge.RecycleBytes(buff)
-		}()
-		total = fInfo.Size()
-		finish = 0
-		go libcommon.ShowPercent(&total, &finish, &stopFlag, startTime)
-		for {
-			len5, e4 := fi.Read(buff)
-			if e4 != nil && e4 != io.EOF {
-				return e4
-			}
-			if len5 > 0 {
-				len3, e5 := out.Write(buff[0:len5])
-				finish += int64(len5)
-				if e5 != nil || len3 != len(buff[0:len5]) {
-					return e5
-				}
-				if e5 == io.EOF {
-					logger.Debug("upload finish")
-				}
-			} else {
-				if e4 != io.EOF {
-					return e4
-				} else {
-					logger.Debug("upload finish")
-				}
-				break
-			}
-		}
-		return nil
-	})
-	if e2 != nil {
-		client.connPool.ReturnBrokenConnBridge(member, connBridge)
-		return "", e2
+	if destroy {
+		tcpClient.GetConnManager().Destroy()
+	} else {
+		tcpClient.GetConnManager().Close()
 	}
-
-	var fid string
-	// receive response
-	e3 := connBridge.ReceiveResponse(func(response *bridge.Meta, in io.Reader) error {
-		if response.Err != nil {
-			return response.Err
-		}
-		var uploadResponse = &bridge.OperationUploadFileResponse{}
-		e4 := json.Unmarshal(response.MetaBody, uploadResponse)
-		if e4 != nil {
-			return e4
-		}
-		if uploadResponse.Status != bridge.STATUS_OK {
-			return errors.New("error connect to server, server response status:" + strconv.Itoa(uploadResponse.Status))
-		}
-		fid = uploadResponse.Path
-		// connect success
-		return nil
-	})
-	if e3 != nil {
-		client.connPool.ReturnBrokenConnBridge(member, connBridge)
-		return "", e3
-	}
-	client.connPool.ReturnConnBridge(member, connBridge)
-	return fid, nil
+	return resMeta.Path, err
 }
 
+// query file from tracker server.
 func (client *Client) QueryFile(pathOrMd5 string) (*bridge.File, error) {
 	logger.Debug("query file info:", pathOrMd5)
 	var result *bridge.File

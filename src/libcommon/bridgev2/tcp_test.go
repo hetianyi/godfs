@@ -55,7 +55,7 @@ func TestClient(t *testing.T) {
 		}
 		index++
 		PrintResult(client.Validate())
-		client.Destroy()
+		client.Close()
 		fmt.Println(index)
 	}
 

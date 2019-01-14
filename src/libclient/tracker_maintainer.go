@@ -123,7 +123,7 @@ func (maintainer *TrackerMaintainer) track(tracker string, secret string) {
 			respMeta, e1 := client.Validate()
 			if e1 != nil {
 				logger.Error("error validate with tracker", tracker + ":", e1)
-				client.Close()
+				client.GetConnManager().Destroy()
 				// native client will break here
 				if app.RUN_WITH == 3 {
 					break
@@ -170,7 +170,7 @@ func (maintainer *TrackerMaintainer) track(tracker string, secret string) {
 					// if callback response is fatal, close this tracker instance
 					if forceClosed {
 						logger.Debug("connection is forced closed by client")
-						client.Close()
+						client.GetConnManager().Destroy()
 						break
 					}
 				}
@@ -179,7 +179,7 @@ func (maintainer *TrackerMaintainer) track(tracker string, secret string) {
 			}
 		} else {
 			logger.Error("("+strconv.Itoa(retry)+") error connect to tracker server:", tracker)
-			client.Close()
+			client.GetConnManager().Destroy()
 		}
 		retry++
 		// try to connect 10 seconds later

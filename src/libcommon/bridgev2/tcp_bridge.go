@@ -4,8 +4,9 @@ import (
     "errors"
     "net"
     "strconv"
-    "util/pool"
     "hash"
+    "util/pool"
+	"app"
 )
 
 const (
@@ -17,11 +18,18 @@ const (
     STATE_VALIDATED = 2
     STATE_DISCONNECTED = 3
 )
-// max client connection set to 1000
-var connectionPool, _ = pool.NewPool(1000, 0)
+
+var connPool *pool.ClientConnectionPool
+
+func init() {
+    connPool = &pool.ClientConnectionPool{}
+    connPool.Init(50)
+}
 
 // common connection manager
 type ConnectionManager struct {
+	// storage server info
+	server *app.ServerInfo
     Conn net.Conn // connection that being managed
     // represent this connection is server side(1) or client side(2)
     Side int
@@ -35,12 +43,18 @@ type ConnectionManager struct {
     UUID string // storage uuid, this field is used by server side.
 }
 
-
-func (manager *ConnectionManager) Close() error {
+// close manager and return connection to pool.
+func (manager *ConnectionManager) Close() {
     if manager.Conn != nil {
-        return manager.Conn.Close()
+		connPool.ReturnConnBridge(manager.server, manager.Conn)
     }
-    return nil
+}
+
+// close manager and close connection.
+func (manager *ConnectionManager) Destroy() {
+	if manager.Conn != nil {
+		connPool.ReturnBrokenConnBridge(manager.server, manager.Conn)
+	}
 }
 
 // receive data frame from server/client
