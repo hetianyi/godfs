@@ -25,8 +25,9 @@ func NewServer(host string, port int) *BridgeServer {
 }
 
 
-// server start listening
-func (server *BridgeServer) Listen() error {
+// server start listening.
+// callback func will called when a server connection is closed by server/client.
+func (server *BridgeServer) Listen(callbacks... func(manager *ConnectionManager)) error {
 
 	if server.Port <= 0 || server.Port > 65535 {
 		return errors.New("invalid port range: " + strconv.Itoa(server.Port))
@@ -51,7 +52,8 @@ func (server *BridgeServer) Listen() error {
 		} else {
 			logger.Debug("accept a new connection from remote addr:", conn.RemoteAddr().String())
 			connectionPool.Exec(func() {
-				Serve(manager)
+				manager.state = STATE_CONNECTED
+				Serve(manager, callbacks...)
 			})
 		}
 	}
@@ -60,7 +62,7 @@ func (server *BridgeServer) Listen() error {
 
 
 // server socket serve a single connection
-func Serve(manager *ConnectionManager) {
+func Serve(manager *ConnectionManager, callbacks... func(manager *ConnectionManager)) {
 	if manager.Md == nil {
 		manager.Md = md5.New()
 	}
@@ -72,6 +74,15 @@ func Serve(manager *ConnectionManager) {
 	}
 	defer func() {
 		logger.Debug("close connection from", side)
+		// call callback functions
+		if callbacks != nil {
+			for i := range callbacks {
+				fun := callbacks[i]
+				common.Try(func() {
+					fun(manager)
+				}, func(i interface{}) {})
+			}
+		}
 		manager.Close()
 	}()
 	common.Try(func() {

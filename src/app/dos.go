@@ -16,6 +16,7 @@ type FileDO struct {
 	Group      string `gorm:"column:grop" json:"group"`
 	Instance   string `gorm:"column:instance" json:"instance"`
 	Finish     int    `gorm:"column:finish" json:"finish"`
+	FileSize   int64  `gorm:"column:file_size" json:"file_size"`
 }
 
 func (FileDO) TableName() string {
@@ -23,7 +24,6 @@ func (FileDO) TableName() string {
 }
 
 // table clients
-// TODO: merge all storage include StorageDO WebStorage and Member
 type StorageDO struct {
 	Uuid          string `gorm:"primary_key" json:"uuid"`
 	Host          string `gorm:"column:host" json:"host""`
@@ -45,8 +45,8 @@ type StorageDO struct {
 	IOin          int64  `gorm:"column:ioin" json:"ioin"`
 	IOout         int64  `gorm:"column:ioout" json:"ioout"`
 	// 1: use LookBackAddress:Port 2: use AdvertiseAddr:AdvertisePort
-	AccessFlag int `gorm:"column:access_flag" json:"access_flag"`
-	LogTime        int64  `gorm:column:log_time json:"log_time"`
+	AccessFlag int   `gorm:"column:access_flag" json:"access_flag"`
+	LogTime    int64 `gorm:column:log_time json:"log_time"`
 
 	// not store in db
 	ExpireTime     int64  `gorm:"-" json:"expire_time"`
@@ -95,18 +95,18 @@ func (SysDO) TableName() string {
 
 // table tracker
 type TrackerDO struct {
-	Uuid          string    `gorm:"column:uuid;primary_key" json:"uuid"`
-	TrackerSyncId int64     `gorm:"column:tracker_sync_id" json:"tracker_sync_id"`
-	LastRegTime   int64 `gorm:"column:last_reg_time" json:"last_reg_time"`
-	LocalPushId   int64     `gorm:"column:local_push_id" json:"local_push_id"`
+	Uuid          string `gorm:"column:uuid;primary_key" json:"uuid"`
+	TrackerSyncId int64  `gorm:"column:tracker_sync_id" json:"tracker_sync_id"`
+	LastRegTime   int64  `gorm:"column:last_reg_time" json:"last_reg_time"`
+	LocalPushId   int64  `gorm:"column:local_push_id" json:"local_push_id"`
 
-	Host       string    `gorm:"column:host" json:"host"`
-	Port       int       `gorm:"column:port" json:"port"`
-	Status     int       `gorm:"column:status" json:"status"` // 0: disabled,  1:enabled, 3: deleted
-	Secret     string    `gorm:"column:secret" json:"secret"`
-	TotalFiles int       `gorm:"column:files" json:"files"`
-	Remark     string    `gorm:"column:remark" json:"remark"`
-	AddTime    int64 `gorm:"column:add_time" json:"add_time"`
+	Host       string `gorm:"column:host" json:"host"`
+	Port       int    `gorm:"column:port" json:"port"`
+	Status     int    `gorm:"column:status" json:"status"` // 0: disabled,  1:enabled, 3: deleted
+	Secret     string `gorm:"column:secret" json:"secret"`
+	TotalFiles int    `gorm:"column:files" json:"files"`
+	Remark     string `gorm:"column:remark" json:"remark"`
+	AddTime    int64  `gorm:"column:add_time" json:"add_time"`
 }
 
 func (TrackerDO) TableName() string {
@@ -147,6 +147,7 @@ type FileVO struct {
 	Group      string   `gorm:"column:grop" json:"group"`
 	Instance   string   `gorm:"column:instance" json:"instance"`
 	Finish     int      `gorm:"column:finish" json:"finish"`
+	FileSize   int64    `gorm:"column:file_size" json:"file_size"`
 	Parts      []PartDO `gorm:"-" json:"parts"`
 }
 
@@ -164,6 +165,7 @@ func (vo *FileVO) From(fileDO *FileDO) *FileVO {
 	vo.Group = fileDO.Group
 	vo.Instance = fileDO.Instance
 	vo.Finish = fileDO.Finish
+	vo.FileSize = fileDO.FileSize
 	return vo
 }
 

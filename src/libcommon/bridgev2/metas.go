@@ -19,7 +19,6 @@ type SyncStorageMembersMeta struct {
 	// None: replaced by app.StorageDO
 }
 
-// validate operation response.
 type SyncStorageMembersResponseMeta struct {
 	LookBackAddr string          `json:"backAddr"` // tracker lookback addr
 	GroupMembers []app.StorageDO `json:"members"`  // group members(not include self)
@@ -39,7 +38,6 @@ type PullFileMeta struct {
 	Group  string `json:"group"`
 }
 
-// register file response.
 type PullFileResponseMeta struct {
 	Files []app.FileVO
 }
@@ -51,7 +49,62 @@ type UploadFileMeta struct {
 	Md5      string `json:"md5"`      // file md5, if file exists, skip upload
 }
 
-// upload file response.
 type UploadFileResponseMeta struct {
 	Path string `json:"path"`
+}
+
+// register storage client operation request.(only for client)
+type SyncAllStorageServerMeta struct {
+}
+
+type SyncAllStorageServerResponseMeta struct {
+	Servers []app.StorageDO `json:"servers"`
+}
+
+// register file operation request.
+type PullNewFileMeta struct {
+	BaseId int64  `json:"baseId"`
+	Group  string `json:"group"`
+}
+
+type PullNewFileResponseMeta struct {
+	Files []app.FileVO
+}
+
+// sync statistic operation request
+type SyncStatisticMeta struct {
+}
+
+type SyncStatisticResponseMeta struct {
+	Statistic []app.StorageDO `json:"statistic"`
+	FileCount int             `json:"files"`
+}
+
+// query file operation request.
+type QueryFileMeta struct {
+	PathOrMd5 string `json:"pathMd5"` // file md5 or filePath like '/xxx/xxx/xxxxxx'
+}
+
+// query file response.
+type QueryFileResponseMeta struct {
+	Exist bool       `json:"exist"` // true:the file exists
+	File  app.FileVO `json:"file"`
+}
+
+// download file operation request.
+type DownloadFileMeta struct {
+	Path   string `json:"path"`   // path like /G01/002/M/c445b10edc599617106ae8472c1446fd
+	Start  int64  `json:"start"`  // length of bytes to skip
+	Offset int64  `json:"offset"` // length of bytes to read, if Offset < 0 represents read all bytes left
+}
+
+// download file response.
+type DownloadFileResponseMeta struct {
+	Exist bool       `json:"exist"` // true:the file exists
+	File  app.FileVO `json:"file"`
+}
+
+type ReadPos struct {
+	PartIndex int
+	PartStart int64
 }

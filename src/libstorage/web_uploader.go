@@ -6,14 +6,13 @@ import (
 	"container/list"
 	"crypto/md5"
 	"encoding/hex"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"hash"
 	"io"
 	"libcommon"
-	"libcommon/bridge"
-	"libservice"
+	"libcommon/bridgev2"
+	"libservicev2"
 	"net/http"
 	"os"
 	"regexp"
@@ -22,6 +21,7 @@ import (
 	"sync"
 	"time"
 	"util/common"
+	"util/json"
 	"util/logger"
 	"util/timeutil"
 )
@@ -149,8 +149,8 @@ func (handler *FileUploadHandlerV1) beginUpload() (*HttpUploadResponse, error) {
 		logger.Debug("form boundary is", paraSeparator)
 		// calculate md5
 		md := md5.New()
-		buffer, _ := bridge.MakeBytes(app.BUFF_SIZE, false, 0, false)
-		defer bridge.RecycleBytes(buffer)
+		buffer, _ := bridgev2.MakeBytes(app.BUFF_SIZE, false, 0, false)
+		defer bridgev2.RecycleBytes(buffer)
 		for {
 			line, e := readNextLine(formReader)
 			//logger.Debug(">>>>>"+line)
@@ -264,10 +264,10 @@ func (handler *FileUploadHandlerV1) beginUpload() (*HttpUploadResponse, error) {
 }
 
 func readNextLine(reader *FileFormReader) (string, error) {
-	buff, _ := bridge.MakeBytes(uint64(1), false, 0, false)
-	last, _ := bridge.MakeBytes(uint64(2), false, 0, false)
-	defer bridge.RecycleBytes(buff)
-	defer bridge.RecycleBytes(last)
+	buff, _ := bridgev2.MakeBytes(uint64(1), false, 0, false)
+	last, _ := bridgev2.MakeBytes(uint64(2), false, 0, false)
+	defer bridgev2.RecycleBytes(buff)
+	defer bridgev2.RecycleBytes(last)
 	var strBuff bytes.Buffer
 	for {
 		len, e := reader.Read(buff)
@@ -308,8 +308,8 @@ func readFileBody(reader *FileFormReader, buffer []byte, separator string, md ha
 	}
 	separator = "\r\n" + separator
 	buff1 := buffer
-	buff2, _ := bridge.MakeBytes(uint64(len(separator)), true, 1024, true)
-	tail, _ := bridge.MakeBytes(uint64(len(separator)*2), true, 1024, true)
+	buff2, _ := bridgev2.MakeBytes(uint64(len(separator)), true, 1024, true)
+	tail, _ := bridgev2.MakeBytes(uint64(len(separator)*2), true, 1024, true)
 	for {
 		len1, e1 := reader.Read(buff1)
 		if e1 != nil {
@@ -386,14 +386,34 @@ func readFileBody(reader *FileFormReader, buffer []byte, separator string, md ha
 			return nil, e10
 		}
 
-		tmpPart := &bridge.FilePart{Md5: sMd5, FileSize: stateUploadStatus.sliceReadSize}
+		tmpPart := &app.PartDO{Md5: sMd5, Size: stateUploadStatus.sliceReadSize}
 		stateUploadStatus.fileParts.PushBack(tmpPart)
 		app.UpdateDiskUsage(stateUploadStatus.sliceReadSize)
 	}
 	sliceCipherStr := md.Sum(nil)
 	sMd5 := hex.EncodeToString(sliceCipherStr)
 	logger.Debug("http upload file md5 is", sMd5, "part num:", stateUploadStatus.fileParts.Len())
-	stoe := libservice.StorageAddFile(sMd5, app.GROUP, stateUploadStatus.fileParts)
+
+	finalFile := &app.FileVO{
+		Md5: sMd5,
+		PartNumber: stateUploadStatus.fileParts.Len(),
+		Group: app.GROUP,
+		Instance: app.INSTANCE_ID,
+		Finish: 1,
+		FileSize: 0,
+	}
+	parts := make([]app.PartDO, stateUploadStatus.fileParts.Len())
+	index := 0
+	var totalSize int64 = 0
+	for ele := stateUploadStatus.fileParts.Front(); ele != nil; ele = ele.Next() {
+		parts[index] = *ele.Value.(*app.PartDO)
+		index++
+		totalSize += parts[index].Size
+	}
+	finalFile.Parts = parts
+	finalFile.FileSize = totalSize
+	// stoe := libservice.StorageAddFile(sMd5, app.GROUP, stateUploadStatus.fileParts)
+	stoe := libservicev2.InsertFile(finalFile, nil)
 	if stoe != nil {
 		return nil, stoe
 	}
@@ -433,7 +453,7 @@ func handleStagePartFile(buffer []byte, status *StageUploadStatus) error {
 		if e10 != nil {
 			return e10
 		}
-		tmpPart := &bridge.FilePart{Md5: sMd5, FileSize: app.SLICE_SIZE}
+		tmpPart := &app.PartDO{Md5: sMd5, Size: app.SLICE_SIZE}
 		status.fileParts.PushBack(tmpPart)
 		app.UpdateDiskUsage(app.SLICE_SIZE)
 

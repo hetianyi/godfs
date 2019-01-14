@@ -151,7 +151,7 @@ func TaskPullFileHandler(tracker *TrackerInstance) (bool, error) {
 		logger.Info("pull", len(files), "files from tracker server:", tracker.ConnStr)
 		return false, nil
 	} else {
-		return false, libservicev2.InsertTrackerFile(tracker.trackerUUID, responseMeta.Files, nil)
+		return false, libservicev2.InsertPulledTrackerFiles(tracker.trackerUUID, responseMeta.Files, nil)
 	}
 }
 

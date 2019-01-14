@@ -31,6 +31,7 @@ func ValidateConnectionHandler(manager *ConnectionManager, frame *Frame) error {
 
     if meta.Secret == app.SECRET {
         responseFrame.SetStatus(STATUS_SUCCESS)
+        manager.UUID = meta.UUID
         exist, e2 :=libservicev2.ExistsStorage(meta.UUID)
         if e2 != nil {
             responseFrame.SetStatus(STATUS_INTERNAL_ERROR)

@@ -1,7 +1,9 @@
 package bridgev2
 
 import (
+    "errors"
     "net"
+    "strconv"
     "util/pool"
     "hash"
 )
@@ -9,8 +11,12 @@ import (
 const (
     SERVER_SIDE = 1
     CLIENT_SIDE = 2
-)
 
+    STATE_NOT_CONNECT = 0
+    STATE_CONNECTED = 1
+    STATE_VALIDATED = 2
+    STATE_DISCONNECTED = 3
+)
 // max client connection set to 1000
 var connectionPool, _ = pool.NewPool(1000, 0)
 
@@ -20,6 +26,13 @@ type ConnectionManager struct {
     // represent this connection is server side(1) or client side(2)
     Side int
     Md hash.Hash
+    // connect state
+    // 0: not connect
+    // 1: connected but not validate
+    // 2: validated
+    // 3: disconnected
+    state int
+    UUID string // storage uuid, this field is used by server side.
 }
 
 
@@ -41,4 +54,11 @@ func (manager *ConnectionManager) Send(frame *Frame) error {
 }
 
 
+// assert status.
+func (manager *ConnectionManager) RequireStatus(requiredState int) error {
+    if manager.state < requiredState {
+        panic(errors.New("connect state not satisfied, expect " + strconv.Itoa(requiredState) + ", now is " + strconv.Itoa(manager.state)))
+    }
+    return nil
+}
 

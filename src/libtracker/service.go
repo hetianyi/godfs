@@ -2,14 +2,10 @@ package libtracker
 
 import (
 	"app"
-	"io"
 	"libcommon"
-	"libcommon/bridge"
+	"libcommon/bridgev2"
 	"libservice"
-	"libstorage"
-	"net"
-	"strconv"
-	"time"
+	"libservicev2"
 	"util/common"
 	"util/db"
 	"util/logger"
@@ -18,16 +14,12 @@ import (
 
 var p, _ = pool.NewPool(500, 0)
 
-var secret string
-
 // Start service and listen
 // 1. Start task for upload listen
 // 2. Start task for communication with tracker
-func StartService(config map[string]string) {
-	port := config["port"]
-	secret = config["secret"]
-	// 连接数据库
-	libservice.SetPool(db.NewPool(app.DB_POOL_SIZE))
+func StartService() {
+	// prepare db connection pool
+	libservicev2.SetPool(db.NewPool(app.DB_POOL_SIZE))
 
 	e1 := libservice.ConfirmLocalInstanceUUID(common.UUID())
 	if e1 != nil {
@@ -41,95 +33,12 @@ func StartService(config map[string]string) {
 	app.UUID = uuid
 	logger.Info("instance start with uuid:", app.UUID)
 
-	go ExpirationDetection()
-	startTrackerService(port)
+	go libcommon.ExpirationDetection()
+	startTrackerService()
 }
 
-// Tracker server start listen
-func startTrackerService(port string) {
-	pt := libcommon.ParsePort(port)
-	if pt > 0 {
-		tryTimes := 0
-		for {
-			common.Try(func() {
-				listener, e := net.Listen("tcp", ":"+strconv.Itoa(pt))
-				logger.Info("service listening on port:", pt)
-				if e != nil {
-					panic(e)
-				} else {
-					// keep accept connections.
-					for {
-						conn, e1 := listener.Accept()
-						if e1 == nil {
-							ee := p.Exec(func() {
-								clientHandler(conn)
-							})
-							// maybe the poll is full
-							if ee != nil {
-								bridge.Close(conn)
-							}
-						} else {
-							logger.Info("accept new conn error", e1)
-							if conn != nil {
-								bridge.Close(conn)
-							}
-						}
-					}
-				}
-			}, func(i interface{}) {
-				logger.Error("["+strconv.Itoa(tryTimes)+"] error shutdown service duo to:", i)
-				time.Sleep(time.Second * 10)
-			})
-		}
-	}
-}
-
-// accept a new connection for file upload
-// the connection will keep till it is broken
-func clientHandler(conn net.Conn) {
-	// anyway defer close conn
-	defer func() {
-		logger.Debug("close connection from server")
-		bridge.Close(conn)
-	}()
-	var storageClient *bridge.OperationRegisterStorageClientRequest
-	common.Try(func() {
-		connBridge := bridge.NewBridge(conn)
-		for {
-			error := connBridge.ReceiveRequest(func(request *bridge.Meta, in io.ReadCloser) error {
-				// return requestRouter(request, &bodyBuff, md, connBridge, conn)
-				if request.Err != nil {
-					return request.Err
-				}
-				// route
-				if request.Operation == bridge.O_CONNECT {
-					return validateClientHandler(request, connBridge)
-				} else if request.Operation == bridge.O_SYNC_MEMBERS { // for now it used to storage sync it's members.
-					var e error
-					storageClient, e = syncStorageMemberHandler(request, conn, connBridge)
-					return e
-				} else if request.Operation == bridge.O_REG_FILE {
-					return registerFileHandler(request, connBridge)
-				} else if request.Operation == bridge.O_SYNC_STORAGE { //for download or upload client  getting all storages.
-					return syncStorageServerHandler(request, connBridge)
-				} else if request.Operation == bridge.O_QUERY_FILE {
-					return libstorage.QueryFileHandler(request, connBridge, 2)
-				} else if request.Operation == bridge.O_PULL_NEW_FILES {
-					return pullNewFile(request, connBridge)
-				} else if request.Operation == bridge.O_SYNC_STATISTIC {
-					return syncStatistic(request, connBridge)
-				} else {
-					return bridge.OPERATION_NOT_SUPPORT_ERROR
-				}
-			})
-			if error != nil {
-				logger.Error(error)
-				break
-			}
-		}
-	}, func(i interface{}) {
-		logger.Error("connection error:", i)
-		panic(i)
-	})
-	FutureExpireStorageServer(storageClient)
+// tracker server start tcp listen
+func startTrackerService() {
+	server := bridgev2.NewServer("", app.PORT)
+	server.Listen(libcommon.FutureExpireStorageServer)
 }

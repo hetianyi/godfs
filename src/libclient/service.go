@@ -32,22 +32,17 @@ func init() {
 	addLock = new(sync.Mutex)
 }
 
-type IClient interface {
-	Close()
-	Upload(path string) (string, error)
-	QueryFile(md5 string) (*bridge.File, error)
-	DownloadFile(path string, writerHandler func(fileLen uint64, writer io.WriteCloser) error) error
-}
-
+// Client have different meanings under different use cases.
+// client usually communicate with tracker server.
 type Client struct {
-	// operationLock *sync.Mutex
-	TrackerMaintainer *TrackerMaintainer
+	TrackerMaintainer *TrackerMaintainer // tracker maintainer for client
 	connPool          *pool.ClientConnectionPool
 	MaxConnPerServer  int // 客户端和每个服务建立的最大连接数，web项目中建议设置为和最大线程相同的数量
 }
 
+// create a new client.
 func NewClient(MaxConnPerServer int) *Client {
-	logger.Debug("init godfs client.")
+	logger.Debug("init native godfs client, max conn per server:", MaxConnPerServer)
 	connPool := &pool.ClientConnectionPool{}
 	connPool.Init(MaxConnPerServer)
 	return &Client{connPool: connPool}

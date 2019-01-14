@@ -2,6 +2,7 @@ package libservicev2
 
 import (
 	"testing"
+	"util/db"
 	"util/logger"
 	"app"
 	"container/list"
@@ -15,7 +16,7 @@ import (
 func init() {
 	logger.SetLogLevel(1)
 	app.BASE_PATH = "E:\\godfs-storage\\storage1"
-	SetPool(NewPool(1))
+	SetPool(db.NewPool(1))
 }
 
 func PrintResult(result... interface{}) {
@@ -181,7 +182,7 @@ func TestGetIndexStatistic(t *testing.T) {
 	PrintResult(GetIndexStatistic())
 }
 
-func TestInsertTrackerFile(t *testing.T) {
+func TestInsertPulledTrackerFiles(t *testing.T) {
 	file := &app.FileVO{
 		Id: 2,
 		Md5: "xxxx",
@@ -200,5 +201,27 @@ func TestInsertTrackerFile(t *testing.T) {
 	parts[0] = *part
 	files := make([]app.FileVO, 1)
 	files[0] = *file
-	PrintResult(InsertTrackerFile("xxx", files, nil))
+	PrintResult(InsertPulledTrackerFiles("xxx", files, nil))
+}
+
+func TestInsertRegisteredFiles(t *testing.T) {
+	file := &app.FileVO{
+		Id: 3,
+		Md5: "xxxx111",
+		PartNumber: 3,
+		Group: "G01",
+		Instance: "001",
+		Finish: 0,
+	}
+	part := &app.PartDO{
+		Id: 4,
+		Md5: "123",
+		Size: 1024,
+	}
+	parts := make([]app.PartDO, 1)
+	file.Parts = parts
+	parts[0] = *part
+	files := make([]app.FileVO, 1)
+	files[0] = *file
+	PrintResult(InsertRegisteredFiles(files))
 }

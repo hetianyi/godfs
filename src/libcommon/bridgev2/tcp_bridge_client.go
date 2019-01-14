@@ -10,24 +10,12 @@ import (
     "util/pool"
 )
 
-const (
-    state_not_connect = 0
-    state_connected = 1
-    state_validated = 2
-    state_disconnected = 3
-)
 var connPool *pool.ClientConnectionPool
 
 type BridgeClient struct {
     // storage server info
     server *app.ServerInfo
     connManager *ConnectionManager
-    // connect state
-    // 0: not connect
-    // 1: connected but not validate
-    // 2: validated
-    // 3: disconnected
-    state int
 }
 
 
@@ -39,13 +27,13 @@ func init() {
 
 // create a new instance for bridgev2.Server
 func NewClient(server *app.ServerInfo) *BridgeClient {
-    return &BridgeClient {server, nil, 0}
+    return &BridgeClient {server, nil}
 }
 
 
 // shutdown this client and close connection
 func (client *BridgeClient) Close() {
-    client.state = state_disconnected
+    client.connManager.state = STATE_DISCONNECTED
     if client.connManager != nil {
         connPool.ReturnBrokenConnBridge(client.server, client.connManager.Conn)
     }
@@ -54,7 +42,7 @@ func (client *BridgeClient) Close() {
 
 // shutdown this client not close connection
 func (client *BridgeClient) Destroy() {
-    client.state = state_disconnected
+    client.connManager.state = STATE_DISCONNECTED
     if client.connManager != nil {
         connPool.ReturnConnBridge(client.server, client.connManager.Conn)
     }
@@ -63,7 +51,7 @@ func (client *BridgeClient) Destroy() {
 
 // connect to server
 func (client *BridgeClient) Connect() error {
-    if client.state > state_not_connect {
+    if client.connManager.state > STATE_NOT_CONNECT {
         panic(errors.New("already connected"))
     }
     conn, err := connPool.GetConn(client.server)
@@ -77,7 +65,7 @@ func (client *BridgeClient) Connect() error {
         Side: CLIENT_SIDE,
         Md: md5.New(),
     }
-    client.state = 1
+    client.connManager.state = STATE_CONNECTED
     return nil
 }
 
@@ -88,9 +76,12 @@ func (client *BridgeClient) Validate() (*ConnectResponseMeta, error) {
         Secret: app.SECRET,
         UUID: app.UUID,
     }
-    frame, e := client.sendReceive(FRAME_OPERATION_VALIDATE, state_connected, meta, 0)
+    frame, e := client.sendReceive(FRAME_OPERATION_VALIDATE, STATE_CONNECTED, meta, 0)
     if e != nil {
         return nil, e
+    }
+    if frame.GetStatus() == STATUS_SUCCESS {
+        client.connManager.state = STATE_VALIDATED
     }
     var res = &ConnectResponseMeta{}
     e1 := json.Unmarshal(frame.FrameMeta, res)
@@ -103,7 +94,7 @@ func (client *BridgeClient) Validate() (*ConnectResponseMeta, error) {
 
 // synchronized storage members.
 func (client *BridgeClient) SyncStorageMembers(storage *app.StorageDO) (*SyncStorageMembersResponseMeta, error) {
-    frame, e := client.sendReceive(FRAME_OPERATION_SYNC_STORAGE_MEMBERS, state_validated, storage, 0)
+    frame, e := client.sendReceive(FRAME_OPERATION_SYNC_STORAGE_MEMBERS, STATE_VALIDATED, storage, 0)
     if e != nil {
         return nil, e
     }
@@ -117,7 +108,7 @@ func (client *BridgeClient) SyncStorageMembers(storage *app.StorageDO) (*SyncSto
 
 // register files to tracker
 func (client *BridgeClient) RegisterFiles(meta *RegisterFileMeta) (*RegisterFileResponseMeta, error) {
-    frame, e := client.sendReceive(FRAME_OPERATION_REGISTER_FILES, state_validated, meta, 0)
+    frame, e := client.sendReceive(FRAME_OPERATION_REGISTER_FILES, STATE_VALIDATED, meta, 0)
     if e != nil {
         return nil, e
     }
@@ -132,7 +123,7 @@ func (client *BridgeClient) RegisterFiles(meta *RegisterFileMeta) (*RegisterFile
 
 // pull files from tracker
 func (client *BridgeClient) PullFiles(meta *PullFileMeta) (*PullFileResponseMeta, error) {
-    frame, e := client.sendReceive(FRAME_OPERATION_REGISTER_FILES, state_validated, meta, 0)
+    frame, e := client.sendReceive(FRAME_OPERATION_REGISTER_FILES, STATE_VALIDATED, meta, 0)
     if e != nil {
         return nil, e
     }
@@ -145,10 +136,6 @@ func (client *BridgeClient) PullFiles(meta *PullFileMeta) (*PullFileResponseMeta
 }
 
 
-
-
-
-
 // send request and receive response,
 // returns response frame and error.
 func (client *BridgeClient) sendReceive(operation byte,
@@ -156,7 +143,7 @@ func (client *BridgeClient) sendReceive(operation byte,
                                         meta interface{},
                                         bodyLength int64,
                                         ) (*Frame, error) {
-    client.requireStatus(statusRequire)
+    client.connManager.RequireStatus(statusRequire)
     frame := &Frame{}
     frame.SetOperation(operation)
     frame.SetMeta(meta)
@@ -174,16 +161,6 @@ func (client *BridgeClient) sendReceive(operation byte,
         return nil, errors.New("receive empty response from server")
     }
 }
-
-// assert status.
-func (client *BridgeClient) requireStatus(requiredState int) error {
-    if client.state < requiredState {
-        panic(errors.New("connect state not satisfied, expect " + strconv.Itoa(requiredState) + ", now is " + strconv.Itoa(client.state)))
-    }
-    return nil
-}
-
-
 
 
 

@@ -4,12 +4,14 @@ import (
 	"app"
 	"container/list"
 	"github.com/jinzhu/gorm"
+	"strconv"
 	"util/common"
+	"util/db"
 )
 
-var dbPool *DbConnPool
+var dbPool *db.DbConnPool
 
-func SetPool(pool *DbConnPool) {
+func SetPool(pool *db.DbConnPool) {
 	dbPool = pool
 }
 
@@ -24,7 +26,7 @@ func transformNotFoundErr(err error) error {
 }
 
 // get fileId from table file by md5,
-func GetFileIdByMd5(md5 string, dao *DAO) (id int64, e error) {
+func GetFileIdByMd5(md5 string, dao *db.DAO) (id int64, e error) {
 	if dao == nil {
 		dao1, ef := dbPool.GetDB()
 		if ef != nil {
@@ -42,7 +44,7 @@ func GetFileIdByMd5(md5 string, dao *DAO) (id int64, e error) {
 
 
 // get fileId from table file by md5,
-func GetPartIdByMd5(md5 string, dao *DAO) (id int64, e error) {
+func GetPartIdByMd5(md5 string, dao *db.DAO) (id int64, e error) {
 	if dao == nil {
 		dao1, ef := dbPool.GetDB()
 		if ef != nil {
@@ -61,7 +63,7 @@ func GetPartIdByMd5(md5 string, dao *DAO) (id int64, e error) {
 
 // insert new file to table file,
 // if file exists, file id will replaced by existing id.
-func InsertFile(file *app.FileVO, dao *DAO) error {
+func InsertFile(file *app.FileVO, dao *db.DAO) error {
 	if dao == nil {
 		dao1, ef := dbPool.GetDB()
 		if ef != nil {
@@ -90,10 +92,10 @@ func InsertFile(file *app.FileVO, dao *DAO) error {
 	})
 }
 
-
+// used by storage client.
 // insert new file to table file,
 // if file exists, file id will replaced by existing id.
-func InsertTrackerFile(trackerUUID string, files []app.FileVO, dao *DAO) error {
+func InsertPulledTrackerFiles(trackerUUID string, files []app.FileVO, dao *db.DAO) error {
 	if dao == nil {
 		dao1, ef := dbPool.GetDB()
 		if ef != nil {
@@ -134,6 +136,46 @@ func InsertTrackerFile(trackerUUID string, files []app.FileVO, dao *DAO) error {
 		return UpdateTrackerWithMap(trackerUUID, map[string]interface{}{"tracker_sync_id": maxId}, db)
 	})
 
+}
+
+// used by tracker server.
+// insert new file to table file and return max insert id,
+// if file exists, file id will replaced by existing id.
+func InsertRegisteredFiles(files []app.FileVO) (int64, error) {
+	dao, ef := dbPool.GetDB()
+	if ef != nil {
+		return 0, ef
+	}
+	defer dbPool.ReturnDB(dao)
+
+	if files == nil || len(files) == 0 {
+		return 0, nil
+	}
+	var lastInsertId int64 = 0
+	err := dao.DoTransaction(func(db *gorm.DB) error {
+		for i := range files {
+			file := files[i]
+			file.Id = 0
+			result := db.Table("file").Where("md5 = ?", file.Md5).FirstOrCreate(&file)
+			if result.Error != nil {
+				return result.Error
+			}
+			lastInsertId = file.Id
+			for i := range file.Parts {
+				e2 := insertFilePart(&file.Parts[i], db)
+				if e2 != nil {
+					return e2
+				}
+				relation := &app.FilePartRelationDO{FileId: file.Id, PartId: file.Parts[i].Id}
+				e3 := insertFilePartRelation(relation, db)
+				if e3 != nil {
+					return e3
+				}
+			}
+		}
+		return nil
+	})
+	return lastInsertId, err
 }
 
 
@@ -303,10 +345,8 @@ func GetFullFileByMd5(md5 string, finish int) (*app.FileVO, error) {
 	defer dbPool.ReturnDB(dao)
 
 	var addOn = ""
-	if finish == 1 {
-		addOn = " and finish = 1"
-	} else if finish == 0 {
-		addOn = " and finish = 0"
+	if finish < 2 {
+		addOn = " and finish = " + strconv.Itoa(finish)
 	}
 
 	var file app.FileVO
@@ -400,7 +440,7 @@ func GetFullFileById(fid int64, finish int) (*app.FileVO, error) {
 
 // update file finish status
 // status: 0|1
-func UpdateFileFinishStatus(id int64, status int, dao *DAO) error {
+func UpdateFileFinishStatus(id int64, status int, dao *db.DAO) error {
 	if dao == nil {
 		dao1, ef := dbPool.GetDB()
 		if ef != nil {
@@ -421,8 +461,8 @@ func UpdateFileFinishStatus(id int64, status int, dao *DAO) error {
 
 
 // get files start from specify id,
-// onlymine: used by storage when push file.
-func GetFullFilesFromId(id int64, onlymine bool, group string, limit int) (*list.List, error) {
+// mine: used by storage when push file.
+func GetFullFilesFromId(id int64, mine bool, group string, limit int) (*list.List, error) {
 	dao, ef := dbPool.GetDB()
 	if ef != nil {
 		return nil, ef
@@ -433,7 +473,7 @@ func GetFullFilesFromId(id int64, onlymine bool, group string, limit int) (*list
 	params[0] = id
 	params[1] = group
 	var query = "select * from file where id > ? and grop = ?"
-	if onlymine {
+	if mine {
 		query += " and instance = ? limit ?"
 		params[2] = app.INSTANCE_ID
 		params[3] = limit
@@ -562,9 +602,9 @@ func QuerySystemStatistic() (*app.Statistic, error) {
 	var statistic app.Statistic
 	err := dao.Query(func(db *gorm.DB) error {
 		result := db.Raw(`select * from (
-						(select count(*) files from file a),
-						(select count(*) finish from file a where a.finish = 1),
-						(select case when sum(b.size) is null then 0 else sum(b.size) end disk from part b)  )`).Scan(&statistic)
+						(select count(*) as files from file a),
+						(select count(*) as finish from file a where a.finish = 1), 
+						(select case when sum(a.file_size) is null then 0 else sum(a.file_size) end disk from file a))`).Scan(&statistic)
 		if transformNotFoundErr(result.Error) != nil {
 			return result.Error
 		}
@@ -604,7 +644,7 @@ func GetAllTrackers() (*list.List, error) {
 
 
 // insert web tracker
-func UpdateTrackerStatus(uuid string, status int, dao *DAO) error {
+func UpdateTrackerStatus(uuid string, status int, dao *db.DAO) error {
 	if dao == nil {
 		dao1, ef := dbPool.GetDB()
 		if ef != nil {
@@ -624,7 +664,7 @@ func UpdateTrackerStatus(uuid string, status int, dao *DAO) error {
 
 
 // insert storage and relation with a tracker
-func SaveStorage(trackerUuid string, storage *app.StorageDO, dao *DAO) error {
+func SaveStorage(trackerUuid string, storage *app.StorageDO, dao *db.DAO) error {
 	if dao == nil {
 		dao1, ef := dbPool.GetDB()
 		if ef != nil {
@@ -654,7 +694,7 @@ func SaveStorage(trackerUuid string, storage *app.StorageDO, dao *DAO) error {
 
 
 // insert into table web_storage_log
-func InsertStorageStatisticLog(log *app.StorageStatisticLogDO, dao *DAO) error {
+func InsertStorageStatisticLog(log *app.StorageStatisticLogDO, dao *db.DAO) error {
 	if dao == nil {
 		dao1, ef := dbPool.GetDB()
 		if ef != nil {

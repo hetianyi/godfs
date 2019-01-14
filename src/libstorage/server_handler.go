@@ -1,30 +1,35 @@
 package libstorage
 
 import (
-	"libcommon/bridgev2"
-	"util/logger"
-	"libcommon"
-	"errors"
 	"app"
-	"crypto/md5"
 	"container/list"
+	"crypto/md5"
 	"encoding/hex"
+	"errors"
+	"io"
+	"libcommon"
+	"libcommon/bridgev2"
 	"libservicev2"
+	"regexp"
+	"util/file"
+	"util/json"
+	"util/logger"
 )
 
 func init() {
 	registerOperationHandlers()
 }
 
-// register
+// register handlers as a server side.
 func registerOperationHandlers() {
-	bridgev2.RegisterOperationHandler(&bridgev2.OperationHandler{bridgev2.FRAME_OPERATION_VALIDATE, bridgev2.ValidateConnectionHandler})
 	if app.UPLOAD_ENABLE {
-		bridgev2.RegisterOperationHandler(&bridgev2.OperationHandler{bridgev2.FRAME_OPERATION_SYNC_STORAGE_MEMBERS, UploadFileHandler})
+		bridgev2.RegisterOperationHandler(&bridgev2.OperationHandler{bridgev2.FRAME_OPERATION_VALIDATE, bridgev2.ValidateConnectionHandler})
+		bridgev2.RegisterOperationHandler(&bridgev2.OperationHandler{bridgev2.FRAME_OPERATION_UPLOAD_FILE, UploadFileHandler})
+		bridgev2.RegisterOperationHandler(&bridgev2.OperationHandler{bridgev2.FRAME_OPERATION_DOWNLOAD_FILE, DownFileHandler})
 	}
 }
 
-// upload file handler
+// upload file handler.
 func UploadFileHandler(manager *bridgev2.ConnectionManager, frame *bridgev2.Frame) error {
 	if frame == nil {
 		return bridgev2.NULL_FRAME_ERR
@@ -74,11 +79,13 @@ func UploadFileHandler(manager *bridgev2.ConnectionManager, frame *bridgev2.Fram
 				Group: app.GROUP,
 				Instance: app.INSTANCE_ID,
 				Finish: 1,
+				FileSize: readBodySize,
 			}
 			parts := make([]app.PartDO, fileParts.Len())
 			index := 0
 			for ele := fileParts.Front(); ele != nil; ele = ele.Next() {
 				parts[index] = *ele.Value.(*app.PartDO)
+				index++
 			}
 			finalFile.Parts = parts
 
@@ -178,4 +185,97 @@ func UploadFileHandler(manager *bridgev2.ConnectionManager, frame *bridgev2.Fram
 }
 
 
+// download file handler.
+func DownFileHandler(manager *bridgev2.ConnectionManager, frame *bridgev2.Frame) error {
+	if frame == nil {
+		return bridgev2.NULL_FRAME_ERR
+	}
 
+
+	var meta = &bridgev2.DownloadFileMeta{}
+	e1 := json.Unmarshal(frame.FrameMeta, meta)
+	if e1 != nil {
+		return e1
+	}
+
+	resMeta := &bridgev2.DownloadFileResponseMeta{}
+	responseFrame := &bridgev2.Frame{}
+
+	if mat, _ := regexp.Match(app.PATH_REGEX, []byte(meta.Path)); !mat {
+		logger.Debug("error file path format")
+		resMeta.Exist = false
+		responseFrame.SetStatus(bridgev2.STATUS_SUCCESS)
+		responseFrame.SetMeta(resMeta)
+		responseFrame.SetMetaBodyLength(0)
+		return manager.Send(frame)
+	}
+	md5 := regexp.MustCompile(app.PATH_REGEX).ReplaceAllString(meta.Path, "${4}")
+
+	// fullFile, e11 := libservice.GetFullFileByMd5(md5, 1)
+	fileInfo, e2 := libservicev2.GetFullFileByMd5(md5, 1)
+	if e2 != nil {
+		resMeta.Exist = false
+		responseFrame.SetStatus(bridgev2.STATUS_INTERNAL_ERROR)
+		responseFrame.SetMeta(resMeta)
+		responseFrame.SetMetaBodyLength(0)
+		manager.Send(responseFrame)
+		return e2
+	}
+	if fileInfo != nil && fileInfo.Id > 0 {
+		resMeta.Exist = true
+		resMeta.File = *fileInfo
+		responseFrame.SetStatus(bridgev2.STATUS_SUCCESS)
+		responseFrame.SetMeta(resMeta)
+		startPos, endPos, totalLen := libcommon.GetReadPositions(fileInfo, meta.Start, meta.Offset)
+		responseFrame.SetMetaBodyLength(totalLen)
+		logger.Debug("download from: ", startPos.PartIndex, ":", startPos.PartStart)
+		logger.Debug("download to  : ", endPos.PartIndex, ":", endPos.PartStart)
+		logger.Debug("download size: ", totalLen)
+		app.UpdateDownloads()
+		responseFrame.BodyWriterHandler = func(manager *bridgev2.ConnectionManager, frame *bridgev2.Frame) error {
+			return WriteDownloadStream(fileInfo, startPos, endPos, manager.Conn)
+		}
+		return manager.Send(responseFrame)
+	} else {
+		resMeta.Exist = false
+		responseFrame.SetStatus(bridgev2.STATUS_SUCCESS)
+		responseFrame.SetMeta(resMeta)
+		responseFrame.SetMetaBodyLength(0)
+		return manager.Send(responseFrame)
+	}
+}
+
+
+// download writer handler.
+func WriteDownloadStream(fullFile *app.FileVO, startPos *bridgev2.ReadPos, endPos *bridgev2.ReadPos, out io.Writer) error {
+	buffer, _ := bridgev2.MakeBytes(app.BUFF_SIZE, false, 0, false)
+	defer bridgev2.RecycleBytes(buffer)
+	for i := range fullFile.Parts {
+		var start int64 = 0
+		var offset int64 = 0
+		if i < startPos.PartIndex {
+			continue
+		} else if i == startPos.PartIndex {
+			start = startPos.PartStart
+		} else {
+			start = 0
+		}
+		if i > endPos.PartIndex {
+			break
+		} else if i == endPos.PartIndex {
+			offset = endPos.PartStart - start
+		} else {
+			offset = fullFile.Parts[i].Size - start
+		}
+		fi, e := file.GetFile(libcommon.GetFilePathByMd5(fullFile.Parts[i].Md5))
+		if e != nil {
+			return e
+		}
+		if e := libcommon.SeekWriteOut(fi, start, offset, buffer, out); e != nil {
+			fi.Close()
+			return e
+		}
+		fi.Close()
+	}
+	return nil
+}

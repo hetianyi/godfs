@@ -3,19 +3,16 @@ package db
 import (
 	"database/sql"
 	"sync"
-)
-
-import (
 	"app"
 	"errors"
-	_ "github.com/mattn/go-sqlite3"
 	"os"
 	"time"
-	"util/common"
 	"util/file"
 	"util/logger"
+
+	_ "github.com/jinzhu/gorm/dialects/sqlite"
+	"github.com/jinzhu/gorm"
 )
-// TODO use framework
 // db write lock
 // when write event happens, the sys will lock by program in case if error occurs such 'database is locked'
 var dbWriteLock *sync.Mutex
@@ -36,7 +33,7 @@ type IDAO interface {
 }
 
 type DAO struct {
-	db        *sql.DB
+	db        *gorm.DB
 	connMutex *sync.Mutex
 	index     int
 }
@@ -48,7 +45,7 @@ func (dao *DAO) InitDB(index int) error {
 	return dao.checkDb()
 }
 
-func (dao *DAO) connect() (*sql.DB, error) {
+func (dao *DAO) connect() (*gorm.DB, error) {
 	logger.Debug("connect db file:", app.BASE_PATH+"/data/storage.db")
 	fInfo, e := os.Stat(app.BASE_PATH + "/data/storage.db")
 	// if db not exists, copy template db file to data path.
@@ -60,7 +57,7 @@ func (dao *DAO) connect() (*sql.DB, error) {
 			logger.Fatal("error prepare db file:", e1)
 		}
 	}
-	return sql.Open("sqlite3", app.BASE_PATH+"/data/storage.db?cache=shared&_synchronous=0")
+	return gorm.Open("sqlite3", app.BASE_PATH+"/data/storage.db?cache=shared&_synchronous=0")
 }
 
 func (dao *DAO) checkDb() error {
@@ -74,11 +71,14 @@ func (dao *DAO) checkDb() error {
 				time.Sleep(time.Second * 1)
 				continue
 			}
+			if app.LOG_LEVEL < 2 {
+				tdb.LogMode(true)
+			}
 			dao.db = tdb
 			logger.Debug("connect db success")
 			return nil
 		} else {
-			return dao.db.Ping()
+			return dao.db.DB().Ping()
 		}
 	}
 }
@@ -96,57 +96,30 @@ func (dao *DAO) verifyConn() error {
 	return errors.New("error check db: failed retry many times")
 }
 
-// db db query
-func (dao *DAO) Query(handler func(rows *sql.Rows) error, sqlString string, args ...interface{}) error {
-	dbWriteLock.Lock()
-	defer dbWriteLock.Unlock()
-	te := dao.verifyConn()
-	if te != nil {
-		return te
-	}
-	var rs *sql.Rows
-	var e error
-	logger.Debug("exec SQL:\n\t" + sqlString)
-	if args == nil || len(args) == 0 {
-		rs, e = dao.db.Query(sqlString)
-	} else {
-		rs, e = dao.db.Query(sqlString, args...)
-	}
-	if e != nil {
-		return e
-	}
-	return handler(rs)
+// do db query
+func (dao *DAO) Query(handler func(*gorm.DB) error) error {
+	return handler(dao.db)
 }
 
-func (dao *DAO) DoTransaction(works func(tx *sql.Tx) error) error {
+// do db transaction
+func (dao *DAO) DoTransaction(work func(*gorm.DB) error) error {
 	dbWriteLock.Lock()
 	defer dbWriteLock.Unlock()
-	te := dao.verifyConn()
-	if te != nil {
-		return te
-	}
-	tx, e1 := dao.db.Begin()
-	if e1 != nil {
-		return e1
-	}
-	var globalErr error
-	common.Try(func() {
-		e2 := works(tx)
-		if e2 != nil {
-			logger.Debug("roll back")
+	// Note the use of tx as the database handle once you are within a transaction
+	tx := dao.db.Begin()
+	defer func() {
+		if r := recover(); r != nil {
 			tx.Rollback()
-			globalErr = e2
-		} else {
-			if e3 := tx.Commit(); e3 != nil {
-				logger.Debug("roll back")
-				tx.Rollback()
-				globalErr = e3
-			}
 		}
-	}, func(i interface{}) {
-		logger.Debug("roll back")
+	}()
+	if err := tx.Error; err != nil {
+		return err
+	}
+	e := work(tx)
+	if e != nil {
+		logger.Warn("roll back transaction due to:", e.Error())
 		tx.Rollback()
-		globalErr = i.(error)
-	})
-	return globalErr
+		return e
+	}
+	return tx.Commit().Error
 }

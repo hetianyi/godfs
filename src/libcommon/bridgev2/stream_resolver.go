@@ -82,12 +82,15 @@ func readFrame(manager *ConnectionManager) (*Frame, error) {
             BodyLength: int64(bodyLength),
             FrameMeta: metaBodyBytes,
         }
-
         if frame.FrameStatus != STATUS_SUCCESS && manager.Side == CLIENT_SIDE {
             logger.Debug("server response error code " + strconv.Itoa(int(frame.FrameStatus)) + " ("+ TranslateResponseMsg(frame.FrameStatus) +")")
             if frame.FrameStatus != STATUS_SUCCESS {
                 return nil, errors.New("server response error code " + strconv.Itoa(int(frame.FrameStatus)) + " ("+ TranslateResponseMsg(frame.FrameStatus) +")")
             }
+        }
+        // server socket need validated connection state before action
+        if manager.Side == SERVER_SIDE && frame.GetOperation() != FRAME_OPERATION_VALIDATE {
+            manager.RequireStatus(STATE_VALIDATED)
         }
         return frame, nil
     }

@@ -407,6 +407,7 @@ func collectMemberInstanceId() string {
 		if index != GroupMembers.Len()-1 {
 			buffer.WriteString(",")
 		}
+		index++
 	}
 	logger.Debug("select download task file in members(" + buffer.String() + ")")
 	return string(buffer.Bytes())

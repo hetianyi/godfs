@@ -3,7 +3,7 @@ package libstorage
 import (
 	"app"
 	"libcommon"
-	"libservice"
+	"libservicev2"
 	"net/http"
 	"os"
 	"regexp"
@@ -33,7 +33,7 @@ func init() {
 // storage server provide http download service
 func DownloadHandler(writer http.ResponseWriter, request *http.Request) {
 	defer request.Body.Close()
-
+	// download method must be GET or OPTIONS
 	method := request.Method
 	if method != http.MethodGet && method != http.MethodOptions {
 		writer.WriteHeader(http.StatusMethodNotAllowed)
@@ -104,7 +104,8 @@ func DownloadHandler(writer http.ResponseWriter, request *http.Request) {
 		return
 	}
 
-	fullFile, e11 := libservice.GetFullFileByMd5(md5, 1)
+	// fullFile, e11 := libservice.GetFullFileByMd5(md5, 1)
+	fullFile, e11 := libservicev2.GetFullFileByMd5(md5, 1)
 	if e11 != nil {
 		writer.WriteHeader(500)
 		writer.Write([]byte("500 Internal Server Error"))
@@ -125,7 +126,7 @@ func DownloadHandler(writer http.ResponseWriter, request *http.Request) {
 
 	var fileSize int64 = 0
 	for i := range fullFile.Parts {
-		fileSize += fullFile.Parts[i].FileSize
+		fileSize += fullFile.Parts[i].Size
 	}
 
 	// parse header: range

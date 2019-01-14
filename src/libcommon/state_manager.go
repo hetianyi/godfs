@@ -3,7 +3,7 @@ package libcommon
 import (
 	"app"
 	"container/list"
-	"libcommon/bridge"
+	"libcommon/bridgev2"
 	"libservicev2"
 	"strconv"
 	"sync"
@@ -54,9 +54,13 @@ func CacheStorageServer(storage *app.StorageDO) error {
 }
 
 // expire storage server in the future
-func FutureExpireStorageServer(storage *app.StorageDO) {
+func FutureExpireStorageServer(manager *bridgev2.ConnectionManager) {
 	operationLock.Lock()
 	defer operationLock.Unlock()
+	if manager == nil {
+		return
+	}
+	storage := managedStorage[manager.UUID]
 	if storage != nil {
 		logger.Info("expire storage server", storage.Host + ":" + strconv.Itoa(storage.Port), "("+ storage.Uuid +")", "in", app.STORAGE_CLIENT_EXPIRE_TIME)
 		storage.ExpireTime = timeutil.GetTimestamp(time.Now().Add(app.STORAGE_CLIENT_EXPIRE_TIME))
@@ -99,18 +103,19 @@ func GetGroupMembers(storage *app.StorageDO) []app.StorageDO {
 }
 
 // fetch all storage server for client
-func GetAllStorages() []app.StorageDO {
+func GetAllStorageServers() []app.StorageDO {
 	operationLock.Lock()
 	defer operationLock.Unlock()
 	var members = make([]app.StorageDO, len(managedStorage))
 	index := 0
 	for _, v := range managedStorage {
 		members[index] = *v
+		index++
 	}
 	return members
 }
 
-func GetSyncStatistic() []bridge.ServerStatistic {
+func GetSyncStatistic() []app.StorageDO {
 	return collectQueueStatistics()
 }
 
@@ -132,7 +137,7 @@ func queueStatistics(storage *app.StorageDO) {
 	ls.PushBack(storage)
 }
 
-func collectQueueStatistics() []bridge.ServerStatistic {
+func collectQueueStatistics() []app.StorageDO {
 	operationLock.Lock()
 	defer operationLock.Unlock()
 	var temp list.List
@@ -168,10 +173,10 @@ func collectQueueStatistics() []bridge.ServerStatistic {
 		}
 		temp.PushBack(item)
 	}
-	ret := make([]bridge.ServerStatistic, temp.Len())
+	ret := make([]app.StorageDO, temp.Len())
 	i := 0
 	for ele := temp.Front(); ele != nil; ele = ele.Next() {
-		ret[i] = ele.Value.(bridge.ServerStatistic)
+		ret[i] = ele.Value.(app.StorageDO)
 		i++
 	}
 	return ret

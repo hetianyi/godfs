@@ -46,7 +46,7 @@ func (pool *DbConnPool) InitPool(poolSize int) {
 	}
 }
 
-//fetch dao
+// fetch dao
 func (pool *DbConnPool) GetDB() (*DAO, error) {
 	pool.fetchLock.Lock()
 	defer pool.fetchLock.Unlock()
@@ -56,8 +56,7 @@ func (pool *DbConnPool) GetDB() (*DAO, error) {
 			if waits > 30 {
 				return nil, errors.New("cannot fetch db connection from pool: wait time out")
 			}
-			logger.Warn("\nwaiting for db connection...\n")
-			logger.Debug("no connection available")
+			logger.Warn("******waiting for db connection*****")
 			time.Sleep(time.Millisecond * 100)
 			waits++
 			continue
