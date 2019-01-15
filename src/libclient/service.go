@@ -230,7 +230,7 @@ func (client *Client) DownloadFile(path string,
 	if mat, _ := regexp.Match(app.PATH_REGEX, []byte(path)); !mat {
 		return errors.New("file path format error")
 	}
-	return client.Download(path, start, offset, false, new(list.List), bodyWriterHandler)
+	return client.Download(path, start, offset, true, new(list.List), bodyWriterHandler)
 }
 
 // download file from other storage server.

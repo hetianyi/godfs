@@ -50,7 +50,7 @@ func CacheStorageServer(storage *app.StorageDO) error {
 	}
 	managedStorage[storage.Uuid] = storage
 	queueStatistics(storage)
-	return libservicev2.SaveStorage("", storage, nil)
+	return libservicev2.SaveStorage("", *storage)
 }
 
 // expire storage server in the future

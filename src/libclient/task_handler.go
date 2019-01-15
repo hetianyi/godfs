@@ -41,16 +41,12 @@ func TaskSyncMemberHandler(tracker *TrackerInstance) (bool, error) {
 		StageUploads:   app.STAGE_UPLOADS,
 	}
 
-	frame := &bridgev2.Frame{}
-	frame.SetOperation(bridgev2.FRAME_OPERATION_SYNC_STORAGE_MEMBERS)
-	frame.SetMeta(storageInfo)
-	frame.SetMetaBodyLength(0)
 	response, err := client.SyncStorageMembers(storageInfo)
 	if err != nil {
 		return true, err
 	}
 	if response != nil {
-		storageMembers(response.GroupMembers)
+		storeMembers(response.GroupMembers)
 	} else {
 		return true, errors.New("receive empty response from server")
 	}
@@ -155,6 +151,7 @@ func TaskPullFileHandler(tracker *TrackerInstance) (bool, error) {
 }
 
 
+// synchronize file task handler.
 func TaskDownloadFileHandler(task *bridgev2.Task) (bool, error) {
 	if increaseActiveDownload(0) >= ParallelDownload {
 		logger.Debug("discard download task, download task is full")
@@ -171,4 +168,39 @@ func TaskDownloadFileHandler(task *bridgev2.Task) (bool, error) {
 	go downloadFile(file)
 	return false, nil
 }
+
+
+// used by native client for synchronizing all storage servers.
+func TaskSyncAllStorageServerHandler(tracker *TrackerInstance) (bool, error) {
+	client := *tracker.client
+	meta := &bridgev2.SyncAllStorageServerMeta{}
+	resMeta, err := client.SyncAllStorageServers(meta)
+	if err != nil {
+		return true, err
+	}
+	if resMeta != nil {
+		storeMembers(resMeta.Servers)
+		return false, nil
+	} else {
+		return true, errors.New("receive empty response from server")
+	}
+}
+
+
+// used by dashboard client for synchronizing all storage servers's info.
+func TaskSyncStatisticInfo(tracker *TrackerInstance) (bool, error) {
+	client := *tracker.client
+	meta := &bridgev2.SyncStatisticMeta{}
+	resMeta, err := client.SyncStatistic(meta)
+	if err != nil {
+		return true, err
+	}
+	if resMeta != nil {
+		updateStatistic(tracker.ConnStr, resMeta.FileCount, resMeta.Statistic)
+		return false, nil
+	} else {
+		return true, errors.New("receive empty response from server")
+	}
+}
+
 

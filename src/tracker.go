@@ -27,7 +27,7 @@ func main() {
 		for k, v := range m {
 			logger.Debug(k, "=", v)
 		}
-		libtracker.StartService(m)
+		libtracker.StartService()
 	} else {
 		logger.Fatal("error read file:", e)
 	}

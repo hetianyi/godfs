@@ -205,7 +205,7 @@ func (maintainer *TrackerMaintainer) track(tracker string, secret string) {
 }
 
 // storage members
-func storageMembers(members []app.StorageDO) {
+func storeMembers(members []app.StorageDO) {
 	memberIteLock.Lock()
 	defer memberIteLock.Unlock()
 	now := timeutil.GetTimestamp(time.Now())

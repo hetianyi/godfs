@@ -83,6 +83,20 @@ func (client *TcpBridgeClient) SyncStorageMembers(storage *app.StorageDO) (*Sync
     return res, nil
 }
 
+// synchronized storage members.
+func (client *TcpBridgeClient) SyncAllStorageServers(meta *SyncAllStorageServerMeta) (*SyncAllStorageServerResponseMeta, error) {
+    frame, e := client.sendReceive(FRAME_OPERATION_SYNC_ALL_STORAGE_SEVERS, STATE_VALIDATED, meta, 0, nil)
+    if e != nil {
+        return nil, e
+    }
+    var res = &SyncAllStorageServerResponseMeta{}
+    e1 := json.Unmarshal(frame.FrameMeta, res)
+    if e1 != nil {
+        return nil, e1
+    }
+    return res, nil
+}
+
 // register files to tracker
 func (client *TcpBridgeClient) RegisterFiles(meta *RegisterFileMeta) (*RegisterFileResponseMeta, error) {
     frame, e := client.sendReceive(FRAME_OPERATION_REGISTER_FILES, STATE_VALIDATED, meta, 0, nil)
@@ -158,6 +172,19 @@ func (client *TcpBridgeClient) DownloadFile(meta *DownloadFileMeta) (*DownloadFi
     return res, frame, nil
 }
 
+// synchronize storage servers's statistic info from tracker server.
+func (client *TcpBridgeClient) SyncStatistic(meta *SyncStatisticMeta) (*SyncStatisticResponseMeta, error) {
+    frame, e := client.sendReceive(FRAME_OPERATION_SYNC_STATISTIC, STATE_VALIDATED, meta, 0, nil)
+    if e != nil {
+        return nil, e
+    }
+    var res = &SyncStatisticResponseMeta{}
+    e1 := json.Unmarshal(frame.FrameMeta, res)
+    if e1 != nil {
+        return nil, e1
+    }
+    return res, nil
+}
 
 
 

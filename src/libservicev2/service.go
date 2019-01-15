@@ -664,28 +664,29 @@ func UpdateTrackerStatus(uuid string, status int, dao *db.DAO) error {
 
 
 // insert storage and relation with a tracker
-func SaveStorage(trackerUuid string, storage *app.StorageDO, dao *db.DAO) error {
-	if dao == nil {
-		dao1, ef := dbPool.GetDB()
-		if ef != nil {
-			return ef
-		}
-		dao = dao1
-		defer dbPool.ReturnDB(dao)
+func SaveStorage(trackerUuid string, storages... app.StorageDO) error {
+	dao, ef := dbPool.GetDB()
+	if ef != nil {
+		return ef
 	}
+	defer dbPool.ReturnDB(dao)
+
 	return dao.DoTransaction(func(db *gorm.DB) error {
-		result := db.Table("storage").Save(storage)
-		if result.Error != nil {
-			return result.Error
-		}
-		if trackerUuid != "" {
-			relation :=&app.RelationTrackerStorageDO{
-				TrackerUuid: trackerUuid,
-				StorageUuid: storage.Uuid,
+		for i := range storages {
+			storage := storages[i]
+			result := db.Table("storage").Save(storage)
+			if result.Error != nil {
+				return result.Error
 			}
-			result1 := db.Table("relation_tracker_storage").Save(relation)
-			if result1.Error != nil {
-				return result1.Error
+			if trackerUuid != "" {
+				relation :=&app.RelationTrackerStorageDO{
+					TrackerUuid: trackerUuid,
+					StorageUuid: storage.Uuid,
+				}
+				result1 := db.Table("relation_tracker_storage").Save(relation)
+				if result1.Error != nil {
+					return result1.Error
+				}
 			}
 		}
 		return nil

@@ -10,6 +10,7 @@ import (
 	"libclient"
 	"libcommon"
 	"libcommon/bridge"
+	"libcommon/bridgev2"
 	"os"
 	"os/user"
 	"path/filepath"
@@ -151,7 +152,33 @@ func upload(paths string, group string, skipCheck bool) error {
 func download(path string, customDownloadFileName string) error {
 	filePath := ""
 	var startTime time.Time
-	e := client.DownloadFile(path, 0, -1, func(realPath string, fileLen uint64, reader io.Reader) error {
+	e := client.DownloadFile(path, 0, -1, func(manager *bridgev2.ConnectionManager, frame *bridgev2.Frame, resMeta *bridgev2.DownloadFileResponseMeta) (b bool, e error) {
+		path = strings.TrimSpace(path)
+		if strings.Index(path, "/") != 0 {
+			path = "/" + path
+		}
+		var fi *os.File
+		if customDownloadFileName == "" {
+			md5 := regexp.MustCompile(app.PATH_REGEX).ReplaceAllString(path, "${4}")
+			customDownloadFileName = md5
+			f, e1 := file.CreateFile(customDownloadFileName)
+			if e1 != nil {
+				return true, e1
+			}
+			fi = f
+		} else {
+			f, e1 := file.CreateFile(customDownloadFileName)
+			if e1 != nil {
+				return true, e1
+			}
+			fi = f
+		}
+		defer fi.Close()
+		filePath, _ = filepath.Abs(fi.Name())
+		startTime = time.Now()
+		return true, writeOut(manager.Conn, frame.BodyLength, fi, startTime)
+	})
+	/*e := client.DownloadFile(path, 0, -1, func(realPath string, fileLen uint64, reader io.Reader) error {
 		var fi *os.File
 		if customDownloadFileName == "" {
 			md5 := regexp.MustCompile(app.PATH_REGEX).ReplaceAllString(realPath, "${4}")
@@ -172,7 +199,7 @@ func download(path string, customDownloadFileName string) error {
 		filePath, _ = filepath.Abs(fi.Name())
 		startTime = time.Now()
 		return writeOut(reader, int64(fileLen), fi, startTime)
-	})
+	})*/
 	if e != nil {
 		logger.Error("download failed:", e)
 		return e
@@ -217,9 +244,9 @@ func Init() *libclient.Client {
 
 func clientMonitorCollector(tracker *libclient.TrackerInstance) {
 	logger.Debug("create sync task for tracker:", tracker.ConnStr)
-	task := &bridge.Task{
+	task := &bridgev2.Task{
 		TaskType: app.TASK_SYNC_ALL_STORAGES,
-		Callback: func(task *bridge.Task, e error) {
+		Callback: func(task *bridgev2.Task, e error) {
 			logger.Debug("finish a tracker:", tracker.ConnStr)
 			checkChan <- 1
 		},

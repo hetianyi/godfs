@@ -309,8 +309,8 @@ type WebStorage struct {
 	HttpPort   int    `json:"httpPort"`
 	HttpEnable bool   `json:"httpEnable"`
 	StartTime  int64  `json:"startTime"`
-	Downloads  int    `json:"downloads"`
-	Uploads    int    `json:"uploads"`
+	Downloads  int64    `json:"downloads"`
+	Uploads    int64    `json:"uploads"`
 	DiskUsage  int64  `json:"disk"`
 	Memory     uint64 `json:"mem"`
 	ReadOnly   bool   `json:"readonly"`

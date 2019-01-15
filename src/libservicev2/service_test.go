@@ -141,7 +141,7 @@ func TestSaveStorage(t *testing.T) {
 		IOin: 0,
 		IOout: 0,
 	}
-	SaveStorage("", storage, nil)
+	SaveStorage("", *storage)
 }
 
 func TestQuerySystemStatistic(t *testing.T) {

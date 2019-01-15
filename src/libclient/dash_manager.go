@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"libcommon/bridge"
 	"libservice"
+	"libservicev2"
 	"strconv"
 	"sync"
 	"time"
@@ -13,56 +14,21 @@ import (
 )
 
 var (
-	managedStatistic       = make(map[string][]bridge.ServerStatistic)
+	managedStatistic       = make(map[string][]app.StorageDO)
 	managedTrackerInstance = make(map[string]*TrackerInstance)
 	managedLock            = new(sync.Mutex)
 )
 
 // trackerUUID -> host:port
-func updateStatistic(trackerUUID string, fileCount int, statistic []bridge.ServerStatistic) {
+// TODO fileCount
+func updateStatistic(trackerUUID string, fileCount int, statistic []app.StorageDO) {
 	ret, _ := json.Marshal(statistic)
 	logger.Info("update statistic info:( ", string(ret), ")")
-	managedStatistic[trackerUUID] = statistic
-
-	if statistic != nil {
-		arr := make([]*bridge.WebStorage, len(statistic))
-		for i := 0; i < len(statistic); i++ {
-			if statistic[i].UUID == "" {
-				continue
-			}
-			item := &bridge.WebStorage{
-				Host:       statistic[i].AdvertiseAddr,
-				Port:       statistic[i].Port,
-				TotalFiles: statistic[i].TotalFiles,
-				UUID:       statistic[i].UUID,
-
-				HttpEnable: statistic[i].HttpEnable,
-				HttpPort:   statistic[i].HttpPort,
-				Downloads:  statistic[i].Downloads,
-				Uploads:    statistic[i].Uploads,
-				DiskUsage:  statistic[i].DiskUsage,
-				ReadOnly:   statistic[i].ReadOnly,
-				StartTime:  statistic[i].StartTime,
-				InstanceId: statistic[i].InstanceId,
-				Group:      statistic[i].Group,
-				Status:     app.STATUS_ENABLED,
-				Memory:     statistic[i].Memory,
-				IOin:       statistic[i].IOin,
-				IOout:      statistic[i].IOout,
-
-				LogTime:        statistic[i].LogTime,
-				StageDownloads: statistic[i].StageDownloads,
-				StageUploads:   statistic[i].StageUploads,
-				StageIOin:      statistic[i].StageIOin,
-				StageIOout:     statistic[i].StageIOout,
-			}
-			arr[i] = item
-		}
-		e := libservice.AddWebStorage(trackerUUID, fileCount, arr)
-		if e != nil {
-			logger.Error("error insert web storage items:", e)
-		}
+	if statistic == nil || len(statistic) == 0 {
+		return
 	}
+	managedStatistic[trackerUUID] = statistic
+	libservicev2.SaveStorage(trackerUUID, statistic...)
 }
 
 // register tracker instance when start track with tracker

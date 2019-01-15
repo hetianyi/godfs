@@ -63,7 +63,7 @@ func ValidateConnectionHandler(manager *ConnectionManager, frame *Frame) error {
                 IOin: 0,
                 IOout: 0,
             }
-            e3 := libservicev2.SaveStorage("", storage, nil)
+            e3 := libservicev2.SaveStorage("", *storage)
             if e3 != nil {
                 responseFrame.SetStatus(STATUS_INTERNAL_ERROR)
             }

@@ -3,12 +3,8 @@ package libclient
 import (
 	"app"
 	"container/list"
-	"errors"
-	"io"
 	"libcommon/bridge"
 	"libcommon/bridgev2"
-	"libservice"
-	"strconv"
 	"sync"
 	"util/logger"
 )
@@ -48,14 +44,14 @@ func (tracker *TrackerInstance) startTaskCollector() {
 	}
 }
 
-func (tracker *TrackerInstance) GetTask() *bridge.Task {
+func (tracker *TrackerInstance) GetTask() *bridgev2.Task {
 	logger.Debug("get task for tracker", tracker.ConnStr)
 	tracker.listIteLock.Lock()
 	defer tracker.listIteLock.Unlock()
 	if tracker.GetTaskSize() > 0 {
 		ret := tracker.taskList.Remove(tracker.taskList.Front())
 		if ret != nil {
-			return ret.(*bridge.Task)
+			return ret.(*bridgev2.Task)
 		}
 	}
 	return nil
@@ -89,58 +85,9 @@ func (tracker *TrackerInstance) ExecTask(task *bridgev2.Task) (bool, error) {
 	} else if task.TaskType == app.TASK_DOWNLOAD_FILE {
 		TaskDownloadFileHandler(task)
 	} else if task.TaskType == app.TASK_SYNC_ALL_STORAGES {
-		regClientMeta := &bridge.OperationGetStorageServerRequest{}
-		e2 := connBridge.SendRequest(bridge.O_SYNC_STORAGE, regClientMeta, 0, nil)
-		if e2 != nil {
-			return true, e2
-		}
-		e5 := connBridge.ReceiveResponse(func(response *bridge.Meta, in io.Reader) error {
-			if response.Err != nil {
-				return response.Err
-			}
-			logger.Debug("sync all storage server response from tracker", tracker.ConnStr, ": ", string(response.MetaBody))
-			var validateResp = &bridge.OperationGetStorageServerResponse{}
-			e3 := json.Unmarshal(response.MetaBody, validateResp)
-			if e3 != nil {
-				return e3
-			}
-			if validateResp.Status != bridge.STATUS_OK {
-				return errors.New("error register to tracker server " + tracker.ConnStr + ", server response status:" + strconv.Itoa(validateResp.Status))
-			}
-			// connect success
-			addMember(validateResp.GroupMembers)
-			return nil
-		})
-		if e5 != nil {
-			return true, e5
-		}
-		return false, nil
+		return TaskSyncAllStorageServerHandler(tracker)
 	} else if task.TaskType == app.TASK_SYNC_STATISTIC {
-		regClientMeta := &bridge.OperationSyncStatisticRequest{}
-		e2 := connBridge.SendRequest(bridge.O_SYNC_STATISTIC, regClientMeta, 0, nil)
-		if e2 != nil {
-			return true, e2
-		}
-		e5 := connBridge.ReceiveResponse(func(response *bridge.Meta, in io.Reader) error {
-			if response.Err != nil {
-				return response.Err
-			}
-			logger.Debug("sync statistic response:", string(response.MetaBody))
-			var validateResp = &bridge.OperationSyncStatisticResponse{}
-			e3 := json.Unmarshal(response.MetaBody, validateResp)
-			if e3 != nil {
-				return e3
-			}
-			if validateResp.Status != bridge.STATUS_OK {
-				return errors.New("error sync statistic from tracker server, server response status:" + strconv.Itoa(validateResp.Status))
-			}
-			updateStatistic(tracker.ConnStr, validateResp.FileCount, validateResp.Statistic)
-			return nil
-		})
-		if e5 != nil {
-			return true, e5
-		}
-		return false, nil
+		return TaskSyncStatisticInfo(tracker)
 	}
 	return false, nil
 }
