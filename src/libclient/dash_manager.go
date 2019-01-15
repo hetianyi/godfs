@@ -3,13 +3,8 @@ package libclient
 import (
 	"app"
 	"encoding/json"
-	"libcommon/bridge"
-	"libservice"
 	"libservicev2"
-	"strconv"
 	"sync"
-	"time"
-	"util/common"
 	"util/logger"
 )
 
@@ -77,7 +72,7 @@ func UpdateTrackerInstanceState(connStr string, secret string, nextRun bool, tra
 	}
 }
 
-func SyncTrackerAliveStatus(trackerMaintainer *TrackerMaintainer) {
+/*func SyncTrackerAliveStatus(trackerMaintainer *TrackerMaintainer) {
 	timer := time.NewTicker(app.SYNC_STATISTIC_INTERVAL + 3)
 	execTimes := 0
 	for {
@@ -101,3 +96,4 @@ func SyncTrackerAliveStatus(trackerMaintainer *TrackerMaintainer) {
 		<-timer.C
 	}
 }
+*/
