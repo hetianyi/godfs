@@ -3,11 +3,10 @@ package libclient
 import (
 	"app"
 	"container/list"
-	"encoding/json"
+	"util/json"
 	"errors"
 	"io"
 	"libcommon"
-	"libcommon/bridge"
 	"math/rand"
 	"regexp"
 	"strconv"
@@ -16,7 +15,6 @@ import (
 	"time"
 	"util/file"
 	"util/logger"
-	"crypto/md5"
 	"libcommon/bridgev2"
 	"util/pool"
 )
@@ -67,7 +65,7 @@ func (client *Client) Upload(path string, group string, startTime time.Time, ski
 			qfi, ee1 := client.QueryFile(md5)
 			if qfi != nil {
 				sm := "S"
-				if qfi.PartNum > 1 {
+				if qfi.PartNumber > 1 {
 					sm = "M"
 				}
 				logger.Debug("file already exists, skip upload.")
@@ -173,45 +171,58 @@ func (client *Client) Upload(path string, group string, startTime time.Time, ski
 	return resMeta.Path, err
 }
 
+
 // query file from tracker server.
-func (client *Client) QueryFile(pathOrMd5 string) (*bridge.File, error) {
+func (client *Client) QueryFile(pathOrMd5 string) (*app.FileVO, error) {
 	logger.Debug("query file info:", pathOrMd5)
-	var result *bridge.File
+	var result *app.FileVO
 	for ele := client.TrackerMaintainer.TrackerInstances.Front(); ele != nil; ele = ele.Next() {
-		queryMeta := &bridge.OperationQueryFileRequest{PathOrMd5: pathOrMd5}
-		connBridge := ele.Value.(*TrackerInstance).connBridge
-		e11 := connBridge.SendRequest(bridge.O_QUERY_FILE, queryMeta, 0, nil)
-		if e11 != nil {
-			connBridge.Close()
+		trackerInstance := ele.Value.(*TrackerInstance)
+		server := &app.ServerInfo{}
+		server.FromConnStr(trackerInstance.ConnStr)
+		tcpClient := bridgev2.NewTcpClient(server)
+		// connect to tracker server
+		e1 := tcpClient.Connect()
+		if e1 != nil {
+			h, p := server.GetHostAndPortByAccessFlag()
+			logger.Error("error connect to tracker server", h + ":" + strconv.Itoa(p), "due to:", e1.Error())
+			tcpClient.GetConnManager().Destroy()
 			continue
 		}
-		e12 := connBridge.ReceiveResponse(func(response *bridge.Meta, in io.Reader) error {
-			if response.Err != nil {
-				return response.Err
-			}
-			var queryResponse = &bridge.OperationQueryFileResponse{}
-			e4 := json.Unmarshal(response.MetaBody, queryResponse)
-			if e4 != nil {
-				return e4
-			}
-			if queryResponse.Status != bridge.STATUS_OK && queryResponse.Status != bridge.STATUS_NOT_FOUND {
-				return errors.New("error connect to server, server response status:" + strconv.Itoa(queryResponse.Status))
-			}
-			result = queryResponse.File
-			return nil
-		})
-		if e12 != nil {
-			connBridge.Close()
+		// validate connection
+		_, e2 := tcpClient.Validate()
+		if e2 != nil {
+			h, p := server.GetHostAndPortByAccessFlag()
+			logger.Error("error validate with tracker server", h + ":" + strconv.Itoa(p), "due to:", e2.Error())
+			tcpClient.GetConnManager().Destroy()
 			continue
 		}
-		if result != nil {
-			return result, nil
+		meta := &bridgev2.QueryFileMeta{PathOrMd5: pathOrMd5}
+		resMeta, e3 := tcpClient.QueryFile(meta)
+		if e3 != nil {
+			h, p := server.GetHostAndPortByAccessFlag()
+			logger.Debug("error query file from tracker server", h + ":" + strconv.Itoa(p), "due to:", e2.Error())
+			tcpClient.GetConnManager().Destroy()
+			continue
 		}
+		if resMeta == nil || !resMeta.Exist {
+			h, p := server.GetHostAndPortByAccessFlag()
+			logger.Debug("query file returns no result from tracker server", h + ":" + strconv.Itoa(p))
+			continue
+		}
+		result = &resMeta.File
+		break
 	}
 	return result, nil
 }
 
-func (client *Client) DownloadFile(path string, start int64, offset int64, writerHandler func(realPath string, fileLen uint64, reader io.Reader) error) error {
+
+// download file part.
+func (client *Client) DownloadFile(path string,
+	start int64,
+	offset int64,
+	bodyWriterHandler func(manager *bridgev2.ConnectionManager, frame *bridgev2.Frame, resMeta *bridgev2.DownloadFileResponseMeta) (bool, error)) error {
+
 	path = strings.TrimSpace(path)
 	if strings.Index(path, "/") != 0 {
 		path = "/" + path
@@ -219,37 +230,35 @@ func (client *Client) DownloadFile(path string, start int64, offset int64, write
 	if mat, _ := regexp.Match(app.PATH_REGEX, []byte(path)); !mat {
 		return errors.New("file path format error")
 	}
-	return download(path, start, offset, false, new(list.List), client, writerHandler)
+	return client.Download(path, start, offset, false, new(list.List), bodyWriterHandler)
 }
 
-func download(path string, start int64, offset int64, fromSrc bool, excludes *list.List, client *Client,
-	writerHandler func(realPath string, fileLen uint64, reader io.Reader) error) error {
-	downloadMeta := &bridge.OperationDownloadFileRequest{
-		Path:   path,
-		Start:  start,
-		Offset: offset,
-	}
+// download file from other storage server.
+func (client *Client) Download(path string,
+	start int64,
+	offset int64,
+	fromSrc bool,
+	excludes *list.List,
+	bodyWriterHandler func(manager *bridgev2.ConnectionManager, frame *bridgev2.Frame, resMeta *bridgev2.DownloadFileResponseMeta) (bool, error)) error {
+
 	group := regexp.MustCompile(app.PATH_REGEX).ReplaceAllString(path, "${1}")
 	instanceId := regexp.MustCompile(app.PATH_REGEX).ReplaceAllString(path, "${2}")
+	if excludes == nil {
+		excludes = new(list.List)
+	}
+	var member *app.StorageDO
+	var server = &app.ServerInfo{}
 
-	var connBridge *bridge.Bridge
-	var member *bridge.ExpireMember
 	for {
-		var mem *bridge.ExpireMember
+		// select storage server
 		if fromSrc {
-			mem = selectStorageServer(group, instanceId, excludes, false)
-			if mem != nil {
-				host, port := mem.GetHostAndPortByAccessFlag()
-				logger.Debug("try to download file from source server:", host+":"+strconv.Itoa(port))
-			}
+			member = selectStorageServer(group, instanceId, excludes, false)
 		} else {
-			mem = selectStorageServer(group, "", excludes, false)
+			member = selectStorageServer(group, "", excludes, false)
 		}
-		if mem != nil {
-			excludes.PushBack(mem)
-		}
-		// no available storage
-		if mem == nil {
+		if member != nil {
+			excludes.PushBack(member)
+		} else {
 			if !fromSrc {
 				return NO_STORAGE_ERROR
 			} else {
@@ -258,64 +267,59 @@ func download(path string, start int64, offset int64, fromSrc bool, excludes *li
 				continue
 			}
 		}
-		// TODO when download is busy and no connection available, shall skip current download task.
-		host, port := mem.GetHostAndPortByAccessFlag()
-		logger.Debug("using storage server:", host+":"+strconv.Itoa(port))
-		cb, e12 := client.connPool.GetConnBridge(mem)
-		if e12 != nil {
-			logger.Error(e12)
-			/*if e12 != MAX_CONN_EXCEED_ERROR {
-			    if !srcInstanceFail {
-			        srcInstanceFail = true
-			    }
-			}*/
-			excludes.PushBack(mem)
+
+		server.FromStorage(member)
+		h, p := server.GetHostAndPortByAccessFlag()
+		if fromSrc {
+			logger.Debug("try to download file from source server:", h + ":" + strconv.Itoa(p))
+		} else {
+			logger.Debug("try to download file from storage server:", h + ":" + strconv.Itoa(p))
+		}
+
+		tcpClient := bridgev2.NewTcpClient(server)
+		// connect to storage server
+		e1 := tcpClient.Connect()
+		if e1 != nil {
+			h, p := server.GetHostAndPortByAccessFlag()
+			logger.Error("error connect to storage server", h + ":" + strconv.Itoa(p), "due to:", e1.Error())
+			tcpClient.GetConnManager().Destroy()
 			continue
 		}
-		connBridge = cb
-		member = mem
+		// validate connection
+		_, e2 := tcpClient.Validate()
+		if e2 != nil {
+			h, p := server.GetHostAndPortByAccessFlag()
+			logger.Error("error validate with storage server", h + ":" + strconv.Itoa(p), "due to:", e2.Error())
+			tcpClient.GetConnManager().Destroy()
+			continue
+		}
+
+		meta := &bridgev2.DownloadFileMeta{
+			Path:   path,
+			Start:  start,
+			Offset: offset,
+		}
+		resMeta, frame, e3 := tcpClient.DownloadFile(meta)
+		if e3 != nil || resMeta == nil || !resMeta.Exist {
+			logger.Error("error download from storage server", h + ":" + strconv.Itoa(p), "due to: file not found")
+			tcpClient.GetConnManager().Destroy()
+			return client.Download(path, start, offset, false, excludes, bodyWriterHandler)
+		}
+		bs, _ := json.Marshal(resMeta.File)
+		logger.Debug("download file info:", string(bs))
+
+		retry, e5 := bodyWriterHandler(tcpClient.GetConnManager(), frame, resMeta)
+		if e5 != nil {
+			tcpClient.GetConnManager().Destroy()
+			logger.Error("error download from storage server", h + ":" + strconv.Itoa(p), "due to:", e5.Error())
+			if retry {
+				return client.Download(path, start, offset, false, excludes, bodyWriterHandler)
+			} else {
+				break
+			}
+		}
+		tcpClient.GetConnManager().Close()
 		break
-	}
-	logger.Info("download from:", member.AdvertiseAddr+":"+strconv.Itoa(member.Port))
-
-	e2 := connBridge.SendRequest(bridge.O_DOWNLOAD_FILE, downloadMeta, 0, nil)
-	if e2 != nil {
-		client.connPool.ReturnBrokenConnBridge(member, connBridge)
-		// if download fail, try to download from other storage server
-		return download(path, start, offset, false, excludes, client, writerHandler)
-	}
-
-	var responseCode = bridge.STATUS_INTERNAL_SERVER_ERROR
-	// receive response
-	e3 := connBridge.ReceiveResponse(func(response *bridge.Meta, in io.Reader) error {
-		if response.Err != nil {
-			return response.Err
-		}
-		var downloadResponse = &bridge.OperationDownloadFileResponse{}
-		e4 := json.Unmarshal(response.MetaBody, downloadResponse)
-		if e4 != nil {
-			return e4
-		}
-		responseCode = downloadResponse.Status
-		if downloadResponse.Status == bridge.STATUS_NOT_FOUND {
-			return bridge.FILE_NOT_FOUND_ERROR
-		}
-		if downloadResponse.Status != bridge.STATUS_OK {
-			logger.Error("error connect to server, server response status:" + strconv.Itoa(downloadResponse.Status))
-			return bridge.DOWNLOAD_FILE_ERROR
-		}
-		return writerHandler(path, response.BodyLength, connBridge.GetConn())
-	})
-	if e3 != nil {
-		if responseCode == bridge.STATUS_NOT_FOUND || responseCode == bridge.STATUS_OK {
-			client.connPool.ReturnConnBridge(member, connBridge)
-		} else {
-			client.connPool.ReturnBrokenConnBridge(member, connBridge)
-		}
-		// if download fail, try to download from other storage server
-		return download(path, start, offset, false, excludes, client, writerHandler)
-	} else {
-		client.connPool.ReturnConnBridge(member, connBridge)
 	}
 	return nil
 }

@@ -7,11 +7,10 @@ import (
 	"crypto/md5"
 	"encoding/hex"
 	"errors"
-	"io"
 	"libcommon"
 	"libcommon/bridge"
 	"libcommon/bridgev2"
-	"libservice"
+	"libservicev2"
 	"os"
 	"strconv"
 	"sync"
@@ -32,6 +31,9 @@ var addDownloadingFileLock = new(sync.Mutex)
 var downloadClient *Client
 var activeDownload int
 var activeDownloadLock *sync.Mutex
+var lockInitDownloadClient sync.Mutex
+var trackerIndex = 0
+var trackerIndexLock = new(sync.Mutex)
 
 func init() {
 	memberIteLock = new(sync.Mutex)
@@ -44,7 +46,24 @@ type TrackerMaintainer struct {
 }
 
 
-// 类型为TASK_DOWNLOAD_FILE的任务只能在一个trackerInstance里面执行
+// init a download client for file synchronization.
+func initDownloadClient(maintainer *TrackerMaintainer) {
+	lockInitDownloadClient.Lock()
+	defer lockInitDownloadClient.Unlock()
+	if downloadClient != nil {
+		return
+	}
+	downloadClient = NewClient(ParallelDownload)
+	downloadClient.TrackerMaintainer = maintainer
+}
+
+// get download client.
+func getDownloadClient() *Client {
+	return downloadClient
+}
+
+
+// task of type TASK_DOWNLOAD_FILE can only put in one tracker instance.
 func trackTaskFilter(allCollectors *list.List) *list.List {
 	increaseTrackerIndex()
 	if trackerIndex == 1 {
@@ -63,8 +82,6 @@ func trackTaskFilter(allCollectors *list.List) *list.List {
 	return &ret
 }
 
-var trackerIndex = 0
-var trackerIndexLock = new(sync.Mutex)
 
 func increaseTrackerIndex() {
 	trackerIndexLock.Lock()
@@ -222,7 +239,8 @@ func storageMembers(members []app.StorageDO) {
 }
 
 
-func AddTask(task *bridge.Task, tracker *TrackerInstance) bool {
+// add timer task to list.
+func AddTask(task *bridgev2.Task, tracker *TrackerInstance) bool {
 	if task == nil {
 		logger.Debug("can't push nil task")
 		return false
@@ -264,11 +282,11 @@ func AddTask(task *bridge.Task, tracker *TrackerInstance) bool {
 		total := 0
 		for e := tracker.taskList.Front(); e != nil; e = e.Next() {
 			// if same download task exists then skip
-			if e.Value.(*bridge.Task).FileId == task.FileId {
+			if e.Value.(*bridgev2.Task).FileId == task.FileId {
 				logger.Debug("download task exists, ignore.")
 				return false
 			}
-			if e.Value.(*bridge.Task).TaskType == task.TaskType {
+			if e.Value.(*bridgev2.Task).TaskType == task.TaskType {
 				total++
 			}
 		}
@@ -294,34 +312,24 @@ func AddTask(task *bridge.Task, tracker *TrackerInstance) bool {
 }
 
 
-var lockInitDownloadClient sync.Mutex
+// sync file from other storage server.
+func downloadFile(fullFi *app.FileVO) {
 
-func initDownloadClient(maintainer *TrackerMaintainer) {
-	lockInitDownloadClient.Lock()
-	defer lockInitDownloadClient.Unlock()
-	if downloadClient != nil {
-		return
-	}
-	downloadClient = NewClient(ParallelDownload)
-	downloadClient.TrackerMaintainer = maintainer
-}
-
-func getDownloadClient() *Client {
-	return downloadClient
-}
-
-func downloadFile(fullFi *bridge.File) {
+	addDownloadingFile(fullFi.Id, false)
 	increaseActiveDownload(1)
 	defer increaseActiveDownload(-1)
 	defer addDownloadingFile(fullFi.Id, true)
+
 	common.Try(func() {
-		logger.Debug("sync file from other storage server, current download thread:", increaseActiveDownload(0))
+		logger.Debug("sync file from other storage server, current download jobs:", increaseActiveDownload(0))
+		// flag mark if download stream is dirty.
 		dirty := 0
 		// calculate md5
 		md := md5.New()
 		var start int64 = 0
-		buffer, _ := bridge.MakeBytes(app.BUFF_SIZE, false, 0, false)
-		defer bridge.RecycleBytes(buffer)
+		buffer, _ := bridgev2.MakeBytes(app.BUFF_SIZE, false, 0, false)
+		defer bridgev2.RecycleBytes(buffer)
+
 		for i := range fullFi.Parts {
 			md.Reset()
 			part := fullFi.Parts[i]
@@ -329,63 +337,73 @@ func downloadFile(fullFi *bridge.File) {
 			fInfo, e1 := os.Stat(libcommon.GetFilePathByMd5(part.Md5))
 			// file part exists, skip download
 			if e1 == nil || fInfo != nil {
-				start += part.FileSize
+				start += part.Size
 				continue
 			}
-			// begin download
+			// single part or multiple part.
 			som := "S"
 			if len(fullFi.Parts) > 1 {
 				som = "M"
 			}
-			logger.Debug("download part of ", strconv.Itoa(i+1)+"/"+strconv.Itoa(len(fullFi.Parts)), ": /"+app.GROUP+"/"+fullFi.Instance+"/"+som+"/"+fullFi.Md5, " -> ", part.Md5)
-			e2 := download("/"+app.GROUP+"/"+fullFi.Instance+"/"+som+"/"+fullFi.Md5,
-				start, part.FileSize, true, new(list.List), getDownloadClient(),
-				func(realPath string, fileLen uint64, reader io.Reader) error {
-					if uint64(part.FileSize) != fileLen {
-						return errors.New("download return wrong file length")
-					}
-					fi, e3 := libcommon.CreateTmpFile()
-					if e3 != nil {
-						return e3
-					}
-					e4 := libcommon.WriteOut(reader, int64(fileLen), buffer, fi, md)
-					fi.Close()
-					if e4 != nil {
-						file.Delete(fi.Name())
-						return e4
-					}
-					// check whether file md5 is correct.
-					md5 := hex.EncodeToString(md.Sum(nil))
-					if md5 != part.Md5 {
-						file.Delete(fi.Name())
-						return errors.New("part " + strconv.Itoa(i+1) + "download error: file fingerprint confirm failed: " + md5 + " but true is " + part.Md5)
-					}
-					e5 := libcommon.MoveTmpFileTo(part.Md5, fi)
-					if e5 != nil {
-						file.Delete(fi.Name())
-						return e5
-					}
-					logger.Info("download part success", strconv.Itoa(i+1)+"/"+strconv.Itoa(len(fullFi.Parts))+" -> "+part.Md5)
-					return nil
-				})
+			downloadPath := "/"+app.GROUP+"/"+fullFi.Instance+"/"+som+"/"+fullFi.Md5
+			logger.Debug("download part of ", strconv.Itoa(i + 1) + "/" + strconv.Itoa(len(fullFi.Parts)),
+				": /" + app.GROUP+"/" + fullFi.Instance + "/" + som + "/" + fullFi.Md5, " -> ", part.Md5)
+
+			e2 := downloadClient.Download(downloadPath,
+				start,
+				part.Size,
+				true,
+				nil,
+				func(manager *bridgev2.ConnectionManager, frame *bridgev2.Frame, resMeta *bridgev2.DownloadFileResponseMeta) (b bool, e error) {
+
+				// stream handler
+				if part.Size != frame.BodyLength {
+					return true, errors.New("download return wrong file length")
+				}
+				fi, e3 := libcommon.CreateTmpFile()
+				if e3 != nil {
+					logger.Debug("error create temp file")
+					return true, e3
+				}
+				e4 := libcommon.WriteOut(manager.Conn, frame.BodyLength, buffer, fi, md)
+				fi.Close()
+				if e4 != nil {
+					file.Delete(fi.Name())
+					return true, e4
+				}
+				// check whether file md5 is correct.
+				md5 := hex.EncodeToString(md.Sum(nil))
+				if md5 != part.Md5 {
+					file.Delete(fi.Name())
+					return true, errors.New("part " + strconv.Itoa(i+1) + " download failed: incorrect file fingerprint: " + md5 + " but true is " + part.Md5)
+				}
+				e5 := libcommon.MoveTmpFileTo(part.Md5, fi)
+				if e5 != nil {
+					file.Delete(fi.Name())
+					logger.Error("error move temp file")
+					return false, e5
+				}
+				logger.Info("synchronize file part success", strconv.Itoa(i+1) + "/" + strconv.Itoa(len(fullFi.Parts)) + " -> " + part.Md5)
+				return false, nil
+			})
 			if e2 != nil {
-				logger.Error(e2)
+				logger.Error("error synchronize file part:", e2.Error())
 				dirty++
 			}
-			start += part.FileSize
+			start += part.Size
 		}
 		if dirty > 0 {
-			logger.Error("error download full file(" + fullFi.Md5 + "), broken parts:" + strconv.Itoa(dirty) + "/" + strconv.Itoa(len(fullFi.Parts)))
+			logger.Error("error synchronize full file (" + fullFi.Md5 + "), broken parts:" + strconv.Itoa(dirty) + "/" + strconv.Itoa(len(fullFi.Parts)))
 		} else {
-			ee := libservice.UpdateFileStatus(fullFi.Id)
+			ee := libservicev2.UpdateFileFinishStatus(fullFi.Id, app.STATUS_ENABLED, nil)
 			if ee != nil {
-				logger.Error(ee)
+				logger.Error("error update file finish state:", ee.Error())
 			} else {
-				logger.Info("download file success(" + fullFi.Md5 + ")")
+				logger.Info("synchronize file success (" + fullFi.Md5 + ")")
 			}
 		}
 	}, func(i interface{}) {
-		logger.Error("error download file from other storage server:", i)
+		logger.Error("error synchronize file from other storage server:", i)
 	})
 
 }
@@ -413,18 +431,22 @@ func collectMemberInstanceId() string {
 	return string(buffer.Bytes())
 }
 
-func addDownloadingFile(fileId int, remove bool) {
+// mark file download state.
+// fileId: file's id.
+// remove: true is add and false is remove the mark from list.
+func addDownloadingFile(fileId int64, remove bool) {
 	addDownloadingFileLock.Lock()
 	defer addDownloadingFileLock.Unlock()
 	exist := false
 	for ele := DownloadingFiles.Front(); ele != nil; ele = ele.Next() {
-		if ele.Value.(int) == fileId {
+		if ele.Value.(int64) == fileId {
 			exist = true
+			break
 		}
 	}
 	if remove {
 		for ele := DownloadingFiles.Front(); ele != nil; ele = ele.Next() {
-			if ele.Value.(int) == fileId {
+			if ele.Value.(int64) == fileId {
 				DownloadingFiles.Remove(ele)
 				break
 			}
@@ -436,9 +458,9 @@ func addDownloadingFile(fileId int, remove bool) {
 	}
 }
 
-func existsDownloadingFile(fileId int) bool {
+func existsDownloadingFile(fileId int64) bool {
 	for ele := DownloadingFiles.Front(); ele != nil; ele = ele.Next() {
-		if ele.Value.(int) == fileId {
+		if ele.Value.(int64) == fileId {
 			return true
 		}
 	}

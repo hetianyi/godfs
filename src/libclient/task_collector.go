@@ -2,8 +2,8 @@ package libclient
 
 import (
 	"app"
-	"libcommon/bridge"
-	"libservice"
+	"libcommon/bridgev2"
+	"libservicev2"
 	"sync"
 	"time"
 	"util/common"
@@ -89,14 +89,8 @@ func QueryPushFileTaskCollector(tracker *TrackerInstance) {
 	if tracker.client == nil {
 		return
 	}
-	task, e1 := libservice.GetLocalPushFileTask(app.TASK_REGISTER_FILE, tracker.trackerUUID)
-	if e1 != nil {
-		logger.Error(e1)
-		return
-	}
-	if task != nil {
-		AddTask(task, tracker)
-	}
+	task := &bridgev2.Task{TaskType: app.TASK_REGISTER_FILE}
+	AddTask(task, tracker)
 }
 
 // task collector: query files need to sync from other members
@@ -107,43 +101,46 @@ func QueryDownloadFileTaskCollector(tracker *TrackerInstance) {
 		logger.Debug("no storage server available, skip collect download task")
 		return
 	}
-	taskList, e1 := libservice.GetDownloadFileTask(app.TASK_DOWNLOAD_FILE)
+	// taskList, e1 := libservice.GetDownloadFileTask(app.TASK_DOWNLOAD_FILE)
+	taskList, e1 := libservicev2.GetReadyDownloadFiles(50)
 	if e1 != nil {
 		logger.Error(e1)
 		return
 	}
-	if taskList == nil || taskList.Len() == 0 {
-		logger.Debug("no file need to sync.")
+	if taskList == nil || len(taskList) == 0 {
+		logger.Debug("no file need to synchronized")
 		return
 	}
-	for ele := taskList.Front(); ele != nil; ele = ele.Next() {
-		if !existsDownloadingFile(ele.Value.(*bridge.Task).FileId) {
-			AddTask(ele.Value.(*bridge.Task), tracker)
+	for i := range taskList {
+		id := taskList[i]
+		if !existsDownloadingFile(id) {
+			t := &bridgev2.Task{FileId: id, TaskType: app.TASK_DOWNLOAD_FILE}
+			AddTask(t, tracker)
 		}
 	}
 }
 
 // task collector: sync member info from trackers
 func SyncMemberTaskCollector(tracker *TrackerInstance) {
-	task := &bridge.Task{TaskType: app.TASK_SYNC_MEMBER}
+	task := &bridgev2.Task{TaskType: app.TASK_SYNC_MEMBER}
 	AddTask(task, tracker)
 }
 
 // task collector: query new files of other members from tracker
 func QueryNewFileTaskCollector(tracker *TrackerInstance) {
-	task := &bridge.Task{TaskType: app.TASK_PULL_NEW_FILE}
+	task := &bridgev2.Task{TaskType: app.TASK_PULL_NEW_FILE}
 	AddTask(task, tracker)
 }
 
 // task collector: get all storage info tracker(used by native client)
 func SyncAllStorageServersTaskCollector(tracker *TrackerInstance) {
-	task := &bridge.Task{TaskType: app.TASK_SYNC_ALL_STORAGES}
+	task := &bridgev2.Task{TaskType: app.TASK_SYNC_ALL_STORAGES}
 	AddTask(task, tracker)
 }
 
 // task collector: sync statistic info of storage from tracker
 func SyncStatisticTaskCollector(tracker *TrackerInstance) {
-	task := &bridge.Task{TaskType: app.TASK_SYNC_STATISTIC}
+	task := &bridgev2.Task{TaskType: app.TASK_SYNC_STATISTIC}
 	AddTask(task, tracker)
 }
 

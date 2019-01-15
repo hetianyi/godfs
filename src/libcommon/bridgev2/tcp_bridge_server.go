@@ -7,8 +7,11 @@ import (
 	"net"
 	"crypto/md5"
 	"util/common"
+	"util/pool"
 )
 
+// max client connection set to 1000
+var connectionPool, _ = pool.NewPool(1000, 0)
 
 type TcpBridgeServer struct {
 	Host string

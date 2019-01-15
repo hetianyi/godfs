@@ -5,11 +5,10 @@ import (
 	"errors"
 	"libcommon/bridgev2"
 	"libservicev2"
-	"util/logger"
-	"util/timeutil"
 	"time"
 	"util/common"
-	"libservice"
+	"util/logger"
+	"util/timeutil"
 )
 
 
@@ -156,23 +155,20 @@ func TaskPullFileHandler(tracker *TrackerInstance) (bool, error) {
 }
 
 
-func TaskDownloadFileHandler(tracker *TrackerInstance) (bool, error) {
-	client := *tracker.client
-	logger.Debug("trying download file from other storage server...")
+func TaskDownloadFileHandler(task *bridgev2.Task) (bool, error) {
 	if increaseActiveDownload(0) >= ParallelDownload {
-		logger.Debug("ParallelDownload reached")
-		// AddTask(task, tracker)
+		logger.Debug("discard download task, download task is full")
 		return false, nil
 	}
-	fi, e1 := libservice.GetFullFileByFid(task.FileId, 0)
+	// fi, e1 := libservice.GetFullFileByFid(task.FileId, 0)
+	file, e1 := libservicev2.GetFullFileById(task.FileId, 0)
 	if e1 != nil {
 		return false, e1
 	}
-	if fi == nil || len(fi.Parts) == 0 {
+	if file == nil || len(file.Parts) == 0 {
 		return false, nil
 	}
-	addDownloadingFile(fi.Id, false)
-	go downloadFile(fi)
+	go downloadFile(file)
 	return false, nil
 }
 

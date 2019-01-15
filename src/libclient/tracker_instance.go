@@ -78,7 +78,7 @@ func (tracker *TrackerInstance) checkTaskTypeCount(taskType int) int {
 
 // exec task
 // return bool if the connection is forced close and need reconnect
-func (tracker *TrackerInstance) ExecTask(task *bridge.Task) (bool, error) {
+func (tracker *TrackerInstance) ExecTask(task *bridgev2.Task) (bool, error) {
 	logger.Debug("exec task:", task.TaskType)
 	if task.TaskType == app.TASK_SYNC_MEMBER {
 		return TaskSyncMemberHandler(tracker)
@@ -87,22 +87,7 @@ func (tracker *TrackerInstance) ExecTask(task *bridge.Task) (bool, error) {
 	} else if task.TaskType == app.TASK_PULL_NEW_FILE {
 		return TaskPullFileHandler(tracker)
 	} else if task.TaskType == app.TASK_DOWNLOAD_FILE {
-		logger.Debug("trying download file from other storage server...")
-		if increaseActiveDownload(0) >= ParallelDownload {
-			logger.Debug("ParallelDownload reached")
-			// AddTask(task, tracker)
-			return false, nil
-		}
-		fi, e1 := libservice.GetFullFileByFid(task.FileId, 0)
-		if e1 != nil {
-			return false, e1
-		}
-		if fi == nil || len(fi.Parts) == 0 {
-			return false, nil
-		}
-		addDownloadingFile(fi.Id, false)
-		go downloadFile(fi)
-		return false, nil
+		TaskDownloadFileHandler(task)
 	} else if task.TaskType == app.TASK_SYNC_ALL_STORAGES {
 		regClientMeta := &bridge.OperationGetStorageServerRequest{}
 		e2 := connBridge.SendRequest(bridge.O_SYNC_STORAGE, regClientMeta, 0, nil)

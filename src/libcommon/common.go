@@ -210,7 +210,6 @@ func WriteOut(in io.Reader, offset int64, buffer []byte, out io.Writer, md hash.
 				return errors.New("error write out")
 			}
 			readBodySize += int64(len)
-			logger.Trace("write:", readBodySize)
 		} else {
 			if e2 == io.EOF {
 				return nil

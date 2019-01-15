@@ -755,4 +755,17 @@ func GetIndexStatistic() (*app.DashboardIndexStatistic, error) {
 	return &statistic, err
 }
 
+// get ready to synchronize file's id.
+func GetReadyDownloadFiles(limit int) ([]int64, error) {
+	dao, ef := dbPool.GetDB()
+	if ef != nil {
+		return nil, ef
+	}
+	defer dbPool.ReturnDB(dao)
 
+	var ids []int64
+	err := dao.Query(func(db *gorm.DB) error {
+		return transformNotFoundErr(db.Table("file").Where("finish = ?", 0).Limit(limit).Pluck("id", &ids).Error)
+	})
+	return ids, err
+}

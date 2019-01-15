@@ -100,7 +100,7 @@ func (client *TcpBridgeClient) RegisterFiles(meta *RegisterFileMeta) (*RegisterF
 
 // pull files from tracker
 func (client *TcpBridgeClient) PullFiles(meta *PullFileMeta) (*PullFileResponseMeta, error) {
-    frame, e := client.sendReceive(FRAME_OPERATION_REGISTER_FILES, STATE_VALIDATED, meta, 0, nil)
+    frame, e := client.sendReceive(FRAME_OPERATION_PULL_NEW_FILES, STATE_VALIDATED, meta, 0, nil)
     if e != nil {
         return nil, e
     }
@@ -113,6 +113,7 @@ func (client *TcpBridgeClient) PullFiles(meta *PullFileMeta) (*PullFileResponseM
 }
 
 
+// upload file to storage server.
 func (client *TcpBridgeClient) UploadFile(meta *UploadFileMeta,
                                           bodyWriterHandler func(manager *ConnectionManager, frame *Frame) error,
                                          ) (*UploadFileResponseMeta, error) {
@@ -126,6 +127,35 @@ func (client *TcpBridgeClient) UploadFile(meta *UploadFileMeta,
         return nil, e1
     }
     return res, nil
+}
+
+
+// pull files from tracker
+func (client *TcpBridgeClient) QueryFile(meta *QueryFileMeta) (*QueryFileResponseMeta, error) {
+    frame, e := client.sendReceive(FRAME_OPERATION_QUERY_FILE, STATE_VALIDATED, meta, 0, nil)
+    if e != nil {
+        return nil, e
+    }
+    var res = &QueryFileResponseMeta{}
+    e1 := json.Unmarshal(frame.FrameMeta, res)
+    if e1 != nil {
+        return nil, e1
+    }
+    return res, nil
+}
+
+// download file from storage server.
+func (client *TcpBridgeClient) DownloadFile(meta *DownloadFileMeta) (*DownloadFileResponseMeta, *Frame, error) {
+    frame, e := client.sendReceive(FRAME_OPERATION_DOWNLOAD_FILE, STATE_VALIDATED, meta, 0, nil)
+    if e != nil {
+        return nil, nil, e
+    }
+    var res = &DownloadFileResponseMeta{}
+    e1 := json.Unmarshal(frame.FrameMeta, res)
+    if e1 != nil {
+        return nil, nil, e1
+    }
+    return res, frame, nil
 }
 
 

@@ -100,7 +100,7 @@ type File struct {
 
 // 映射任务表task中字段
 type Task struct {
-	FileId   int                       // file表中的id
+	FileId   int64                       // file表中的id
 	TaskType int                       // 任务类型，1：上报文件，2：从其他节点下载文件
 	Status   int                       //任务状态
 	Callback func(task *Task, e error) // callback calls when each task finish

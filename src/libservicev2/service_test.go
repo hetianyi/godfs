@@ -225,3 +225,7 @@ func TestInsertRegisteredFiles(t *testing.T) {
 	files[0] = *file
 	PrintResult(InsertRegisteredFiles(files))
 }
+
+func TestGetReadyDownloadFiles(t *testing.T) {
+	PrintResult(GetReadyDownloadFiles(1))
+}
