@@ -136,7 +136,7 @@ func writeFrame(manager *ConnectionManager, frame *Frame) error {
 
 // 读取meta字节信息
 func readFrameMeta(metaSize int, manager *ConnectionManager) ([]byte, error) {
-    tmp, me := MakeBytes(uint64(metaSize), true, 5242880, true) // 5MB
+    tmp, me := MakeBytes(int64(metaSize), true, 5242880, true) // 5MB
     if me != nil {
         return nil, me
     }
@@ -154,7 +154,7 @@ func readFrameMeta(metaSize int, manager *ConnectionManager) ([]byte, error) {
 
 // dynamic: whether apply size is dynamic or unknown before,
 // and we don't cache those.
-func MakeBytes(len uint64, dangerCheck bool, max uint64, dynamic bool) ([]byte, error) {
+func MakeBytes(len int64, dangerCheck bool, max int64, dynamic bool) ([]byte, error) {
     if dangerCheck && len > max {
         return nil, errors.New("cannot create bytes: system protection")
     }

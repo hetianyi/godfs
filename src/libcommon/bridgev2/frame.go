@@ -1,7 +1,7 @@
 package bridgev2
 
 import (
-	"util/json"
+	"github.com/json-iterator/go"
 	"errors"
 )
 

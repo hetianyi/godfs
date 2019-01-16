@@ -2,7 +2,7 @@ package main
 
 import (
 	"app"
-	"flag"
+	"github.com/urfave/cli"
 	"libtracker"
 	"os"
 	"path/filepath"
@@ -14,14 +14,22 @@ import (
 
 func main() {
 	runtime.GOMAXPROCS(runtime.NumCPU())
-	app.RUN_WITH = 2
-	abs, _ := filepath.Abs(os.Args[0])
+	app.RUN_WITH = 2 // run as tracker
+	abs, _ := filepath.Abs(os.Args[0]) // executable file path
 	s, _ := filepath.Split(abs)
 	s = file.FixPath(s)
-	var confPath = flag.String("c", s+string(filepath.Separator)+".."+string(filepath.Separator)+"conf"+string(filepath.Separator)+"tracker.conf", "custom config file")
-	flag.Parse()
-	logger.Info("using config file:", *confPath)
-	m, e := file.ReadPropFile(*confPath)
+
+	initTrackerFlags()
+
+	var confPath string
+	if file.IsAbsPath(ConfigFile) {
+		confPath = ConfigFile
+	} else {
+		confPath = s + string(filepath.Separator) + ConfigFile
+	}
+
+	logger.Info("using config file:", confPath)
+	m, e := file.ReadPropFile(confPath)
 	if e == nil {
 		validate.Check(m, app.RUN_WITH)
 		for k, v := range m {
@@ -30,5 +38,31 @@ func main() {
 		libtracker.StartService()
 	} else {
 		logger.Fatal("error read file:", e)
+	}
+}
+
+func initTrackerFlags() {
+	appFlag := cli.NewApp()
+	appFlag.Version = app.APP_VERSION
+	appFlag.Name = "godfs tracker"
+	appFlag.Usage = ""
+
+	// config file location
+	appFlag.Flags = []cli.Flag {
+		cli.StringFlag{
+			Name:        "config, c",
+			Value:       "../conf/tracker.conf",
+			Usage:       "load config from `FILE`",
+			Destination: &ConfigFile,
+		},
+	}
+	
+	appFlag.Action = func(c *cli.Context) error {
+		return nil
+	}
+
+	err := appFlag.Run(os.Args)
+	if err != nil {
+		logger.Fatal(err)
 	}
 }

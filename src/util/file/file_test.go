@@ -3,6 +3,7 @@ package file
 import (
 	"bytes"
 	"fmt"
+	"path/filepath"
 	"regexp"
 	"testing"
 )
@@ -44,4 +45,8 @@ func Test7(t *testing.T) {
 	fmt.Println(regexp.Match(ContentDispositionPattern, []byte("Content-Disposition: form-data; name=\"file2\"; filename=\"F:\\Software\\AtomSetup-1.18.0_x64.exe\"")))
 	name := regexp.MustCompile(ContentDispositionPattern).ReplaceAllString("Content-Disposition: form-data; name=\"file2\"", "${1}")
 	fmt.Println(name)
+}
+
+func TestIsAbsPath(t *testing.T) {
+	fmt.Println(filepath.IsAbs("D:/asdasd"))
 }

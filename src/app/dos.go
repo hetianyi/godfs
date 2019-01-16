@@ -293,3 +293,11 @@ func (server *ServerInfo) GetHostAndPortByAccessFlag() (host string, port int) {
 	}
 	return server.AdvertiseAddr, server.AdvertisePort
 }
+
+type ClientConfig struct {
+	Trackers            []string
+	LogEnable           bool   `json:"files"`
+	LogLevel            string `json:"files"`
+	LogRotationInterval string `json:"files"`
+	Secret              string `json:"files"`
+}

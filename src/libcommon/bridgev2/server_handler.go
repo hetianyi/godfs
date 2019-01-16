@@ -4,7 +4,7 @@ import (
     "app"
     "errors"
     "libservicev2"
-    "util/json"
+    "github.com/json-iterator/go"
 )
 
 var NULL_FRAME_ERR = errors.New("frame is null")

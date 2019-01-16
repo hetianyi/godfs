@@ -2,7 +2,7 @@ package main
 
 import (
 	"app"
-	"flag"
+	"github.com/urfave/cli"
 	"libstorage"
 	"os"
 	"path/filepath"
@@ -23,10 +23,18 @@ func main() {
 	abs, _ := filepath.Abs(os.Args[0])
 	s, _ := filepath.Split(abs)
 	s = file.FixPath(s)
-	var confPath = flag.String("c", s+string(filepath.Separator)+".."+string(filepath.Separator)+"conf"+string(filepath.Separator)+"storage.conf", "custom config file")
-	flag.Parse()
-	logger.Info("using config file:", *confPath)
-	m, e := file.ReadPropFile(*confPath)
+
+	initStorageFlags()
+
+	var confPath string
+	if file.IsAbsPath(ConfigFile) {
+		confPath = ConfigFile
+	} else {
+		confPath = s + string(filepath.Separator) + ConfigFile
+	}
+
+	logger.Info("using config file:", confPath)
+	m, e := file.ReadPropFile(confPath)
 	if e == nil {
 		validate.Check(m, app.RUN_WITH)
 		for k, v := range m {
@@ -35,5 +43,32 @@ func main() {
 		libstorage.StartService(m)
 	} else {
 		logger.Fatal("error read file:", e)
+	}
+}
+
+
+func initStorageFlags() {
+	appFlag := cli.NewApp()
+	appFlag.Version = app.APP_VERSION
+	appFlag.Name = "godfs storage"
+	appFlag.Usage = ""
+
+	// config file location
+	appFlag.Flags = []cli.Flag {
+		cli.StringFlag{
+			Name:        "config, c",
+			Value:       "../conf/tracker.conf",
+			Usage:       "load config from `FILE`",
+			Destination: &ConfigFile,
+		},
+	}
+
+	appFlag.Action = func(c *cli.Context) error {
+		return nil
+	}
+
+	err := appFlag.Run(os.Args)
+	if err != nil {
+		logger.Fatal(err)
 	}
 }

@@ -264,8 +264,8 @@ func (handler *FileUploadHandlerV1) beginUpload() (*HttpUploadResponse, error) {
 }
 
 func readNextLine(reader *FileFormReader) (string, error) {
-	buff, _ := bridgev2.MakeBytes(uint64(1), false, 0, false)
-	last, _ := bridgev2.MakeBytes(uint64(2), false, 0, false)
+	buff, _ := bridgev2.MakeBytes(int64(1), false, 0, false)
+	last, _ := bridgev2.MakeBytes(int64(2), false, 0, false)
 	defer bridgev2.RecycleBytes(buff)
 	defer bridgev2.RecycleBytes(last)
 	var strBuff bytes.Buffer
@@ -308,8 +308,8 @@ func readFileBody(reader *FileFormReader, buffer []byte, separator string, md ha
 	}
 	separator = "\r\n" + separator
 	buff1 := buffer
-	buff2, _ := bridgev2.MakeBytes(uint64(len(separator)), true, 1024, true)
-	tail, _ := bridgev2.MakeBytes(uint64(len(separator)*2), true, 1024, true)
+	buff2, _ := bridgev2.MakeBytes(int64(len(separator)), true, 1024, true)
+	tail, _ := bridgev2.MakeBytes(int64(len(separator)*2), true, 1024, true)
 	for {
 		len1, e1 := reader.Read(buff1)
 		if e1 != nil {

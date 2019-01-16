@@ -11,6 +11,7 @@ import (
 	"io"
 	"os"
 	"path"
+	"path/filepath"
 	"strings"
 	"syscall"
 	"util/common"
@@ -250,8 +251,8 @@ func GetTempDir() string {
 }
 
 // 判断给定的路径是否为绝对路径
-func IsAbsPath(filePath string) bool {
-	return path.IsAbs(filePath)
+func IsAbsPath(path string) bool {
+	return filepath.IsAbs(path)
 }
 
 // get file extension
