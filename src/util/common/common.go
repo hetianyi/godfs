@@ -33,3 +33,35 @@ func ParseHostPortFromConnStr(connStr string) (string, int) {
 	port, _ := strconv.Atoi(strings.Split(connStr, ":")[1])
 	return host, port
 }
+
+// ternary operation
+func TOperation(condition bool, trueOperation func() interface{}, falseOperation func() interface{}) interface{}{
+	if condition {
+		if trueOperation == nil {
+			return nil
+		}
+		return trueOperation()
+	}
+	if falseOperation == nil {
+		return nil
+	}
+	return falseOperation()
+}
+
+// ternary operation
+func TValue(condition bool, trueValue interface{}, falseValue interface{}) interface{}{
+	if condition {
+		return trueValue
+	}
+	return falseValue
+}
+
+// walk a list
+func WalkList(ls *list.List, walker func(item interface{})) {
+	if ls == nil {
+		return
+	}
+	for ele := ls.Front(); ele != nil; ele = ele.Next() {
+		walker(ele.Value)
+	}
+}

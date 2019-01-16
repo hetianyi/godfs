@@ -5,7 +5,7 @@ import (
     "crypto/md5"
     "errors"
     "strconv"
-    "github.com/json-iterator/go"
+    json "github.com/json-iterator/go"
     "util/logger"
 )
 

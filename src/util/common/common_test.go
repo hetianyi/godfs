@@ -5,6 +5,8 @@ import (
 	"regexp"
 	"strconv"
 	"testing"
+	"errors"
+	"container/list"
 )
 
 const ipv4Pattern = "^((25[0-5]|2[0-4]\\d|[0-1]?\\d\\d?)\\.){3}(25[0-5]|2[0-4]\\d|[0-1]?\\d\\d?)$"
@@ -57,4 +59,28 @@ func Test2(t *testing.T) {
 func Test3(t *testing.T) {
 	fmt.Println(parseAdvertiseAddr("192.168.0.555", 1234))
 	fmt.Println(parseAdvertiseAddr("192.168.0.122:8888", 1234))
+}
+
+
+func Test22(t *testing.T) {
+	a := TValue(false, "answer is true", "answer is false").(string)
+	fmt.Println(a)
+}
+func Test23(t *testing.T) {
+	err := TOperation(false, func() interface{} {
+		return errors.New("true error")
+	}, func() interface{} {
+		return errors.New("false error")
+	})
+	fmt.Println(err)
+}
+
+func TestWalkList(t *testing.T) {
+	ls := list.List{}
+	ls.PushBack(1)
+	ls.PushBack(2)
+	ls.PushBack(3)
+	WalkList(&ls, func(item interface{}) {
+		fmt.Println(item)
+	})
 }

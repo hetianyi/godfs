@@ -3,8 +3,7 @@ package libclient
 import (
 	"app"
 	"container/list"
-	"encoding/json"
-	"github.com/json-iterator/go"
+	json "github.com/json-iterator/go"
 	"errors"
 	"io"
 	"libcommon"

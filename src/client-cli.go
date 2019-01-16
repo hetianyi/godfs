@@ -3,24 +3,21 @@ package main
 import (
 	"app"
 	"container/list"
-	"errors"
 	json "github.com/json-iterator/go"
 	"fmt"
 	"github.com/urfave/cli"
-	"io"
 	"libclient"
 	"libcommon"
-	"libcommon/bridge"
 	"libcommon/bridgev2"
 	"os"
 	"os/user"
 	"path/filepath"
-	"regexp"
 	"strings"
 	"time"
 	"util/file"
 	"util/logger"
-	"util/timeutil"
+	"io/ioutil"
+	"validate"
 )
 
 var (
@@ -36,6 +33,9 @@ var (
 	SetConfig string
 )
 
+var checkChan chan int
+var client *libclient.Client
+var trackerList *list.List
 
 func main() {
 	checkChan = make(chan int)
@@ -71,7 +71,7 @@ func initClientFlags() {
 			Destination: &Trackers,
 		},
 		cli.StringFlag{
-			Name:        "log_level, l",
+			Name:        "log_level, ll",
 			Value:       "info",
 			Usage:       "log level `LOG_LEVEL` (trace, debug, info, warm, error, fatal)",
 			Destination: &LogLevel,
@@ -82,10 +82,11 @@ func initClientFlags() {
 			Usage:       "log rotation interval `LOG_ROTATION_INTERVAL` h(hour),d(day),m(month),y(year)",
 			Destination: &LogRotationInterval,
 		},
-		cli.BoolFlag{
+		cli.BoolTFlag{
 			Name:        "log_enable, le",
 			Usage:       "whether enable log `LOG_ENABLE` (true, false)",
 			Destination: &LogEnable,
+
 		},
 		cli.StringFlag{
 			Name:        "secret, s",
@@ -95,36 +96,46 @@ func initClientFlags() {
 		},
 	}
 
+
+	// config file path
+	config := prepareClient()
+	logger.SetEnable(config.LogEnable)
+	validate.SetSystemLogLevel(config.LogLevel)
+
 	// sub command 'upload'
 	appFlag.Commands = []cli.Command{
 		{
 			Name:    "upload",
 			Usage:   "upload local files",
 			Action:  func(c *cli.Context) error {
+				abs, _ := filepath.Abs(os.Args[0])
+				dir := abs + string(os.PathSeparator) + ".."
+				absPath, _ := filepath.Abs(dir)
 				if c.Args().First() == "*" {
-					abs, _ := filepath.Abs(os.Args[0])
 					fmt.Println("upload all files of", abs)
+					files, _ := ioutil.ReadDir(dir)
+					for i := range files {
+						if !files[i].IsDir() {
+							logger.Debug("adding file:", files[i].Name())
+							UploadFileList.PushBack(absPath + string(os.PathSeparator) + files[i].Name())
+						}
+					}
 				} else {
-					var files = new(list.List)
 					for i := range c.Args() {
 						f := c.Args().Get(i)
-						logger.Debug("checking file:", f)
+						logger.Debug("adding file:", f)
+						if !file.IsAbsPath(f) {
+							f, _ = filepath.Abs(absPath + string(os.PathSeparator) + f)
+						}
 						if file.Exists(f) && file.IsFile(f) {
-							files.PushBack(f)
+							UploadFileList.PushBack(f)
 						} else {
 							logger.Warn("file", f, "not exists or not a file, skip.")
 						}
 					}
-					uploadFiles := strings.Split(paths, ",")
-					var pickList list.List
-					for i := range uploadFiles {
-						uploadFiles[i] = strings.TrimSpace(uploadFiles[i])
-						if file.Exists(uploadFiles[i]) && file.IsFile(uploadFiles[i]) {
-							pickList.PushBack(uploadFiles[i])
-						} else {
-							logger.Warn("file", uploadFiles[i], "not exists or not a file, skip.")
-						}
-					}
+				}
+				if UploadFileList.Len() == 0 {
+					logger.Fatal("no file to be upload")
 				}
 				return nil
 			},
@@ -215,7 +226,7 @@ func prepareClient() *app.ClientConfig {
 			logger.Fatal("cannot create directory:", e1)
 		}
 	}
-	confFilePath := basdir + string(os.PathSeparator) + "client.conf"
+	confFilePath := basdir + string(os.PathSeparator) + "config.json"
 	if !file.Exists(confFilePath) {
 		config := &app.ClientConfig{
 			Trackers: []string{"127.0.0.1:1022"},
@@ -243,26 +254,47 @@ func prepareClient() *app.ClientConfig {
 
 	app.BASE_PATH = basdir
 	app.TRACKERS = strings.Join(config.Trackers, ",")
-	app.SECRET = strings.TrimSpace(config.Secret)
+	if Trackers != "" {
+		app.TRACKERS = Trackers
+	}
 
-	//enable log config
-	app.LOG_ENABLE = config.LogEnable
+	app.SECRET = strings.TrimSpace(config.Secret)
+	if Secret != "" {
+		app.SECRET = Secret
+	}
+
+	// enable log config
+	app.LOG_ENABLE = LogEnable
+	config.LogEnable = LogEnable
 
 	// check log_level
 	logLevel := strings.ToLower(strings.TrimSpace(config.LogLevel))
 	if logLevel != "trace" && logLevel != "debug" && logLevel != "info" && logLevel != "warn" &&
 		logLevel != "error" && logLevel != "fatal" {
-		logLevel = "info"
+		config.LogLevel = "info"
 	}
-	config.LogLevel = logLevel
+
+	if LogLevel != "" {
+		if LogLevel != "trace" && LogLevel != "debug" && LogLevel != "info" && LogLevel != "warn" &&
+			LogLevel != "error" && LogLevel != "fatal" {
+			LogLevel = "info"
+		}
+		config.LogLevel = LogLevel
+	}
 
 	// check log_rotation_interval
 	logRotationInterval := strings.ToLower(strings.TrimSpace(config.LogRotationInterval))
 	if logRotationInterval != "h" && logRotationInterval != "d" &&
 		logRotationInterval != "m" && logRotationInterval != "y" {
-		logRotationInterval = "d"
+		config.LogRotationInterval = "d"
 	}
-	config.LogRotationInterval = logRotationInterval
+	if LogRotationInterval != "" {
+		if LogRotationInterval != "h" && LogRotationInterval != "d" &&
+			LogRotationInterval != "m" && LogRotationInterval != "y" {
+			LogRotationInterval = "d"
+		}
+		config.LogRotationInterval = LogRotationInterval
+	}
 	app.LOG_INTERVAL = config.LogRotationInterval
 
 	return config
@@ -313,7 +345,7 @@ func clientMonitorCollector(tracker *libclient.TrackerInstance) {
 
 // write client config to file.
 func writeConf(clientConfig *app.ClientConfig) error {
-	fi, e := file.CreateFile(app.BASE_PATH + string(os.PathSeparator) + "client.conf")
+	fi, e := file.CreateFile(app.BASE_PATH + string(os.PathSeparator) + "config.json")
 	if e != nil {
 		return e
 	}
@@ -328,7 +360,7 @@ func writeConf(clientConfig *app.ClientConfig) error {
 
 // read client config
 func readConf() (*app.ClientConfig, error) {
-	configFile, e := file.GetFile(app.BASE_PATH + string(os.PathSeparator) + "client.conf")
+	configFile, e := file.GetFile(app.BASE_PATH + string(os.PathSeparator) + "config.json")
 	if e != nil {
 		return nil, e
 	}
@@ -354,145 +386,4 @@ func readConf() (*app.ClientConfig, error) {
 	}
 	return config, nil
 }
-
-
-
-// upload files
-// paths: file path to be upload
-// group: file upload group, if not set, use random group
-// skipCheck: whether check md5 before upload
-func upload(paths []string, group string, skipCheck bool) error {
-	uploadFiles := strings.Split(paths, ",")
-	var pickList list.List
-	for i := range uploadFiles {
-		uploadFiles[i] = strings.TrimSpace(uploadFiles[i])
-		if file.Exists(uploadFiles[i]) && file.IsFile(uploadFiles[i]) {
-			pickList.PushBack(uploadFiles[i])
-		} else {
-			logger.Warn("file", uploadFiles[i], "not exists or not a file, skip.")
-		}
-	}
-	for ele := pickList.Front(); ele != nil; ele = ele.Next() {
-		var startTime = time.Now()
-		fid, e := client.Upload(ele.Value.(string), group, startTime, skipCheck)
-		if e != nil {
-			logger.Error(e)
-		} else {
-			now := time.Now()
-			fmt.Println("[==========] 100% [" + timeutil.GetHumanReadableDuration(startTime, now) + "]\nupload success, file id:")
-			fmt.Println("+-------------------------------------------+")
-			fmt.Println(fid)
-			fmt.Println("+-------------------------------------------+")
-		}
-	}
-	return nil
-}
-
-func download(path string, customDownloadFileName string) error {
-	filePath := ""
-	var startTime time.Time
-	e := client.DownloadFile(path, 0, -1, func(manager *bridgev2.ConnectionManager, frame *bridgev2.Frame, resMeta *bridgev2.DownloadFileResponseMeta) (b bool, e error) {
-		path = strings.TrimSpace(path)
-		if strings.Index(path, "/") != 0 {
-			path = "/" + path
-		}
-		var fi *os.File
-		if customDownloadFileName == "" {
-			md5 := regexp.MustCompile(app.PATH_REGEX).ReplaceAllString(path, "${4}")
-			customDownloadFileName = md5
-			f, e1 := file.CreateFile(customDownloadFileName)
-			if e1 != nil {
-				return true, e1
-			}
-			fi = f
-		} else {
-			f, e1 := file.CreateFile(customDownloadFileName)
-			if e1 != nil {
-				return true, e1
-			}
-			fi = f
-		}
-		defer fi.Close()
-		filePath, _ = filepath.Abs(fi.Name())
-		startTime = time.Now()
-		return true, writeOut(manager.Conn, frame.BodyLength, fi, startTime)
-	})
-	/*e := client.DownloadFile(path, 0, -1, func(realPath string, fileLen uint64, reader io.Reader) error {
-		var fi *os.File
-		if customDownloadFileName == "" {
-			md5 := regexp.MustCompile(app.PATH_REGEX).ReplaceAllString(realPath, "${4}")
-			customDownloadFileName = md5
-			f, e1 := file.CreateFile(customDownloadFileName)
-			if e1 != nil {
-				return e1
-			}
-			fi = f
-		} else {
-			f, e1 := file.CreateFile(customDownloadFileName)
-			if e1 != nil {
-				return e1
-			}
-			fi = f
-		}
-		defer fi.Close()
-		filePath, _ = filepath.Abs(fi.Name())
-		startTime = time.Now()
-		return writeOut(reader, int64(fileLen), fi, startTime)
-	})*/
-	if e != nil {
-		logger.Error("download failed:", e)
-		return e
-	} else {
-		now := time.Now()
-		fmt.Println("[==========] 100% [" + timeutil.GetHumanReadableDuration(startTime, now) + "]\ndownload success, file save as:")
-		fmt.Println("+-------------------------------------------+")
-		fmt.Println(filePath)
-		fmt.Println("+-------------------------------------------+")
-	}
-	return nil
-}
-
-
-func writeOut(in io.Reader, offset int64, out io.Writer, startTime time.Time) error {
-	buffer, _ := bridge.MakeBytes(app.BUFF_SIZE, false, 0, false)
-	defer bridge.RecycleBytes(buffer)
-	var finish, total int64
-	var stopFlag = false
-	defer func() { stopFlag = true }()
-	total = offset
-	finish = 0
-	go libcommon.ShowPercent(&total, &finish, &stopFlag, startTime)
-
-	// total read bytes
-	var readBodySize int64 = 0
-	// next time bytes to read
-	var nextReadSize int
-	for {
-		// left bytes is more than a buffer
-		if (offset-readBodySize)/int64(len(buffer)) >= 1 {
-			nextReadSize = len(buffer)
-		} else { // left bytes less than a buffer
-			nextReadSize = int(offset - readBodySize)
-		}
-		if nextReadSize == 0 {
-			break
-		}
-		len, e2 := in.Read(buffer[0:nextReadSize])
-		if e2 == nil {
-			wl, e5 := out.Write(buffer[0:len])
-			if e5 != nil || wl != len {
-				return errors.New("error write bytes")
-			}
-			finish += int64(len)
-			readBodySize += int64(len)
-		} else {
-			if e2 == io.EOF {
-				return nil
-			}
-			return e2
-		}
-	}
-	return nil
-}
-
 

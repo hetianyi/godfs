@@ -3,28 +3,14 @@ package main
 import (
 	"app"
 	"container/list"
-	"errors"
-	"flag"
-	"fmt"
-	"io"
 	"libclient"
-	"libcommon"
-	"libcommon/bridge"
-	"libcommon/bridgev2"
 	"os"
 	"path/filepath"
-	"regexp"
-	"strings"
-	"time"
 	"util/file"
 	"util/logger"
-	"util/timeutil"
 	"validate"
 )
 
-var client *libclient.Client
-var trackerList *list.List
-var checkChan chan int
 
 // 对于客户端，只提供类似于mysql的客户端，每个client与所有的tracker建立单个连接进行数据同步
 // client和每个storage server最多建立一个连接
@@ -34,7 +20,7 @@ var checkChan chan int
 // path structure:
 // /usr/local/godfs
 //              |- /bin/client
-//              |- /conf/client.conf
+//              |- /conf/config.json
 // /usr/bin/client -> /usr/local/godfs/bin/client
 func main() {
 

@@ -23,11 +23,8 @@ import (
 // paths: file path to be upload
 // group: file upload group, if not set, use random group
 // skipCheck: whether check md5 before upload
-func upload(client *Client, paths *list.List, group string, skipCheck bool) error {
-
-
-
-	for ele := pickList.Front(); ele != nil; ele = ele.Next() {
+func upload(client *Client, files *list.List, group string, skipCheck bool) error {
+	for ele := files.Front(); ele != nil; ele = ele.Next() {
 		var startTime = time.Now()
 		fid, e := client.Upload(ele.Value.(string), group, startTime, skipCheck)
 		if e != nil {

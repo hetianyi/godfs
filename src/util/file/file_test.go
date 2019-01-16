@@ -6,6 +6,9 @@ import (
 	"path/filepath"
 	"regexp"
 	"testing"
+	"os"
+	"util/common"
+	"io/ioutil"
 )
 
 func Test1(t *testing.T) {
@@ -49,4 +52,41 @@ func Test7(t *testing.T) {
 
 func TestIsAbsPath(t *testing.T) {
 	fmt.Println(filepath.IsAbs("D:/asdasd"))
+}
+
+func Test8(t *testing.T) {
+	dir := "D:/"
+	filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
+		fmt.Println(path, common.TValue(info.IsDir(), "d", "-"), info.Size())
+		return nil
+	})
+}
+
+func Test9(t *testing.T) {
+	dir := "D:/"
+	filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
+		return common.TOperation(info.IsDir(), func() interface{} {
+			return filepath.SkipDir
+		}, func() interface{} {
+			fmt.Println(path, common.TValue(info.IsDir(), "d", "-"), info.Size())
+			return nil
+		}).(error)
+	})
+}
+
+
+func Test10(t *testing.T) {
+	f := "D:\\FTP\\instantfap-gifs.part7.zip"
+	dir := f + string(os.PathSeparator) + ".."
+	files, _ := ioutil.ReadDir(dir)
+	absPath, _ := filepath.Abs(dir)
+	for i := range files {
+		fmt.Println(absPath + string(os.PathSeparator) + files[i].Name())
+	}
+}
+
+func Test11(t *testing.T) {
+	p := "asdasd\\123"
+	fmt.Println(IsAbsPath(p))
+	fmt.Println(filepath.Abs(p))
 }
