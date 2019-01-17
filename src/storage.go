@@ -58,7 +58,7 @@ func initStorageFlags() {
 	appFlag.Flags = []cli.Flag {
 		cli.StringFlag{
 			Name:        "config, c",
-			Value:       "../conf/tracker.conf",
+			Value:       "../conf/storage.conf",
 			Usage:       "load config from `FILE`",
 			Destination: &libclient.ConfigFile,
 		},
