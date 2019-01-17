@@ -40,7 +40,10 @@ func main() {
 	// config file path
 	prepareClient()
 
-	if command == libclient.COMMAND_UPLOAD || command == libclient.COMMAND_DOWNLOAD || command == libclient.COMMAND_INSPECT_FILE {
+	if command == libclient.COMMAND_UPLOAD ||
+		command == libclient.COMMAND_DOWNLOAD ||
+		command == libclient.COMMAND_INSPECT_FILE ||
+		command == libclient.COMMAND_UPDATE_CONFIG {
 		flagVarPreCheck()
 		client = InitClient()
 	}
@@ -205,7 +208,7 @@ func initClientFlags() {
 					},
 				},
 				{
-					Name:  "list",
+					Name:  "ls",
 					Usage: "list client cli configurations",
 					Action: func(c *cli.Context) error {
 						command = libclient.COMMAND_LIST_CONFIG

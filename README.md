@@ -24,14 +24,14 @@ project is here:[https://github.com/hetianyi/godfs-dashboard](https://github.com
 - Fast, lightweight, stable, out-of-the-box, friendly api.
 - Easy to expand, Stable to RUN.
 - Low resource overhead.
-- Native client api and java client api(not started).
+- Native client api and java client api.
 - API for http upload and download.
 - Support file breakpoint download.
 - Support basic verification for http download and upload.
 - Cross-site resource protection.
 - Clear logs help troubleshoot errors.
 - Support different platforms: Linux, Windows, Mac
-- Better support docker.
+- Better support for docker.
 - File fragmentation storage.
 - Better data migration solution.
 - Support readonly node.
@@ -76,20 +76,22 @@ then you can using command ```client``` directly in command line to upload and d
 > Of course, you must first set up the tracker server.
 ```shell
 # set up tracker servers for client
-client --set "trackers=host1:port1[,host2:port2]"
+client config set "trackers=host1:port1[,host2:port2]" "log_level=debug" ...
+# print client config
+client config ls
 ```
 
 For example, you can upload file by:
 ```shell
 # upload a file
-client -u /f/project.rar
+client upload /f/project.rar
 ```
 ![architecture](/doc/20180828095840.png)
 
-If you want to upload file to specified group, you can add parameter ```-g <groupID>``` in command line.
+If you want to upload file to specified group, you can add flag ```-g <groupID>``` in command line.
 also, it's cool that you can upload all files in a directory by:
 ```shell
-echo \"$(ls -m /f/foo)\" |xargs client -u
+client upload *
 ```
 ![architecture](/doc/20180828100341.png)
 
@@ -124,7 +126,7 @@ If you want to upload file to specified group, you can add parameter ```?group=<
 
 ```shell
 # download a file as 123.zip
-client -d G01/10/M/2c9da7ea280c020db7f4879f8180dfd6 -n 123.zip
+client download G01/10/M/2c9da7ea280c020db7f4879f8180dfd6 --name 123.zip
 ```
 
 ### build docker image from latest source code:
@@ -152,27 +154,32 @@ we're here using directory ```/godfs/data``` to persist data, you can use ```-e`
 
 client usage:
 ```shell
--u string 
-    the file to be upload, if you want upload many file once, quote file paths using """ and split with ","
-    example:
-    client -u "/home/foo/bar1.tar.gz, /home/foo/bar1.tar.gz"
--d string 
-    the file to be download
--l string 
-    custom logging level: trace, debug, info, warning, error, and fatal
--n string 
-    custom download file name
---set string
-    set client config, for example: 
-    client --set "trackers=127.0.0.1:1022"
-    client --set "log_level=info"
+NAME:
+   godfs client cli
+USAGE:
+   client [global options] command [command options] [arguments...]
+VERSION:
+   1.1.0-beta
+COMMANDS:
+     upload    upload local files
+     download  download a file
+     inspect   inspect files information by md5
+     config    client cli configuration settings operation
+     help, h   Shows a list of commands or help for one command
+GLOBAL OPTIONS:
+   --trackers value               tracker servers (default: "127.0.0.1:1022")
+   --log_level value              log level (trace, debug, info, warm, error, fatal) (default: "info")
+   --log_rotation_interval value  log rotation interval h(hour),d(day),m(month),y(year) (default: "d")
+   --secret value                 secret of trackers (trace, debug, info, warm, error, fatal)
+   --help, -h                     show help
+   --version, -v                  print the version
 ```
 
 
 
 ## Monitoring
 
-godfs monitoring project is now avaliable at [HERE](https://github.com/hetianyi/godfs-dashboard)
+godfs monitoring project is now available at [HERE](https://github.com/hetianyi/godfs-dashboard)
 
 This project is currently under development and can monitor some basic status information of godfs.
 

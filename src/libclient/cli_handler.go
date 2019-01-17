@@ -155,8 +155,12 @@ func inspect()  {
 		if e != nil {
 			logger.Error("error inspect file", md5, "due to:", e)
 		} else {
-			bs, _ := json.MarshalIndent(fileVO, "", "  ")
-			fmt.Println(string(bs))
+			if fileVO == nil {
+				fmt.Println("file does not exist")
+			} else {
+				bs, _ := json.MarshalIndent(fileVO, "", "  ")
+				fmt.Println(string(bs))
+			}
 		}
 	})
 }
@@ -210,7 +214,7 @@ func listConfig() {
 	configTemp, err := ReadConf()
 	common.TOperation(err == nil, func() interface{} {
 		bs, _ := json.MarshalIndent(configTemp, "", "  ")
-		fmt.Println(bs)
+		fmt.Println(string(bs))
 		return nil
 	}, func() interface{} {
 		logger.Fatal(err)
