@@ -13,6 +13,8 @@ godfs
 You can pull the image on docker hub:
 [https://hub.docker.com/r/hehety/godfs/](https://hub.docker.com/r/hehety/godfs/)
 
+##### [2019-01-17 UPDATE] Latest Version 1.1.0+ is NOT compatible with previous versions!
+
 ##### [2018-12-05 UPDATE] Godfs is now support dashboard for monitoring godfs running state!
 
 project is here:[https://github.com/hetianyi/godfs-dashboard](https://github.com/hetianyi/godfs-dashboard)
@@ -275,4 +277,19 @@ And I will do more test in the future.
 
 
 
+## Update logs
 
+2019/01/17
+
+1. Import many 3rd part opensource libs for better performance include:
+
+   [github.com/mattn/go-sqlite3](https://github.com/mattn/go-sqlite3)
+   [github.com/jinzhu/gorm](github.com/jinzhu/gorm)
+   [github.com/json-iterator/go](github.com/json-iterator/go)
+   [github.com/urfave/cli](https://github.com/urfave/cli)
+
+2. Rewrite the underlying communication protocol which makes the program more scalable.
+
+3. Code refactoring
+
+4. Redesign client commands

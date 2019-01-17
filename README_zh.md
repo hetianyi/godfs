@@ -11,6 +11,14 @@ godfs
 你可以在docker hub上下载最新镜像:
 [https://hub.docker.com/r/hehety/godfs/](https://hub.docker.com/r/hehety/godfs/)
 
+##### [2019-01-17 更新] 注意：最新的版本 1.1.0+ 和之前版本不兼容！
+
+##### [2018-12-05 更新] Godfs 现已支持仪表盘来进行简单的资源监控了！
+
+项目地址:[https://github.com/hetianyi/godfs-dashboard](https://github.com/hetianyi/godfs-dashboard)
+
+
+
 ![architecture](/doc/20180830151005.png)
 
 ## 特性
@@ -70,13 +78,15 @@ cd godfs
 > 当然要先设置trackers服务器设置
 ```shell
 # 例如，为客户端设置tracker服务器
-client --set "trackers=host1:port1[,host2:port2]"
+client config set "trackers=host1:port1[,host2:port2]" "log_level=debug" ...
+# 打印当前的配置
+client config ls
 ```
 
 举个栗子，上传一个文件:
 
 ```shell
- client -u /you/upload/file
+ client upload [-g G01] /you/upload/file
 ```
 ![architecture](/doc/20180828095840.png)
 
@@ -84,7 +94,7 @@ client --set "trackers=host1:port1[,host2:port2]"
 
 你还可以用一个更酷的命令来上传一个文件夹下所有的文件:
 ```shell
-echo \"$(ls -m /f/foo)\" |xargs client -u
+client upload *
 ```
 ![architecture](/doc/20180828100341.png)
 
@@ -119,7 +129,7 @@ curl -F "file=@/your/file" "http://your.host:http_port/upload"
 
 ```shell
 # 下载文件
-client -d G01/10/M/2c9da7ea280c020db7f4879f8180dfd6 -n 123.zip
+client download G01/10/M/2c9da7ea280c020db7f4879f8180dfd6 --name 123.zip
 ```
 
 ### 从最新源代码构建docker镜像：
@@ -147,20 +157,25 @@ docker run -d -p 1024:1024 -p 80:8001 --name storage -v /godfs/data:/godfs/data 
 
 客户端命令:
 ```shell
--u string 
-    the file to be upload, if you want upload many file once, quote file paths using """ and split with ","
-    example:
-    client -u "/home/foo/bar1.tar.gz, /home/foo/bar1.tar.gz"
--d string 
-    the file to be download
--l string 
-    custom logging level: trace, debug, info, warning, error, and fatal
--n string 
-    custom download file name
---set string
-    set client config, for example: 
-    client --set "trackers=127.0.0.1:1022"
-    client --set "log_level=info"
+NAME:
+   godfs client cli
+USAGE:
+   client [global options] command [command options] [arguments...]
+VERSION:
+   1.1.0-beta
+COMMANDS:
+     upload    upload local files
+     download  download a file
+     inspect   inspect files information by md5
+     config    client cli configuration settings operation
+     help, h   Shows a list of commands or help for one command
+GLOBAL OPTIONS:
+   --trackers value               tracker servers (default: "127.0.0.1:1022")
+   --log_level value              log level (trace, debug, info, warm, error, fatal) (default: "info")
+   --log_rotation_interval value  log rotation interval h(hour),d(day),m(month),y(year) (default: "d")
+   --secret value                 secret of trackers (trace, debug, info, warm, error, fatal)
+   --help, -h                     show help
+   --version, -v                  print the version
 ```
 
 
@@ -254,3 +269,19 @@ storage server 配置(California)
 
 
 
+## 更新日志
+
+2019/01/17
+
+1. 为了更好的性能，引入许多开源组件:
+
+   [github.com/mattn/go-sqlite3](https://github.com/mattn/go-sqlite3)
+   [github.com/jinzhu/gorm](github.com/jinzhu/gorm)
+   [github.com/json-iterator/go](github.com/json-iterator/go)
+   [github.com/urfave/cli](https://github.com/urfave/cli)
+
+2. 重写了底层的TCP通讯协议，让程序的可拓展性更强。
+
+3. 代码重构
+
+4. 重新设计了client端命令，使之更加规范合理。
