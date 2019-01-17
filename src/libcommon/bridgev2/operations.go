@@ -9,6 +9,7 @@ const (
 	STATUS_INTERNAL_ERROR       byte = 2
 	STATUS_BAD_SECRET           byte = 3
 	STATUS_CONNECTION_POOL_FULL byte = 4
+	STATUS_INSTANCE_ID_EXISTS   byte = 5
 
 	FRAME_OPERATION_NONE                    byte = 0
 	FRAME_OPERATION_VALIDATE                byte = 2
@@ -33,6 +34,7 @@ func init() {
 	responseCodeMap[STATUS_INTERNAL_ERROR] = "internal server error"
 	responseCodeMap[STATUS_BAD_SECRET] = "bad secret"
 	responseCodeMap[STATUS_CONNECTION_POOL_FULL] = "connection pool is full"
+	responseCodeMap[STATUS_INSTANCE_ID_EXISTS] = "instance id is not unique"
 }
 
 func TranslateResponseMsg(code byte) string {

@@ -279,6 +279,11 @@ func (server *ServerInfo) SwitchAccessFlag() {
 }
 
 func (server *ServerInfo) GetHostAndPortByAccessFlag() (host string, port int) {
+	if server.IsTracker {
+		server.AdvertiseAddr = server.Host
+		server.AdvertisePort = server.Port
+		return server.Host, server.Port
+	}
 	if server.AccessFlag == ACCESS_FLAG_NONE {
 		// if run as client, always try from advertise ip
 		if RUN_WITH == 3 {
@@ -295,9 +300,8 @@ func (server *ServerInfo) GetHostAndPortByAccessFlag() (host string, port int) {
 }
 
 type ClientConfig struct {
-	Trackers            []string
-	LogEnable           bool   `json:"files"`
-	LogLevel            string `json:"files"`
-	LogRotationInterval string `json:"files"`
-	Secret              string `json:"files"`
+	Trackers            []string `json:"trackers"`
+	LogLevel            string   `json:"log_level"`
+	LogRotationInterval string   `json:"log_rotation_interval"`
+	Secret              string   `json:"secret"`
 }

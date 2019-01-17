@@ -21,12 +21,15 @@ func NewTcpClient(server *app.ServerInfo) *TcpBridgeClient {
 }
 
 func (client *TcpBridgeClient) GetConnManager() *ConnectionManager {
+    if client.connManager == nil {
+        return &ConnectionManager{}
+    }
 	return client.connManager
 }
 
 // connect to server
 func (client *TcpBridgeClient) Connect() error {
-    if client.connManager.state > STATE_NOT_CONNECT {
+    if client.connManager != nil && client.connManager.State > STATE_NOT_CONNECT {
         panic(errors.New("already connected"))
     }
     conn, err := connPool.GetConn(client.server)
@@ -41,7 +44,7 @@ func (client *TcpBridgeClient) Connect() error {
         Side: CLIENT_SIDE,
         Md: md5.New(),
     }
-    client.connManager.state = STATE_CONNECTED
+    client.connManager.State = STATE_CONNECTED
     return nil
 }
 
@@ -62,7 +65,7 @@ func (client *TcpBridgeClient) Validate() (*ConnectResponseMeta, error) {
         return nil, e1
     }
     if frame.GetStatus() == STATUS_SUCCESS {
-        client.connManager.state = STATE_VALIDATED
+        client.connManager.State = STATE_VALIDATED
         client.connManager.UUID = res.UUID
     }
     return res, nil

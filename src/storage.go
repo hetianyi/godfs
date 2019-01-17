@@ -3,6 +3,7 @@ package main
 import (
 	"app"
 	"github.com/urfave/cli"
+	"libclient"
 	"libstorage"
 	"os"
 	"path/filepath"
@@ -27,10 +28,10 @@ func main() {
 	initStorageFlags()
 
 	var confPath string
-	if file.IsAbsPath(ConfigFile) {
-		confPath = ConfigFile
+	if file.IsAbsPath(libclient.ConfigFile) {
+		confPath = libclient.ConfigFile
 	} else {
-		confPath = s + string(filepath.Separator) + ConfigFile
+		confPath = s + string(filepath.Separator) + libclient.ConfigFile
 	}
 
 	logger.Info("using config file:", confPath)
@@ -59,7 +60,7 @@ func initStorageFlags() {
 			Name:        "config, c",
 			Value:       "../conf/tracker.conf",
 			Usage:       "load config from `FILE`",
-			Destination: &ConfigFile,
+			Destination: &libclient.ConfigFile,
 		},
 	}
 

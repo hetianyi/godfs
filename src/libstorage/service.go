@@ -151,6 +151,7 @@ func initDbStatistic() {
 		statistic, e := libservicev2.QuerySystemStatistic()
 		if e != nil {
 			logger.Error("error query statistic info:", e)
+			time.Sleep(time.Second * 5)
 			continue
 		} else {
 			app.FILE_TOTAL = statistic.FileCount
@@ -160,7 +161,7 @@ func initDbStatistic() {
 			logger.Info("+---------------------------+")
 			logger.Info("* file count       :", app.FILE_TOTAL)
 			logger.Info("* sync finish count:", app.FILE_FINISH)
-			logger.Info("* disk usage       :", libcommon.HumanReadable(app.DISK_USAGE, 1000)) //TODO not right
+			logger.Info("* disk usage       :", libcommon.HumanReadable(app.DISK_USAGE, 1000))
 			logger.Info("+---------------------------+")
 			break
 		}

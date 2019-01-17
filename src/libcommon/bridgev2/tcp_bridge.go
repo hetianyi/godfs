@@ -27,6 +27,7 @@ func init() {
 }
 
 // common connection manager
+// server connection dont't has server info
 type ConnectionManager struct {
 	// storage server info
 	server *app.ServerInfo
@@ -39,7 +40,7 @@ type ConnectionManager struct {
     // 1: connected but not validate
     // 2: validated
     // 3: disconnected
-    state int
+    State int
     UUID string // storage uuid, this field is used by server side.
 }
 
@@ -52,6 +53,12 @@ func (manager *ConnectionManager) Close() {
 
 // close manager and close connection.
 func (manager *ConnectionManager) Destroy() {
+    if manager.server == nil {
+        if manager.Conn != nil {
+            manager.Conn.Close()
+        }
+        return
+    }
 	if manager.Conn != nil {
 		connPool.ReturnBrokenConnBridge(manager.server, manager.Conn)
 	}
@@ -70,8 +77,8 @@ func (manager *ConnectionManager) Send(frame *Frame) error {
 
 // assert status.
 func (manager *ConnectionManager) RequireStatus(requiredState int) error {
-    if manager.state < requiredState {
-        panic(errors.New("connect state not satisfied, expect " + strconv.Itoa(requiredState) + ", now is " + strconv.Itoa(manager.state)))
+    if manager.State < requiredState {
+        panic(errors.New("connect state not satisfied, expect " + strconv.Itoa(requiredState) + ", now is " + strconv.Itoa(manager.State)))
     }
     return nil
 }

@@ -21,7 +21,7 @@ import (
 	"sync"
 	"time"
 	"util/common"
-	"util/json"
+	json "github.com/json-iterator/go"
 	"util/logger"
 	"util/timeutil"
 )
@@ -407,8 +407,8 @@ func readFileBody(reader *FileFormReader, buffer []byte, separator string, md ha
 	var totalSize int64 = 0
 	for ele := stateUploadStatus.fileParts.Front(); ele != nil; ele = ele.Next() {
 		parts[index] = *ele.Value.(*app.PartDO)
-		index++
 		totalSize += parts[index].Size
+		index++
 	}
 	finalFile.Parts = parts
 	finalFile.FileSize = totalSize

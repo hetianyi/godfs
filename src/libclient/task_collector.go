@@ -60,11 +60,6 @@ func (collector *TaskCollector) Start(tracker *TrackerInstance) {
 	timer := time.NewTicker(collector.Interval)
 	execTimes := 0
 	for {
-		if collector.ExecTimes > 0 && execTimes >= collector.ExecTimes {
-			logger.Debug("stop collector \""+collector.Name+"\"", "of tracker", tracker.ConnStr, "because of max execute times reached.")
-			timer.Stop()
-			break
-		}
 		time.Sleep(collector.FirstDelay)
 		if collector.Name != "" {
 			logger.Trace("exec task collector:", collector.Name, "of tracker", tracker.ConnStr)
@@ -75,6 +70,13 @@ func (collector *TaskCollector) Start(tracker *TrackerInstance) {
 			logger.Error("task collector \""+collector.Name+"\" return error:", i)
 		})
 		execTimes++
+		if collector.ExecTimes > 0 && execTimes >= collector.ExecTimes {
+			logger.Debug("stop collector \""+collector.Name+"\"", "of tracker", tracker.ConnStr, "because of max execute times reached.")
+			timer.Stop()
+			// if there is no task, tracker instance can stop in the future
+			tracker.nextRun = false
+			break
+		}
 		<-timer.C
 	}
 }

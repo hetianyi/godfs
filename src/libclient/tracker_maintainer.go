@@ -43,6 +43,7 @@ func init() {
 type TrackerMaintainer struct {
 	Collectors       list.List
 	TrackerInstances list.List
+	DieCallback func(tracker string)
 }
 
 
@@ -121,6 +122,11 @@ func (maintainer *TrackerMaintainer) track(tracker string, secret string) {
 	// actually used by dashboard
 	registerTrackerInstance(trackerInstance)
 	defer unRegisterTrackerInstance(trackerInstance.ConnStr)
+	defer func() {
+		if maintainer.DieCallback != nil {
+			maintainer.DieCallback(tracker)
+		}
+	}()
 
 	for { // keep trying to connect to tracker server.
 		// dashboard need to controller starting or stopping tracker instance
@@ -146,7 +152,7 @@ func (maintainer *TrackerMaintainer) track(tracker string, secret string) {
 					break
 				}
 			} else {
-				if respMeta.New4Tracker {
+				if respMeta.New4Tracker && app.RUN_WITH == 1 {
 					logger.Info("I'm new to tracker", tracker, "("+ respMeta.UUID +")")
 				}
 				trackerInstance.Ready = true
@@ -157,15 +163,15 @@ func (maintainer *TrackerMaintainer) track(tracker string, secret string) {
 				ele := maintainer.TrackerInstances.PushBack(trackerInstance)
 
 				for { // keep sending client statistic info to tracker server.
-					// controller next run
-					if !trackerInstance.nextRun {
-						logger.Warn("stop next run of tracker instance:", tracker)
-						break
-					}
-
 					// fetch a task and execute
 					task := trackerInstance.GetTask()
 					if task == nil {
+						// controller next run
+						// when tracker instance has no task and next run is disabled, this instance can stop
+						if !trackerInstance.nextRun {
+							logger.Debug("stop next run of tracker instance:", tracker)
+							break
+						}
 						logger.Trace("no task available", tracker)
 						time.Sleep(time.Second * 1)
 						continue
@@ -200,7 +206,9 @@ func (maintainer *TrackerMaintainer) track(tracker string, secret string) {
 		}
 		retry++
 		// try to connect 10 seconds later
-		time.Sleep(time.Second * 10)
+		if trackerInstance.nextRun {
+			time.Sleep(time.Second * 10)
+		}
 	}
 }
 
@@ -211,8 +219,8 @@ func storeMembers(members []app.StorageDO) {
 	now := timeutil.GetTimestamp(time.Now())
 	for e := GroupMembers.Front(); e != nil; {
 		next := e.Next()
-		m := e.Value.(*bridge.ExpireMember)
-		if timeutil.GetTimestamp(m.ExpireTime) <= now {
+		m := e.Value.(app.StorageDO)
+		if m.ExpireTime <= now {
 			GroupMembers.Remove(e)
 		}
 		e = next
@@ -224,10 +232,10 @@ func storeMembers(members []app.StorageDO) {
 		a := members[i]
 		exists := false
 		for e := GroupMembers.Front(); e != nil; e = e.Next() {
-			m := e.Value.(*bridge.ExpireMember)
+			m := e.Value.(app.StorageDO)
 			if a.InstanceId == m.InstanceId {
 				exists = true
-				m.ExpireTime = time.Now().Add(time.Second * 61)
+				m.ExpireTime = timeutil.GetTimestamp(time.Now().Add(time.Second * 61))
 			}
 		}
 		if !exists {

@@ -76,7 +76,7 @@ func TaskRegisterFileHandler(tracker *TrackerInstance) (bool, error) {
 	i := 0
 	var maxId int64 = 0
 	for ele := files.Front(); ele != nil; ele = ele.Next() {
-		fs[i] = *new(app.FileVO).From(ele.Value.(*app.FileDO))
+		fs[i] = *ele.Value.(*app.FileVO)
 		if maxId < fs[i].Id {
 			maxId = fs[i].Id
 		}

@@ -22,17 +22,16 @@ func init() {
 
 // register handlers as a server side.
 func registerOperationHandlers() {
-	if app.UPLOAD_ENABLE {
-		bridgev2.RegisterOperationHandler(&bridgev2.OperationHandler{bridgev2.FRAME_OPERATION_VALIDATE, bridgev2.ValidateConnectionHandler})
-		bridgev2.RegisterOperationHandler(&bridgev2.OperationHandler{bridgev2.FRAME_OPERATION_UPLOAD_FILE, UploadFileHandler})
-		bridgev2.RegisterOperationHandler(&bridgev2.OperationHandler{bridgev2.FRAME_OPERATION_DOWNLOAD_FILE, DownFileHandler})
-	}
+	logger.Debug("register server handlers")
+	bridgev2.RegisterOperationHandler(&bridgev2.OperationHandler{bridgev2.FRAME_OPERATION_VALIDATE, libcommon.ValidateConnectionHandler})
+	bridgev2.RegisterOperationHandler(&bridgev2.OperationHandler{bridgev2.FRAME_OPERATION_UPLOAD_FILE, UploadFileHandler})
+	bridgev2.RegisterOperationHandler(&bridgev2.OperationHandler{bridgev2.FRAME_OPERATION_DOWNLOAD_FILE, DownFileHandler})
 }
 
 // upload file handler.
 func UploadFileHandler(manager *bridgev2.ConnectionManager, frame *bridgev2.Frame) error {
 	if frame == nil {
-		return bridgev2.NULL_FRAME_ERR
+		return libcommon.NULL_FRAME_ERR
 	}
 	manager.Md.Reset()
 	logger.Info("begin read file body, file len is ", frame.BodyLength/1024, "KB")
@@ -188,7 +187,7 @@ func UploadFileHandler(manager *bridgev2.ConnectionManager, frame *bridgev2.Fram
 // download file handler.
 func DownFileHandler(manager *bridgev2.ConnectionManager, frame *bridgev2.Frame) error {
 	if frame == nil {
-		return bridgev2.NULL_FRAME_ERR
+		return libcommon.NULL_FRAME_ERR
 	}
 
 
@@ -207,7 +206,7 @@ func DownFileHandler(manager *bridgev2.ConnectionManager, frame *bridgev2.Frame)
 		responseFrame.SetStatus(bridgev2.STATUS_SUCCESS)
 		responseFrame.SetMeta(resMeta)
 		responseFrame.SetMetaBodyLength(0)
-		return manager.Send(frame)
+		return manager.Send(responseFrame)
 	}
 	md5 := regexp.MustCompile(app.PATH_REGEX).ReplaceAllString(meta.Path, "${4}")
 

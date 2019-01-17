@@ -109,6 +109,10 @@ func GetTimestamp(t time.Time) int64 {
 	return t.UnixNano() / 1e6
 }
 
+func CreateTime(millis int64) time.Time {
+	return time.Unix(millis, 0)
+}
+
 // get current timestamp in Nanosecond.
 func GetNanosecond(t time.Time) int64 {
 	return t.UnixNano()

@@ -34,7 +34,7 @@ advertise_port=1025
 base_path=E:/godfs-storage/storage1
 
 
-trackers=192.168.0.105:1022,192.168.0.105:1023
+trackers=127.0.0.1:1022
 
 # secret用于服务通信时校验身份
 # 服务之间建立通信时会校验secret

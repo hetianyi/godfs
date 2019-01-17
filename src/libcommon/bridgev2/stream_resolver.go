@@ -38,7 +38,7 @@ func ReadBytes(buff []byte, len int, manager *ConnectionManager, md hash.Hash) (
         }
         l, e := manager.Conn.Read(buff[read:len])
         if l == 0 || e == io.EOF {
-            manager.Close()
+            manager.Destroy()
             return 0, READ_ERROR
         }
         if l <= len {
@@ -119,11 +119,11 @@ func writeFrame(manager *ConnectionManager, frame *Frame) error {
     // write frame meta
     len1, e2 := manager.Conn.Write(bs)
     if e2 != nil {
-        manager.Close()
+        manager.Destroy()
         return e2
     }
     if len1 != headerBuff.Len() {
-        manager.Close()
+        manager.Destroy()
         return SEND_HEAD_BYTES_ERROR
     }
     app.UpdateIOOUT(int64(headerBuff.Len()))

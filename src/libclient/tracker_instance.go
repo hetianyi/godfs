@@ -3,7 +3,6 @@ package libclient
 import (
 	"app"
 	"container/list"
-	"libcommon/bridge"
 	"libcommon/bridgev2"
 	"sync"
 	"util/logger"
@@ -64,7 +63,7 @@ func (tracker *TrackerInstance) checkTaskTypeCount(taskType int) int {
 	defer tracker.listIteLock.Unlock()
 	count := 0
 	for e := tracker.taskList.Front(); e != nil; e = e.Next() {
-		if e.Value != nil && e.Value.(*bridge.Task).TaskType == taskType {
+		if e.Value != nil && e.Value.(*bridgev2.Task).TaskType == taskType {
 			count++
 		}
 	}

@@ -3,9 +3,9 @@ package main
 import (
 	"app"
 	"container/list"
-	json "github.com/json-iterator/go"
 	"fmt"
 	"github.com/urfave/cli"
+	"io/ioutil"
 	"libclient"
 	"libcommon"
 	"libcommon/bridgev2"
@@ -16,26 +16,13 @@ import (
 	"time"
 	"util/file"
 	"util/logger"
-	"io/ioutil"
 	"validate"
-)
-
-var (
-	ConfigFile string
-	Trackers string
-	LogLevel string
-	LogRotationInterval string
-	LogEnable = true
-	Secret string
-	UploadFileList list.List
-	Group string
-	CustomFileName string
-	SetConfig string
 )
 
 var checkChan chan int
 var client *libclient.Client
 var trackerList *list.List
+var command = libclient.COMMAND_NONE
 
 func main() {
 	checkChan = make(chan int)
@@ -50,8 +37,38 @@ func main() {
 
 	initClientFlags()
 
+	// config file path
+	prepareClient()
 
+	if command == libclient.COMMAND_UPLOAD || command == libclient.COMMAND_DOWNLOAD || command == libclient.COMMAND_INSPECT_FILE {
+		flagVarPreCheck()
+		client = InitClient()
+	}
+	libclient.ExecuteCommand(client, command)
+}
 
+func flagVarPreCheck() {
+	if command == libclient.COMMAND_UPLOAD {
+		if libclient.UploadFileList.Len() == 0 {
+			logger.Info("no file to be upload")
+			os.Exit(0)
+		}
+	} else if command == libclient.COMMAND_DOWNLOAD {
+		if libclient.DownloadFilePath == "" {
+			logger.Fatal("no download filepath specified")
+			os.Exit(110)
+		}
+	} else if command == libclient.COMMAND_INSPECT_FILE {
+		if libclient.InspectFileList.Len() == 0 {
+			logger.Fatal("no md5 specified to inspect")
+			os.Exit(111)
+		}
+	} else if command == libclient.COMMAND_UPDATE_CONFIG {
+		if libclient.UpdateConfigList.Len() == 0 {
+			logger.Fatal("no config provide for update")
+			os.Exit(112)
+		}
+	}
 }
 
 
@@ -65,42 +82,36 @@ func initClientFlags() {
 	// config file location
 	appFlag.Flags = []cli.Flag {
 		cli.StringFlag{
-			Name:        "trackers, t",
+			Name:        "trackers",
 			Value:       "127.0.0.1:1022",
-			Usage:       "tracker servers `TRACKERS`",
-			Destination: &Trackers,
+			Usage:       "tracker servers",
+			Destination: &libclient.Trackers,
 		},
 		cli.StringFlag{
-			Name:        "log_level, ll",
+			Name:        "log_level",
 			Value:       "info",
-			Usage:       "log level `LOG_LEVEL` (trace, debug, info, warm, error, fatal)",
-			Destination: &LogLevel,
+			Usage:       "log level (trace, debug, info, warm, error, fatal)",
+			Destination: &libclient.LogLevel,
 		},
 		cli.StringFlag{
-			Name:        "log_rotation_interval, li",
+			Name:        "log_rotation_interval",
 			Value:       "d",
-			Usage:       "log rotation interval `LOG_ROTATION_INTERVAL` h(hour),d(day),m(month),y(year)",
-			Destination: &LogRotationInterval,
+			Usage:       "log rotation interval h(hour),d(day),m(month),y(year)",
+			Destination: &libclient.LogRotationInterval,
 		},
-		cli.BoolTFlag{
+		/*cli.BoolTFlag{
 			Name:        "log_enable, le",
 			Usage:       "whether enable log `LOG_ENABLE` (true, false)",
-			Destination: &LogEnable,
+			Destination: &libclient.LogEnable,
 
-		},
+		},*/
 		cli.StringFlag{
-			Name:        "secret, s",
+			Name:        "secret",
 			Value:       "",
-			Usage:       "secret of trackers `LOG_LEVEL` (trace, debug, info, warm, error, fatal)",
-			Destination: &Secret,
+			Usage:       "secret of trackers (trace, debug, info, warm, error, fatal)",
+			Destination: &libclient.Secret,
 		},
 	}
-
-
-	// config file path
-	config := prepareClient()
-	logger.SetEnable(config.LogEnable)
-	validate.SetSystemLogLevel(config.LogLevel)
 
 	// sub command 'upload'
 	appFlag.Commands = []cli.Command{
@@ -108,6 +119,7 @@ func initClientFlags() {
 			Name:    "upload",
 			Usage:   "upload local files",
 			Action:  func(c *cli.Context) error {
+				command = libclient.COMMAND_UPLOAD
 				abs, _ := filepath.Abs(os.Args[0])
 				dir := abs + string(os.PathSeparator) + ".."
 				absPath, _ := filepath.Abs(dir)
@@ -117,7 +129,7 @@ func initClientFlags() {
 					for i := range files {
 						if !files[i].IsDir() {
 							logger.Debug("adding file:", files[i].Name())
-							UploadFileList.PushBack(absPath + string(os.PathSeparator) + files[i].Name())
+							libclient.UploadFileList.PushBack(absPath + string(os.PathSeparator) + files[i].Name())
 						}
 					}
 				} else {
@@ -128,14 +140,11 @@ func initClientFlags() {
 							f, _ = filepath.Abs(absPath + string(os.PathSeparator) + f)
 						}
 						if file.Exists(f) && file.IsFile(f) {
-							UploadFileList.PushBack(f)
+							libclient.UploadFileList.PushBack(f)
 						} else {
 							logger.Warn("file", f, "not exists or not a file, skip.")
 						}
 					}
-				}
-				if UploadFileList.Len() == 0 {
-					logger.Fatal("no file to be upload")
 				}
 				return nil
 			},
@@ -144,7 +153,7 @@ func initClientFlags() {
 					Name:        "group, g",
 					Value:       "",
 					Usage:       "group to be upload",
-					Destination: &Group,
+					Destination: &libclient.Group,
 				},
 			},
 		},
@@ -152,7 +161,9 @@ func initClientFlags() {
 			Name:    "download",
 			Usage:   "download a file",
 			Action:  func(c *cli.Context) error {
+				command = libclient.COMMAND_DOWNLOAD
 				fmt.Println("download file is: ", c.Args().First())
+				libclient.DownloadFilePath = c.Args().First()
 				return nil
 			},
 			Flags: []cli.Flag {
@@ -160,7 +171,7 @@ func initClientFlags() {
 					Name:        "name, n",
 					Value:       "",
 					Usage:       "filename for download file, if not specified, use md5 as filename",
-					Destination: &CustomFileName,
+					Destination: &libclient.CustomFileName,
 				},
 			},
 		},
@@ -168,9 +179,9 @@ func initClientFlags() {
 			Name:    "inspect",
 			Usage:   "inspect files information by md5",
 			Action:  func(c *cli.Context) error {
-				fmt.Println("get files is: ")
+				command = libclient.COMMAND_INSPECT_FILE
 				for i := range c.Args() {
-					fmt.Println(c.Args().Get(i))
+					libclient.InspectFileList.PushBack(c.Args().Get(i))
 				}
 				return nil
 			},
@@ -179,18 +190,17 @@ func initClientFlags() {
 			Name:    "config",
 			Usage:   "client cli configuration settings operation",
 			Action:  func(c *cli.Context) error {
-				fmt.Println("get files is: ")
-				for i := range c.Args() {
-					fmt.Println(c.Args().Get(i))
-				}
 				return nil
 			},
 			Subcommands: []cli.Command{
 				{
 					Name:  "set",
-					Usage: "set client cli configuration in 'key=value' form (available keys: log, trackers, secret, log_enable, log_rotation_interval)",
+					Usage: "set client cli configuration in 'key=value' form (available keys: trackers, log_enable, log_level, log_rotation_interval, secret)",
 					Action: func(c *cli.Context) error {
-						fmt.Println("upload file is: ", c.Args().First())
+						command = libclient.COMMAND_UPDATE_CONFIG
+						for i := range c.Args() {
+							libclient.UpdateConfigList.PushBack(c.Args().Get(i))
+						}
 						return nil
 					},
 				},
@@ -198,12 +208,34 @@ func initClientFlags() {
 					Name:  "list",
 					Usage: "list client cli configurations",
 					Action: func(c *cli.Context) error {
+						command = libclient.COMMAND_LIST_CONFIG
 						return nil
 					},
 				},
 			},
 		},
 	}
+	// 帮助文件模板
+	cli.AppHelpTemplate = `NAME:
+   {{.Name}}{{if .Usage}} - {{.Usage}}{{end}}
+USAGE:
+   {{if .UsageText}}{{.UsageText}}{{else}}{{.HelpName}} {{if .VisibleFlags}}[global options]{{end}}{{if .Commands}} command [command options]{{end}} {{if .ArgsUsage}}{{.ArgsUsage}}{{else}}[arguments...]{{end}}{{end}}{{if .Version}}{{if not .HideVersion}}
+VERSION:
+   {{.Version}}{{end}}{{end}}{{if .Description}}
+DESCRIPTION:
+   {{.Description}}{{end}}{{if len .Authors}}
+AUTHOR{{with $length := len .Authors}}{{if ne 1 $length}}S{{end}}{{end}}:
+   {{range $index, $author := .Authors}}{{if $index}}
+   {{end}}{{$author}}{{end}}{{end}}{{if .VisibleCommands}}
+COMMANDS:{{range .VisibleCategories}}{{if .Name}}
+   {{.Name}}:{{end}}{{range .VisibleCommands}}
+     {{join .Names ", "}}{{"\t"}}{{.Usage}}{{end}}{{end}}{{end}}{{if .VisibleFlags}}
+GLOBAL OPTIONS:
+   {{range $index, $option := .VisibleFlags}}{{if $index}}
+   {{end}}{{$option}}{{end}}{{end}}{{if .Copyright}}
+COPYRIGHT:
+   {{.Copyright}}{{end}}
+`
 
 	err := appFlag.Run(os.Args)
 	if err != nil {
@@ -217,86 +249,92 @@ func initClientFlags() {
 func prepareClient() *app.ClientConfig {
 	user, e := user.Current()
 	if e != nil {
-		logger.Fatal(e)
+		fmt.Println("cannot get system user:", e)
+		os.Exit(100)
 	}
-	basdir := user.HomeDir + string(os.PathSeparator) + ".godfs"
-	app.BASE_PATH = basdir
-	if !file.Exists(basdir) {
-		if e1 := file.CreateDir(basdir); e != nil {
-			logger.Fatal("cannot create directory:", e1)
+	basDir := user.HomeDir + string(os.PathSeparator) + ".godfs"
+	app.BASE_PATH = basDir
+	if !file.Exists(basDir) {
+		if e1 := file.CreateDir(basDir); e != nil {
+			fmt.Println("cannot create directory:", e1)
+			os.Exit(101)
 		}
 	}
-	confFilePath := basdir + string(os.PathSeparator) + "config.json"
+	confFilePath := basDir + string(os.PathSeparator) + "config.json"
 	if !file.Exists(confFilePath) {
 		config := &app.ClientConfig{
 			Trackers: []string{"127.0.0.1:1022"},
-			LogEnable: true,
 			LogLevel: "info",
 			LogRotationInterval: "m",
 			Secret: "",
 		}
-		if e2 := writeConf(config); e2 != nil {
-			logger.Fatal("error write config file:", e2)
+		if e2 := libclient.WriteConf(config); e2 != nil {
+			fmt.Println("error write config file:", e2)
+			os.Exit(102)
 		}
 	}
 
-	logFilePath := basdir + string(os.PathSeparator) + "logs"
+	logFilePath := basDir + string(os.PathSeparator) + "logs"
 	if !file.Exists(logFilePath) {
 		if e1 := file.CreateDir(logFilePath); e != nil {
-			logger.Fatal("cannot create directory:", e1)
+			fmt.Println("cannot create directory:", e1)
+			os.Exit(103)
 		}
 	}
 
-	config, e3 := readConf()
+	config, e3 := libclient.ReadConf()
 	if e != nil {
-		logger.Fatal("error read config file:", e3.Error())
+		fmt.Println("error read config file:", e3.Error())
+		os.Exit(104)
 	}
 
-	app.BASE_PATH = basdir
+	app.BASE_PATH = basDir
 	app.TRACKERS = strings.Join(config.Trackers, ",")
-	if Trackers != "" {
-		app.TRACKERS = Trackers
+	if libclient.Trackers != "" {
+		app.TRACKERS = libclient.Trackers
+		config.Trackers = strings.Split(app.TRACKERS, ",")
 	}
 
 	app.SECRET = strings.TrimSpace(config.Secret)
-	if Secret != "" {
-		app.SECRET = Secret
-	}
-
-	// enable log config
-	app.LOG_ENABLE = LogEnable
-	config.LogEnable = LogEnable
-
-	// check log_level
-	logLevel := strings.ToLower(strings.TrimSpace(config.LogLevel))
-	if logLevel != "trace" && logLevel != "debug" && logLevel != "info" && logLevel != "warn" &&
-		logLevel != "error" && logLevel != "fatal" {
-		config.LogLevel = "info"
-	}
-
-	if LogLevel != "" {
-		if LogLevel != "trace" && LogLevel != "debug" && LogLevel != "info" && LogLevel != "warn" &&
-			LogLevel != "error" && LogLevel != "fatal" {
-			LogLevel = "info"
-		}
-		config.LogLevel = LogLevel
+	if libclient.Secret != "" {
+		app.SECRET = libclient.Secret
+		config.Secret = app.SECRET
 	}
 
 	// check log_rotation_interval
 	logRotationInterval := strings.ToLower(strings.TrimSpace(config.LogRotationInterval))
-	if logRotationInterval != "h" && logRotationInterval != "d" &&
-		logRotationInterval != "m" && logRotationInterval != "y" {
-		config.LogRotationInterval = "d"
+	if app.LOG_ROTATION_SETS[logRotationInterval] == 0 {
+		logRotationInterval = "d"
 	}
-	if LogRotationInterval != "" {
-		if LogRotationInterval != "h" && LogRotationInterval != "d" &&
-			LogRotationInterval != "m" && LogRotationInterval != "y" {
-			LogRotationInterval = "d"
+	config.LogRotationInterval = logRotationInterval
+
+	if libclient.LogRotationInterval != "" {
+		if app.LOG_ROTATION_SETS[libclient.LogRotationInterval] == 0 {
+			libclient.LogRotationInterval = "d"
+			config.LogRotationInterval = libclient.LogRotationInterval
 		}
-		config.LogRotationInterval = LogRotationInterval
 	}
+
 	app.LOG_INTERVAL = config.LogRotationInterval
 
+	// enable log config
+	app.LOG_ENABLE = libclient.LogEnable
+	logger.SetEnable(app.LOG_ENABLE)
+
+	// check log_level
+	logLevel := strings.ToLower(strings.TrimSpace(config.LogLevel))
+	if app.LOG_LEVEL_SETS[logLevel] == 0 {
+		logLevel = "info"
+	}
+	config.LogLevel = logLevel
+
+	if libclient.LogLevel != "" {
+		if app.LOG_LEVEL_SETS[libclient.LogLevel] == 0 {
+			libclient.LogLevel = "info"
+			config.LogLevel = libclient.LogLevel
+		}
+	}
+	validate.SetSystemLogLevel(config.LogLevel)
 	return config
 }
 
@@ -314,6 +352,10 @@ func InitClient() *libclient.Client {
 	collectors.PushBack(&collector)
 	maintainer := &libclient.TrackerMaintainer{Collectors: *collectors}
 	client.TrackerMaintainer = maintainer
+	maintainer.DieCallback = func(tracker string) {
+		logger.Debug("finish a tracker:", tracker)
+		checkChan <- 1
+	}
 
 	trackerList := libcommon.ParseTrackers(app.TRACKERS)
 	trackerMap := make(map[string]string)
@@ -323,67 +365,25 @@ func InitClient() *libclient.Client {
 		}
 	}
 	maintainer.Maintain(trackerMap)
-	logger.Info("synchronize with trackers...")
+	logger.Info("synchronizing with trackers...")
 	for i := 0; i < trackerList.Len(); i++ {
 		<-checkChan
 	}
+	logger.Info("finish synchronizing with all trackers")
+
+	// check storage members
+	if libclient.GroupMembers.Len() == 0 &&
+		(command == libclient.COMMAND_DOWNLOAD || command == libclient.COMMAND_UPLOAD) {
+		logger.Fatal("cannot upload or download file, no storage server available")
+	}
 	return client
 }
+
 
 func clientMonitorCollector(tracker *libclient.TrackerInstance) {
 	logger.Debug("create sync task for tracker:", tracker.ConnStr)
 	task := &bridgev2.Task{
 		TaskType: app.TASK_SYNC_ALL_STORAGES,
-		Callback: func(task *bridgev2.Task, e error) {
-			logger.Debug("finish a tracker:", tracker.ConnStr)
-			checkChan <- 1
-		},
 	}
 	libclient.AddTask(task, tracker)
 }
-
-
-// write client config to file.
-func writeConf(clientConfig *app.ClientConfig) error {
-	fi, e := file.CreateFile(app.BASE_PATH + string(os.PathSeparator) + "config.json")
-	if e != nil {
-		return e
-	}
-	defer fi.Close()
-	bs, e1 := json.MarshalIndent(clientConfig, "", "  ")
-	if e1 != nil {
-		return e1
-	}
-	fi.Write(bs)
-	return nil
-}
-
-// read client config
-func readConf() (*app.ClientConfig, error) {
-	configFile, e := file.GetFile(app.BASE_PATH + string(os.PathSeparator) + "config.json")
-	if e != nil {
-		return nil, e
-	}
-	defer configFile.Close()
-
-	fi, e1 := configFile.Stat()
-	if e1 != nil {
-		return nil, e1
-	}
-
-	buffer, e2 := bridgev2.MakeBytes(fi.Size(), true, 10240, true)
-	if e2 != nil {
-		return nil, e2
-	}
-	_, e3 := configFile.Read(buffer)
-	if e3 != nil {
-		return nil, e3
-	}
-	var config = &app.ClientConfig{}
-	e4 := json.Unmarshal(buffer, config)
-	if e4 != nil {
-		return nil, e4
-	}
-	return config, nil
-}
-

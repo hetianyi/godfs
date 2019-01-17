@@ -3,6 +3,7 @@ package libclient
 import (
 	"app"
 	"container/list"
+	json "github.com/json-iterator/go"
 	"errors"
 	"fmt"
 	"io"
@@ -14,19 +15,64 @@ import (
 	"regexp"
 	"strings"
 	"time"
+	"util/common"
 	"util/file"
 	"util/logger"
 	"util/timeutil"
 )
 
+const (
+	COMMAND_NONE          = 0
+	COMMAND_UPLOAD        = 1
+	COMMAND_DOWNLOAD      = 2
+	COMMAND_LIST_CONFIG   = 3
+	COMMAND_UPDATE_CONFIG = 4
+	COMMAND_INSPECT_FILE  = 5
+)
+
+var (
+	ConfigFile          string
+	Trackers            string
+	LogLevel            string
+	LogRotationInterval string
+	LogEnable           = true
+	Secret              string
+	UploadFileList      list.List
+	UpdateConfigList    list.List
+	InspectFileList     list.List
+	Group               string
+	DownloadFilePath	string
+	CustomFileName      string
+	SetConfig           string
+)
+
+var client *Client
+var skipCheck = false
+
+func ExecuteCommand(_client *Client, command int) {
+	client = _client
+	switch command {
+	case COMMAND_LIST_CONFIG:
+		listConfig()
+	case COMMAND_UPDATE_CONFIG:
+		UpdateConfig()
+	case COMMAND_UPLOAD:
+		upload()
+	case COMMAND_DOWNLOAD:
+		download()
+	case COMMAND_INSPECT_FILE:
+		inspect()
+	}
+}
+
 // upload files
 // paths: file path to be upload
 // group: file upload group, if not set, use random group
 // skipCheck: whether check md5 before upload
-func upload(client *Client, files *list.List, group string, skipCheck bool) error {
-	for ele := files.Front(); ele != nil; ele = ele.Next() {
+func upload() {
+	for ele := UploadFileList.Front(); ele != nil; ele = ele.Next() {
 		var startTime = time.Now()
-		fid, e := client.Upload(ele.Value.(string), group, startTime, skipCheck)
+		fid, e := client.Upload(ele.Value.(string), Group, startTime, skipCheck)
 		if e != nil {
 			logger.Error(e)
 		} else {
@@ -37,28 +83,28 @@ func upload(client *Client, files *list.List, group string, skipCheck bool) erro
 			fmt.Println("+-------------------------------------------+")
 		}
 	}
-	return nil
 }
 
-func download(client *Client, path string, customDownloadFileName string) error {
+// download file
+func download() {
+	DownloadFilePath = strings.TrimSpace(DownloadFilePath)
+	if strings.Index(DownloadFilePath, "/") != 0 {
+		DownloadFilePath = "/" + DownloadFilePath
+	}
 	filePath := ""
 	var startTime time.Time
-	e := client.DownloadFile(path, 0, -1, func(manager *bridgev2.ConnectionManager, frame *bridgev2.Frame, resMeta *bridgev2.DownloadFileResponseMeta) (b bool, e error) {
-		path = strings.TrimSpace(path)
-		if strings.Index(path, "/") != 0 {
-			path = "/" + path
-		}
+	e := client.DownloadFile(DownloadFilePath, 0, -1, func(manager *bridgev2.ConnectionManager, frame *bridgev2.Frame, resMeta *bridgev2.DownloadFileResponseMeta) (b bool, e error) {
 		var fi *os.File
-		if customDownloadFileName == "" {
-			md5 := regexp.MustCompile(app.PATH_REGEX).ReplaceAllString(path, "${4}")
-			customDownloadFileName = md5
-			f, e1 := file.CreateFile(customDownloadFileName)
+		if CustomFileName == "" {
+			md5 := regexp.MustCompile(app.PATH_REGEX).ReplaceAllString(DownloadFilePath, "${4}")
+			CustomFileName = md5
+			f, e1 := file.CreateFile(CustomFileName)
 			if e1 != nil {
 				return true, e1
 			}
 			fi = f
 		} else {
-			f, e1 := file.CreateFile(customDownloadFileName)
+			f, e1 := file.CreateFile(CustomFileName)
 			if e1 != nil {
 				return true, e1
 			}
@@ -92,8 +138,7 @@ func download(client *Client, path string, customDownloadFileName string) error 
 		return writeOut(reader, int64(fileLen), fi, startTime)
 	})*/
 	if e != nil {
-		logger.Error("download failed:", e)
-		return e
+		logger.Fatal("download failed:", e)
 	} else {
 		now := time.Now()
 		fmt.Println("[==========] 100% [" + timeutil.GetHumanReadableDuration(startTime, now) + "]\ndownload success, file save as:")
@@ -101,8 +146,21 @@ func download(client *Client, path string, customDownloadFileName string) error 
 		fmt.Println(filePath)
 		fmt.Println("+-------------------------------------------+")
 	}
-	return nil
 }
+
+func inspect()  {
+	common.WalkList(&InspectFileList, func(item interface{}) {
+		md5 := item.(string)
+		fileVO, e := client.QueryFile(md5)
+		if e != nil {
+			logger.Error("error inspect file", md5, "due to:", e)
+		} else {
+			bs, _ := json.MarshalIndent(fileVO, "", "  ")
+			fmt.Println(string(bs))
+		}
+	})
+}
+
 
 
 func writeOut(in io.Reader, offset int64, out io.Writer, startTime time.Time) error {
@@ -146,5 +204,151 @@ func writeOut(in io.Reader, offset int64, out io.Writer, startTime time.Time) er
 		}
 	}
 	return nil
+}
+
+func listConfig() {
+	configTemp, err := ReadConf()
+	common.TOperation(err == nil, func() interface{} {
+		bs, _ := json.MarshalIndent(configTemp, "", "  ")
+		fmt.Println(bs)
+		return nil
+	}, func() interface{} {
+		logger.Fatal(err)
+		return nil
+	})
+}
+
+
+func UpdateConfig() {
+	configTemp, err := ReadConf()
+	common.TOperation(err == nil, func() interface{} {
+		common.WalkList(&UpdateConfigList, func(item interface{}) {
+			set := item.(string)
+			k, v := parseConfigItem(set)
+			if k == "trackers" {
+				configTemp.Trackers = strings.Split(v, ",")
+			} else if k == "log_level" {
+				if app.LOG_LEVEL_SETS[v] == 0 {
+					logger.Error("value of config key log_level must be one of trace|debug|info|warm|error|fatal")
+				} else {
+					configTemp.LogLevel = v
+				}
+			} else if k == "log_rotation_interval" {
+				if app.LOG_ROTATION_SETS[v] == 0 {
+					logger.Error("value of config key log_rotation_interval must be one of h|d|m|y")
+				} else {
+					configTemp.LogRotationInterval = v
+				}
+			} else if k == "secret" {
+				configTemp.Secret = v
+			} else {
+				logger.Error("unknown config key:", k)
+			}
+		})
+		if err := WriteConf(configTemp); err != nil {
+			logger.Fatal("cannot write config file:", err)
+		} else {
+			logger.Info("update config success!")
+		}
+		return nil
+	}, func() interface{} {
+		fmt.Println(err)
+		return nil
+	})
+
+}
+
+// write client config to file.
+func WriteConf(clientConfig *app.ClientConfig) error {
+	fi, e := file.CreateFile(app.BASE_PATH + string(os.PathSeparator) + "config.json")
+	if e != nil {
+		return e
+	}
+	defer fi.Close()
+	bs, e1 := json.MarshalIndent(clientConfig, "", "  ")
+	if e1 != nil {
+		return e1
+	}
+	fi.Write(bs)
+	return nil
+}
+
+// read client config
+func ReadConf() (*app.ClientConfig, error) {
+	configFile, e := file.GetFile(app.BASE_PATH + string(os.PathSeparator) + "config.json")
+	if e != nil {
+		return nil, e
+	}
+	defer configFile.Close()
+
+	fi, e1 := configFile.Stat()
+	if e1 != nil {
+		return nil, e1
+	}
+
+	buffer, e2 := bridgev2.MakeBytes(fi.Size(), true, 10240, true)
+	if e2 != nil {
+		return nil, e2
+	}
+	_, e3 := configFile.Read(buffer)
+	if e3 != nil {
+		return nil, e3
+	}
+	var config = &app.ClientConfig{}
+	e4 := json.Unmarshal(buffer, config)
+	if e4 != nil {
+		return nil, e4
+	}
+	return config, nil
+}
+
+
+
+func parseConfigItem(item string) (string, string) {
+	firstEQ := strings.Index(item, "=")
+	if firstEQ == -1 {
+		return item, ""
+	} else {
+		return item[0:firstEQ], item[firstEQ+1:]
+	}
+	/*var k, v string
+	if len(kv) == 1 {
+		k = strings.TrimSpace(kv[0])
+	} else if len(kv) > 1 {
+		k = strings.TrimSpace(kv[0])
+		for i := range kv {
+			if i == 0 {
+				continue
+			}
+			v += strings.TrimSpace(kv[i])
+		}
+	}
+
+	if k == "secret" {
+		m[k] = v
+	} else if k == "trackers" {
+		m[k] = v
+	} else if k == "log_enable" {
+		if v == "" || (v != "true" && v != "false") {
+			v = "true"
+		}
+		m[k] = v
+	} else if k == "log_level" {
+		if v != "trace" && v != "debug" && v != "info" && v != "warn" &&
+			v != "error" && v != "fatal" {
+			v = "info"
+		}
+		m[k] = v
+	} else if k == "log_rotation_interval" {
+		if v != "h" && v != "d" &&
+			v != "m" && v != "y" {
+			v = "d"
+		}
+		m[k] = v
+	} else {
+		return errors.New("unknown parameter: \"" + k + "\"")
+	}
+	logger.Info("set", k, "to", "\""+v+"\"")
+	return writeConf(m["trackers"], m["secret"], m["log_enable"], m["log_level"], m["log_rotation_interval"])*/
 }
 

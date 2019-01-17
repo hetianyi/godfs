@@ -54,6 +54,9 @@ var (
 	FILE_FINISH     int
 	DISK_USAGE      int64
 	MEMORY          uint64
+
+	LOG_LEVEL_SETS  = map[string]byte{"trace": 1, "debug": 1, "info": 1, "warm": 1, "error": 1, "fatal": 1}
+	LOG_ROTATION_SETS  = map[string]byte{"h": 1, "d": 1, "m": 1, "y": 1}
 )
 
 const (

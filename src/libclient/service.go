@@ -176,10 +176,16 @@ func (client *Client) Upload(path string, group string, startTime time.Time, ski
 func (client *Client) QueryFile(pathOrMd5 string) (*app.FileVO, error) {
 	logger.Debug("query file info:", pathOrMd5)
 	var result *app.FileVO
-	for ele := client.TrackerMaintainer.TrackerInstances.Front(); ele != nil; ele = ele.Next() {
-		trackerInstance := ele.Value.(*TrackerInstance)
+	ls := libcommon.ParseTrackers(app.TRACKERS)
+	trackerMap := make(map[string]string)
+	if ls != nil {
+		for ele := ls.Front(); ele != nil; ele = ele.Next() {
+			trackerMap[ele.Value.(string)] = app.SECRET
+		}
+	}
+	for k := range trackerMap {
 		server := &app.ServerInfo{}
-		server.FromConnStr(trackerInstance.ConnStr)
+		server.FromConnStr(k)
 		tcpClient := bridgev2.NewTcpClient(server)
 		// connect to tracker server
 		e1 := tcpClient.Connect()
@@ -331,8 +337,8 @@ func selectStorageServer(group string, instanceId string, excludes *list.List, u
 	defer memberIteLock.Unlock()
 	var pick list.List
 	for ele := GroupMembers.Front(); ele != nil; ele = ele.Next() {
-		b := ele.Value.(*app.StorageDO)
-		if containsMember(b, excludes) || (upload && b.ReadOnly) {
+		b := ele.Value.(app.StorageDO)
+		if containsMember(&b, excludes) || (upload && b.ReadOnly) {
 			continue
 		}
 		match1 := false
@@ -354,7 +360,8 @@ func selectStorageServer(group string, instanceId string, excludes *list.List, u
 	index := 0
 	for ele := pick.Front(); ele != nil; ele = ele.Next() {
 		if index == rd {
-			return ele.Value.(*app.StorageDO)
+			s := ele.Value.(app.StorageDO)
+			return &s
 		}
 		index++
 	}

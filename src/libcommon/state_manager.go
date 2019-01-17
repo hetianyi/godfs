@@ -5,6 +5,7 @@ import (
 	"container/list"
 	"libcommon/bridgev2"
 	"libservicev2"
+	"regexp"
 	"strconv"
 	"sync"
 	"time"
@@ -14,6 +15,10 @@ import (
 )
 
 var managedStorage = make(map[string]*app.StorageDO)
+// in case of when:
+// client disconnect and reconnect immediately, but tracker is now not expire this storage server yet,
+// server will think it is not unique and return error
+var hardCheckStorage = make(map[string]byte)
 var managedStorageStatistics = make(map[string]*list.List)
 
 var operationLock = *new(sync.Mutex)
@@ -60,6 +65,7 @@ func FutureExpireStorageServer(manager *bridgev2.ConnectionManager) {
 	if manager == nil {
 		return
 	}
+	ReleaseUUIDHolder(manager.UUID)
 	storage := managedStorage[manager.UUID]
 	if storage != nil {
 		logger.Info("expire storage server", storage.Host + ":" + strconv.Itoa(storage.Port), "("+ storage.Uuid +")", "in", app.STORAGE_CLIENT_EXPIRE_TIME)
@@ -68,19 +74,43 @@ func FutureExpireStorageServer(manager *bridgev2.ConnectionManager) {
 	}
 }
 
-// check if instance if is unique
-func IsInstanceIdUnique(storage *app.StorageDO) bool {
+
+func HoldUUID(uuid string) {
+	if !IsStorageClientUUID(uuid) {
+		return
+	}
 	operationLock.Lock()
 	defer operationLock.Unlock()
-	if managedStorage[storage.Uuid] != nil {
+	logger.Info("hold uuid:", uuid)
+	hardCheckStorage[uuid] = 1
+}
+
+func ReleaseUUIDHolder(uuid string) {
+	if !IsStorageClientUUID(uuid) {
+		return
+	}
+	logger.Info("release uuid holder:", uuid)
+	delete(hardCheckStorage, uuid)
+}
+
+// check if instance if is unique
+func IsInstanceIdUnique(uuid string) bool {
+	if !IsStorageClientUUID(uuid) {
+		return true
+	}
+	operationLock.Lock()
+	defer operationLock.Unlock()
+	if hardCheckStorage[uuid] == 1 {
 		return false
 	}
-	for _, v := range managedStorage {
-		if v.Uuid == storage.Uuid {
-			return false
-		}
-	}
 	return true
+}
+
+func IsStorageClientUUID(uuid string) bool {
+	if mat, e := regexp.Match("[0-9a-z]{30}", []byte(uuid)); e == nil && mat {
+		return true
+	}
+	return false
 }
 
 // fetch group members
