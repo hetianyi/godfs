@@ -20,10 +20,11 @@ if [ ! -e "./bin" ];then
     mkdir ./bin
 fi
 
-echo "step 2/6: install go-sqlite3 lib..."
+echo "step 2/6: install libs..."
 go get github.com/mattn/go-sqlite3
 go get github.com/jinzhu/gorm
 go get github.com/json-iterator/go
+go get github.com/urfave/cli
 
 echo "step 3/6: build tracker..."
 go build -i -o $PWD/bin/tracker ./src/tracker.go
@@ -31,8 +32,8 @@ go build -i -o $PWD/bin/tracker ./src/tracker.go
 echo "step 4/6: build storage..."
 go build -i -o $PWD/bin/storage ./src/storage.go
 
-echo "step 5/6: build dashboard..."
-go build -i -o $PWD/bin/dashboard ./src/dashboard.go
+# echo "step 5/6: build dashboard..."
+# go build -i -o $PWD/bin/dashboard ./src/dashboard.go
 
 echo "step 6/6: build client..."
 go build -i -o $PWD/bin/client ./src/client.go

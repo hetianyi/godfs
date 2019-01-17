@@ -21,11 +21,11 @@ set GOPATH=%gp%
 echo step 1/6: create build output directory.
 IF NOT EXIST bin mkdir bin
 
-echo step 2/6: install go-sqlite3 lib...
-go get github.com/mattn/go-sqlite3
+echo step 2/6: install libs...
 go get github.com/mattn/go-sqlite3
 go get github.com/jinzhu/gorm
 go get github.com/json-iterator/go
+go get github.com/urfave/cli
 
 set GOPATH=%gp%;%pwd%
 
@@ -35,8 +35,8 @@ go build -i -o bin/tracker.exe src/tracker.go
 echo step 4/6: build storage...
 go build -i -o bin/storage.exe src/storage.go
 
-echo step 5/6: build dashboard...
-go build -i -o bin/dashboard.exe src/dashboard.go
+REM echo step 5/6: build dashboard...
+REM build -i -o bin/dashboard.exe src/dashboard.go
 
 echo step 6/6: build client...
 go build -i -o bin/client.exe src/client.go
