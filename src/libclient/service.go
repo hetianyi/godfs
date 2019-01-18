@@ -214,9 +214,11 @@ func (client *Client) QueryFile(pathOrMd5 string) (*app.FileVO, error) {
 		if resMeta == nil || !resMeta.Exist {
 			h, p := server.GetHostAndPortByAccessFlag()
 			logger.Debug("query file returns no result from tracker server", h + ":" + strconv.Itoa(p))
+			tcpClient.GetConnManager().Close()
 			continue
 		}
 		result = &resMeta.File
+		tcpClient.GetConnManager().Close()
 		break
 	}
 	return result, nil

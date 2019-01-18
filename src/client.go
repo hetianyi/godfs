@@ -86,7 +86,7 @@ func initClientFlags() {
 	appFlag.Flags = []cli.Flag {
 		cli.StringFlag{
 			Name:        "trackers",
-			Value:       "127.0.0.1:1022",
+			Value:       "",
 			Usage:       "tracker servers",
 			Destination: &libclient.Trackers,
 		},
@@ -123,12 +123,14 @@ func initClientFlags() {
 			Usage:   "upload local files",
 			Action:  func(c *cli.Context) error {
 				command = libclient.COMMAND_UPLOAD
-				abs, _ := filepath.Abs(os.Args[0])
-				dir := abs + string(os.PathSeparator) + ".."
-				absPath, _ := filepath.Abs(dir)
+
+				workDir, _ := file.GetWorkDir()
+				absPath, _ := filepath.Abs(workDir)
+
+
 				if c.Args().First() == "*" {
-					fmt.Println("upload all files of", abs)
-					files, _ := ioutil.ReadDir(dir)
+					fmt.Println("upload all files of", absPath)
+					files, _ := ioutil.ReadDir(absPath)
 					for i := range files {
 						if !files[i].IsDir() {
 							logger.Debug("adding file:", files[i].Name())

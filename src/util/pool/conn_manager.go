@@ -36,7 +36,7 @@ func (pool *ClientConnectionPool) Init(maxConnPerServer int) {
 // key = InstanceId@AdvertiseAddr:AdvertisePort!Group
 func GetServerKey(server *app.ServerInfo) string {
 	host, port := server.GetHostAndPortByAccessFlag()
-	return server.InstanceId + "@" + host + ":" + strconv.Itoa(port) + "!" + server.Group
+	return host + ":" + strconv.Itoa(port)
 }
 
 // connection pool has not been implemented.
