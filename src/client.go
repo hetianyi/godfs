@@ -39,12 +39,12 @@ func main() {
 
 	// config file path
 	prepareClient()
+	// check flag vars
+	flagVarPreCheck()
 
 	if command == libclient.COMMAND_UPLOAD ||
 		command == libclient.COMMAND_DOWNLOAD ||
-		command == libclient.COMMAND_INSPECT_FILE ||
-		command == libclient.COMMAND_UPDATE_CONFIG {
-		flagVarPreCheck()
+		command == libclient.COMMAND_INSPECT_FILE{
 		client = InitClient()
 	}
 	libclient.ExecuteCommand(client, command)
