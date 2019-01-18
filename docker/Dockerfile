@@ -26,6 +26,6 @@ RUN tar -xzf /godfs.tar.gz -C / && rm -f /godfs.tar.gz && \
     #echo "http://mirrors.aliyun.com/alpine/v3.8/main/" > /etc/apk/repositories && \
     #echo "http://mirrors.aliyun.com/alpine/v3.8/community/" >> /etc/apk/repositories && \
     apk add tzdata && apk add libc6-compat
-WORKDIR /godfs
+WORKDIR /godfs/bin
 ENV  PATH="/godfs/bin:${PATH}"
 CMD ["sh", "docker_run.sh"]
