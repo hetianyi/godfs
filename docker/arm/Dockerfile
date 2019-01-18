@@ -28,4 +28,4 @@ RUN tar -xzf /godfs.tar.gz -C / && rm -f /godfs.tar.gz && \
     apk add tzdata && apk add libc6-compat
 WORKDIR /godfs
 ENV  PATH="/godfs/bin:${PATH}"
-ENTRYPOINT ["sh", "docker_run.sh"]
+CMD ["sh", "docker_run.sh"]
