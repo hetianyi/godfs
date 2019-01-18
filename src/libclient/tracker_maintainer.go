@@ -8,7 +8,6 @@ import (
 	"encoding/hex"
 	"errors"
 	"libcommon"
-	"libcommon/bridge"
 	"libcommon/bridgev2"
 	"libservicev2"
 	"os"
@@ -429,7 +428,7 @@ func collectMemberInstanceId() string {
 	var buffer bytes.Buffer
 	index := 0
 	for ele := GroupMembers.Front(); ele != nil; ele = ele.Next() {
-		buffer.WriteString(ele.Value.(*bridge.ExpireMember).InstanceId)
+		buffer.WriteString(ele.Value.(app.StorageDO).InstanceId)
 		if index != GroupMembers.Len()-1 {
 			buffer.WriteString(",")
 		}
