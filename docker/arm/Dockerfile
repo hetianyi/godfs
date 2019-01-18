@@ -15,7 +15,7 @@
 FROM hehety/golang:arm32v6-godfs
 RUN mkdir /godfs && cd /tmp && rm -rf godfs && git clone https://github.com/hetianyi/godfs.git && \
     cd godfs && mkdir data && cp conf/storage.db data/ && \
-    ./make.sh && rm -f bin/client && mv bin /godfs && mv conf /godfs && mv data /godfs && mv docker_run.sh /godfs && \
+    ./make.sh && mv bin /godfs && mv conf /godfs && mv data /godfs && mv docker_run.sh /godfs && \
     cd / && tar czvf godfs.tar.gz godfs
 
 
@@ -27,4 +27,5 @@ RUN tar -xzf /godfs.tar.gz -C / && rm -f /godfs.tar.gz && \
     echo "http://mirrors.aliyun.com/alpine/v3.8/community/" >> /etc/apk/repositories && \
     apk add tzdata && apk add libc6-compat
 WORKDIR /godfs
+ENV  PATH="/godfs/bin:${PATH}"
 ENTRYPOINT ["sh", "docker_run.sh"]
