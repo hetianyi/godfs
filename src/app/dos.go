@@ -305,3 +305,10 @@ type ClientConfig struct {
 	LogRotationInterval string   `json:"log_rotation_interval"`
 	Secret              string   `json:"secret"`
 }
+
+// nginx configuration
+type NginxStructedConfiguration struct {
+	AllServers        list.List
+	UploadableServers list.List
+	Expose            list.List
+}

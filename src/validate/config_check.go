@@ -68,7 +68,7 @@ func Check(m map[string]string, runWith int) {
 	m["log_rotation_interval"] = log_rotation_interval
 	app.LOG_INTERVAL = log_rotation_interval
 
-	//enable log config
+	// enable log config
 	logEnable := strings.ToLower(strings.TrimSpace(m["log_enable"]))
 	if logEnable == "" || (logEnable != "true" && logEnable != "false") {
 		logEnable = "true"
@@ -165,14 +165,6 @@ func Check(m map[string]string, runWith int) {
 		m["slice_size"] = value1 + unit1
 		logger.Debug("slice_size:", app.SLICE_SIZE)
 
-		// check http_enable
-		http_enable := strings.ToLower(strings.TrimSpace(m["http_enable"]))
-		if http_enable != "true" && http_enable != "false" {
-			http_enable = "false"
-		}
-		m["http_enable"] = http_enable
-		app.HTTP_ENABLE = http_enable == "true"
-
 		// check upload_enable
 		upload_enable := strings.ToLower(strings.TrimSpace(m["upload_enable"]))
 		if upload_enable != "true" && upload_enable != "false" {
@@ -213,16 +205,23 @@ func Check(m map[string]string, runWith int) {
 			}
 			app.AddAccessAllowOrigin(strS)
 		}
-
-		//--
 	}
 
-	if runWith == 1 || runWith == 4 {
+	if runWith == 1 || runWith == 2 || runWith == 4 {
+
+		// check http_enable
+		http_enable := strings.ToLower(strings.TrimSpace(m["http_enable"]))
+		if http_enable != "true" && http_enable != "false" {
+			http_enable = "false"
+		}
+		m["http_enable"] = http_enable
+		app.HTTP_ENABLE = http_enable == "true"
+
 		// check http_port
 		http_port := strings.ToLower(strings.TrimSpace(m["http_port"]))
 
 		httpPort, ehp := strconv.Atoi(http_port)
-		if runWith == 4 || (runWith == 1 && app.HTTP_ENABLE) {
+		if runWith == 4 || ((runWith == 1 || runWith == 2) && app.HTTP_ENABLE) {
 			if ehp != nil || httpPort <= 0 || httpPort > 65535 {
 				logger.Fatal("error http_port:", http_port)
 			} else {

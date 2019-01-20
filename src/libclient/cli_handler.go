@@ -149,7 +149,7 @@ func download() {
 }
 
 func inspect()  {
-	common.WalkList(&InspectFileList, func(item interface{}) {
+	common.WalkList(&InspectFileList, func(item interface{}) bool {
 		md5 := item.(string)
 		fileVO, e := client.QueryFile(md5)
 		if e != nil {
@@ -162,6 +162,7 @@ func inspect()  {
 				fmt.Println(string(bs))
 			}
 		}
+		return false
 	})
 }
 
@@ -226,7 +227,7 @@ func listConfig() {
 func UpdateConfig() {
 	configTemp, err := ReadConf()
 	common.TOperation(err == nil, func() interface{} {
-		common.WalkList(&UpdateConfigList, func(item interface{}) {
+		common.WalkList(&UpdateConfigList, func(item interface{}) bool {
 			set := item.(string)
 			k, v := parseConfigItem(set)
 			if k == "trackers" {
@@ -248,6 +249,7 @@ func UpdateConfig() {
 			} else {
 				logger.Error("unknown config key:", k)
 			}
+			return false
 		})
 		if err := WriteConf(configTemp); err != nil {
 			logger.Fatal("cannot write config file:", err)

@@ -63,7 +63,7 @@ func StartService(config map[string]string) {
 	// start statistic service.
 	go startStatisticService()
 	// start http download server
-	startHttpDownloadService()
+	startHttpService()
 	// start tracker maintainer
 	go startTrackerMaintainer(trackers)
 	// start storage server tcp service
@@ -121,7 +121,7 @@ func startStorageService() {
 }
 
 // start http download server.
-func startHttpDownloadService() {
+func startHttpService() {
 	if !app.HTTP_ENABLE {
 		logger.Info("http server disabled")
 		return

@@ -12,6 +12,7 @@ import (
 	"time"
 	"util/file"
 	"util/logger"
+	httputil "util/http"
 )
 
 const (
@@ -35,9 +36,7 @@ func DownloadHandler(writer http.ResponseWriter, request *http.Request) {
 	defer request.Body.Close()
 	// download method must be GET or OPTIONS
 	method := request.Method
-	if method != http.MethodGet && method != http.MethodOptions {
-		writer.WriteHeader(http.StatusMethodNotAllowed)
-		writer.Write([]byte(strconv.Itoa(http.StatusMethodNotAllowed) + " Method '" + method + "' not allowed."))
+	if !httputil.MethodAllow(writer, request, http.MethodGet, http.MethodOptions) {
 		return
 	}
 
@@ -59,13 +58,8 @@ func DownloadHandler(writer http.ResponseWriter, request *http.Request) {
 		return
 	}
 
-	if app.HTTP_AUTH != "" {
-		user, pass, _ := request.BasicAuth()
-		if app.HTTP_AUTH != user+":"+pass {
-			writer.WriteHeader(403)
-			writer.Write([]byte("403 Forbidden."))
-			return
-		}
+	if !httputil.AccessCheck(writer, request) {
+		return
 	}
 
 	qIndex := strings.Index(request.RequestURI, "?")
@@ -76,8 +70,7 @@ func DownloadHandler(writer http.ResponseWriter, request *http.Request) {
 
 	mat, _ := regexp.Match(pathRegexRestful, []byte(servletPath))
 	if !mat {
-		writer.WriteHeader(404)
-		writer.Write([]byte("404 Not Found."))
+		httputil.WriteErrResponse(writer, http.StatusNotFound, "Not Found.")
 		return
 	}
 
@@ -107,18 +100,15 @@ func DownloadHandler(writer http.ResponseWriter, request *http.Request) {
 	// fullFile, e11 := libservice.GetFullFileByMd5(md5, 1)
 	fullFile, e11 := libservicev2.GetFullFileByMd5(md5, 1)
 	if e11 != nil {
-		writer.WriteHeader(500)
-		writer.Write([]byte("500 Internal Server Error"))
+		httputil.WriteErrResponse(writer, http.StatusInternalServerError, "Internal Server Error.")
 		return
 	}
 	if fullFile == nil {
-		writer.WriteHeader(404)
-		writer.Write([]byte("404 Not Found."))
+		httputil.WriteErrResponse(writer, http.StatusNotFound, "Not Found.")
 		return
 	}
 	if len(fullFile.Parts) == 0 {
-		writer.WriteHeader(500)
-		writer.Write([]byte("500 Internal Server Error"))
+		httputil.WriteErrResponse(writer, http.StatusInternalServerError, "Internal Server Error.")
 		return
 	}
 	ext := file.GetFileExt(fn)
@@ -160,7 +150,7 @@ func DownloadHandler(writer http.ResponseWriter, request *http.Request) {
 	} else {
 		headers.Set("Expires", "0")
 		headers.Set("Pragma", "public")
-		//headers.Set("Accept-Ranges", "bytes")
+		// headers.Set("Accept-Ranges", "bytes")
 		headers.Set("Content-Transfer-Encoding", "binary")
 		headers.Set("Cache-Control", "must-revalidate, post-check=0, pre-check=0")
 		headers.Set("Content-Disposition", "attachment;filename=\""+fn+"\"")
@@ -178,12 +168,12 @@ func DownloadHandler(writer http.ResponseWriter, request *http.Request) {
 }
 
 func setMimeHeaders(md5 string, headers *http.Header) {
-	//headers.Set("Cache-Control", "public")
+	// headers.Set("Cache-Control", "public")
 	headers.Set("Cache-Control", "max-age=604800")
 	headers.Set("Access-Control-Allow-Origin", "*")
 	headers.Set("date", time.Now().In(gmtLocation).Format(time.RFC1123))
 	headers.Set("Etag", "\""+md5+"\"")
-	//headers.Set("Connection", "keep-alive")
+	// headers.Set("Connection", "keep-alive")
 }
 
 // if end is 0, then the end represents max

@@ -9,6 +9,9 @@ import (
 	"util/db"
 	"util/logger"
 	"util/pool"
+	"net/http"
+	"strconv"
+	"time"
 )
 
 var p, _ = pool.NewPool(500, 0)
@@ -28,6 +31,7 @@ func StartService() {
 	logger.Info("instance start with uuid:", app.UUID)
 
 	go libcommon.ExpirationDetection()
+	startHttpService()
 	startTrackerService()
 }
 
@@ -35,4 +39,26 @@ func StartService() {
 func startTrackerService() {
 	server := bridgev2.NewServer("", app.PORT)
 	server.Listen(libcommon.FutureExpireStorageServer)
+}
+
+
+// start http download server.
+func startHttpService() {
+	if !app.HTTP_ENABLE {
+		logger.Info("http server disabled")
+		return
+	}
+
+	http.HandleFunc("/nginx", ConfigureNginxHandler)
+	http.HandleFunc("/servers", GetAllStorageServers)
+
+	s := &http.Server{
+		Addr: ":" + strconv.Itoa(app.HTTP_PORT),
+		// ReadTimeout:    10 * time.Second,
+		ReadHeaderTimeout: 10 * time.Second,
+		WriteTimeout:      0,
+		MaxHeaderBytes:    1 << 20,
+	}
+	logger.Info("http server listening on port:", app.HTTP_PORT)
+	go s.ListenAndServe()
 }

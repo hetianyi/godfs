@@ -47,7 +47,7 @@ func validateDeleteWebTracker(tracker *bridge.WebTracker) bool {
 
 func addWebTrackerHandler(writer http.ResponseWriter, request *http.Request) {
 	logger.Info("perform add web tracker")
-	if !httputil.MethodAllow(http.MethodPost, writer, request) {
+	if !httputil.MethodAllow(writer, request, http.MethodPost) {
 		return
 	}
 	cl := request.ContentLength
@@ -105,7 +105,7 @@ func addWebTrackerHandler(writer http.ResponseWriter, request *http.Request) {
 
 func deleteWebTrackerHandler(writer http.ResponseWriter, request *http.Request) {
 	logger.Info("perform delete web tracker")
-	if !httputil.MethodAllow(http.MethodDelete, writer, request) {
+	if !httputil.MethodAllow(writer, request, http.MethodDelete) {
 		return
 	}
 	cl := request.ContentLength
@@ -158,7 +158,7 @@ func deleteWebTrackerHandler(writer http.ResponseWriter, request *http.Request) 
 
 func indexStatistic(writer http.ResponseWriter, request *http.Request) {
 	logger.Info("perform fetch indexStatistic")
-	if !httputil.MethodAllow(http.MethodGet, writer, request) {
+	if !httputil.MethodAllow(writer, request, http.MethodGet) {
 		return
 	}
 	indexStatistic, e1 := libservice.GetIndexStatistic()

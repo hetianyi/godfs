@@ -57,11 +57,16 @@ func TValue(condition bool, trueValue interface{}, falseValue interface{}) inter
 }
 
 // walk a list
-func WalkList(ls *list.List, walker func(item interface{})) {
+// walker return value as break signal
+// if it is true, break walking
+func WalkList(ls *list.List, walker func(item interface{}) bool) {
 	if ls == nil {
 		return
 	}
 	for ele := ls.Front(); ele != nil; ele = ele.Next() {
-		walker(ele.Value)
+		breakWalk := walker(ele.Value)
+		if breakWalk {
+			break
+		}
 	}
 }

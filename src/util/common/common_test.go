@@ -80,7 +80,8 @@ func TestWalkList(t *testing.T) {
 	ls.PushBack(1)
 	ls.PushBack(2)
 	ls.PushBack(3)
-	WalkList(&ls, func(item interface{}) {
+	WalkList(&ls, func(item interface{}) bool {
 		fmt.Println(item)
+		return false
 	})
 }

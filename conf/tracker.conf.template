@@ -23,3 +23,13 @@ log_enable=true
 # 如不设置，默认为 info
 log_level=info
 
+# 是否启用http协议下载服务
+http_enable=true
+
+# 简单http验证，格式：
+# username:password
+# 如果为空，则不需要验证
+http_auth=
+
+# http下载服务监听端口
+http_port=8015

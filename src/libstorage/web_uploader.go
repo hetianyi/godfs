@@ -24,6 +24,7 @@ import (
 	json "github.com/json-iterator/go"
 	"util/logger"
 	"util/timeutil"
+	httputil "util/http"
 )
 
 const ContentDispositionPattern = "^Content-Disposition: form-data; name=\"([^\"]*)\"(; filename=\"([^\"]*)\".*)?$"
@@ -75,9 +76,6 @@ func (reader *FileFormReader) Read(buff []byte) (int, error) {
 
 var backSpace = []byte{13, 10}
 
-//文件上传处理类
-//使用者只需继承此类，然后在公用方法里面参与上传事件的处理即可<br>
-//最简单的过程即为覆写onFileField()函数
 type FileUploadHandlerV1 struct {
 	writer  http.ResponseWriter
 	request *http.Request
@@ -117,8 +115,8 @@ func (handler *FileUploadHandlerV1) onTextField(name string, value string) {
 func (handler *FileUploadHandlerV1) beginUpload() (*HttpUploadResponse, error) {
 	beginTime := time.Now()
 	// test code
-	//defer increaseTest(1)
-	//buff := make([]byte, 10240)
+	// defer increaseTest(1)
+	// buff := make([]byte, 10240)
 	var formReader = &FileFormReader{
 		request: handler.request,
 		buffer:  new(bytes.Buffer),
@@ -153,7 +151,6 @@ func (handler *FileUploadHandlerV1) beginUpload() (*HttpUploadResponse, error) {
 		defer bridgev2.RecycleBytes(buffer)
 		for {
 			line, e := readNextLine(formReader)
-			//logger.Debug(">>>>>"+line)
 			if e != nil {
 				logger.Error("upload error0:", e)
 				return nil, e
@@ -188,7 +185,6 @@ func (handler *FileUploadHandlerV1) beginUpload() (*HttpUploadResponse, error) {
 								logger.Error("upload error3:", e3)
 								return nil, e3
 							} else {
-								//logger.Debug("Text parameter >>  ", param)
 								paramValue = param
 								logger.Debug("read text field", paramName, "=", paramValue)
 								handler.onTextField(paramName, paramValue)
@@ -501,9 +497,7 @@ func WebUploadHandlerV1(writer http.ResponseWriter, request *http.Request) {
 	defer request.Body.Close()
 
 	method := request.Method
-	if method != http.MethodPost && method != http.MethodOptions {
-		writer.WriteHeader(http.StatusMethodNotAllowed)
-		writer.Write([]byte(strconv.Itoa(http.StatusMethodNotAllowed) + " Method '" + method + "' not allowed."))
+	if !httputil.MethodAllow(writer, request, http.MethodPost, http.MethodOptions) {
 		return
 	}
 
@@ -530,20 +524,14 @@ func WebUploadHandlerV1(writer http.ResponseWriter, request *http.Request) {
 	if params != nil {
 		targetGroup := params["group"]
 		if targetGroup != nil && len(targetGroup) != 0 && strings.TrimSpace(targetGroup[0]) != "" && app.GROUP != strings.TrimSpace(targetGroup[0]) {
-			writer.WriteHeader(404)
-			writer.Write([]byte("404 Not Found."))
+			httputil.WriteErrResponse(writer, http.StatusNotFound, "Not Found.")
 			return
 		}
 	}
 
 	// client validation
-	if app.HTTP_AUTH != "" {
-		user, pass, _ := request.BasicAuth()
-		if app.HTTP_AUTH != user+":"+pass {
-			writer.WriteHeader(403)
-			writer.Write([]byte("403 Forbidden."))
-			return
-		}
+	if !httputil.AccessCheck(writer, request) {
+		return
 	}
 
 	writer.Header().Set("Content-Type", "application/json")
@@ -561,7 +549,7 @@ func WebUploadHandlerV1(writer http.ResponseWriter, request *http.Request) {
 			bs, e1 := json.Marshal(ret)
 			if e1 != nil {
 				logger.Error("upload error2:", e1)
-				writer.WriteHeader(500)
+				httputil.WriteErrResponse(writer, http.StatusInternalServerError, "Internal Server Error.")
 			} else {
 				handler.writeBack(string(bs))
 			}
@@ -569,7 +557,7 @@ func WebUploadHandlerV1(writer http.ResponseWriter, request *http.Request) {
 			bs, e1 := json.Marshal(ret)
 			if e1 != nil {
 				logger.Error("upload error3:", e)
-				writer.WriteHeader(500)
+				httputil.WriteErrResponse(writer, http.StatusInternalServerError, "Internal Server Error.")
 			} else {
 				handler.writeBack(string(bs))
 			}
@@ -593,7 +581,7 @@ var _lock *sync.Mutex
 
 func init() {
 	_lock = new(sync.Mutex)
-	//go statisticTest()
+	// go statisticTest()
 }
 
 // code for test
