@@ -1,5 +1,11 @@
 #!/bin/bash
+
 export envTrackers="localhost:8015"
+
+log() {
+echo "`date '+%Y-%m-%d %H:%M:%S'`" $*
+}
+
 trackers=(${envTrackers//,/ })
 
 if [ ${#trackers[@]} == 0 ];then
@@ -7,20 +13,31 @@ if [ ${#trackers[@]} == 0 ];then
     exit 1
 fi
 
-serverF="curl -X POST http://${trackers[0]}/nginx \
-         -F template=@nginx-structed-template.conf"
+# curl -X POST http://${trackers[0]}/nginx
+serverF=""
+
 
 for ele in ${trackers[@]}
 do
-    echo "querying from "$ele
+    log "request tracker: "$ele
     temp=$(curl -s $ele/servers)
+    log "response is: <$temp>"
     code=$?
     if [ $code != 0 ]; then
-        echo "error request url($code):${ele}/servers"
-        exit $code
+        log "error request url($code):${ele}/servers"
+    elif [[ $temp =~ ^\[.*]$ ]]; then
+        serverF=${serverF}" -F 'servers=$temp'"
+        availableS=$ele
     fi
-    serverF=${serverF}" -F 'servers=$temp'"
 done
 
+if [ "$availableS"x == ""x ];then
+    log "no available tracker server!"
+    exit 2
+fi
 
-echo $serverF
+serverF="curl -sX POST http://${availableS}/nginx -F template=@nginx-structed-template.conf ${serverF}"
+
+log $serverF
+
+sh -c "$serverF"

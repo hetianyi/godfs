@@ -111,11 +111,13 @@ func ConfigureNginxHandler(writer http.ResponseWriter, request *http.Request) {
 			// uploadableServers is used by upload upstreams
 			var uploadableServers list.List
 			// mergedServers is used by stream servers
-			var mergedServers list.List
+			var mergedTcpServers list.List
 
 			common.WalkList(&servers, func(item interface{}) bool {
 				server := item.(*app.StorageDO)
-				allServers.PushBack(server)
+				if server.HttpEnable {
+					allServers.PushBack(server)
+				}
 				exist := false
 				if server.HttpEnable && !server.ReadOnly {
 					common.WalkList(&uploadableServers, func(item interface{}) bool {
@@ -131,7 +133,7 @@ func ConfigureNginxHandler(writer http.ResponseWriter, request *http.Request) {
 					}
 				}
 				exist = false
-				common.WalkList(&mergedServers, func(item interface{}) bool {
+				common.WalkList(&mergedTcpServers, func(item interface{}) bool {
 					it := item.(*app.StorageDO)
 					if it.Port == server.Port {
 						exist = true
@@ -140,7 +142,7 @@ func ConfigureNginxHandler(writer http.ResponseWriter, request *http.Request) {
 					return false
 				})
 				if !exist {
-					mergedServers.PushBack(server)
+					mergedTcpServers.PushBack(server)
 				}
 				return false
 			})
@@ -174,7 +176,7 @@ func ConfigureNginxHandler(writer http.ResponseWriter, request *http.Request) {
 
 			bf.Reset()
 
-			common.WalkList(&mergedServers, func(item interface{}) bool {
+			common.WalkList(&mergedTcpServers, func(item interface{}) bool {
 				it := item.(*app.StorageDO)
 				bf.WriteString("\n    server {\n")
 				bf.WriteString("        listen " + strconv.Itoa(it.Port) +";\n")
