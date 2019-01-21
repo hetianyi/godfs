@@ -8,6 +8,11 @@ services:
       - "1022:1022"
     environment:
       - port=1022
+    deploy:
+      mode: global
+      placement:
+        constraints:
+          - node.labels.tracker == true
     volumes:
       - tracker1:/godfs/data
     networks:
