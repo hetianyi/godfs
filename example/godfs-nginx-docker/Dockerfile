@@ -1,5 +1,5 @@
 # build nginx docker images with stream module
-FROM alpine
+FROM hehety/nginx
 MAINTAINER "hehety<hehety@outlook.com>"
 RUN apk add libxslt-dev && apk add libxml2 && \
         apk add gd-dev && \
@@ -47,10 +47,10 @@ make && make install
 
 FROM alpine
 COPY --from=0 /usr/local/nginx /usr/local/nginx
-ADD crontab.sh /cronjob
-ADD nginx-structed-template.conf /cronjob
+ADD crontab.sh /cronjob/crontab.sh
+ADD nginx-structed-template.conf /cronjob/nginx-structed-template.conf
 RUN apk add libxslt libxml2 gd geoip libatomic_ops pcre zlib openssl bash curl && \
     crontab -l > /tmp/cronjobs && echo "*	*	*	*	*	/cronjob/crontab.sh"
 WORKDIR /usr/local/nginx
 ENV PATH /usr/local/nginx/sbin:$PATH
-CMD ["crond", "&&", "nginx", "-g", "daemon off;"]
+CMD ["nginx", "&&", "crond", "-f"]
