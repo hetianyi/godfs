@@ -40,6 +40,9 @@ services:
     command: storage
     deploy:
       mode: global
+      placement:
+        constraints:
+          - node.labels.storage == true
     environment:
       - port=1024
       - http_port=8001
@@ -58,6 +61,9 @@ services:
     command: storage
     deploy:
       mode: global
+      placement:
+        constraints:
+          - node.labels.storage == true
     environment:
       - port=1025
       - http_port=8002
