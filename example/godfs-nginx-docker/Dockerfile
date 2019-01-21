@@ -47,7 +47,10 @@ make && make install
 
 FROM alpine
 COPY --from=0 /usr/local/nginx /usr/local/nginx
-RUN apk add libxslt libxml2 gd geoip libatomic_ops pcre zlib openssl
+ADD crontab.sh /cronjob
+ADD nginx-structed-template.conf /cronjob
+RUN apk add libxslt libxml2 gd geoip libatomic_ops pcre zlib openssl bash curl && \
+    crontab -l > /tmp/cronjobs && echo "*	*	*	*	*	/cronjob/crontab.sh"
 WORKDIR /usr/local/nginx
 ENV PATH /usr/local/nginx/sbin:$PATH
-CMD ["nginx", "-g", "daemon off;"]
+CMD ["crond", "&&", "nginx", "-g", "daemon off;"]
