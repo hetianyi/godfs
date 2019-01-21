@@ -36,8 +36,30 @@ if [ "$availableS"x == ""x ];then
     exit 2
 fi
 
-serverF="curl -sX POST http://${availableS}/nginx -F template=@nginx-structed-template.conf ${serverF}"
-
-log $serverF
+serverF="curl -o nginx.conf -sX POST http://${availableS}/nginx -F template=@nginx-structed-template.conf ${serverF}"
 
 sh -c "$serverF"
+
+code=$?
+if [ $code != 0 ]; then
+    log "error do request($code):$serverF"
+    exit $code
+fi
+
+tempFileName=$(echo "`date '+%Y%m%d%H%M%S'`")
+mv /usr/local/nginx/conf/nginx.conf /usr/local/nginx/conf/nginx.conf.bak.$tempFileName
+[ -f nginx.conf ] && mv nginx.conf /usr/local/nginx || mv /usr/local/nginx/conf/nginx.conf.bak.$tempFileName /usr/local/nginx/conf/nginx.conf
+
+nginx -t
+code=$?
+if [ $code != 0 ]; then
+    log rollback config file
+    [ -f /usr/local/nginx/conf/nginx.conf.bak.$tempFileName ] && mv /usr/local/nginx/conf/nginx.conf.bak.$tempFileName /usr/local/nginx/conf/nginx.conf
+fi
+
+# clean
+log clean...
+rm -f nginx.conf
+rm -f /usr/local/nginx/conf/nginx.conf.bak.$tempFileName
+
+nginx -s reload
