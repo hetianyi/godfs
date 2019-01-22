@@ -9,9 +9,11 @@ services:
     environment:
       - port=1022
     deploy:
+      replicas: 1
       placement:
         constraints:
           - node.labels.tracker == true
+          - node.labels.tracker1 == true
     volumes:
       - tracker1:/godfs/data
     networks:
@@ -25,9 +27,11 @@ services:
     environment:
       - port=1023
     deploy:
+      replicas: 1
       placement:
         constraints:
           - node.labels.tracker == true
+          - node.labels.tracker2 == true
     volumes:
       - tracker2:/godfs/data
     networks:
@@ -87,7 +91,7 @@ services:
       - "1024:1024"
       - "1025:1025"
     environment:
-      - trackers=tracker1:8001,tracker2:8002
+      - trackers=tracker1:8015,tracker2:8015
     #volumes:
     #  - ./nginx.conf:/usr/local/nginx/conf/nginx.conf
     networks:

@@ -1,25 +1,27 @@
 package libtracker
 
 import (
-	"net/http"
-	"strconv"
-	"util/logger"
-	"libcommon/bridgev2"
-	"libcommon"
-	"strings"
-	"container/list"
-	httputil "util/http"
-	"util/common"
 	"app"
 	"bytes"
+	"container/list"
 	json "github.com/json-iterator/go"
+	"libcommon"
+	"libcommon/bridgev2"
+	"net/http"
+	"strconv"
+	"strings"
+	"util/common"
+	httputil "util/http"
+	"util/logger"
 )
 
-const MaxUploadFileSize = 1024*10
+const MaxUploadFileSize = 1024 * 10
+
 var (
-	storage_servers_placeholder = "<%storage_servers%>"
-	uploadable_servers_placeholder = "<%uploadable_servers%>"
-	merged_servers_placeholder = "<%merged_servers%>"
+	download_servers_placeholder    = "<%download_upstream_servers%>"
+	uploadable_servers_placeholder = "<%uploadable_upstream_servers%>"
+	merged_servers_placeholder     = "<%merged_storage_servers%>"
+	download_locations_placeholder = "<%download_locations%>"
 )
 
 // configure nginx template
@@ -42,6 +44,7 @@ func ConfigureNginxHandler(writer http.ResponseWriter, request *http.Request) {
 
 	var servers list.List
 
+	// parse storage server info which collected by nginx client using curl
 	for k, v := range request.MultipartForm.Value {
 		if k != "servers" {
 			continue
@@ -77,6 +80,7 @@ func ConfigureNginxHandler(writer http.ResponseWriter, request *http.Request) {
 		}
 	}
 
+	// parse nginx template file
 	for k, v := range request.MultipartForm.File {
 		if k != "template" && k != "servers" {
 			continue
@@ -102,7 +106,7 @@ func ConfigureNginxHandler(writer http.ResponseWriter, request *http.Request) {
 		f.Read(buffer)
 		content := string(buffer)
 		if servers.Len() == 0 {
-			content = strings.Replace(content, storage_servers_placeholder, "\n", -1)
+			content = strings.Replace(content, download_servers_placeholder, "\n", -1)
 			content = strings.Replace(content, uploadable_servers_placeholder, "\n", -1)
 			content = strings.Replace(content, merged_servers_placeholder, "\n", -1)
 		} else {
@@ -151,20 +155,47 @@ func ConfigureNginxHandler(writer http.ResponseWriter, request *http.Request) {
 
 			// replace placeholders
 			if allServers.Len() > 0 {
-				bf.WriteString("\n    upstream storage_servers {\n")
-				common.WalkList(&allServers, func(item interface{}) bool {
-					it := item.(*app.StorageDO)
-					bf.WriteString("        server "+ it.Host + ":" + strconv.Itoa(it.HttpPort) +" weight=1;\n")
-					return false
-				})
-				bf.WriteString("    }\n")
+				// group servers by group field
+				gMap := GroupByGroup(&allServers)
+				if gMap != nil {
+					for k, v := range *gMap {
+						if v != nil && v.Len() > 0 {
+							bf.WriteString("\n    upstream download_servers_" + k + " {\n")
+							common.WalkList(v, func(item interface{}) bool {
+								it := item.(*app.StorageDO)
+								bf.WriteString("        server " + it.Host + ":" + strconv.Itoa(it.HttpPort) + " weight=1;\n")
+								return false
+							})
+							bf.WriteString("    }\n")
+						}
+					}
+				}
 			}
-			content = strings.Replace(content, storage_servers_placeholder, bf.String(), -1)
+			content = strings.Replace(content, download_servers_placeholder, bf.String(), -1)
+
+			bf.Reset()
+
+			// replace placeholders
+			if allServers.Len() > 0 {
+				// group servers by group field
+				gMap := GroupByGroup(&allServers)
+				if gMap != nil {
+					for k, v := range *gMap {
+						if v != nil && v.Len() > 0 {
+							bf.WriteString("\n        location /download/"+ k +" {\n")
+							bf.WriteString("            proxy_next_upstream http_404 http_500;\n")
+							bf.WriteString("            proxy_pass http://download_servers_" + k + ";\n")
+							bf.WriteString("        }\n")
+						}
+					}
+				}
+			}
+			content = strings.Replace(content, download_locations_placeholder, bf.String(), -1)
 
 			bf.Reset()
 
 			if uploadableServers.Len() > 0 {
-				bf.WriteString("\n    upstream uploadable_servers {\n")
+				bf.WriteString("\n    upstream upload_servers {\n")
 				common.WalkList(&uploadableServers, func(item interface{}) bool {
 					it := item.(*app.StorageDO)
 					bf.WriteString("        server "+ it.Host + ":" + strconv.Itoa(it.HttpPort) +" weight=1;\n")
@@ -179,8 +210,8 @@ func ConfigureNginxHandler(writer http.ResponseWriter, request *http.Request) {
 			common.WalkList(&mergedTcpServers, func(item interface{}) bool {
 				it := item.(*app.StorageDO)
 				bf.WriteString("\n    server {\n")
-				bf.WriteString("        listen " + strconv.Itoa(it.Port) +";\n")
-				bf.WriteString("        proxy_pass "+ it.Host + ":" + strconv.Itoa(it.Port) +";\n")
+				bf.WriteString("        listen " + strconv.Itoa(it.Port) + ";\n")
+				bf.WriteString("        proxy_pass " + it.Host + ":" + strconv.Itoa(it.Port) + ";\n")
 				bf.WriteString("    }\n")
 				return false
 			})
@@ -218,5 +249,21 @@ func GetAllStorageServers(writer http.ResponseWriter, request *http.Request) {
 	writer.Write([]byte(ret))
 }
 
-
-
+func GroupByGroup(servers *list.List) *map[string]*list.List {
+	if servers == nil {
+		return nil
+	}
+	tmpMap := make(map[string]*list.List)
+	common.WalkList(servers, func(item interface{}) bool {
+		server := item.(*app.StorageDO)
+		group := server.Group
+		groupList := tmpMap[group]
+		if groupList == nil {
+			groupList = list.New()
+			tmpMap[group] = groupList
+		}
+		groupList.PushBack(server)
+		return false
+	})
+	return &tmpMap
+}
