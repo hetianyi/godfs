@@ -117,6 +117,7 @@ func InsertPulledTrackerFiles(trackerUUID string, files []app.FileVO, dao *db.DA
 				maxId = file.Id
 			}
 			file.Id = 0
+			file.Finish = 0
 			e1 := db.Table("file").Where("md5 = ?", file.Md5).FirstOrCreate(&file).Error
 			if e1 != nil && transformNotFoundErr(e1) != nil {
 				return e1
