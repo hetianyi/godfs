@@ -44,7 +44,7 @@ func (tracker *TrackerInstance) startTaskCollector() {
 }
 
 func (tracker *TrackerInstance) GetTask() *bridgev2.Task {
-	logger.Debug("get task for tracker", tracker.ConnStr)
+	logger.Trace("get task for tracker", tracker.ConnStr)
 	tracker.listIteLock.Lock()
 	defer tracker.listIteLock.Unlock()
 	if tracker.GetTaskSize() > 0 {
