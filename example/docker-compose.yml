@@ -2,7 +2,7 @@ version: '3.5'
 services:
 # ----------------------------------------------
   tracker1:
-    image: registry.cn-shanghai.aliyuncs.com/hehety/godfs:1.1.0-beta
+    image: registry.cn-hongkong.aliyuncs.com/hehety/godfs:1.1.0-beta
     command: tracker
     ports:
       - "1022:1022"
@@ -20,7 +20,7 @@ services:
       - godfs
 
   tracker2:
-    image: registry.cn-shanghai.aliyuncs.com/hehety/godfs:1.1.0-beta
+    image: registry.cn-hongkong.aliyuncs.com/hehety/godfs:1.1.0-beta
     command: tracker
     ports:
       - "1023:1023"
@@ -40,7 +40,7 @@ services:
 # ----------------------------------------------
 
   storage1:
-    image: registry.cn-shanghai.aliyuncs.com/hehety/godfs:1.1.0-beta
+    image: registry.cn-hongkong.aliyuncs.com/hehety/godfs:1.1.0-beta
     command: storage
     deploy:
       mode: global
@@ -61,7 +61,7 @@ services:
       - godfs
 
   storage2:
-    image: registry.cn-shanghai.aliyuncs.com/hehety/godfs:1.1.0-beta
+    image: registry.cn-hongkong.aliyuncs.com/hehety/godfs:1.1.0-beta
     command: storage
     deploy:
       mode: global
