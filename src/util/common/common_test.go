@@ -1,12 +1,13 @@
 package common
 
 import (
+	"container/list"
+	"errors"
 	"fmt"
+	"net"
 	"regexp"
 	"strconv"
 	"testing"
-	"errors"
-	"container/list"
 )
 
 const ipv4Pattern = "^((25[0-5]|2[0-4]\\d|[0-1]?\\d\\d?)\\.){3}(25[0-5]|2[0-4]\\d|[0-1]?\\d\\d?)$"
@@ -84,4 +85,68 @@ func TestWalkList(t *testing.T) {
 		fmt.Println(item)
 		return false
 	})
+}
+
+
+
+
+func TestNet1(t *testing.T) {
+	addrs, _ := net.InterfaceAddrs()
+	for i := range addrs {
+		fmt.Println(addrs[i].String(), "\t\t\t\t", addrs[i].Network())
+	}
+}
+func TestNet2(t *testing.T) {
+	addrs, _ := net.Interfaces()
+
+
+	for i := range addrs {
+		scan(&addrs[i])
+	}
+}
+
+func scan(iface *net.Interface) error {
+	var (
+		addr  *net.IPNet
+		addrs []net.Addr
+		err   error
+	)
+
+	if addrs, err = iface.Addrs(); err != nil {
+		return err
+	}
+
+	for _, a := range addrs {
+		if ipnet, ok := a.(*net.IPNet); ok {
+			if ip4 := ipnet.IP.To4(); ip4 != nil {
+				addr = &net.IPNet{
+					IP:   ip4,
+					Mask: ipnet.Mask[len(ipnet.Mask)-4:],
+				}
+				break
+			}
+		}
+	}
+
+	if addr == nil {
+		return fmt.Errorf("there's no IP network found")
+	}
+
+	if addr.IP[0] == 127 {
+		return fmt.Errorf("skipping localhost")
+	}
+
+	if addr.Mask[0] != 0xff || addr.Mask[1] != 0xff {
+		return fmt.Errorf("mask means network is too large")
+	}
+
+	fmt.Println(
+		addr.IP.String(),
+		iface.Name,
+		addr,
+	)
+
+	fmt.Println(addr.Mask.Size())
+
+	return nil
 }
