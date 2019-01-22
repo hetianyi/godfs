@@ -30,7 +30,7 @@ func (pool *BytesPool) Apply(length int) []byte {
 		pool.bufferMap[length] = ls
 	}
 	if ls.Front() != nil {
-		logger.Debug("use buffered bytes of length:", length)
+		logger.Trace("use buffered bytes of length:", length)
 		return ls.Remove(ls.Front()).([]byte)
 	}
 	logger.Debug("create bytes buffer of length:", length)
@@ -53,6 +53,6 @@ func (pool *BytesPool) Recycle(buffer []byte) {
 			return
 		}
 	}
-	logger.Debug("cache bytes buffer of length:", len(buffer))
+	logger.Trace("cache bytes buffer of length:", len(buffer))
 	ls.PushBack(buffer)
 }
