@@ -180,7 +180,7 @@ func Check(m map[string]string, runWith int) {
 			enable_mime_types = "true"
 		}
 		m["enable_mime_types"] = enable_mime_types
-		app.MIME_TYPES_ENABLE = (enable_mime_types == "true") && app.HTTP_ENABLE
+		app.MIME_TYPES_ENABLE = enable_mime_types == "true"
 		if app.MIME_TYPES_ENABLE {
 			app.SetMimeTypesEnable()
 		}
