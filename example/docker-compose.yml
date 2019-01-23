@@ -14,8 +14,8 @@ services:
         constraints:
           - node.labels.tracker == true
           - node.labels.tracker1 == true
-    volumes:
-      - tracker1:/godfs/data
+#    volumes:
+#      - tracker1:/godfs/data
     networks:
       - godfs
 
@@ -32,8 +32,8 @@ services:
         constraints:
           - node.labels.tracker == true
           - node.labels.tracker2 == true
-    volumes:
-      - tracker2:/godfs/data
+#    volumes:
+#      - tracker2:/godfs/data
     networks:
       - godfs
 
@@ -55,8 +55,9 @@ services:
       - advertise_addr=$PROXY_HOST
       - advertise_port=1024
       - trackers=tracker1:1022,tracker2:1023
-    volumes:
-      - storage1:/godfs/data
+      - preferred_networks=eth0
+#    volumes:
+#      - storage1:/godfs/data
     networks:
       - godfs
 
@@ -76,8 +77,9 @@ services:
       - advertise_addr=$PROXY_HOST
       - advertise_port=1025
       - trackers=tracker1:1022,tracker2:1023
-    volumes:
-      - storage2:/godfs/data
+      - preferred_networks=eth0
+#    volumes:
+#      - storage2:/godfs/data
     networks:
       - godfs
 
@@ -102,9 +104,16 @@ services:
 networks:
   godfs:
     driver: overlay
+    ipam:
+      driver: default
+      options:
 
-volumes:
-  tracker1:
-  tracker2:
-  storage1:
-  storage2:
+
+    driver_opts:
+      com.docker.network.bridge.name: eth0
+
+#volumes:
+#  tracker1:
+#  tracker2:
+#  storage1:
+#  storage2:
