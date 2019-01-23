@@ -19,7 +19,7 @@ func TaskSyncMemberHandler(tracker *TrackerInstance) (bool, error) {
 		AdvertiseAddr: app.ADVERTISE_ADDRESS,
 		Group:         app.GROUP,
 		InstanceId:    app.INSTANCE_ID,
-		Host:          common.GetPreferedIPAddress(),
+		Host:          common.GetPreferredIPAddress(),
 		Port:          app.PORT,
 		AdvertisePort: app.ADVERTISE_PORT,
 		HttpPort:      app.HTTP_PORT,
