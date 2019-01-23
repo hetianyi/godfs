@@ -11,7 +11,6 @@ import (
 	"util/timeutil"
 )
 
-
 func TaskSyncMemberHandler(tracker *TrackerInstance) (bool, error) {
 	client := *tracker.client
 	// storage client to tracker server
@@ -20,6 +19,7 @@ func TaskSyncMemberHandler(tracker *TrackerInstance) (bool, error) {
 		AdvertiseAddr: app.ADVERTISE_ADDRESS,
 		Group:         app.GROUP,
 		InstanceId:    app.INSTANCE_ID,
+		Host:          common.GetPreferedIPAddress(),
 		Port:          app.PORT,
 		AdvertisePort: app.ADVERTISE_PORT,
 		HttpPort:      app.HTTP_PORT,
@@ -58,7 +58,6 @@ func TaskSyncMemberHandler(tracker *TrackerInstance) (bool, error) {
 
 	return false, nil
 }
-
 
 // register file to tracker
 func TaskRegisterFileHandler(tracker *TrackerInstance) (bool, error) {
@@ -101,8 +100,6 @@ func TaskRegisterFileHandler(tracker *TrackerInstance) (bool, error) {
 	return false, nil
 }
 
-
-
 // register file to tracker
 func TaskPullFileHandler(tracker *TrackerInstance) (bool, error) {
 	client := *tracker.client
@@ -115,17 +112,17 @@ func TaskPullFileHandler(tracker *TrackerInstance) (bool, error) {
 	if config == nil {
 		h, p := common.ParseHostPortFromConnStr(tracker.ConnStr)
 		config = &app.TrackerDO{
-			Uuid: tracker.trackerUUID,
+			Uuid:          tracker.trackerUUID,
 			TrackerSyncId: 0,
-			LastRegTime: timeutil.GetTimestamp(time.Now()),
-			LocalPushId: 0,
-			Host: h,
-			Port: p,
-			Status: app.STATUS_ENABLED,
-			Secret: app.SECRET,
-			TotalFiles: 0,
-			Remark: "",
-			AddTime: timeutil.GetTimestamp(time.Now()),
+			LastRegTime:   timeutil.GetTimestamp(time.Now()),
+			LocalPushId:   0,
+			Host:          h,
+			Port:          p,
+			Status:        app.STATUS_ENABLED,
+			Secret:        app.SECRET,
+			TotalFiles:    0,
+			Remark:        "",
+			AddTime:       timeutil.GetTimestamp(time.Now()),
 		}
 		if e2 := libservicev2.SaveTracker(config); e2 != nil {
 			return false, e2
@@ -150,7 +147,6 @@ func TaskPullFileHandler(tracker *TrackerInstance) (bool, error) {
 	}
 }
 
-
 // synchronize file task handler.
 func TaskDownloadFileHandler(task *bridgev2.Task) (bool, error) {
 	if increaseActiveDownload(0) >= ParallelDownload {
@@ -169,7 +165,6 @@ func TaskDownloadFileHandler(task *bridgev2.Task) (bool, error) {
 	return false, nil
 }
 
-
 // used by native client for synchronizing all storage servers.
 func TaskSyncAllStorageServerHandler(tracker *TrackerInstance) (bool, error) {
 	client := *tracker.client
@@ -186,7 +181,6 @@ func TaskSyncAllStorageServerHandler(tracker *TrackerInstance) (bool, error) {
 	}
 }
 
-
 // used by dashboard client for synchronizing all storage servers's info.
 func TaskSyncStatisticInfo(tracker *TrackerInstance) (bool, error) {
 	client := *tracker.client
@@ -202,5 +196,3 @@ func TaskSyncStatisticInfo(tracker *TrackerInstance) (bool, error) {
 		return true, errors.New("receive empty response from server")
 	}
 }
-
-

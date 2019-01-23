@@ -1,10 +1,19 @@
 package common
 
 import (
+	"app"
 	"container/list"
-	"strings"
+	"net"
 	"strconv"
+	"strings"
 )
+
+
+
+type IPInfo struct {
+	Addr string
+	InterfaceName string
+}
 
 func ConvertBoolFromInt(input int) bool {
 	if input <= 0 {
@@ -68,5 +77,89 @@ func WalkList(ls *list.List, walker func(item interface{}) bool) {
 		if breakWalk {
 			break
 		}
+	}
+}
+
+// get self ip address by preferred interface
+func GetPreferredIPAddress() string {
+	addrs, _ := net.Interfaces()
+	var ret list.List
+	for i := range addrs {
+		info := scan(&addrs[i])
+		if info == nil {
+			continue
+		}
+		ret.PushBack(info)
+	}
+	if app.PREFERRED_NETWORKS.Len() == 0 {
+		if ret.Len() == 0 {
+			return "127.0.0.1"
+		}
+		return ret.Front().Value.(*IPInfo).Addr
+	} else {
+		matchResult := ""
+		WalkList(&app.PREFERRED_NETWORKS, func(item interface{}) bool {
+			iname := item.(string)
+			WalkList(&ret, func(item1 interface{}) bool {
+				ipInfo := item1.(*IPInfo)
+				if ipInfo.InterfaceName == iname {
+					matchResult = ipInfo.Addr
+					return true
+				}
+				return false
+			})
+			if matchResult != "" {
+				return true
+			}
+			return false
+		})
+		// no match from all existing interfaces
+		if matchResult == "" {
+			matchResult = ret.Front().Value.(*IPInfo).Addr
+		}
+		return matchResult
+	}
+	
+
+}
+
+func scan(iface *net.Interface) *IPInfo {
+	var (
+		addr  *net.IPNet
+		addrs []net.Addr
+		err   error
+	)
+
+	if addrs, err = iface.Addrs(); err != nil {
+		return nil
+	}
+
+	for _, a := range addrs {
+		if ipnet, ok := a.(*net.IPNet); ok {
+			if ip4 := ipnet.IP.To4(); ip4 != nil {
+				addr = &net.IPNet{
+					IP:   ip4,
+					Mask: ipnet.Mask[len(ipnet.Mask)-4:],
+				}
+				break
+			}
+		}
+	}
+
+	if addr == nil {
+		return nil
+	}
+
+	if addr.IP[0] == 127 {
+		return nil
+	}
+
+	if addr.Mask[0] != 0xff || addr.Mask[1] != 0xff {
+		return nil
+	}
+
+	return &IPInfo{
+		Addr: addr.IP.String(),
+		InterfaceName: iface.Name,
 	}
 }

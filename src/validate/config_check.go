@@ -8,6 +8,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"util/common"
 	"util/file"
 	"util/logger"
 )
@@ -204,6 +205,28 @@ func Check(m map[string]string, runWith int) {
 				continue
 			}
 			app.AddAccessAllowOrigin(strS)
+		}
+
+		// check: preferred_networks
+		preferred_networks := strings.TrimSpace(m["preferred_networks"])
+		if len(preferred_networks) > 0 {
+			splitNetworkNames := strings.Split(preferred_networks, ",")
+			for i := range splitNetworkNames {
+				name := strings.TrimSpace(splitNetworkNames[i])
+				if name != "" {
+					app.PREFERRED_NETWORKS.PushBack(name)
+				}
+			}
+		}
+		if app.PREFERRED_NETWORKS.Len() > 0 {
+			tmpStr := "("
+			common.WalkList(&app.PREFERRED_NETWORKS, func(item interface{}) bool {
+				tmpStr += item.(string) + "|"
+				return false
+			})
+			tmpStr = tmpStr[0:len(tmpStr) - 1]
+			tmpStr += ")"
+			logger.Info("preferred network interfaces:", tmpStr)
 		}
 	}
 

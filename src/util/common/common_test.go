@@ -1,6 +1,7 @@
 package common
 
 import (
+	"app"
 	"container/list"
 	"errors"
 	"fmt"
@@ -98,14 +99,12 @@ func TestNet1(t *testing.T) {
 }
 func TestNet2(t *testing.T) {
 	addrs, _ := net.Interfaces()
-
-
 	for i := range addrs {
-		scan(&addrs[i])
+		scan1(&addrs[i])
 	}
 }
 
-func scan(iface *net.Interface) error {
+func scan1(iface *net.Interface) error {
 	var (
 		addr  *net.IPNet
 		addrs []net.Addr
@@ -149,4 +148,9 @@ func scan(iface *net.Interface) error {
 	fmt.Println(addr.Mask.Size())
 
 	return nil
+}
+
+func TestNet3(t *testing.T) {
+	app.PREFERRED_NETWORKS.PushBack("xxx")
+	fmt.Println(GetPreferredIPAddress())
 }
