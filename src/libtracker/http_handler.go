@@ -20,8 +20,9 @@ const MaxUploadFileSize = 1024 * 10
 var (
 	download_servers_placeholder    = "<%download_upstream_servers%>"
 	uploadable_servers_placeholder = "<%uploadable_upstream_servers%>"
-	merged_servers_placeholder     = "<%merged_storage_servers%>"
 	download_locations_placeholder = "<%download_locations%>"
+	all_upstream_servers_placeholder     = "<%all_upstream_servers%>"
+	all_servers_placeholder     = "<%all_servers%>"
 )
 
 // configure nginx template
@@ -66,7 +67,7 @@ func ConfigureNginxHandler(writer http.ResponseWriter, request *http.Request) {
 					exist := false
 					common.WalkList(&servers, func(item interface{}) bool {
 						c := item.(*app.StorageDO)
-						if c.Host == s.Host && c.Port == s.Port {
+						if c.Uuid == s.Uuid {
 							exist = true
 							return true
 						}
@@ -108,25 +109,41 @@ func ConfigureNginxHandler(writer http.ResponseWriter, request *http.Request) {
 		if servers.Len() == 0 {
 			content = strings.Replace(content, download_servers_placeholder, "\n", -1)
 			content = strings.Replace(content, uploadable_servers_placeholder, "\n", -1)
-			content = strings.Replace(content, merged_servers_placeholder, "\n", -1)
+			content = strings.Replace(content, download_locations_placeholder, "\n", -1)
+			content = strings.Replace(content, all_upstream_servers_placeholder, "\n", -1)
+			content = strings.Replace(content, all_servers_placeholder, "\n", -1)
 		} else {
 			// allServers is used by download upstreams
-			var allServers list.List
+			var downloadServers list.List
 			// uploadableServers is used by upload upstreams
 			var uploadableServers list.List
 			// mergedServers is used by stream servers
-			var mergedTcpServers list.List
+			var allServers list.List
 
 			common.WalkList(&servers, func(item interface{}) bool {
+				exist := false
+				// collect download servers
 				server := item.(*app.StorageDO)
 				if server.HttpEnable {
-					allServers.PushBack(server)
+					common.WalkList(&downloadServers, func(item interface{}) bool {
+						it := item.(*app.StorageDO)
+						if it.Host == server.Host && it.HttpPort == server.HttpPort {
+							exist = true
+							return true
+						}
+						return false
+					})
+					if !exist {
+						downloadServers.PushBack(server)
+					}
 				}
-				exist := false
+
+				// collect upload servers
+				exist = false
 				if server.HttpEnable && !server.ReadOnly {
 					common.WalkList(&uploadableServers, func(item interface{}) bool {
 						it := item.(*app.StorageDO)
-						if it.Host == server.Host && it.Port == server.Port {
+						if it.Host == server.Host && it.HttpPort == server.HttpPort {
 							exist = true
 							return true
 						}
@@ -136,27 +153,30 @@ func ConfigureNginxHandler(writer http.ResponseWriter, request *http.Request) {
 						uploadableServers.PushBack(server)
 					}
 				}
+
+				// collect all servers
 				exist = false
-				common.WalkList(&mergedTcpServers, func(item interface{}) bool {
+				common.WalkList(&allServers, func(item interface{}) bool {
 					it := item.(*app.StorageDO)
-					if it.Port == server.Port {
+					if it.Host == server.Host && it.Port == server.Port {
 						exist = true
 						return true
 					}
 					return false
 				})
 				if !exist {
-					mergedTcpServers.PushBack(server)
+					allServers.PushBack(server)
 				}
+
 				return false
 			})
 
 			var bf bytes.Buffer
 
 			// replace placeholders
-			if allServers.Len() > 0 {
+			if downloadServers.Len() > 0 {
 				// group servers by group field
-				gMap := GroupByGroup(&allServers)
+				gMap := GroupByGroup(&downloadServers)
 				if gMap != nil {
 					for k, v := range *gMap {
 						if v != nil && v.Len() > 0 {
@@ -176,9 +196,9 @@ func ConfigureNginxHandler(writer http.ResponseWriter, request *http.Request) {
 			bf.Reset()
 
 			// replace placeholders
-			if allServers.Len() > 0 {
+			if downloadServers.Len() > 0 {
 				// group servers by group field
-				gMap := GroupByGroup(&allServers)
+				gMap := GroupByGroup(&downloadServers)
 				if gMap != nil {
 					for k, v := range *gMap {
 						if v != nil && v.Len() > 0 {
@@ -207,15 +227,45 @@ func ConfigureNginxHandler(writer http.ResponseWriter, request *http.Request) {
 
 			bf.Reset()
 
-			common.WalkList(&mergedTcpServers, func(item interface{}) bool {
-				it := item.(*app.StorageDO)
-				bf.WriteString("\n    server {\n")
-				bf.WriteString("        listen " + strconv.Itoa(it.Port) + ";\n")
-				bf.WriteString("        proxy_pass " + it.Host + ":" + strconv.Itoa(it.Port) + ";\n")
-				bf.WriteString("    }\n")
-				return false
-			})
-			content = strings.Replace(content, merged_servers_placeholder, bf.String(), -1)
+			// replace placeholders
+			if allServers.Len() > 0 {
+				// group servers by group field
+				gMap := GroupByPort(&allServers)
+				if gMap != nil {
+					for k, v := range *gMap {
+						if v != nil && v.Len() > 0 {
+							bf.WriteString("\n    upstream servers_" + strconv.Itoa(k) + " {\n")
+							common.WalkList(v, func(item interface{}) bool {
+								it := item.(*app.StorageDO)
+								bf.WriteString("        server " + it.Host + ":" + strconv.Itoa(it.Port) + ";\n")
+								return false
+							})
+							bf.WriteString("    }\n")
+						}
+					}
+				}
+			}
+			content = strings.Replace(content, all_upstream_servers_placeholder, bf.String(), -1)
+
+			bf.Reset()
+
+			// replace placeholders
+			if allServers.Len() > 0 {
+				// group servers by group field
+				gMap := GroupByPort(&allServers)
+				if gMap != nil {
+					for k, v := range *gMap {
+						if v != nil && v.Len() > 0 {
+							bf.WriteString("\n    server {\n")
+							bf.WriteString("        listen " + strconv.Itoa(k) + ";\n")
+							bf.WriteString("        proxy_pass servers_" + strconv.Itoa(k) + ";\n")
+							bf.WriteString("    }\n")
+						}
+					}
+				}
+			}
+			content = strings.Replace(content, all_servers_placeholder, bf.String(), -1)
+
 		}
 
 		// handle http options method
@@ -261,6 +311,25 @@ func GroupByGroup(servers *list.List) *map[string]*list.List {
 		if groupList == nil {
 			groupList = list.New()
 			tmpMap[group] = groupList
+		}
+		groupList.PushBack(server)
+		return false
+	})
+	return &tmpMap
+}
+
+func GroupByPort(servers *list.List) *map[int]*list.List {
+	if servers == nil {
+		return nil
+	}
+	tmpMap := make(map[int]*list.List)
+	common.WalkList(servers, func(item interface{}) bool {
+		server := item.(*app.StorageDO)
+		port := server.Port
+		groupList := tmpMap[port]
+		if groupList == nil {
+			groupList = list.New()
+			tmpMap[port] = groupList
 		}
 		groupList.PushBack(server)
 		return false

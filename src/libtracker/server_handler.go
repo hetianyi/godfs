@@ -58,7 +58,7 @@ func SyncStorageMembersHandler(manager *bridgev2.ConnectionManager, frame *bridg
 	remoteAddr := string([]rune(manager.Conn.RemoteAddr().String())[0:strings.LastIndex(manager.Conn.RemoteAddr().String(), ":")])
 	if meta.AdvertiseAddr == "" {
 		logger.Debug("storage server has no advertise address, using", remoteAddr)
-		meta.AdvertiseAddr = remoteAddr
+		meta.AdvertiseAddr = meta.Host
 	}
 	resMeta.LookBackAddr = remoteAddr
 	if !valid {
