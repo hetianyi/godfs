@@ -14,3 +14,6 @@ script:
   - docker build -t registry.cn-hongkong.aliyuncs.com/hehety/godfs:1.1.0-beta .
   - docker push hehety/godfs
   - docker push registry.cn-hongkong.aliyuncs.com/hehety/godfs
+  - cd godfs-nginx-docker
+  - docker build -t hehety/nginx:godfs .
+  - docker push hehety/nginx:godfs
