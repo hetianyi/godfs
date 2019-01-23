@@ -65,7 +65,7 @@ func DownloadHandler(writer http.ResponseWriter, request *http.Request) {
 	qIndex := strings.Index(request.RequestURI, "?")
 	var servletPath = request.RequestURI
 	if qIndex != -1 {
-		servletPath = request.RequestURI[0:qIndex]
+		servletPath = request.URL.Path
 	}
 
 	mat, _ := regexp.Match(pathRegexRestful, []byte(servletPath))

@@ -46,6 +46,7 @@ func (pool *ClientConnectionPool) GetConn(server *app.ServerInfo) (net.Conn, err
 	defer pool.getLock.Unlock()
 	list := pool.getConnMap(server)
 	if list.Len() > 0 {
+		logger.Debug("reuse existing connection")
 		return list.Remove(list.Front()).(net.Conn), nil
 	}
 	if pool.IncreaseActiveConnection(server, 0) < pool.maxConnPerServer {

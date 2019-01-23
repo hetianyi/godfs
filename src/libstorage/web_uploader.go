@@ -17,7 +17,6 @@ import (
 	"os"
 	"regexp"
 	"strconv"
-	"strings"
 	"sync"
 	"time"
 	"util/common"
@@ -25,6 +24,7 @@ import (
 	"util/logger"
 	"util/timeutil"
 	httputil "util/http"
+	"strings"
 )
 
 const ContentDispositionPattern = "^Content-Disposition: form-data; name=\"([^\"]*)\"(; filename=\"([^\"]*)\".*)?$"
@@ -501,6 +501,33 @@ func WebUploadHandlerV1(writer http.ResponseWriter, request *http.Request) {
 		return
 	}
 
+	// client validation
+	if !httputil.AccessCheck(writer, request) {
+		return
+	}
+
+	reqURI := request.URL.Path
+
+	if mat, _ := regexp.Match("/upload/[0-9a-zA-Z_]{1,30}", []byte(reqURI)); mat {
+		targetGroup := reqURI[8:]
+		if strings.TrimSpace(targetGroup) != "" && app.GROUP != strings.TrimSpace(targetGroup) {
+			logger.Debug("group not match, ignore upload")
+			httputil.WriteErrResponse(writer, http.StatusNotFound, "Not Found.")
+			return
+		}
+	}
+
+	// check if client really want to upload file to this group.
+	params := request.URL.Query()
+	if params != nil {
+		targetGroup := params["group"]
+		if targetGroup != nil && len(targetGroup) != 0 && strings.TrimSpace(targetGroup[0]) != "" && app.GROUP != strings.TrimSpace(targetGroup[0]) {
+			logger.Debug("group not match, ignore upload")
+			httputil.WriteErrResponse(writer, http.StatusNotFound, "Not Found.")
+			return
+		}
+	}
+
 	// handle http options method
 	headers := writer.Header()
 	origin := ""
@@ -516,21 +543,6 @@ func WebUploadHandlerV1(writer http.ResponseWriter, request *http.Request) {
 	headers.Set("Access-Control-Allow-Headers", "*")
 	if method == http.MethodOptions {
 		writer.WriteHeader(205)
-		return
-	}
-
-	// check if client really want to upload file to this group.
-	params := request.URL.Query()
-	if params != nil {
-		targetGroup := params["group"]
-		if targetGroup != nil && len(targetGroup) != 0 && strings.TrimSpace(targetGroup[0]) != "" && app.GROUP != strings.TrimSpace(targetGroup[0]) {
-			httputil.WriteErrResponse(writer, http.StatusNotFound, "Not Found.")
-			return
-		}
-	}
-
-	// client validation
-	if !httputil.AccessCheck(writer, request) {
 		return
 	}
 

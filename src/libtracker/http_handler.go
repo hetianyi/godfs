@@ -18,11 +18,12 @@ import (
 const MaxUploadFileSize = 1024 * 10
 
 var (
-	download_servers_placeholder    = "<%download_upstream_servers%>"
-	uploadable_servers_placeholder = "<%uploadable_upstream_servers%>"
-	download_locations_placeholder = "<%download_locations%>"
-	all_upstream_servers_placeholder     = "<%all_upstream_servers%>"
-	all_servers_placeholder     = "<%all_servers%>"
+	download_servers_placeholder     = "<%download_upstream_servers%>"
+	uploadable_servers_placeholder   = "<%uploadable_upstream_servers%>"
+	download_locations_placeholder   = "<%download_locations%>"
+	upload_locations_placeholder     = "<%upload_locations%>"
+	all_upstream_servers_placeholder = "<%all_upstream_servers%>"
+	all_servers_placeholder          = "<%all_servers%>"
 )
 
 // configure nginx template
@@ -202,7 +203,7 @@ func ConfigureNginxHandler(writer http.ResponseWriter, request *http.Request) {
 				if gMap != nil {
 					for k, v := range *gMap {
 						if v != nil && v.Len() > 0 {
-							bf.WriteString("\n        location /download/"+ k +" {\n")
+							bf.WriteString("\n        location /download/" + k + " {\n")
 							bf.WriteString("            proxy_next_upstream http_404 http_500;\n")
 							bf.WriteString("            proxy_pass http://download_servers_" + k + ";\n")
 							bf.WriteString("        }\n")
@@ -215,15 +216,58 @@ func ConfigureNginxHandler(writer http.ResponseWriter, request *http.Request) {
 			bf.Reset()
 
 			if uploadableServers.Len() > 0 {
+				// all upload servers
 				bf.WriteString("\n    upstream upload_servers {\n")
 				common.WalkList(&uploadableServers, func(item interface{}) bool {
 					it := item.(*app.StorageDO)
-					bf.WriteString("        server "+ it.Host + ":" + strconv.Itoa(it.HttpPort) +" weight=1;\n")
+					bf.WriteString("        server " + it.Host + ":" + strconv.Itoa(it.HttpPort) + " weight=1;\n")
 					return false
 				})
 				bf.WriteString("    }\n")
+
+				// grouped upload servers
+				gMap := GroupByGroup(&uploadableServers)
+				if gMap != nil {
+					for k, v := range *gMap {
+						if v != nil && v.Len() > 0 {
+							bf.WriteString("\n    upstream upload_servers_" + k + " {\n")
+							common.WalkList(v, func(item interface{}) bool {
+								it := item.(*app.StorageDO)
+								bf.WriteString("        server " + it.Host + ":" + strconv.Itoa(it.HttpPort) + " weight=1;\n")
+								return false
+							})
+							bf.WriteString("    }\n")
+						}
+					}
+				}
+
 			}
 			content = strings.Replace(content, uploadable_servers_placeholder, bf.String(), -1)
+
+			bf.Reset()
+
+			if uploadableServers.Len() > 0 {
+				// all upload servers
+				bf.WriteString("\n        location /upload {\n")
+				bf.WriteString("            proxy_next_upstream non_idempotent http_404;\n")
+				bf.WriteString("            proxy_pass http://upload_servers;\n")
+				bf.WriteString("        }\n")
+
+				// grouped upload servers
+				gMap := GroupByGroup(&uploadableServers)
+				if gMap != nil {
+					for k, v := range *gMap {
+						if v != nil && v.Len() > 0 {
+							bf.WriteString("\n        location /upload/"+ k +" {\n")
+							bf.WriteString("            proxy_next_upstream non_idempotent http_404;\n")
+							bf.WriteString("            proxy_pass http://upload_servers_"+ k +" ;\n")
+							bf.WriteString("        }\n")
+						}
+					}
+				}
+
+			}
+			content = strings.Replace(content, upload_locations_placeholder, bf.String(), -1)
 
 			bf.Reset()
 
