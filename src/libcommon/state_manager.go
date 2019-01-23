@@ -81,7 +81,7 @@ func HoldUUID(uuid string) {
 	}
 	operationLock.Lock()
 	defer operationLock.Unlock()
-	logger.Info("hold uuid:", uuid)
+	logger.Debug("hold uuid:", uuid)
 	hardCheckStorage[uuid] = 1
 }
 
@@ -89,13 +89,17 @@ func ReleaseUUIDHolder(uuid string) {
 	if !IsStorageClientUUID(uuid) {
 		return
 	}
-	logger.Info("release uuid holder:", uuid)
+	logger.Debug("release uuid holder:", uuid)
 	delete(hardCheckStorage, uuid)
 }
 
 // check if instance if is unique
 func IsInstanceIdUnique(uuid string) bool {
 	if !IsStorageClientUUID(uuid) {
+		return true
+	}
+	// connection is from other storage server
+	if app.RUN_WITH == 1 {
 		return true
 	}
 	operationLock.Lock()
