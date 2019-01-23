@@ -104,13 +104,6 @@ services:
 networks:
   godfs:
     driver: overlay
-    ipam:
-      driver: default
-      options:
-
-
-    driver_opts:
-      com.docker.network.bridge.name: eth0
 
 #volumes:
 #  tracker1:
