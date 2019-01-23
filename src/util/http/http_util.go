@@ -18,7 +18,7 @@ func MethodAllow(writer http.ResponseWriter, request *http.Request, expectMethod
 		}
 	}
 	if !match {
-		WriteErrResponse(writer, http.StatusMethodNotAllowed, " Method '" + method + "' not allowed.")
+		WriteErrResponse(writer, http.StatusMethodNotAllowed, "Method '" + method + "' not allowed.")
 		return false
 	}
 	return true
@@ -39,5 +39,5 @@ func AccessCheck(writer http.ResponseWriter, request *http.Request) bool {
 
 func WriteErrResponse(writer http.ResponseWriter, statusCode int, message string) {
 	writer.WriteHeader(statusCode)
-	writer.Write([]byte(strconv.Itoa(statusCode) + message))
+	writer.Write([]byte(strconv.Itoa(statusCode) + " " + message))
 }
