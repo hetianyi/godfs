@@ -12,7 +12,7 @@ script:
   - cd docker
   - docker build -t hehety/godfs:1.1.0-beta .
   - docker push hehety/godfs
-  - docker tag $(docker images -q) registry.cn-hongkong.aliyuncs.com/hehety/godfs:1.1.0-beta
+  - docker tag hehety/godfs:1.1.0-beta registry.cn-hongkong.aliyuncs.com/hehety/godfs:1.1.0-beta
   - docker push registry.cn-hongkong.aliyuncs.com/hehety/godfs
   - cd godfs-nginx-docker
   - docker build -t hehety/nginx:godfs .
