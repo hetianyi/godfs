@@ -221,24 +221,24 @@ func initClientFlags() {
 		},
 	}
 	// 帮助文件模板
-	cli.AppHelpTemplate = `NAME:
+	cli.AppHelpTemplate = `name:
    {{.Name}}{{if .Usage}} - {{.Usage}}{{end}}
-USAGE:
+usage:
    {{if .UsageText}}{{.UsageText}}{{else}}{{.HelpName}} {{if .VisibleFlags}}[global options]{{end}}{{if .Commands}} command [command options]{{end}} {{if .ArgsUsage}}{{.ArgsUsage}}{{else}}[arguments...]{{end}}{{end}}{{if .Version}}{{if not .HideVersion}}
-VERSION:
+version:
    {{.Version}}{{end}}{{end}}{{if .Description}}
-DESCRIPTION:
+description:
    {{.Description}}{{end}}{{if len .Authors}}
-AUTHOR{{with $length := len .Authors}}{{if ne 1 $length}}S{{end}}{{end}}:
+author{{with $length := len .Authors}}{{if ne 1 $length}}S{{end}}{{end}}:
    {{range $index, $author := .Authors}}{{if $index}}
    {{end}}{{$author}}{{end}}{{end}}{{if .VisibleCommands}}
-COMMANDS:{{range .VisibleCategories}}{{if .Name}}
+commands:{{range .VisibleCategories}}{{if .Name}}
    {{.Name}}:{{end}}{{range .VisibleCommands}}
      {{join .Names ", "}}{{"\t"}}{{.Usage}}{{end}}{{end}}{{end}}{{if .VisibleFlags}}
-GLOBAL OPTIONS:
+options:
    {{range $index, $option := .VisibleFlags}}{{if $index}}
    {{end}}{{$option}}{{end}}{{end}}{{if .Copyright}}
-COPYRIGHT:
+copyright:
    {{.Copyright}}{{end}}
 `
 
