@@ -11,8 +11,8 @@ script:
   - echo "$ali_pass" | docker login -u "$ali_username" --password-stdin registry.cn-hongkong.aliyuncs.com
   - cd docker
   - docker build -t hehety/godfs:1.1.0-beta .
-  - docker build -t registry.cn-hongkong.aliyuncs.com/hehety/godfs:1.1.0-beta .
   - docker push hehety/godfs
+  - docker tag $(docker images -q) registry.cn-hongkong.aliyuncs.com/hehety/godfs:1.1.0-beta
   - docker push registry.cn-hongkong.aliyuncs.com/hehety/godfs
   - cd godfs-nginx-docker
   - docker build -t hehety/nginx:godfs .
