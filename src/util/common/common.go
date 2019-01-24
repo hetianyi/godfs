@@ -91,9 +91,24 @@ func GetPreferredIPAddress() string {
 		}
 		ret.PushBack(info)
 	}
-	if app.PREFERRED_NETWORKS.Len() == 0 {
+	if app.PREFERRED_NETWORKS.Len() == 0 { // no preferred
 		if ret.Len() == 0 {
 			return "127.0.0.1"
+		}
+		// check preferred ip prefix
+		if app.PREFERRED_IP_PREFIX != "" {
+			matchResult := ""
+			WalkList(&ret, func(item interface{}) bool {
+				if strings.HasPrefix(item.(*IPInfo).Addr, app.PREFERRED_IP_PREFIX) {
+					matchResult = item.(*IPInfo).Addr
+					return true
+				}
+				return false
+			})
+			if matchResult == "" {
+				matchResult = ret.Front().Value.(*IPInfo).Addr
+			}
+			return matchResult
 		}
 		return ret.Front().Value.(*IPInfo).Addr
 	} else {
@@ -116,11 +131,19 @@ func GetPreferredIPAddress() string {
 		// no match from all existing interfaces
 		if matchResult == "" {
 			matchResult = ret.Front().Value.(*IPInfo).Addr
+			// check preferred ip prefix
+			if app.PREFERRED_IP_PREFIX != "" {
+				WalkList(&ret, func(item interface{}) bool {
+					if strings.HasPrefix(item.(*IPInfo).Addr, app.PREFERRED_IP_PREFIX) {
+						matchResult = item.(*IPInfo).Addr
+						return true
+					}
+					return false
+				})
+			}
 		}
 		return matchResult
 	}
-	
-
 }
 
 func scan(iface *net.Interface) *IPInfo {
@@ -131,6 +154,10 @@ func scan(iface *net.Interface) *IPInfo {
 	)
 
 	if addrs, err = iface.Addrs(); err != nil {
+		return nil
+	}
+
+	if !strings.Contains(iface.Flags.String(), "up") {
 		return nil
 	}
 

@@ -228,6 +228,11 @@ func Check(m map[string]string, runWith int) {
 			tmpStr += ")"
 			logger.Info("preferred network interfaces:", tmpStr)
 		}
+
+
+		// check: preferred_networks
+		preferred_networks := strings.TrimSpace(m["preferred_ip_prefix"])
+		app.PREFERRED_IP_PREFIX = preferred_networks
 	}
 
 	if runWith == 1 || runWith == 2 || runWith == 4 {

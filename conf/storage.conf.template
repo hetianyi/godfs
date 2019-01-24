@@ -43,6 +43,11 @@ trackers=127.0.0.1:1022
 # network addresses that will be preferred(split by ',' if you have more than one interface)
 preferred_networks=
 
+# IP前缀偏好，同preferred_networks相似，多个IP下设置偏好的IP前缀
+# 例如：主机具有连个IP：192.168.0.100, 10.0.1.11
+# 设置preferred_ip_prefix=192.168，那么系统会优先选择IP以 192.168 开头的IP地址
+preferred_ip_prefix=
+
 # secret用于服务通信时校验身份
 # 服务之间建立通信时会校验secret
 # 如果校验失败则会拒绝连接
