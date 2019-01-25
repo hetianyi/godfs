@@ -126,8 +126,10 @@ func Check(m map[string]string, runWith int) {
 
 		// check instance id
 		m["instance_id"] = strings.TrimSpace(m["instance_id"])
-		if mat, _ := regexp.Match(GroupInstancePattern, []byte(m["instance_id"])); !mat {
-			logger.Fatal("error parameter 'instance_id'")
+		if m["instance_id"] != "" {
+			if mat, _ := regexp.Match(GroupInstancePattern, []byte(m["instance_id"])); !mat {
+				logger.Fatal("error parameter 'instance_id'")
+			}
 		}
 		app.INSTANCE_ID = m["instance_id"]
 
