@@ -43,7 +43,7 @@ func Check(m map[string]string, runWith int) {
 			m["base_path"] = file.FixPath(basePath)
 		}
 		app.BasePath = m["base_path"]
-		cleanTmpdir()
+		cleanTmpDir()
 		prepareDirs(m["base_path"])
 	}
 
@@ -61,13 +61,13 @@ func Check(m map[string]string, runWith int) {
 	SetSystemLogLevel(logLevel)
 
 	// check log_rotation_interval
-	log_rotation_interval := strings.ToLower(strings.TrimSpace(m["log_rotation_interval"]))
-	if log_rotation_interval != "h" && log_rotation_interval != "d" &&
-		log_rotation_interval != "m" && log_rotation_interval != "y" {
-		log_rotation_interval = "d"
+	logRotationInterval := strings.ToLower(strings.TrimSpace(m["log_rotation_interval"]))
+	if logRotationInterval != "h" && logRotationInterval != "d" &&
+		logRotationInterval != "m" && logRotationInterval != "y" {
+		logRotationInterval = "d"
 	}
-	m["log_rotation_interval"] = log_rotation_interval
-	app.LogInterval = log_rotation_interval
+	m["log_rotation_interval"] = logRotationInterval
+	app.LogInterval = logRotationInterval
 
 	// enable log config
 	logEnable := strings.ToLower(strings.TrimSpace(m["log_enable"]))
@@ -97,19 +97,19 @@ func Check(m map[string]string, runWith int) {
 
 	if runWith == 1 {
 		// check: advertise_addr
-		advertise_addr := strings.TrimSpace(m["advertise_addr"])
-		app.AdvertiseAddress = advertise_addr
+		advertiseAddr := strings.TrimSpace(m["advertise_addr"])
+		app.AdvertiseAddress = advertiseAddr
 
 		if strings.TrimSpace(m["advertise_port"]) == "" {
 			app.AdvertisePort = app.Port
 		} else {
-			advertise_port, e := strconv.Atoi(strings.TrimSpace(m["advertise_port"]))
+			advertisePort, e := strconv.Atoi(strings.TrimSpace(m["advertise_port"]))
 			if e == nil {
-				if advertise_port <= 0 || advertise_port > 65535 {
+				if advertisePort <= 0 || advertisePort > 65535 {
 					logger.Warn("invalid advertise_port range:", m["advertise_port"]+", use default port", app.Port)
 					app.AdvertisePort = app.Port
 				} else {
-					app.AdvertisePort = advertise_port
+					app.AdvertisePort = advertisePort
 				}
 			} else {
 				logger.Fatal("invalid advertise_port ", m["advertise_port"], ":", e, ", use default port", app.Port)
@@ -134,55 +134,55 @@ func Check(m map[string]string, runWith int) {
 		app.InstanceId = m["instance_id"]
 
 		// check assign_disk_space
-		assign_disk_space := strings.ToLower(strings.TrimSpace(m["assign_disk_space"]))
-		value, unit := FixStorageSize(assign_disk_space, "MB")
+		assignDiskSpace := strings.ToLower(strings.TrimSpace(m["assign_disk_space"]))
+		value, unit := FixStorageSize(assignDiskSpace, "MB")
 		if value == "" {
 			value = "50"
 		}
 		if unit == "" {
 			unit = "MB"
 		}
-		_val, e3 := strconv.ParseFloat(value, 64)
+		val, e3 := strconv.ParseFloat(value, 64)
 		if e3 != nil {
 			logger.Fatal("error assign_disk_space:", value+unit)
 		}
-		var _unit = GetUnitVal(unit)
-		app.AssignDiskSpace = int64(_val * float64(_unit))
+		var sizeUnit1 = GetUnitVal(unit)
+		app.AssignDiskSpace = int64(val * float64(sizeUnit1))
 		m["assign_disk_space"] = value + unit
 
 		// check slice_size
-		slice_size := strings.ToLower(strings.TrimSpace(m["slice_size"]))
-		value1, unit1 := FixStorageSize(slice_size, "MB")
+		sliceSize := strings.ToLower(strings.TrimSpace(m["slice_size"]))
+		value1, unit1 := FixStorageSize(sliceSize, "MB")
 		if value1 == "" {
 			value1 = "50"
 		}
 		if unit1 == "" {
 			unit1 = "MB"
 		}
-		_val1, e4 := strconv.ParseFloat(value1, 64)
+		val1, e4 := strconv.ParseFloat(value1, 64)
 		if e4 != nil {
 			logger.Fatal("error slice_size:", value1+unit1)
 		}
-		var _unit1 = GetUnitVal(unit1)
-		app.SliceSize = int64(_val1 * float64(_unit1))
+		var sizeUnit2 = GetUnitVal(unit1)
+		app.SliceSize = int64(val1 * float64(sizeUnit2))
 		m["slice_size"] = value1 + unit1
 		logger.Debug("slice_size:", app.SliceSize)
 
 		// check upload_enable
-		upload_enable := strings.ToLower(strings.TrimSpace(m["upload_enable"]))
-		if upload_enable != "true" && upload_enable != "false" {
-			upload_enable = "true"
+		uploadEnable := strings.ToLower(strings.TrimSpace(m["upload_enable"]))
+		if uploadEnable != "true" && uploadEnable != "false" {
+			uploadEnable = "true"
 		}
-		m["upload_enable"] = upload_enable
-		app.UploadEnable = upload_enable == "true"
+		m["upload_enable"] = uploadEnable
+		app.UploadEnable = uploadEnable == "true"
 
 		// check enable_mime_types
-		enable_mime_types := strings.ToLower(strings.TrimSpace(m["enable_mime_types"]))
-		if enable_mime_types != "true" && enable_mime_types != "false" {
-			enable_mime_types = "true"
+		enableMimeTypes := strings.ToLower(strings.TrimSpace(m["enable_mime_types"]))
+		if enableMimeTypes != "true" && enableMimeTypes != "false" {
+			enableMimeTypes = "true"
 		}
-		m["enable_mime_types"] = enable_mime_types
-		app.MimeTypesEnable = enable_mime_types == "true"
+		m["enable_mime_types"] = enableMimeTypes
+		app.MimeTypesEnable = enableMimeTypes == "true"
 		if app.MimeTypesEnable {
 			app.SetMimeTypesEnable()
 		}
@@ -210,9 +210,9 @@ func Check(m map[string]string, runWith int) {
 		}
 
 		// check: preferred_networks
-		preferred_networks := strings.TrimSpace(m["preferred_networks"])
-		if len(preferred_networks) > 0 {
-			splitNetworkNames := strings.Split(preferred_networks, ",")
+		preferredNetworks := strings.TrimSpace(m["preferred_networks"])
+		if len(preferredNetworks) > 0 {
+			splitNetworkNames := strings.Split(preferredNetworks, ",")
 			for i := range splitNetworkNames {
 				name := strings.TrimSpace(splitNetworkNames[i])
 				if name != "" {
@@ -233,29 +233,29 @@ func Check(m map[string]string, runWith int) {
 
 
 		// check: preferred_networks
-		preferred_ip_prefix := strings.TrimSpace(m["preferred_ip_prefix"])
-		app.PreferredIPPrefix = preferred_ip_prefix
+		preferredIPPrefix := strings.TrimSpace(m["preferred_ip_prefix"])
+		app.PreferredIPPrefix = preferredIPPrefix
 	}
 
 	if runWith == 1 || runWith == 2 || runWith == 4 {
 
 		// check http_enable
-		http_enable := strings.ToLower(strings.TrimSpace(m["http_enable"]))
-		if http_enable != "true" && http_enable != "false" {
-			http_enable = "false"
+		httpEnable := strings.ToLower(strings.TrimSpace(m["http_enable"]))
+		if httpEnable != "true" && httpEnable != "false" {
+			httpEnable = "false"
 		}
-		m["http_enable"] = http_enable
-		app.HttpEnable = http_enable == "true"
+		m["http_enable"] = httpEnable
+		app.HttpEnable = httpEnable == "true"
 
 		// check http_port
-		http_port := strings.ToLower(strings.TrimSpace(m["http_port"]))
+		httpPortStr := strings.ToLower(strings.TrimSpace(m["http_port"]))
 
-		httpPort, ehp := strconv.Atoi(http_port)
+		httpPort, ehp := strconv.Atoi(httpPortStr)
 		if runWith == 4 || ((runWith == 1 || runWith == 2) && app.HttpEnable) {
 			if ehp != nil || httpPort <= 0 || httpPort > 65535 {
-				logger.Fatal("error http_port:", http_port)
+				logger.Fatal("error http_port:", httpPortStr)
 			} else {
-				m["http_port"] = http_port
+				m["http_port"] = httpPortStr
 				app.HttpPort = httpPort
 			}
 		}
@@ -268,19 +268,19 @@ func Check(m map[string]string, runWith int) {
 	if runWith != 2 {
 		// check trackers
 		trackers := strings.TrimSpace(m["trackers"])
-		_ts := strings.Split(trackers, ",")
-		var bytebuff bytes.Buffer
-		for i := range _ts {
-			strS := strings.TrimSpace(_ts[i])
+		ts := strings.Split(trackers, ",")
+		var byteBuff bytes.Buffer
+		for i := range ts {
+			strS := strings.TrimSpace(ts[i])
 			if strS == "" {
 				continue
 			}
-			bytebuff.WriteString(strS)
-			if i < len(_ts)-1 {
-				bytebuff.WriteString(",")
+			byteBuff.WriteString(strS)
+			if i < len(ts)-1 {
+				byteBuff.WriteString(",")
 			}
 		}
-		m["trackers"] = string(bytebuff.Bytes())
+		m["trackers"] = string(byteBuff.Bytes())
 		app.Trackers = m["trackers"]
 	}
 }
@@ -316,7 +316,7 @@ func createDirs(basePath string) {
 	if file.Exists(tmpDir) && file.IsFile(tmpDir) {
 		logger.Fatal("cannot create data directory:", tmpDir)
 	}
-	//create dir now disabled
+	// create dir now disabled
 	/*
 	   crossCreateDir(dataDir, az, az, true)
 	   crossCreateDir(dataDir, i09, i09, true)
@@ -383,21 +383,21 @@ func FixStorageSize(input string, defaultUnit string) (value string, unit string
 }
 
 func GetUnitVal(unit string) int64 {
-	var _unit int64
+	var sizeUnit int64
 	if unit == "BB" {
-		_unit = 1
+		sizeUnit = 1
 	} else if unit == "KB" {
-		_unit = 1024
+		sizeUnit = 1024
 	} else if unit == "MB" {
-		_unit = 1024 * 1024
+		sizeUnit = 1024 * 1024
 	} else if unit == "GB" {
-		_unit = 1024 * 1024 * 1024
+		sizeUnit = 1024 * 1024 * 1024
 	} else if unit == "PB" {
-		_unit = 1024 * 1024 * 1024 * 1024 * 1024
+		sizeUnit = 1024 * 1024 * 1024 * 1024 * 1024
 	} else {
-		_unit = 0
+		sizeUnit = 0
 	}
-	return _unit
+	return sizeUnit
 }
 
 func SetSystemLogLevel(logLevel string) {
@@ -418,7 +418,7 @@ func SetSystemLogLevel(logLevel string) {
 }
 
 func prepareDirs(finalPath string) {
-	// if basepath file exists and it is a file.
+	// if base path file exists and it is a file.
 	if file.Exists(finalPath) && file.IsFile(finalPath) {
 		logger.Fatal("could not create base path:", finalPath)
 	}
@@ -432,8 +432,8 @@ func prepareDirs(finalPath string) {
 	createDirs(finalPath)
 }
 
-// 每次启动前尝试清理tmp目录
-func cleanTmpdir() {
+// clean tmp dir before boot
+func cleanTmpDir() {
 	logger.Debug("clean tmp path:" + app.BasePath + "/data/tmp")
 	file.DeleteAll(app.BasePath + "/data/tmp")
 }

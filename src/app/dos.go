@@ -271,10 +271,10 @@ func (server *ServerInfo) FromConnStr(connStr string) *ServerInfo {
 }
 
 func (server *ServerInfo) SwitchAccessFlag() {
-	if server.AccessFlag == ACCESS_FLAG_LOOKBACK {
-		server.AccessFlag = ACCESS_FLAG_ADVERTISE
+	if server.AccessFlag == AccessFlagInitial {
+		server.AccessFlag = AccessFlagAdvertise
 	} else {
-		server.AccessFlag = ACCESS_FLAG_LOOKBACK
+		server.AccessFlag = AccessFlagInitial
 	}
 }
 
@@ -284,16 +284,16 @@ func (server *ServerInfo) GetHostAndPortByAccessFlag() (host string, port int) {
 		server.AdvertisePort = server.Port
 		return server.Host, server.Port
 	}
-	if server.AccessFlag == ACCESS_FLAG_NONE {
+	if server.AccessFlag == AccessFlagNone {
 		// if run as client, always try from advertise ip
 		if RunWith == 3 {
-			server.AccessFlag = ACCESS_FLAG_ADVERTISE
+			server.AccessFlag = AccessFlagAdvertise
 			return server.AdvertiseAddr, server.AdvertisePort
 		}
-		server.AccessFlag = ACCESS_FLAG_LOOKBACK
+		server.AccessFlag = AccessFlagInitial
 		return server.Host, server.Port
 	}
-	if server.AccessFlag == ACCESS_FLAG_LOOKBACK {
+	if server.AccessFlag == AccessFlagInitial {
 		return server.Host, server.Port
 	}
 	return server.AdvertiseAddr, server.AdvertisePort

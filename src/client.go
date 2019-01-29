@@ -22,7 +22,7 @@ import (
 var checkChan chan int
 var client *libclient.Client
 var trackerList *list.List
-var command = libclient.COMMAND_NONE
+var command = libclient.CommandNone
 
 func main() {
 	checkChan = make(chan int)
@@ -42,31 +42,31 @@ func main() {
 	// check flag vars
 	flagVarPreCheck()
 
-	if command == libclient.COMMAND_UPLOAD ||
-		command == libclient.COMMAND_DOWNLOAD ||
-		command == libclient.COMMAND_INSPECT_FILE{
+	if command == libclient.CommandUpload ||
+		command == libclient.CommandDownload ||
+		command == libclient.CommandInspectFile{
 		client = InitClient()
 	}
 	libclient.ExecuteCommand(client, command)
 }
 
 func flagVarPreCheck() {
-	if command == libclient.COMMAND_UPLOAD {
+	if command == libclient.CommandUpload {
 		if libclient.UploadFileList.Len() == 0 {
 			logger.Info("no file to be upload")
 			os.Exit(0)
 		}
-	} else if command == libclient.COMMAND_DOWNLOAD {
+	} else if command == libclient.CommandDownload {
 		if libclient.DownloadFilePath == "" {
 			logger.Fatal("no download filepath specified")
 			os.Exit(110)
 		}
-	} else if command == libclient.COMMAND_INSPECT_FILE {
+	} else if command == libclient.CommandInspectFile {
 		if libclient.InspectFileList.Len() == 0 {
 			logger.Fatal("no md5 specified to inspect")
 			os.Exit(111)
 		}
-	} else if command == libclient.COMMAND_UPDATE_CONFIG {
+	} else if command == libclient.CommandUpdateConfig {
 		if libclient.UpdateConfigList.Len() == 0 {
 			logger.Fatal("no config provide for update")
 			os.Exit(112)
@@ -122,7 +122,7 @@ func initClientFlags() {
 			Name:    "upload",
 			Usage:   "upload local files",
 			Action:  func(c *cli.Context) error {
-				command = libclient.COMMAND_UPLOAD
+				command = libclient.CommandUpload
 
 				workDir, _ := file.GetWorkDir()
 				absPath, _ := filepath.Abs(workDir)
@@ -166,7 +166,7 @@ func initClientFlags() {
 			Name:    "download",
 			Usage:   "download a file",
 			Action:  func(c *cli.Context) error {
-				command = libclient.COMMAND_DOWNLOAD
+				command = libclient.CommandDownload
 				fmt.Println("download file is: ", c.Args().First())
 				libclient.DownloadFilePath = c.Args().First()
 				return nil
@@ -184,7 +184,7 @@ func initClientFlags() {
 			Name:    "inspect",
 			Usage:   "inspect files information by md5",
 			Action:  func(c *cli.Context) error {
-				command = libclient.COMMAND_INSPECT_FILE
+				command = libclient.CommandInspectFile
 				for i := range c.Args() {
 					libclient.InspectFileList.PushBack(c.Args().Get(i))
 				}
@@ -202,7 +202,7 @@ func initClientFlags() {
 					Name:  "set",
 					Usage: "set client cli configuration in 'key=value' form (available keys: trackers, log_enable, log_level, log_rotation_interval, secret)",
 					Action: func(c *cli.Context) error {
-						command = libclient.COMMAND_UPDATE_CONFIG
+						command = libclient.CommandUpdateConfig
 						for i := range c.Args() {
 							libclient.UpdateConfigList.PushBack(c.Args().Get(i))
 						}
@@ -213,7 +213,7 @@ func initClientFlags() {
 					Name:  "ls",
 					Usage: "list client cli configurations",
 					Action: func(c *cli.Context) error {
-						command = libclient.COMMAND_LIST_CONFIG
+						command = libclient.CommandListConfig
 						return nil
 					},
 				},
@@ -378,7 +378,7 @@ func InitClient() *libclient.Client {
 
 	// check storage members
 	if libclient.GroupMembers.Len() == 0 &&
-		(command == libclient.COMMAND_DOWNLOAD || command == libclient.COMMAND_UPLOAD) {
+		(command == libclient.CommandDownload || command == libclient.CommandUpload) {
 		logger.Fatal("cannot upload or download file, no storage server available")
 	}
 	return client
@@ -388,7 +388,7 @@ func InitClient() *libclient.Client {
 func clientMonitorCollector(tracker *libclient.TrackerInstance) {
 	logger.Debug("create sync task for tracker:", tracker.ConnStr)
 	task := &bridgev2.Task{
-		TaskType: app.TaskSyncAllStorages,
+		TaskType: app.TaskSyncAllStorage,
 	}
 	libclient.AddTask(task, tracker)
 }

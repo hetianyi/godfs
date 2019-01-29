@@ -83,7 +83,7 @@ func (tracker *TrackerInstance) ExecTask(task *bridgev2.Task) (bool, error) {
 		return TaskPullFileHandler(tracker)
 	} else if task.TaskType == app.TaskDownloadFiles {
 		TaskDownloadFileHandler(task)
-	} else if task.TaskType == app.TaskSyncAllStorages {
+	} else if task.TaskType == app.TaskSyncAllStorage {
 		return TaskSyncAllStorageServerHandler(tracker)
 	} else if task.TaskType == app.TaskSyncStatistic {
 		return TaskSyncStatisticInfo(tracker)

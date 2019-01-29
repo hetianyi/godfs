@@ -29,7 +29,7 @@ func (client *TcpBridgeClient) GetConnManager() *ConnectionManager {
 
 // connect to server
 func (client *TcpBridgeClient) Connect() error {
-    if client.connManager != nil && client.connManager.State > STATE_NOT_CONNECT {
+    if client.connManager != nil && client.connManager.State > StateNotConnect {
         panic(errors.New("already connected"))
     }
     conn, err := connPool.GetConn(client.server)
@@ -41,10 +41,10 @@ func (client *TcpBridgeClient) Connect() error {
     client.connManager = &ConnectionManager{
         server: client.server,
         Conn: conn,
-        Side: CLIENT_SIDE,
+        Side: ClientSide,
         Md: md5.New(),
     }
-    client.connManager.State = STATE_CONNECTED
+    client.connManager.State = StateConnected
     return nil
 }
 
@@ -55,7 +55,7 @@ func (client *TcpBridgeClient) Validate() (*ConnectResponseMeta, error) {
         Secret: app.Secret,
         UUID: app.UUID,
     }
-    frame, e := client.sendReceive(FRAME_OPERATION_VALIDATE, STATE_CONNECTED, meta, 0, nil)
+    frame, e := client.sendReceive(FrameOperationValidate, StateConnected, meta, 0, nil)
     if e != nil {
         return nil, e
     }
@@ -64,8 +64,8 @@ func (client *TcpBridgeClient) Validate() (*ConnectResponseMeta, error) {
     if e1 != nil {
         return nil, e1
     }
-    if frame.GetStatus() == STATUS_SUCCESS {
-        client.connManager.State = STATE_VALIDATED
+    if frame.GetStatus() == StatusSuccess {
+        client.connManager.State = StateValidated
         client.connManager.UUID = res.UUID
     }
     return res, nil
@@ -74,7 +74,7 @@ func (client *TcpBridgeClient) Validate() (*ConnectResponseMeta, error) {
 
 // synchronized storage members.
 func (client *TcpBridgeClient) SyncStorageMembers(storage *app.StorageDO) (*SyncStorageMembersResponseMeta, error) {
-    frame, e := client.sendReceive(FRAME_OPERATION_SYNC_STORAGE_MEMBERS, STATE_VALIDATED, storage, 0, nil)
+    frame, e := client.sendReceive(FrameOperationSyncStorageMember, StateValidated, storage, 0, nil)
     if e != nil {
         return nil, e
     }
@@ -88,7 +88,7 @@ func (client *TcpBridgeClient) SyncStorageMembers(storage *app.StorageDO) (*Sync
 
 // synchronized storage members.
 func (client *TcpBridgeClient) SyncAllStorageServers(meta *SyncAllStorageServerMeta) (*SyncAllStorageServerResponseMeta, error) {
-    frame, e := client.sendReceive(FRAME_OPERATION_SYNC_ALL_STORAGE_SEVERS, STATE_VALIDATED, meta, 0, nil)
+    frame, e := client.sendReceive(FrameOperationSyncAllStorageServers, StateValidated, meta, 0, nil)
     if e != nil {
         return nil, e
     }
@@ -102,7 +102,7 @@ func (client *TcpBridgeClient) SyncAllStorageServers(meta *SyncAllStorageServerM
 
 // register files to tracker
 func (client *TcpBridgeClient) RegisterFiles(meta *RegisterFileMeta) (*RegisterFileResponseMeta, error) {
-    frame, e := client.sendReceive(FRAME_OPERATION_REGISTER_FILES, STATE_VALIDATED, meta, 0, nil)
+    frame, e := client.sendReceive(FrameOperationRegisterFiles, StateValidated, meta, 0, nil)
     if e != nil {
         return nil, e
     }
@@ -117,7 +117,7 @@ func (client *TcpBridgeClient) RegisterFiles(meta *RegisterFileMeta) (*RegisterF
 
 // pull files from tracker
 func (client *TcpBridgeClient) PullFiles(meta *PullFileMeta) (*PullFileResponseMeta, error) {
-    frame, e := client.sendReceive(FRAME_OPERATION_PULL_NEW_FILES, STATE_VALIDATED, meta, 0, nil)
+    frame, e := client.sendReceive(FrameOperationPullNewFiles, StateValidated, meta, 0, nil)
     if e != nil {
         return nil, e
     }
@@ -134,7 +134,7 @@ func (client *TcpBridgeClient) PullFiles(meta *PullFileMeta) (*PullFileResponseM
 func (client *TcpBridgeClient) UploadFile(meta *UploadFileMeta,
                                           bodyWriterHandler func(manager *ConnectionManager, frame *Frame) error,
                                          ) (*UploadFileResponseMeta, error) {
-    frame, e := client.sendReceive(FRAME_OPERATION_UPLOAD_FILE, STATE_VALIDATED, meta, meta.FileSize, bodyWriterHandler)
+    frame, e := client.sendReceive(FrameOperationUploadFile, StateValidated, meta, meta.FileSize, bodyWriterHandler)
     if e != nil {
         return nil, e
     }
@@ -149,7 +149,7 @@ func (client *TcpBridgeClient) UploadFile(meta *UploadFileMeta,
 
 // pull files from tracker
 func (client *TcpBridgeClient) QueryFile(meta *QueryFileMeta) (*QueryFileResponseMeta, error) {
-    frame, e := client.sendReceive(FRAME_OPERATION_QUERY_FILE, STATE_VALIDATED, meta, 0, nil)
+    frame, e := client.sendReceive(FrameOperationQueryFile, StateValidated, meta, 0, nil)
     if e != nil {
         return nil, e
     }
@@ -163,7 +163,7 @@ func (client *TcpBridgeClient) QueryFile(meta *QueryFileMeta) (*QueryFileRespons
 
 // download file from storage server.
 func (client *TcpBridgeClient) DownloadFile(meta *DownloadFileMeta) (*DownloadFileResponseMeta, *Frame, error) {
-    frame, e := client.sendReceive(FRAME_OPERATION_DOWNLOAD_FILE, STATE_VALIDATED, meta, 0, nil)
+    frame, e := client.sendReceive(FrameOperationDownloadFile, StateValidated, meta, 0, nil)
     if e != nil {
         return nil, nil, e
     }
@@ -177,7 +177,7 @@ func (client *TcpBridgeClient) DownloadFile(meta *DownloadFileMeta) (*DownloadFi
 
 // synchronize storage servers's statistic info from tracker server.
 func (client *TcpBridgeClient) SyncStatistic(meta *SyncStatisticMeta) (*SyncStatisticResponseMeta, error) {
-    frame, e := client.sendReceive(FRAME_OPERATION_SYNC_STATISTIC, STATE_VALIDATED, meta, 0, nil)
+    frame, e := client.sendReceive(FrameOperationSyncStatistic, StateValidated, meta, 0, nil)
     if e != nil {
         return nil, e
     }

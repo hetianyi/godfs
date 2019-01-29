@@ -22,12 +22,12 @@ import (
 )
 
 const (
-	COMMAND_NONE          = 0
-	COMMAND_UPLOAD        = 1
-	COMMAND_DOWNLOAD      = 2
-	COMMAND_LIST_CONFIG   = 3
-	COMMAND_UPDATE_CONFIG = 4
-	COMMAND_INSPECT_FILE  = 5
+	CommandNone          = 0
+	CommandUpload        = 1
+	CommandDownload      = 2
+	CommandListConfig   = 3
+	CommandUpdateConfig = 4
+	CommandInspectFile  = 5
 )
 
 var (
@@ -52,15 +52,15 @@ var skipCheck = false
 func ExecuteCommand(_client *Client, command int) {
 	client = _client
 	switch command {
-	case COMMAND_LIST_CONFIG:
+	case CommandListConfig:
 		listConfig()
-	case COMMAND_UPDATE_CONFIG:
+	case CommandUpdateConfig:
 		UpdateConfig()
-	case COMMAND_UPLOAD:
+	case CommandUpload:
 		upload()
-	case COMMAND_DOWNLOAD:
+	case CommandDownload:
 		download()
-	case COMMAND_INSPECT_FILE:
+	case CommandInspectFile:
 		inspect()
 	}
 }

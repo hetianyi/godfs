@@ -253,7 +253,7 @@ func AddTask(task *bridgev2.Task, tracker *TrackerInstance) bool {
 		return false
 	}
 	logger.Trace("push task type:", strconv.Itoa(task.TaskType), "for tracker", tracker.ConnStr)
-	if task.TaskType == app.TaskSyncMembers || task.TaskType == app.TaskSyncAllStorages {
+	if task.TaskType == app.TaskSyncMembers || task.TaskType == app.TaskSyncAllStorage {
 		if tracker.checkTaskTypeCount(task.TaskType) == 0 {
 			tracker.listIteLock.Lock()
 			tracker.taskList.PushFront(task)

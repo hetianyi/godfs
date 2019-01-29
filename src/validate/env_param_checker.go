@@ -12,7 +12,6 @@ import (
 // docker run -d -e bas_path="/var/godfs" -e trackers="192.168.1.100:1022,192.168.1.101:1022" ...
 
 var (
-	//map[param]
 	allParams = map[string]int{
 		"group":                 1,
 		"instance_id":           1,

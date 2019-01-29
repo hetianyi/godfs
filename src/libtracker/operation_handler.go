@@ -24,7 +24,7 @@ package libtracker
 //			response.UUID = app.UUID
 //			exist, e2 := libservice.QueryExistsStorageClient(head.UUID)
 //			if e2 != nil {
-//				response.Status = bridge.STATUS_INTERNAL_SERVER_ERROR
+//				response.Status = bridge.StatusInternalServerErr
 //			} else {
 //				if exist {
 //					response.IsNew = false
@@ -36,14 +36,14 @@ package libtracker
 //			if head.UUID != "" && len(head.UUID) == 30 {
 //				e1 = libservice.RegisterStorageClient(head.UUID)
 //				if e1 != nil {
-//					response.Status = bridge.STATUS_INTERNAL_SERVER_ERROR
+//					response.Status = bridge.StatusInternalServerErr
 //				}
 //			}
 //		} else {
-//			response.Status = bridge.STATUS_BAD_SECRET
+//			response.Status = bridge.StatusBadSecret
 //		}
 //	} else {
-//		response.Status = bridge.STATUS_INTERNAL_SERVER_ERROR
+//		response.Status = bridge.StatusInternalServerErr
 //	}
 //	logger.Info("register client:", head.UUID)
 //	e3 := connBridge.SendResponse(response, 0, nil)
@@ -86,7 +86,7 @@ package libtracker
 //		valid = false
 //	}
 //	if !valid {
-//		response.Status = bridge.STATUS_INTERNAL_SERVER_ERROR
+//		response.Status = bridge.StatusInternalServerErr
 //		connBridge.SendResponse(response, 0, nil)
 //		return nil, errors.New("invalid meta data")
 //	}
@@ -112,7 +112,7 @@ package libtracker
 //	// validate success
 //	e2 := libservice.TrackerAddFile(meta)
 //	if e2 != nil {
-//		response.Status = bridge.STATUS_INTERNAL_SERVER_ERROR
+//		response.Status = bridge.StatusInternalServerErr
 //	} else {
 //		response.Status = bridge.STATUS_OK
 //	}
@@ -142,14 +142,14 @@ package libtracker
 //	e1 := json.Unmarshal(request.MetaBody, queryMeta)
 //	var response = &bridge.OperationPullFileResponse{}
 //	if e1 != nil {
-//		response.Status = bridge.STATUS_INTERNAL_SERVER_ERROR
+//		response.Status = bridge.StatusInternalServerErr
 //		// ignore if it write success
 //		connBridge.SendResponse(response, 0, nil)
 //		return e1
 //	}
 //	ret, e2 := libservice.GetFilesBasedOnId(queryMeta.BaseId, false, queryMeta.Group)
 //	if e2 != nil {
-//		response.Status = bridge.STATUS_INTERNAL_SERVER_ERROR
+//		response.Status = bridge.StatusInternalServerErr
 //		// ignore if it write success
 //		connBridge.SendResponse(response, 0, nil)
 //		return nil

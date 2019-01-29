@@ -20,20 +20,20 @@ func init() {
 // register handlers as a server side.
 func registerOperationHandlers() {
 	logger.Debug("register server handlers")
-	bridgev2.RegisterOperationHandler(&bridgev2.OperationHandler{bridgev2.FRAME_OPERATION_VALIDATE, libcommon.ValidateConnectionHandler})
-	bridgev2.RegisterOperationHandler(&bridgev2.OperationHandler{bridgev2.FRAME_OPERATION_SYNC_STORAGE_MEMBERS, SyncStorageMembersHandler})
-	bridgev2.RegisterOperationHandler(&bridgev2.OperationHandler{bridgev2.FRAME_OPERATION_REGISTER_FILES, RegisterFilesHandler})
-	bridgev2.RegisterOperationHandler(&bridgev2.OperationHandler{bridgev2.FRAME_OPERATION_PULL_NEW_FILES, PullNewFilesHandlers})
-	bridgev2.RegisterOperationHandler(&bridgev2.OperationHandler{bridgev2.FRAME_OPERATION_SYNC_ALL_STORAGE_SEVERS, SyncAllStorageMembersHandler})
-	bridgev2.RegisterOperationHandler(&bridgev2.OperationHandler{bridgev2.FRAME_OPERATION_SYNC_STATISTIC, SyncStatisticHandlers})
-	bridgev2.RegisterOperationHandler(&bridgev2.OperationHandler{bridgev2.FRAME_OPERATION_QUERY_FILE, QueryFileHandler})
+	bridgev2.RegisterOperationHandler(&bridgev2.OperationHandler{bridgev2.FrameOperationValidate, libcommon.ValidateConnectionHandler})
+	bridgev2.RegisterOperationHandler(&bridgev2.OperationHandler{bridgev2.FrameOperationSyncStorageMember, SyncStorageMembersHandler})
+	bridgev2.RegisterOperationHandler(&bridgev2.OperationHandler{bridgev2.FrameOperationRegisterFiles, RegisterFilesHandler})
+	bridgev2.RegisterOperationHandler(&bridgev2.OperationHandler{bridgev2.FrameOperationPullNewFiles, PullNewFilesHandlers})
+	bridgev2.RegisterOperationHandler(&bridgev2.OperationHandler{bridgev2.FrameOperationSyncAllStorageServers, SyncAllStorageMembersHandler})
+	bridgev2.RegisterOperationHandler(&bridgev2.OperationHandler{bridgev2.FrameOperationSyncStatistic, SyncStatisticHandlers})
+	bridgev2.RegisterOperationHandler(&bridgev2.OperationHandler{bridgev2.FrameOperationQueryFile, QueryFileHandler})
 }
 
 
 // storage server synchronized group members
 func SyncStorageMembersHandler(manager *bridgev2.ConnectionManager, frame *bridgev2.Frame) error {
 	if frame == nil {
-		return libcommon.NULL_FRAME_ERR
+		return libcommon.ErrNilFrame
 	}
 
 	valid := true
@@ -62,7 +62,7 @@ func SyncStorageMembersHandler(manager *bridgev2.ConnectionManager, frame *bridg
 	}
 	resMeta.LookBackAddr = remoteAddr
 	if !valid {
-		responseFrame.SetStatus(bridgev2.STATUS_INTERNAL_ERROR)
+		responseFrame.SetStatus(bridgev2.StatusInternalErr)
 		if e2 := manager.Send(responseFrame); e2 != nil {
 			return e2
 		}
@@ -73,7 +73,7 @@ func SyncStorageMembersHandler(manager *bridgev2.ConnectionManager, frame *bridg
 		logger.Error("cannot cache/persist storage server info")
 		return e2
 	}
-	responseFrame.SetStatus(bridgev2.STATUS_SUCCESS)
+	responseFrame.SetStatus(bridgev2.StatusSuccess)
 	resMeta.GroupMembers = libcommon.GetGroupMembers(meta)
 	responseFrame.SetMeta(resMeta)
 	if e2 := manager.Send(responseFrame); e2 != nil {
@@ -109,14 +109,14 @@ func RegisterFilesHandler(manager *bridgev2.ConnectionManager, frame *bridgev2.F
 	// e2 := libservice.TrackerAddFile(meta)
 	if e2 != nil {
 		resMeta.LastInsertId = 0
-		responseFrame.SetStatus(bridgev2.STATUS_INTERNAL_ERROR)
+		responseFrame.SetStatus(bridgev2.StatusInternalErr)
 		responseFrame.SetMeta(resMeta)
 		responseFrame.SetMetaBodyLength(0)
 		manager.Send(responseFrame) // send response frame and ignore the result
 		return e2
 	}
 	resMeta.LastInsertId = lastId
-	responseFrame.SetStatus(bridgev2.STATUS_SUCCESS)
+	responseFrame.SetStatus(bridgev2.StatusSuccess)
 	responseFrame.SetMeta(resMeta)
 	responseFrame.SetMetaBodyLength(0)
 	return manager.Send(responseFrame)
@@ -126,14 +126,14 @@ func RegisterFilesHandler(manager *bridgev2.ConnectionManager, frame *bridgev2.F
 // client synchronized all storage servers
 func SyncAllStorageMembersHandler(manager *bridgev2.ConnectionManager, frame *bridgev2.Frame) error {
 	if frame == nil {
-		return libcommon.NULL_FRAME_ERR
+		return libcommon.ErrNilFrame
 	}
 
 	resMeta := &bridgev2.SyncAllStorageServerResponseMeta{}
 	responseFrame := &bridgev2.Frame{}
 
 	resMeta.Servers = libcommon.GetAllStorageServers()
-	responseFrame.SetStatus(bridgev2.STATUS_SUCCESS)
+	responseFrame.SetStatus(bridgev2.StatusSuccess)
 	responseFrame.SetMeta(resMeta)
 	responseFrame.SetMetaBodyLength(0)
 	return manager.Send(responseFrame)
@@ -143,7 +143,7 @@ func SyncAllStorageMembersHandler(manager *bridgev2.ConnectionManager, frame *br
 // storage client pull new file of group members.
 func PullNewFilesHandlers(manager *bridgev2.ConnectionManager, frame *bridgev2.Frame) error {
 	if frame == nil {
-		return libcommon.NULL_FRAME_ERR
+		return libcommon.ErrNilFrame
 	}
 	var meta = &bridgev2.PullNewFileMeta{}
 	e1 := json.Unmarshal(frame.FrameMeta, meta)
@@ -158,7 +158,7 @@ func PullNewFilesHandlers(manager *bridgev2.ConnectionManager, frame *bridgev2.F
 	// ret, e2 := libservice.GetFilesBasedOnId(queryMeta.BaseId, false, queryMeta.Group)
 	ls, e2 := libservicev2.GetFullFilesFromId(meta.BaseId, false, meta.Group, 50)
 	if e2 != nil {
-		responseFrame.SetStatus(bridgev2.STATUS_INTERNAL_ERROR)
+		responseFrame.SetStatus(bridgev2.StatusInternalErr)
 		responseFrame.SetMeta(resMeta)
 		responseFrame.SetMetaBodyLength(0)
 		manager.Send(responseFrame) // send response frame and ignore the result
@@ -172,7 +172,7 @@ func PullNewFilesHandlers(manager *bridgev2.ConnectionManager, frame *bridgev2.F
 		index++
 	}
 	resMeta.Files = files
-	responseFrame.SetStatus(bridgev2.STATUS_SUCCESS)
+	responseFrame.SetStatus(bridgev2.StatusSuccess)
 	responseFrame.SetMeta(resMeta)
 	responseFrame.SetMetaBodyLength(0)
 	return manager.Send(responseFrame)
@@ -182,14 +182,14 @@ func PullNewFilesHandlers(manager *bridgev2.ConnectionManager, frame *bridgev2.F
 // dashboard client synchronized statistic info of all storage servers.
 func SyncStatisticHandlers(manager *bridgev2.ConnectionManager, frame *bridgev2.Frame) error {
 	if frame == nil {
-		return libcommon.NULL_FRAME_ERR
+		return libcommon.ErrNilFrame
 	}
 
 	resMeta := &bridgev2.SyncStatisticResponseMeta{}
 	responseFrame := &bridgev2.Frame{}
 
 	resMeta.Statistic = libcommon.GetSyncStatistic()
-	responseFrame.SetStatus(bridgev2.STATUS_SUCCESS)
+	responseFrame.SetStatus(bridgev2.StatusSuccess)
 	responseFrame.SetMeta(resMeta)
 	responseFrame.SetMetaBodyLength(0)
 	return manager.Send(responseFrame)
@@ -216,7 +216,7 @@ func QueryFileHandler(manager *bridgev2.ConnectionManager, frame *bridgev2.Frame
 		md5 = regexp.MustCompile(app.PathRegex).ReplaceAllString(meta.PathOrMd5, "${4}")
 	} else {
 		resMeta.Exist = false
-		responseFrame.SetStatus(bridgev2.STATUS_SUCCESS)
+		responseFrame.SetStatus(bridgev2.StatusSuccess)
 		responseFrame.SetMeta(resMeta)
 		responseFrame.SetMetaBodyLength(0)
 		return manager.Send(responseFrame)
@@ -224,7 +224,7 @@ func QueryFileHandler(manager *bridgev2.ConnectionManager, frame *bridgev2.Frame
 	fileInfo, e2 := libservicev2.GetFullFileByMd5(md5, 2)
 	if e2 != nil {
 		resMeta.Exist = false
-		responseFrame.SetStatus(bridgev2.STATUS_INTERNAL_ERROR)
+		responseFrame.SetStatus(bridgev2.StatusInternalErr)
 		responseFrame.SetMeta(resMeta)
 		responseFrame.SetMetaBodyLength(0)
 		manager.Send(responseFrame)
@@ -233,12 +233,12 @@ func QueryFileHandler(manager *bridgev2.ConnectionManager, frame *bridgev2.Frame
 	if fileInfo != nil && fileInfo.Id > 0 {
 		resMeta.Exist = true
 		resMeta.File = *fileInfo
-		responseFrame.SetStatus(bridgev2.STATUS_SUCCESS)
+		responseFrame.SetStatus(bridgev2.StatusSuccess)
 		responseFrame.SetMeta(resMeta)
 		responseFrame.SetMetaBodyLength(0)
 	} else {
 		resMeta.Exist = false
-		responseFrame.SetStatus(bridgev2.STATUS_SUCCESS)
+		responseFrame.SetStatus(bridgev2.StatusSuccess)
 		responseFrame.SetMeta(resMeta)
 		responseFrame.SetMetaBodyLength(0)
 	}

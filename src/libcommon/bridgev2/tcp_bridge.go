@@ -10,13 +10,13 @@ import (
 )
 
 const (
-    SERVER_SIDE = 1
-    CLIENT_SIDE = 2
+    ServerSide = 1
+    ClientSide = 2
 
-    STATE_NOT_CONNECT = 0
-    STATE_CONNECTED = 1
-    STATE_VALIDATED = 2
-    STATE_DISCONNECTED = 3
+    StateNotConnect = 0
+    StateConnected = 1
+    StateValidated = 2
+    StateDisconnected = 3
 )
 
 var connPool *pool.ClientConnectionPool

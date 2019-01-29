@@ -23,12 +23,12 @@ package libstorage
 //	var response = &bridge.OperationValidationResponse{}
 //	if e1 == nil {
 //		if head.Secret == app.Secret {
-//			response.Status = bridge.STATUS_OK
+//			response.Status = bridge.StatusOk
 //		} else {
-//			response.Status = bridge.STATUS_BAD_SECRET
+//			response.Status = bridge.StatusBadSecret
 //		}
 //	} else {
-//		response.Status = bridge.STATUS_INTERNAL_SERVER_ERROR
+//		response.Status = bridge.StatusInternalServerErr
 //	}
 //	e3 := connBridge.SendResponse(response, 0, nil)
 //	if e1 != nil {
@@ -45,7 +45,7 @@ package libstorage
 //
 //	if !app.UploadEnable {
 //		var response = &bridge.OperationUploadFileResponse{
-//			Status: bridge.STATUS_UPLOAD_DISABLED,
+//			Status: bridge.StatusDisabled,
 //			Path:   "",
 //		}
 //		e13 := connBridge.SendResponse(response, 0, nil)
@@ -108,7 +108,7 @@ package libstorage
 //			}
 //
 //			var response = &bridge.OperationUploadFileResponse{
-//				Status: bridge.STATUS_OK,
+//				Status: bridge.StatusOk,
 //				Path:   path,
 //			}
 //			e13 := connBridge.SendResponse(response, 0, nil)
@@ -193,7 +193,7 @@ package libstorage
 //	e1 := json.Unmarshal(request.MetaBody, queryMeta)
 //	var response = &bridge.OperationQueryFileResponse{}
 //	if e1 != nil {
-//		response.Status = bridge.STATUS_INTERNAL_SERVER_ERROR
+//		response.Status = bridge.StatusInternalServerErr
 //		response.Exist = false
 //		// ignore if it write success
 //		connBridge.SendResponse(response, 0, nil)
@@ -205,24 +205,24 @@ package libstorage
 //	} else if mat2, _ := regexp.Match(app.PathRegex, []byte(queryMeta.PathOrMd5)); mat2 {
 //		md5 = regexp.MustCompile(app.PathRegex).ReplaceAllString(queryMeta.PathOrMd5, "${4}")
 //	} else {
-//		response.Status = bridge.STATUS_NOT_FOUND
+//		response.Status = bridge.StatusNotFound
 //		response.Exist = false
 //		return connBridge.SendResponse(response, 0, nil)
 //	}
 //	fi, e6 := libservice.GetFullFileByMd5(md5, finishFlag)
 //	if e6 != nil {
-//		response.Status = bridge.STATUS_INTERNAL_SERVER_ERROR
+//		response.Status = bridge.StatusInternalServerErr
 //		response.Exist = false
 //		// ignore if it write success
 //		connBridge.SendResponse(response, 0, nil)
 //		return e6
 //	}
 //	if fi == nil {
-//		response.Status = bridge.STATUS_NOT_FOUND
+//		response.Status = bridge.StatusNotFound
 //		response.Exist = false
 //		return connBridge.SendResponse(response, 0, nil)
 //	}
-//	response.Status = bridge.STATUS_OK
+//	response.Status = bridge.StatusOk
 //	response.Exist = true
 //	response.File = fi
 //	return connBridge.SendResponse(response, 0, nil)
@@ -234,13 +234,13 @@ package libstorage
 //	e1 := json.Unmarshal(request.MetaBody, meta)
 //	var response = &bridge.OperationDownloadFileResponse{}
 //	if e1 != nil {
-//		response.Status = bridge.STATUS_INTERNAL_SERVER_ERROR
+//		response.Status = bridge.StatusInternalServerErr
 //		// ignore if it write success
 //		connBridge.SendResponse(response, 0, nil)
 //		return e1
 //	}
 //	if mat, _ := regexp.Match(app.PathRegex, []byte(meta.Path)); !mat {
-//		response.Status = bridge.STATUS_NOT_FOUND
+//		response.Status = bridge.StatusNotFound
 //		// ignore if it write success
 //		e2 := connBridge.SendResponse(response, 0, nil)
 //		if e2 != nil {
@@ -253,7 +253,7 @@ package libstorage
 //	fullFile, e11 := libservice.GetFullFileByMd5(md5, 1)
 //
 //	if e11 != nil {
-//		response.Status = bridge.STATUS_INTERNAL_SERVER_ERROR
+//		response.Status = bridge.StatusInternalServerErr
 //		// ignore if it write success
 //		e2 := connBridge.SendResponse(response, 0, nil)
 //		if e2 != nil {
@@ -262,7 +262,7 @@ package libstorage
 //		return nil
 //	}
 //	if fullFile == nil {
-//		response.Status = bridge.STATUS_NOT_FOUND
+//		response.Status = bridge.StatusNotFound
 //		// ignore if it write success
 //		e2 := connBridge.SendResponse(response, 0, nil)
 //		if e2 != nil {
@@ -271,7 +271,7 @@ package libstorage
 //		return nil
 //	}
 //	if len(fullFile.Parts) == 0 {
-//		response.Status = bridge.STATUS_INTERNAL_SERVER_ERROR
+//		response.Status = bridge.StatusInternalServerErr
 //		// ignore if it write success
 //		e2 := connBridge.SendResponse(response, 0, nil)
 //		if e2 != nil {
@@ -285,7 +285,7 @@ package libstorage
 //		fileSize += fullFile.Parts[i].FileSize
 //	}
 //
-//	response.Status = bridge.STATUS_OK
+//	response.Status = bridge.StatusOk
 //	startPos, endPos, totalLen := libcommon.GetReadPositions(fullFile, meta.Start, meta.Offset)
 //	logger.Debug("download from: ", startPos.PartIndex, ":", startPos.PartStart)
 //	logger.Debug("download to  : ", endPos.PartIndex, ":", endPos.PartStart)

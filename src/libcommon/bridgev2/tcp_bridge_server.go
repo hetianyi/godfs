@@ -47,7 +47,7 @@ func (server *TcpBridgeServer) Listen(callbacks... func(manager *ConnectionManag
 		conn, e1 := listener.Accept()
 		manager := &ConnectionManager{
 			Conn: conn,
-			Side: SERVER_SIDE,
+			Side: ServerSide,
 		}
 		if e1 != nil {
 			logger.Error("accept new conn error:", e1)
@@ -55,7 +55,7 @@ func (server *TcpBridgeServer) Listen(callbacks... func(manager *ConnectionManag
 		} else {
 			logger.Debug("accept a new connection from remote addr:", conn.RemoteAddr().String())
 			connectionPool.Exec(func() {
-				manager.State = STATE_CONNECTED
+				manager.State = StateConnected
 				common.Try(func() {
 					Serve(manager, callbacks...)
 				}, func(i interface{}) {
@@ -73,7 +73,7 @@ func Serve(manager *ConnectionManager, callbacks... func(manager *ConnectionMana
 		manager.Md = md5.New()
 	}
 	side := ""
-	if manager.Side == SERVER_SIDE {
+	if manager.Side == ServerSide {
 		side = "server"
 	} else {
 		side = "client"

@@ -7,7 +7,7 @@ import (
 
 const (
 	// frame head
-	FRAME_HEAD_FLAG byte = 66
+	FrameHeadFlag byte = 66
 
 )
 
@@ -22,12 +22,12 @@ type Frame struct {
 
 
 func (frame *Frame) SetOperation(operation byte) {
-	frame.FrameHead = []byte{FRAME_HEAD_FLAG, operation}
+	frame.FrameHead = []byte{FrameHeadFlag, operation}
 }
 
 func (frame *Frame) GetOperation() byte {
 	if frame.FrameHead == nil || len(frame.FrameHead) != 2 {
-		return FRAME_OPERATION_NONE
+		return FrameOperationNone
 	}
 	return frame.FrameHead[1]
 }

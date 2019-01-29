@@ -44,7 +44,7 @@ func TestClient(t *testing.T) {
 		Port: 1022,
 		AdvertiseAddr: "192.168.1.142",
 		AdvertisePort: 1022,
-		AccessFlag: app.ACCESS_FLAG_NONE,
+		AccessFlag: app.AccessFlagNone,
 	}
 	server := &app.ServerInfo{}
 	server.FromStorage(storage)

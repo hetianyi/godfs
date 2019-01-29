@@ -15,15 +15,15 @@ import (
 
 var bytesPool *pool.BytesPool
 
-var OPERATION_NOT_SUPPORT_ERROR = errors.New("operation not support")
-var SEND_HEAD_BYTES_ERROR = errors.New("error send head bytes")
-var SEND_BODY_BYTES_ERROR = errors.New("error send head bytes")
-var READ_ERROR = errors.New("error read bytes")
-var FILE_NOT_FOUND_ERROR = errors.New("file not found")
-var INTERNAL_SERVER_ERROR = errors.New("internal server error")
-var DOWNLOAD_FILE_ERROR = errors.New("error download file")
+var ErrOperationNotSupport = errors.New("operation not support")
+var ErrSendHeadBytes = errors.New("error send head bytes")
+var ErrSendBodyBytes = errors.New("error send head bytes")
+var ErrRead = errors.New("error read bytes")
+var ErrFileNotFound = errors.New("file not found")
+var ErrInternalServer = errors.New("internal server error")
+var ErrDownloadFile = errors.New("error download file")
 
-const FRAME_HEAD_SIZE = 19
+const FrameHeadSize = 19
 
 func init() {
     bytesPool = pool.NewBytesPool(100)
@@ -39,7 +39,7 @@ func ReadBytes(buff []byte, len int, manager *ConnectionManager, md hash.Hash) (
         l, e := manager.Conn.Read(buff[read:len])
         if l == 0 || e == io.EOF {
             manager.Destroy()
-            return 0, READ_ERROR
+            return 0, ErrRead
         }
         if l <= len {
             read += l
@@ -61,10 +61,10 @@ func ReadBytes(buff []byte, len int, manager *ConnectionManager, md hash.Hash) (
 // read frame from server/client.
 // if frame containers body, then should read it later in custom handlers.
 func readFrame(manager *ConnectionManager) (*Frame, error) {
-    headerBytes, _ := MakeBytes(FRAME_HEAD_SIZE, false, 0, false) // meta header size
+    headerBytes, _ := MakeBytes(FrameHeadSize, false, 0, false) // meta header size
     defer RecycleBytes(headerBytes)
     // read header meta data
-    _, e := ReadBytes(headerBytes, FRAME_HEAD_SIZE, manager, manager.Md)
+    _, e := ReadBytes(headerBytes, FrameHeadSize, manager, manager.Md)
     if e == nil {
         // read meta and body size
         bMetaSize := headerBytes[3:11]
@@ -82,15 +82,15 @@ func readFrame(manager *ConnectionManager) (*Frame, error) {
             BodyLength: int64(bodyLength),
             FrameMeta: metaBodyBytes,
         }
-        if frame.FrameStatus != STATUS_SUCCESS && manager.Side == CLIENT_SIDE {
+        if frame.FrameStatus != StatusSuccess && manager.Side == ClientSide {
             logger.Debug("server response error code " + strconv.Itoa(int(frame.FrameStatus)) + " ("+ TranslateResponseMsg(frame.FrameStatus) +")")
-            if frame.FrameStatus != STATUS_SUCCESS {
+            if frame.FrameStatus != StatusSuccess {
                 return nil, errors.New("server response error code " + strconv.Itoa(int(frame.FrameStatus)) + " ("+ TranslateResponseMsg(frame.FrameStatus) +")")
             }
         }
         // server socket need validated connection state before action
-        if manager.Side == SERVER_SIDE && frame.GetOperation() != FRAME_OPERATION_VALIDATE {
-            manager.RequireStatus(STATE_VALIDATED)
+        if manager.Side == ServerSide && frame.GetOperation() != FrameOperationValidate {
+            manager.RequireStatus(StateValidated)
         }
         return frame, nil
     }
@@ -104,8 +104,8 @@ func writeFrame(manager *ConnectionManager, frame *Frame) error {
     tmpBuf, _ := MakeBytes(8, false, 0, false)
     defer RecycleBytes(tmpBuf)
     var headerBuff bytes.Buffer
-    if frame.GetOperation() == FRAME_OPERATION_NONE {
-        frame.SetOperation(FRAME_OPERATION_NONE)
+    if frame.GetOperation() == FrameOperationNone {
+        frame.SetOperation(FrameOperationNone)
     }
     headerBuff.Write(frame.FrameHead)
     headerBuff.WriteByte(frame.FrameStatus)
@@ -124,7 +124,7 @@ func writeFrame(manager *ConnectionManager, frame *Frame) error {
     }
     if len1 != headerBuff.Len() {
         manager.Destroy()
-        return SEND_HEAD_BYTES_ERROR
+        return ErrSendHeadBytes
     }
     app.UpdateIOOUT(int64(headerBuff.Len()))
     bodyWriterHandler := frame.BodyWriterHandler
@@ -148,7 +148,7 @@ func readFrameMeta(metaSize int, manager *ConnectionManager) ([]byte, error) {
         return tmp, nil
     }
     // should never happen, mark as broken connection
-    return nil, READ_ERROR
+    return nil, ErrRead
 }
 
 

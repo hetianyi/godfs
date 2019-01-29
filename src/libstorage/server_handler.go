@@ -23,15 +23,15 @@ func init() {
 // register handlers as a server side.
 func registerOperationHandlers() {
 	logger.Debug("register server handlers")
-	bridgev2.RegisterOperationHandler(&bridgev2.OperationHandler{bridgev2.FRAME_OPERATION_VALIDATE, libcommon.ValidateConnectionHandler})
-	bridgev2.RegisterOperationHandler(&bridgev2.OperationHandler{bridgev2.FRAME_OPERATION_UPLOAD_FILE, UploadFileHandler})
-	bridgev2.RegisterOperationHandler(&bridgev2.OperationHandler{bridgev2.FRAME_OPERATION_DOWNLOAD_FILE, DownFileHandler})
+	bridgev2.RegisterOperationHandler(&bridgev2.OperationHandler{bridgev2.FrameOperationValidate, libcommon.ValidateConnectionHandler})
+	bridgev2.RegisterOperationHandler(&bridgev2.OperationHandler{bridgev2.FrameOperationUploadFile, UploadFileHandler})
+	bridgev2.RegisterOperationHandler(&bridgev2.OperationHandler{bridgev2.FrameOperationDownloadFile, DownFileHandler})
 }
 
 // upload file handler.
 func UploadFileHandler(manager *bridgev2.ConnectionManager, frame *bridgev2.Frame) error {
 	if frame == nil {
-		return libcommon.NULL_FRAME_ERR
+		return libcommon.ErrNilFrame
 	}
 	manager.Md.Reset()
 	logger.Info("begin read file body, file len is ", frame.BodyLength/1024, "KB")
@@ -103,7 +103,7 @@ func UploadFileHandler(manager *bridgev2.ConnectionManager, frame *bridgev2.Fram
 
 			responseMeta := &bridgev2.UploadFileResponseMeta{path}
 			frame := &bridgev2.Frame{}
-			frame.SetStatus(bridgev2.STATUS_SUCCESS)
+			frame.SetStatus(bridgev2.StatusSuccess)
 			frame.SetMeta(responseMeta)
 			frame.SetMetaBodyLength(0)
 
@@ -187,7 +187,7 @@ func UploadFileHandler(manager *bridgev2.ConnectionManager, frame *bridgev2.Fram
 // download file handler.
 func DownFileHandler(manager *bridgev2.ConnectionManager, frame *bridgev2.Frame) error {
 	if frame == nil {
-		return libcommon.NULL_FRAME_ERR
+		return libcommon.ErrNilFrame
 	}
 
 
@@ -203,7 +203,7 @@ func DownFileHandler(manager *bridgev2.ConnectionManager, frame *bridgev2.Frame)
 	if mat, _ := regexp.Match(app.PathRegex, []byte(meta.Path)); !mat {
 		logger.Debug("error file path format")
 		resMeta.Exist = false
-		responseFrame.SetStatus(bridgev2.STATUS_SUCCESS)
+		responseFrame.SetStatus(bridgev2.StatusSuccess)
 		responseFrame.SetMeta(resMeta)
 		responseFrame.SetMetaBodyLength(0)
 		return manager.Send(responseFrame)
@@ -214,7 +214,7 @@ func DownFileHandler(manager *bridgev2.ConnectionManager, frame *bridgev2.Frame)
 	fileInfo, e2 := libservicev2.GetFullFileByMd5(md5, 1)
 	if e2 != nil {
 		resMeta.Exist = false
-		responseFrame.SetStatus(bridgev2.STATUS_INTERNAL_ERROR)
+		responseFrame.SetStatus(bridgev2.StatusInternalErr)
 		responseFrame.SetMeta(resMeta)
 		responseFrame.SetMetaBodyLength(0)
 		manager.Send(responseFrame)
@@ -223,7 +223,7 @@ func DownFileHandler(manager *bridgev2.ConnectionManager, frame *bridgev2.Frame)
 	if fileInfo != nil && fileInfo.Id > 0 {
 		resMeta.Exist = true
 		resMeta.File = *fileInfo
-		responseFrame.SetStatus(bridgev2.STATUS_SUCCESS)
+		responseFrame.SetStatus(bridgev2.StatusSuccess)
 		responseFrame.SetMeta(resMeta)
 		startPos, endPos, totalLen := libcommon.GetReadPositions(fileInfo, meta.Start, meta.Offset)
 		responseFrame.SetMetaBodyLength(totalLen)
@@ -237,7 +237,7 @@ func DownFileHandler(manager *bridgev2.ConnectionManager, frame *bridgev2.Frame)
 		return manager.Send(responseFrame)
 	} else {
 		resMeta.Exist = false
-		responseFrame.SetStatus(bridgev2.STATUS_SUCCESS)
+		responseFrame.SetStatus(bridgev2.StatusSuccess)
 		responseFrame.SetMeta(resMeta)
 		responseFrame.SetMetaBodyLength(0)
 		return manager.Send(responseFrame)

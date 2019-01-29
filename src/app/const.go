@@ -12,11 +12,11 @@ const (
 )
 
 var (
-	RunWith                   int // 启动模式，1：storage，2：tracker，3：client, 4:dashboard
+	RunWith                   int // boot mode, 1:storage, 2:tracker, 3:client, 4:dashboard
 	LogLevel                  int
 	AssignDiskSpace          int64
 	SliceSize                 int64
-	LogInterval               string // log文件精度：h/d/w/m/y
+	LogInterval               string // log file rotation interval: h/d/w/m/y
 	BasePath                  string
 	Group                      string
 	InstanceId                string
@@ -30,7 +30,7 @@ var (
 	Port                       int
 	AdvertisePort             int
 	HttpPort                  int
-	ClientType                int // client类型，1:storage client, 2:other client, 3:dashboard client
+	ClientType                int // client type, 1:storage client, 2:other client, 3:dashboard client
 	StorageClientExpireTime = time.Second * 60
 	SyncMemberInterval       = time.Second * 5 // 60
 	PullNewFileInterval     = time.Second * 10
@@ -64,23 +64,23 @@ var (
 )
 
 const (
-	TaskSyncMembers       = 1 // storage同步自己的组内成员
+	TaskSyncMembers       = 1 // synchronize group members
 	TaskRegisterFiles     = 2
 	TaskPullNewFiles     = 3
 	TaskDownloadFiles     = 4
-	TaskSyncAllStorages = 5 // client 同步所有的storage
-	TaskSyncStatistic    = 6 // dashboard同步所有的tracker统计信息
+	TaskSyncAllStorage = 5 // synchronize all storage servers
+	TaskSyncStatistic    = 6 // synchronize all tracker server statistic info
 	DbPoolSize           = 20
 
 	StatusEnabled  = 1
-	STATUS_DISABLED = 0
-	STATUS_DELETED  = 3
+	StatusDisabled = 0
+	StatusDeleted  = 3
 
-	TCP_DIALOG_TIMEOUT = time.Second * 15
+	TCPDialogTimeout = time.Second * 15
 
-	ACCESS_FLAG_NONE      = 0
-	ACCESS_FLAG_LOOKBACK  = 1
-	ACCESS_FLAG_ADVERTISE = 2
+	AccessFlagNone      = 0
+	AccessFlagInitial  = 1
+	AccessFlagAdvertise = 2
 )
 
 var ioinLock sync.Mutex

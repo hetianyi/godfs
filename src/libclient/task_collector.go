@@ -136,7 +136,7 @@ func QueryNewFileTaskCollector(tracker *TrackerInstance) {
 
 // task collector: get all storage info tracker(used by native client)
 func SyncAllStorageServersTaskCollector(tracker *TrackerInstance) {
-	task := &bridgev2.Task{TaskType: app.TaskSyncAllStorages}
+	task := &bridgev2.Task{TaskType: app.TaskSyncAllStorage}
 	AddTask(task, tracker)
 }
 

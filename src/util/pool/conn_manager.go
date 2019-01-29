@@ -10,7 +10,7 @@ import (
 	"util/logger"
 )
 
-var MAX_CONN_EXCEED_ERROR = errors.New("max client connection reached")
+var ErrFullConnectionPool = errors.New("connection pool is full")
 
 type ClientConnectionPool struct {
 	connMap           map[string]*list.List
@@ -58,14 +58,14 @@ func (pool *ClientConnectionPool) GetConn(server *app.ServerInfo) (net.Conn, err
 		}
 		return bridge, e
 	}
-	return nil, MAX_CONN_EXCEED_ERROR
+	return nil, ErrFullConnectionPool
 }
 
 // only connect but not validate this connection
 func (pool *ClientConnectionPool) newConnection(server *app.ServerInfo) (net.Conn, error) {
 	host, port := server.GetHostAndPortByAccessFlag()
 	logger.Debug("connecting to server " + host + ":" + strconv.Itoa(port) + "...")
-	d := net.Dialer{Timeout: app.TCP_DIALOG_TIMEOUT}
+	d := net.Dialer{Timeout: app.TCPDialogTimeout}
 	conn, e := d.Dial("tcp", host+":"+strconv.Itoa(port))
 	if e != nil {
 		logger.Debug("error connect to storage server " + host + ":" + strconv.Itoa(port), ">", e.Error())

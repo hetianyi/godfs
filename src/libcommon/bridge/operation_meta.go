@@ -6,12 +6,12 @@ import (
 )
 
 const (
-	STATUS_OK                    = 0
-	STATUS_BAD_SECRET            = 1
-	STATUS_OPERATION_NOT_SUPPORT = 2
-	STATUS_INTERNAL_SERVER_ERROR = 3
-	STATUS_NOT_FOUND             = 4
-	STATUS_UPLOAD_DISABLED       = 5
+	StatusOk                    = 0
+	StatusBadSecret            = 1
+	StatusOperationNotSupport = 2
+	StatusInternalServerErr = 3
+	StatusNotFound             = 4
+	StatusDisabled       = 5
 )
 
 type Member struct {
@@ -51,31 +51,31 @@ func (expireMember *ExpireMember) From(member *Member) {
 	expireMember.HttpEnable = member.HttpEnable
 	expireMember.LookBackAddress = member.LookBackAddress
 	expireMember.AdvertisePort = member.AdvertisePort
-	expireMember.AccessFlag = app.ACCESS_FLAG_NONE
+	expireMember.AccessFlag = app.AccessFlagNone
 }
 
 
 func (expireMember *ExpireMember) SwitchAccessFlag() {
-	if expireMember.AccessFlag == app.ACCESS_FLAG_LOOKBACK {
-		expireMember.AccessFlag = app.ACCESS_FLAG_ADVERTISE
+	if expireMember.AccessFlag == app.AccessFlagInitial {
+		expireMember.AccessFlag = app.AccessFlagAdvertise
 	} else {
-		expireMember.AccessFlag = app.ACCESS_FLAG_LOOKBACK
+		expireMember.AccessFlag = app.AccessFlagInitial
 	}
 }
 
 
 
 func (expireMember *ExpireMember) GetHostAndPortByAccessFlag() (host string, port int) {
-    if expireMember.AccessFlag == app.ACCESS_FLAG_NONE {
+    if expireMember.AccessFlag == app.AccessFlagNone {
     	// if run as client, always try from advertise ip
     	if app.RunWith == 3 {
-			expireMember.AccessFlag = app.ACCESS_FLAG_ADVERTISE
+			expireMember.AccessFlag = app.AccessFlagAdvertise
 			return expireMember.AdvertiseAddr, expireMember.AdvertisePort
 		}
-		expireMember.AccessFlag = app.ACCESS_FLAG_LOOKBACK
+		expireMember.AccessFlag = app.AccessFlagInitial
         return expireMember.LookBackAddress, expireMember.Port
     }
-    if expireMember.AccessFlag == app.ACCESS_FLAG_LOOKBACK {
+    if expireMember.AccessFlag == app.AccessFlagInitial {
 		return expireMember.LookBackAddress, expireMember.Port
 	}
 	return expireMember.AdvertiseAddr, expireMember.AdvertisePort

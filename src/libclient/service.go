@@ -23,8 +23,8 @@ import (
 // once the connection is broken, the client will destroy.
 // one client can only do 1 operation at a time.
 var addLock *sync.Mutex
-var NO_TRACKER_ERROR = errors.New("no tracker server available")
-var NO_STORAGE_ERROR = errors.New("no storage server available")
+var ErrNoTracker = errors.New("no tracker server available")
+var ErrNoStorage = errors.New("no storage server available")
 
 func init() {
 	addLock = new(sync.Mutex)
@@ -88,7 +88,7 @@ func (client *Client) Upload(path string, group string, startTime time.Time, ski
 		member = selectStorageServer(group, "", &excludes, true)
 		// no available storage server
 		if member == nil {
-			return "", NO_STORAGE_ERROR
+			return "", ErrNoStorage
 		}
 		// construct server info from storage member
 		server.FromStorage(member)
@@ -268,7 +268,7 @@ func (client *Client) Download(path string,
 			excludes.PushBack(member)
 		} else {
 			if !fromSrc {
-				return NO_STORAGE_ERROR
+				return ErrNoStorage
 			} else {
 				logger.Debug("source server is not available(" + instanceId + ")")
 				fromSrc = false

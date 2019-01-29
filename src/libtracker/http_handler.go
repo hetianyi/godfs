@@ -18,12 +18,12 @@ import (
 const MaxUploadFileSize = 1024 * 10
 
 var (
-	download_servers_placeholder     = "<%download_upstream_servers%>"
-	uploadable_servers_placeholder   = "<%uploadable_upstream_servers%>"
-	download_locations_placeholder   = "<%download_locations%>"
-	upload_locations_placeholder     = "<%upload_locations%>"
-	all_upstream_servers_placeholder = "<%all_upstream_servers%>"
-	all_servers_placeholder          = "<%all_servers%>"
+	downloadServersPlaceholder     = "<%download_upstream_servers%>"
+	uploadServersPlaceholder   = "<%uploadable_upstream_servers%>"
+	downloadLocationsPlaceholder   = "<%download_locations%>"
+	uploadLocationsPlaceholder     = "<%upload_locations%>"
+	allUpstreamServersPlaceholder = "<%all_upstream_servers%>"
+	allServersPlaceholder          = "<%all_servers%>"
 )
 
 // configure nginx template
@@ -108,11 +108,11 @@ func ConfigureNginxHandler(writer http.ResponseWriter, request *http.Request) {
 		f.Read(buffer)
 		content := string(buffer)
 		if servers.Len() == 0 {
-			content = strings.Replace(content, download_servers_placeholder, "\n", -1)
-			content = strings.Replace(content, uploadable_servers_placeholder, "\n", -1)
-			content = strings.Replace(content, download_locations_placeholder, "\n", -1)
-			content = strings.Replace(content, all_upstream_servers_placeholder, "\n", -1)
-			content = strings.Replace(content, all_servers_placeholder, "\n", -1)
+			content = strings.Replace(content, downloadServersPlaceholder, "\n", -1)
+			content = strings.Replace(content, uploadServersPlaceholder, "\n", -1)
+			content = strings.Replace(content, downloadLocationsPlaceholder, "\n", -1)
+			content = strings.Replace(content, allUpstreamServersPlaceholder, "\n", -1)
+			content = strings.Replace(content, allServersPlaceholder, "\n", -1)
 		} else {
 			// allServers is used by download upstreams
 			var downloadServers list.List
@@ -192,7 +192,7 @@ func ConfigureNginxHandler(writer http.ResponseWriter, request *http.Request) {
 					}
 				}
 			}
-			content = strings.Replace(content, download_servers_placeholder, bf.String(), -1)
+			content = strings.Replace(content, downloadServersPlaceholder, bf.String(), -1)
 
 			bf.Reset()
 
@@ -211,7 +211,7 @@ func ConfigureNginxHandler(writer http.ResponseWriter, request *http.Request) {
 					}
 				}
 			}
-			content = strings.Replace(content, download_locations_placeholder, bf.String(), -1)
+			content = strings.Replace(content, downloadLocationsPlaceholder, bf.String(), -1)
 
 			bf.Reset()
 
@@ -242,7 +242,7 @@ func ConfigureNginxHandler(writer http.ResponseWriter, request *http.Request) {
 				}
 
 			}
-			content = strings.Replace(content, uploadable_servers_placeholder, bf.String(), -1)
+			content = strings.Replace(content, uploadServersPlaceholder, bf.String(), -1)
 
 			bf.Reset()
 
@@ -267,7 +267,7 @@ func ConfigureNginxHandler(writer http.ResponseWriter, request *http.Request) {
 				}
 
 			}
-			content = strings.Replace(content, upload_locations_placeholder, bf.String(), -1)
+			content = strings.Replace(content, uploadLocationsPlaceholder, bf.String(), -1)
 
 			bf.Reset()
 
@@ -289,7 +289,7 @@ func ConfigureNginxHandler(writer http.ResponseWriter, request *http.Request) {
 					}
 				}
 			}
-			content = strings.Replace(content, all_upstream_servers_placeholder, bf.String(), -1)
+			content = strings.Replace(content, allUpstreamServersPlaceholder, bf.String(), -1)
 
 			bf.Reset()
 
@@ -308,7 +308,7 @@ func ConfigureNginxHandler(writer http.ResponseWriter, request *http.Request) {
 					}
 				}
 			}
-			content = strings.Replace(content, all_servers_placeholder, bf.String(), -1)
+			content = strings.Replace(content, allServersPlaceholder, bf.String(), -1)
 
 		}
 

@@ -15,18 +15,18 @@ import (
 
 // operation codes const.
 const (
-	O_CONNECT  = 1
-	O_RESPONSE = 2
+	OConnect  = 1
+	OResponse = 2
 
-	O_QUERY_FILE     = 3
-	O_DOWNLOAD_FILE  = 4
-	O_REG_STORAGE    = 5
-	O_REG_FILE       = 6
-	O_SYNC_STORAGE   = 7
-	O_PULL_NEW_FILES = 8
-	O_UPLOAD         = 9
-	O_SYNC_MEMBERS   = 10
-	O_SYNC_STATISTIC = 11
+	OQueryFile     = 3
+	ODownloadFile  = 4
+	ORegStorage    = 5
+	ORegFile       = 6
+	OSyncStorage   = 7
+	OPullNewFile = 8
+	OUpload         = 9
+	OSyncMember   = 10
+	OSyncStatistic = 11
 )
 
 const HeaderSize = 18
@@ -37,27 +37,27 @@ var operationHeadMap = make(map[int][]byte)
 var bytesPool *pool.BytesPool
 
 // error indicate that the operation is not support.
-var OPERATION_NOT_SUPPORT_ERROR = errors.New("operation not support")
-var SEND_HEAD_BYTES_ERROR = errors.New("error send head bytes")
-var SEND_BODY_BYTES_ERROR = errors.New("error send head bytes")
-var READ_ERROR = errors.New("error read bytes")
-var FILE_NOT_FOUND_ERROR = errors.New("file not found")
-var INTERNAL_SERVER_ERROR = errors.New("internal server error")
-var DOWNLOAD_FILE_ERROR = errors.New("error download file")
+var ErrOperationNotSupport = errors.New("operation not support")
+var ErrSendHeadBytes = errors.New("error send head bytes")
+var ErrSendBodyBytes = errors.New("error send head bytes")
+var ErrRead = errors.New("error read bytes")
+var ErrFileNotFound = errors.New("file not found")
+var ErrInternalServer = errors.New("internal server error")
+var ErrDownloadFile = errors.New("error download file")
 
 // init operations
 func init() {
-	operationHeadMap[O_CONNECT] = []byte{1, 1}
-	operationHeadMap[O_RESPONSE] = []byte{1, 2}
-	operationHeadMap[O_UPLOAD] = []byte{1, 3}
-	operationHeadMap[O_QUERY_FILE] = []byte{1, 4}
-	operationHeadMap[O_DOWNLOAD_FILE] = []byte{1, 5}
-	operationHeadMap[O_REG_STORAGE] = []byte{1, 6}
-	operationHeadMap[O_REG_FILE] = []byte{1, 7}
-	operationHeadMap[O_SYNC_STORAGE] = []byte{1, 8}
-	operationHeadMap[O_PULL_NEW_FILES] = []byte{1, 9}
-	operationHeadMap[O_SYNC_MEMBERS] = []byte{1, 10}
-	operationHeadMap[O_SYNC_STATISTIC] = []byte{1, 11}
+	operationHeadMap[OConnect] = []byte{1, 1}
+	operationHeadMap[OResponse] = []byte{1, 2}
+	operationHeadMap[OUpload] = []byte{1, 3}
+	operationHeadMap[OQueryFile] = []byte{1, 4}
+	operationHeadMap[ODownloadFile] = []byte{1, 5}
+	operationHeadMap[ORegStorage] = []byte{1, 6}
+	operationHeadMap[ORegFile] = []byte{1, 7}
+	operationHeadMap[OSyncStorage] = []byte{1, 8}
+	operationHeadMap[OPullNewFile] = []byte{1, 9}
+	operationHeadMap[OSyncMember] = []byte{1, 10}
+	operationHeadMap[OSyncStatistic] = []byte{1, 11}
 
 	bytesPool = pool.NewBytesPool(50)
 }
@@ -123,7 +123,7 @@ func (bridge *Bridge) SendRequest(operation int, meta interface{}, bodyLen uint6
 	}
 	if len1 != headerBuff.Len() {
 		Close(bridge.connection)
-		return SEND_HEAD_BYTES_ERROR
+		return ErrSendHeadBytes
 	}
 	app.UpdateIOOUT(int64(headerBuff.Len()))
 	if request.BodyLength > 0 {
@@ -165,7 +165,7 @@ func (bridge *Bridge) ReceiveRequest(requestHandler func(request *Meta, in io.Re
 }
 
 func (bridge *Bridge) SendResponse(meta interface{}, bodyLen uint64, bodyWriterHandler func(out io.WriteCloser) error) error {
-	response, e2 := CreateMeta(O_RESPONSE, meta, bodyLen)
+	response, e2 := CreateMeta(OResponse, meta, bodyLen)
 	if e2 != nil {
 		return e2
 	}
@@ -187,7 +187,7 @@ func (bridge *Bridge) SendResponse(meta interface{}, bodyLen uint64, bodyWriterH
 	}
 	if len1 != headerBuff.Len() {
 		Close(bridge.connection)
-		return SEND_HEAD_BYTES_ERROR
+		return ErrSendHeadBytes
 	}
 	if response.BodyLength > 0 {
 		// write request body bytes using custom writer handler.
@@ -211,7 +211,7 @@ func (bridge *Bridge) ValidateConnection(secret string) (bool, error) {
 		UUID:   app.UUID,
 	}
 	// send validate request
-	e1 := bridge.SendRequest(O_CONNECT, validateMeta, 0, nil)
+	e1 := bridge.SendRequest(OConnect, validateMeta, 0, nil)
 	if e1 != nil {
 		return isNew, e1
 	}
@@ -225,7 +225,7 @@ func (bridge *Bridge) ValidateConnection(secret string) (bool, error) {
 		if e3 != nil {
 			return e3
 		}
-		if validateResp.Status != STATUS_OK {
+		if validateResp.Status != StatusOk {
 			return errors.New("error connect to server, server response status:" + strconv.Itoa(validateResp.Status))
 		}
 		bridge.UUID = validateResp.UUID
@@ -268,7 +268,7 @@ func ReadBytes(buff []byte, len int, conn io.ReadCloser, md hash.Hash) (int, err
 		l, e := conn.Read(buff[read:len])
 		if l == 0 || e == io.EOF {
 			Close(conn)
-			return 0, READ_ERROR
+			return 0, ErrRead
 		}
 		if l <= len {
 			read += l
@@ -304,7 +304,7 @@ func readHeadBytes(reader io.ReadCloser) (int, uint64, uint64, []byte, error) {
 		}
 		return operation, metaSize, bodySize, metaBodyBytes, nil
 	}
-	return 0, 0, 0, nil, READ_ERROR
+	return 0, 0, 0, nil, ErrRead
 }
 
 // 读取meta字节信息
@@ -321,7 +321,7 @@ func readMetaBytes(metaSize int, reader io.ReadCloser) ([]byte, error) {
 		return tmp, nil
 	}
 	//should never happen, mark as broken connection
-	return nil, READ_ERROR
+	return nil, ErrRead
 }
 
 // retrieve operation code from operation head bytes.
@@ -336,14 +336,14 @@ func retrieveOperation(op []byte) int {
 }
 
 // create a new tcp request using given data
-// operation: operation code, such as 'O_CONNECT'
+// operation: operation code, such as 'OConnect'
 // meta     : meta object
 // bodyLen  : request body length
 // if create success, it returns a *Request, or else returns with error
 func CreateMeta(operation int, meta interface{}, bodyLen uint64) (*Meta, error) {
 	// operation bytes not found
 	if operationHeadMap[operation] == nil {
-		return nil, OPERATION_NOT_SUPPORT_ERROR
+		return nil, ErrOperationNotSupport
 	}
 
 	metaBodyBytes, e := json.Marshal(meta)

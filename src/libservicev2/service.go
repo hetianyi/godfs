@@ -625,7 +625,7 @@ func GetAllTrackers() (*list.List, error) {
 
 	var trackers = list.New()
 	err := dao.Query(func(db *gorm.DB) error {
-		rows, e := db.Table("tracker").Where("status != ?", app.STATUS_DELETED).Rows()
+		rows, e := db.Table("tracker").Where("status != ?", app.StatusDeleted).Rows()
 		if transformNotFoundErr(e) != nil {
 			return e
 		}

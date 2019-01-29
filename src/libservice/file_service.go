@@ -1066,7 +1066,7 @@ package libservice
 // 		return e1
 // 	}
 // 	if webTracker != nil {
-// 		if webTracker.Status == app.StatusEnabled || webTracker.Status == app.STATUS_DISABLED {
+// 		if webTracker.Status == app.StatusEnabled || webTracker.Status == app.StatusDisabled {
 // 			return errors.New("web tracker already exist")
 // 		} else {
 // 			if UpdateWebTrackerStatus(webTracker.Id, tracker.Status, dao) {
@@ -1158,7 +1158,7 @@ package libservice
 // 			}
 // 		}
 // 		return nil
-// 	}, get_exists_trackers, app.STATUS_DELETED)
+// 	}, get_exists_trackers, app.StatusDeleted)
 // 	if e != nil {
 // 		return nil, e
 // 	}
@@ -1507,7 +1507,7 @@ package libservice
 // 			if e2 != nil {
 // 				return e2
 // 			}
-// 			_, e3 := state.Exec(app.STATUS_DISABLED, tracker.Id)
+// 			_, e3 := state.Exec(app.StatusDisabled, tracker.Id)
 // 			if e3 != nil {
 // 				return e3
 // 			}
