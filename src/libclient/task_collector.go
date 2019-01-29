@@ -26,8 +26,7 @@ type TaskCollector struct {
 	Job        func(tracker *TrackerInstance) // timer task
 }
 
-
-// copy a task collector in case of share lock
+// copyTaskCollector copy a task collector in case of share lock
 func copyTaskCollector(collector *TaskCollector) *TaskCollector {
 	if collector == nil {
 		return nil
@@ -43,8 +42,7 @@ func copyTaskCollector(collector *TaskCollector) *TaskCollector {
 
 }
 
-
-// start task collectors of a tracker instance
+// Start start task collectors of a tracker instance
 func (collector *TaskCollector) Start(tracker *TrackerInstance) {
 	if collector.Job == nil {
 		logger.Error("no task assigned to this collector")
@@ -81,12 +79,10 @@ func (collector *TaskCollector) Start(tracker *TrackerInstance) {
 	}
 }
 
-
-
 // task collectors below
 // ------------------------------------------------
 
-// task collector: query files uploaded through this instance and push to all trackers
+// QueryPushFileTaskCollector task collector: query files uploaded through this instance and push to all trackers
 func QueryPushFileTaskCollector(tracker *TrackerInstance) {
 	if tracker.client == nil {
 		return
@@ -95,7 +91,7 @@ func QueryPushFileTaskCollector(tracker *TrackerInstance) {
 	AddTask(task, tracker)
 }
 
-// task collector: query files need to sync from other members
+// QueryDownloadFileTaskCollector task collector: query files need to sync from other members
 func QueryDownloadFileTaskCollector(tracker *TrackerInstance) {
 	members := collectMemberInstanceId()
 	// no member, no server for download.
@@ -122,25 +118,25 @@ func QueryDownloadFileTaskCollector(tracker *TrackerInstance) {
 	}
 }
 
-// task collector: sync member info from trackers
+// SyncMemberTaskCollector task collector: sync member info from trackers
 func SyncMemberTaskCollector(tracker *TrackerInstance) {
 	task := &bridgev2.Task{TaskType: app.TaskSyncMembers}
 	AddTask(task, tracker)
 }
 
-// task collector: query new files of other members from tracker
+// QueryNewFileTaskCollector task collector: query new files of other members from tracker
 func QueryNewFileTaskCollector(tracker *TrackerInstance) {
 	task := &bridgev2.Task{TaskType: app.TaskPullNewFiles}
 	AddTask(task, tracker)
 }
 
-// task collector: get all storage info tracker(used by native client)
+// SyncAllStorageServersTaskCollector task collector: get all storage info tracker(used by native client)
 func SyncAllStorageServersTaskCollector(tracker *TrackerInstance) {
 	task := &bridgev2.Task{TaskType: app.TaskSyncAllStorage}
 	AddTask(task, tracker)
 }
 
-// task collector: sync statistic info of storage from tracker
+// SyncStatisticTaskCollector task collector: sync statistic info of storage from tracker
 func SyncStatisticTaskCollector(tracker *TrackerInstance) {
 	task := &bridgev2.Task{TaskType: app.TaskSyncStatistic}
 	AddTask(task, tracker)

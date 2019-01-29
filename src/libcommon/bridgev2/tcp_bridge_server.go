@@ -1,12 +1,12 @@
 package bridgev2
 
 import (
-	"strconv"
-	"util/logger"
+	"crypto/md5"
 	"errors"
 	"net"
-	"crypto/md5"
+	"strconv"
 	"util/common"
+	"util/logger"
 	"util/pool"
 )
 
@@ -18,19 +18,18 @@ type TcpBridgeServer struct {
 	Port int
 }
 
-// create a new instance for bridgev2.Server
+// NewServer create a new instance for bridgev2.Server
 func NewServer(host string, port int) *TcpBridgeServer {
-	server := &TcpBridgeServer {
+	server := &TcpBridgeServer{
 		Host: host,
 		Port: port,
 	}
 	return server
 }
 
-
-// server start listening.
+// Listen server start listening.
 // callback func will called when a server connection is closed by server/client.
-func (server *TcpBridgeServer) Listen(callbacks... func(manager *ConnectionManager)) error {
+func (server *TcpBridgeServer) Listen(callbacks ...func(manager *ConnectionManager)) error {
 
 	if server.Port <= 0 || server.Port > 65535 {
 		return errors.New("invalid port range: " + strconv.Itoa(server.Port))
@@ -66,9 +65,8 @@ func (server *TcpBridgeServer) Listen(callbacks... func(manager *ConnectionManag
 	return nil
 }
 
-
-// server socket serve a single connection
-func Serve(manager *ConnectionManager, callbacks... func(manager *ConnectionManager)) {
+// Serve server socket serve a single connection
+func Serve(manager *ConnectionManager, callbacks ...func(manager *ConnectionManager)) {
 	if manager.Md == nil {
 		manager.Md = md5.New()
 	}
@@ -107,7 +105,7 @@ func Serve(manager *ConnectionManager, callbacks... func(manager *ConnectionMana
 				break
 			}
 			logger.Debug("receive a new request from remote client, operation:", frame.GetOperation())
-			if e2 := handler.Handler(manager, frame) ; e2 != nil {
+			if e2 := handler.Handler(manager, frame); e2 != nil {
 				panic(e2)
 				break
 			}
@@ -116,11 +114,3 @@ func Serve(manager *ConnectionManager, callbacks... func(manager *ConnectionMana
 		logger.Error("server serve error:", i)
 	})
 }
-
-
-
-
-
-
-
-

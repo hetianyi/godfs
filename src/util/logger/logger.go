@@ -60,7 +60,7 @@ func Error(o ...interface{}) {
 	write(errorPrefix, o)
 }
 
-// !!!this will cause system exists
+// Fatal this will cause system exists!!!
 func Fatal(o ...interface{}) {
 	if logLevel > 5 {
 		return
@@ -79,7 +79,7 @@ func write(levelPrefix string, o ...interface{}) {
 	getCaller(&buff)
 	buff.WriteString(" ")
 	buff.WriteString(strings.TrimRight(strings.TrimLeft(line, "["), "]"))
-	//buff.WriteString(line)
+	// buff.WriteString(line)
 	buff.WriteString("\n")
 
 	fmt.Print(string(buff.Bytes()))

@@ -3,10 +3,11 @@ package libclient
 import (
 	"app"
 	"container/list"
-	json "github.com/json-iterator/go"
 	"errors"
+	json "github.com/json-iterator/go"
 	"io"
 	"libcommon"
+	"libcommon/bridgev2"
 	"math/rand"
 	"regexp"
 	"strconv"
@@ -15,7 +16,6 @@ import (
 	"time"
 	"util/file"
 	"util/logger"
-	"libcommon/bridgev2"
 	"util/pool"
 )
 
@@ -38,7 +38,7 @@ type Client struct {
 	MaxConnPerServer  int // 客户端和每个服务建立的最大连接数，web项目中建议设置为和最大线程相同的数量
 }
 
-// create a new client.
+// NewClient create a new client.
 func NewClient(MaxConnPerServer int) *Client {
 	logger.Debug("init native godfs client, max conn per server:", MaxConnPerServer)
 	connPool := &pool.ClientConnectionPool{}
@@ -46,7 +46,7 @@ func NewClient(MaxConnPerServer int) *Client {
 	return &Client{connPool: connPool}
 }
 
-// upload file to storage server.
+// Upload upload file to storage server.
 func (client *Client) Upload(path string, group string, startTime time.Time, skipCheck bool) (string, error) {
 	fi, e := file.GetFile(path)
 	if e != nil {
@@ -97,7 +97,7 @@ func (client *Client) Upload(path string, group string, startTime time.Time, ski
 		e1 := tcpClient.Connect()
 		if e1 != nil {
 			h, p := server.GetHostAndPortByAccessFlag()
-			logger.Error("error connect to storage server", h + ":" + strconv.Itoa(p), "due to:", e1.Error())
+			logger.Error("error connect to storage server", h+":"+strconv.Itoa(p), "due to:", e1.Error())
 			excludes.PushBack(member)
 			continue
 		}
@@ -105,7 +105,7 @@ func (client *Client) Upload(path string, group string, startTime time.Time, ski
 		_, e2 := tcpClient.Validate()
 		if e2 != nil {
 			h, p := server.GetHostAndPortByAccessFlag()
-			logger.Error("error validate with storage server", h + ":" + strconv.Itoa(p), "due to:", e2.Error())
+			logger.Error("error validate with storage server", h+":"+strconv.Itoa(p), "due to:", e2.Error())
 			excludes.PushBack(member)
 			continue
 		}
@@ -114,7 +114,7 @@ func (client *Client) Upload(path string, group string, startTime time.Time, ski
 	}
 
 	h, p := server.GetHostAndPortByAccessFlag()
-	logger.Info("using storage server", h + ":" + strconv.Itoa(p), "(" + member.Uuid + ")")
+	logger.Info("using storage server", h+":"+strconv.Itoa(p), "("+member.Uuid+")")
 
 	fInfo, _ := fi.Stat()
 	uploadMeta := &bridgev2.UploadFileMeta{
@@ -171,8 +171,7 @@ func (client *Client) Upload(path string, group string, startTime time.Time, ski
 	return resMeta.Path, err
 }
 
-
-// query file from tracker server.
+// QueryFile query file from tracker server.
 func (client *Client) QueryFile(pathOrMd5 string) (*app.FileVO, error) {
 	logger.Debug("query file info:", pathOrMd5)
 	var result *app.FileVO
@@ -191,7 +190,7 @@ func (client *Client) QueryFile(pathOrMd5 string) (*app.FileVO, error) {
 		e1 := tcpClient.Connect()
 		if e1 != nil {
 			h, p := server.GetHostAndPortByAccessFlag()
-			logger.Error("error connect to tracker server", h + ":" + strconv.Itoa(p), "due to:", e1.Error())
+			logger.Error("error connect to tracker server", h+":"+strconv.Itoa(p), "due to:", e1.Error())
 			tcpClient.GetConnManager().Destroy()
 			continue
 		}
@@ -199,7 +198,7 @@ func (client *Client) QueryFile(pathOrMd5 string) (*app.FileVO, error) {
 		_, e2 := tcpClient.Validate()
 		if e2 != nil {
 			h, p := server.GetHostAndPortByAccessFlag()
-			logger.Error("error validate with tracker server", h + ":" + strconv.Itoa(p), "due to:", e2.Error())
+			logger.Error("error validate with tracker server", h+":"+strconv.Itoa(p), "due to:", e2.Error())
 			tcpClient.GetConnManager().Destroy()
 			continue
 		}
@@ -207,13 +206,13 @@ func (client *Client) QueryFile(pathOrMd5 string) (*app.FileVO, error) {
 		resMeta, e3 := tcpClient.QueryFile(meta)
 		if e3 != nil {
 			h, p := server.GetHostAndPortByAccessFlag()
-			logger.Debug("error query file from tracker server", h + ":" + strconv.Itoa(p), "due to:", e2.Error())
+			logger.Debug("error query file from tracker server", h+":"+strconv.Itoa(p), "due to:", e2.Error())
 			tcpClient.GetConnManager().Destroy()
 			continue
 		}
 		if resMeta == nil || !resMeta.Exist {
 			h, p := server.GetHostAndPortByAccessFlag()
-			logger.Debug("query file returns no result from tracker server", h + ":" + strconv.Itoa(p))
+			logger.Debug("query file returns no result from tracker server", h+":"+strconv.Itoa(p))
 			tcpClient.GetConnManager().Close()
 			continue
 		}
@@ -224,8 +223,7 @@ func (client *Client) QueryFile(pathOrMd5 string) (*app.FileVO, error) {
 	return result, nil
 }
 
-
-// download file part.
+// DownloadFile download file part.
 func (client *Client) DownloadFile(path string,
 	start int64,
 	offset int64,
@@ -241,7 +239,7 @@ func (client *Client) DownloadFile(path string,
 	return client.Download(path, start, offset, true, new(list.List), bodyWriterHandler)
 }
 
-// download file from other storage server.
+// Download download file from other storage server.
 func (client *Client) Download(path string,
 	start int64,
 	offset int64,
@@ -279,9 +277,9 @@ func (client *Client) Download(path string,
 		server.FromStorage(member)
 		h, p := server.GetHostAndPortByAccessFlag()
 		if fromSrc {
-			logger.Debug("try to download file from source server:", h + ":" + strconv.Itoa(p))
+			logger.Debug("try to download file from source server:", h+":"+strconv.Itoa(p))
 		} else {
-			logger.Debug("try to download file from storage server:", h + ":" + strconv.Itoa(p))
+			logger.Debug("try to download file from storage server:", h+":"+strconv.Itoa(p))
 		}
 
 		tcpClient := bridgev2.NewTcpClient(server)
@@ -289,7 +287,7 @@ func (client *Client) Download(path string,
 		e1 := tcpClient.Connect()
 		if e1 != nil {
 			h, p := server.GetHostAndPortByAccessFlag()
-			logger.Error("error connect to storage server", h + ":" + strconv.Itoa(p), "due to:", e1.Error())
+			logger.Error("error connect to storage server", h+":"+strconv.Itoa(p), "due to:", e1.Error())
 			tcpClient.GetConnManager().Destroy()
 			continue
 		}
@@ -297,7 +295,7 @@ func (client *Client) Download(path string,
 		_, e2 := tcpClient.Validate()
 		if e2 != nil {
 			h, p := server.GetHostAndPortByAccessFlag()
-			logger.Error("error validate with storage server", h + ":" + strconv.Itoa(p), "due to:", e2.Error())
+			logger.Error("error validate with storage server", h+":"+strconv.Itoa(p), "due to:", e2.Error())
 			tcpClient.GetConnManager().Destroy()
 			continue
 		}
@@ -309,7 +307,7 @@ func (client *Client) Download(path string,
 		}
 		resMeta, frame, e3 := tcpClient.DownloadFile(meta)
 		if e3 != nil || resMeta == nil || !resMeta.Exist {
-			logger.Error("error download from storage server", h + ":" + strconv.Itoa(p), "due to: file not found")
+			logger.Error("error download from storage server", h+":"+strconv.Itoa(p), "due to: file not found")
 			tcpClient.GetConnManager().Destroy()
 			return client.Download(path, start, offset, false, excludes, bodyWriterHandler)
 		}
@@ -319,7 +317,7 @@ func (client *Client) Download(path string,
 		retry, e5 := bodyWriterHandler(tcpClient.GetConnManager(), frame, resMeta)
 		if e5 != nil {
 			tcpClient.GetConnManager().Destroy()
-			logger.Error("error download from storage server", h + ":" + strconv.Itoa(p), "due to:", e5.Error())
+			logger.Error("error download from storage server", h+":"+strconv.Itoa(p), "due to:", e5.Error())
 			if retry {
 				return client.Download(path, start, offset, false, excludes, bodyWriterHandler)
 			} else {
@@ -332,7 +330,7 @@ func (client *Client) Download(path string,
 	return nil
 }
 
-// select a storage server matching given group and instanceId
+// selectStorageServer select a storage server matching given group and instanceId
 // excludes contains fail storage and not gonna use this time.
 func selectStorageServer(group string, instanceId string, excludes *list.List, upload bool) *app.StorageDO {
 	memberIteLock.Lock()
@@ -370,7 +368,7 @@ func selectStorageServer(group string, instanceId string, excludes *list.List, u
 	return nil
 }
 
-// query if a list contains the given storage server.
+// containsMember query if a list contains the given storage server.
 func containsMember(mem *app.StorageDO, excludes *list.List) bool {
 	if excludes == nil {
 		return false

@@ -47,7 +47,6 @@ func main() {
 	}
 }
 
-
 func initStorageFlags() {
 	appFlag := cli.NewApp()
 	appFlag.Version = app.Version
@@ -55,7 +54,7 @@ func initStorageFlags() {
 	appFlag.Usage = ""
 
 	// config file location
-	appFlag.Flags = []cli.Flag {
+	appFlag.Flags = []cli.Flag{
 		cli.StringFlag{
 			Name:        "config, c",
 			Value:       "../conf/storage.conf",

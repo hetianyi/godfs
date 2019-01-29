@@ -3,12 +3,12 @@ package libtracker
 import (
 	"app"
 	"errors"
+	json "github.com/json-iterator/go"
 	"libcommon"
 	"libcommon/bridgev2"
 	"libservicev2"
 	"regexp"
 	"strings"
-	json "github.com/json-iterator/go"
 	"util/logger"
 	"validate"
 )
@@ -17,7 +17,7 @@ func init() {
 	registerOperationHandlers()
 }
 
-// register handlers as a server side.
+// registerOperationHandlers register handlers as a server side.
 func registerOperationHandlers() {
 	logger.Debug("register server handlers")
 	bridgev2.RegisterOperationHandler(&bridgev2.OperationHandler{bridgev2.FrameOperationValidate, libcommon.ValidateConnectionHandler})
@@ -29,8 +29,7 @@ func registerOperationHandlers() {
 	bridgev2.RegisterOperationHandler(&bridgev2.OperationHandler{bridgev2.FrameOperationQueryFile, QueryFileHandler})
 }
 
-
-// storage server synchronized group members
+// SyncStorageMembersHandler storage server synchronized group members
 func SyncStorageMembersHandler(manager *bridgev2.ConnectionManager, frame *bridgev2.Frame) error {
 	if frame == nil {
 		return libcommon.ErrNilFrame
@@ -82,8 +81,7 @@ func SyncStorageMembersHandler(manager *bridgev2.ConnectionManager, frame *bridg
 	return nil
 }
 
-
-// storage server synchronized group members
+// RegisterFilesHandler storage server synchronized group members
 func RegisterFilesHandler(manager *bridgev2.ConnectionManager, frame *bridgev2.Frame) error {
 	var meta = &bridgev2.RegisterFileMeta{}
 	e1 := json.Unmarshal(frame.FrameMeta, meta)
@@ -122,8 +120,7 @@ func RegisterFilesHandler(manager *bridgev2.ConnectionManager, frame *bridgev2.F
 	return manager.Send(responseFrame)
 }
 
-
-// client synchronized all storage servers
+// SyncAllStorageMembersHandler client synchronized all storage servers
 func SyncAllStorageMembersHandler(manager *bridgev2.ConnectionManager, frame *bridgev2.Frame) error {
 	if frame == nil {
 		return libcommon.ErrNilFrame
@@ -139,8 +136,7 @@ func SyncAllStorageMembersHandler(manager *bridgev2.ConnectionManager, frame *br
 	return manager.Send(responseFrame)
 }
 
-
-// storage client pull new file of group members.
+// PullNewFilesHandlers storage client pull new file of group members.
 func PullNewFilesHandlers(manager *bridgev2.ConnectionManager, frame *bridgev2.Frame) error {
 	if frame == nil {
 		return libcommon.ErrNilFrame
@@ -153,7 +149,6 @@ func PullNewFilesHandlers(manager *bridgev2.ConnectionManager, frame *bridgev2.F
 
 	resMeta := &bridgev2.PullNewFileResponseMeta{}
 	responseFrame := &bridgev2.Frame{}
-
 
 	// ret, e2 := libservice.GetFilesBasedOnId(queryMeta.BaseId, false, queryMeta.Group)
 	ls, e2 := libservicev2.GetFullFilesFromId(meta.BaseId, false, meta.Group, 50)
@@ -178,8 +173,7 @@ func PullNewFilesHandlers(manager *bridgev2.ConnectionManager, frame *bridgev2.F
 	return manager.Send(responseFrame)
 }
 
-
-// dashboard client synchronized statistic info of all storage servers.
+// SyncStatisticHandlers dashboard client synchronized statistic info of all storage servers.
 func SyncStatisticHandlers(manager *bridgev2.ConnectionManager, frame *bridgev2.Frame) error {
 	if frame == nil {
 		return libcommon.ErrNilFrame
@@ -196,8 +190,7 @@ func SyncStatisticHandlers(manager *bridgev2.ConnectionManager, frame *bridgev2.
 
 }
 
-
-// storage server synchronized group members
+// QueryFileHandler storage server synchronized group members
 func QueryFileHandler(manager *bridgev2.ConnectionManager, frame *bridgev2.Frame) error {
 	var meta = &bridgev2.QueryFileMeta{}
 	e1 := json.Unmarshal(frame.FrameMeta, meta)
@@ -207,7 +200,6 @@ func QueryFileHandler(manager *bridgev2.ConnectionManager, frame *bridgev2.Frame
 
 	resMeta := &bridgev2.QueryFileResponseMeta{}
 	responseFrame := &bridgev2.Frame{}
-
 
 	var md5 string
 	if mat1, _ := regexp.Match(app.Md5Regex, []byte(meta.PathOrMd5)); mat1 {

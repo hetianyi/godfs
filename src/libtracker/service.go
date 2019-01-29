@@ -5,18 +5,18 @@ import (
 	"libcommon"
 	"libcommon/bridgev2"
 	"libservicev2"
+	"net/http"
+	"strconv"
+	"time"
 	"util/common"
 	"util/db"
 	"util/logger"
 	"util/pool"
-	"net/http"
-	"strconv"
-	"time"
 )
 
 var p, _ = pool.NewPool(500, 0)
 
-// Start service and listen
+// StartService Start service and listen
 // 1. Start task for upload listen
 // 2. Start task for communication with tracker
 func StartService() {
@@ -35,14 +35,13 @@ func StartService() {
 	startTrackerService()
 }
 
-// tracker server start tcp listen
+// startTrackerService tracker server start tcp listen
 func startTrackerService() {
 	server := bridgev2.NewServer("", app.Port)
 	server.Listen(libcommon.FutureExpireStorageServer)
 }
 
-
-// start http download server.
+// startHttpService start http download server.
 func startHttpService() {
 	if !app.HttpEnable {
 		logger.Info("http server disabled")

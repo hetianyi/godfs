@@ -1,13 +1,13 @@
 package libtracker
 
 import (
+	"app"
 	"libcommon"
+	"libcommon/bridgev2"
+	"libservicev2"
 	"testing"
 	"util/db"
 	"util/logger"
-	"app"
-	"libservicev2"
-	"libcommon/bridgev2"
 )
 
 func init() {
@@ -18,11 +18,8 @@ func init() {
 	libservicev2.SetPool(db.NewPool(1))
 }
 
-
 func TestStartTrackerServer(t *testing.T) {
 	app.UUID = "tracker01"
 	server := bridgev2.NewServer("", app.Port)
 	server.Listen(libcommon.FutureExpireStorageServer)
 }
-
-

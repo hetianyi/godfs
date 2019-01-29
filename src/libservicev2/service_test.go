@@ -1,15 +1,15 @@
 package libservicev2
 
 import (
-	"testing"
-	"util/db"
-	"util/logger"
 	"app"
 	"container/list"
-	"strconv"
-	"fmt"
 	"encoding/json"
+	"fmt"
+	"strconv"
+	"testing"
 	"time"
+	"util/db"
+	"util/logger"
 	"util/timeutil"
 )
 
@@ -19,7 +19,7 @@ func init() {
 	SetPool(db.NewPool(1))
 }
 
-func PrintResult(result... interface{}) {
+func PrintResult(result ...interface{}) {
 	fmt.Println("\n\n+++~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~+++")
 	if result != nil {
 		for i := range result {
@@ -35,7 +35,7 @@ func TestInsertFile(t *testing.T) {
 	file := &app.FileVO{Md5: "eeeeee", PartNumber: 1, Group: "G01", Instance: "01", Finish: 1}
 	ls := list.New()
 	for i := 0; i < 3; i++ {
-		part := &app.PartDO{Md5: "rrrr_" + strconv.Itoa(i), Size: int64(1000+i)}
+		part := &app.PartDO{Md5: "rrrr_" + strconv.Itoa(i), Size: int64(1000 + i)}
 		ls.PushBack(part)
 	}
 	for ele := ls.Front(); ele != nil; ele = ele.Next() {
@@ -47,14 +47,12 @@ func TestInsertFile(t *testing.T) {
 	logger.Info(string(s))
 }
 
-
 func TestConfirmAppUUID(t *testing.T) {
 	uuid := "aaaaa"
 	logger.Info("before uuid is", uuid)
 	logger.Info("after uuid is")
 	logger.Info(ConfirmAppUUID(uuid))
 }
-
 
 func TestGetFileIdByMd5(t *testing.T) {
 	logger.Error(GetFileIdByMd5("xxxxxx", nil))
@@ -97,23 +95,21 @@ func TestGetFullFilesFromId(t *testing.T) {
 	PrintResult(GetFullFilesFromId(4, false, "G01", 10))
 }
 
-
 func TestSaveTrackerInfo(t *testing.T) {
 	logger.Error(SaveTracker(&app.TrackerDO{
-		Uuid: "xxx",
+		Uuid:          "xxx",
 		TrackerSyncId: 1,
-		LastRegTime: timeutil.GetTimestamp(time.Now()),
-		LocalPushId: 1 ,
-		Host: "456",
-		Port: 111,
-		Status: 1,
-		Secret: "123456",
-		TotalFiles: 1,
-		Remark: "asd",
-		AddTime: timeutil.GetTimestamp(time.Now()),
+		LastRegTime:   timeutil.GetTimestamp(time.Now()),
+		LocalPushId:   1,
+		Host:          "456",
+		Port:          111,
+		Status:        1,
+		Secret:        "123456",
+		TotalFiles:    1,
+		Remark:        "asd",
+		AddTime:       timeutil.GetTimestamp(time.Now()),
 	}))
 }
-
 
 func TestGetStorageByUUID(t *testing.T) {
 	PrintResult(GetStorageByUUID("123"))
@@ -123,23 +119,23 @@ func TestExistsStorage(t *testing.T) {
 }
 func TestSaveStorage(t *testing.T) {
 	storage := &app.StorageDO{
-		Uuid: "123",
-		Host: "",
-		Port: 0,
-		Status: app.StatusEnabled,
+		Uuid:       "123",
+		Host:       "",
+		Port:       0,
+		Status:     app.StatusEnabled,
 		TotalFiles: 0,
-		Group: "",
+		Group:      "",
 		InstanceId: "",
-		HttpPort: 0,
+		HttpPort:   0,
 		HttpEnable: false,
-		StartTime: 0,
-		Download: 0,
-		Upload: 0,
-		Disk: 0,
-		ReadOnly: false,
-		Finish: 0,
-		IOin: 0,
-		IOout: 0,
+		StartTime:  0,
+		Download:   0,
+		Upload:     0,
+		Disk:       0,
+		ReadOnly:   false,
+		Finish:     0,
+		IOin:       0,
+		IOout:      0,
 	}
 	SaveStorage("", *storage)
 }
@@ -157,22 +153,22 @@ func TestUpdateTrackerStatus(t *testing.T) {
 }
 
 func TestInsertStorageStatisticLog(t *testing.T) {
-	webStorage  := &app.StorageStatisticLogDO {
+	webStorage := &app.StorageStatisticLogDO{
 		StorageUuid: "ssssss",
-		LogTime: timeutil.GetTimestamp(time.Now()),
-		IOin: 1,
-		IOout: 1,
-		Disk: 1,
-		Memory: 1,
-		Download: 1,
-		Upload: 1,
+		LogTime:     timeutil.GetTimestamp(time.Now()),
+		IOin:        1,
+		IOout:       1,
+		Disk:        1,
+		Memory:      1,
+		Download:    1,
+		Upload:      1,
 	}
 	PrintResult(InsertStorageStatisticLog(webStorage, nil))
 }
 
 func TestGetFileCount(t *testing.T) {
 	total := 0
-	for ;; {
+	for {
 		fmt.Println(GetFileCount(), "   ", total)
 		total++
 	}
@@ -184,16 +180,16 @@ func TestGetIndexStatistic(t *testing.T) {
 
 func TestInsertPulledTrackerFiles(t *testing.T) {
 	file := &app.FileVO{
-		Id: 2,
-		Md5: "xxxx",
+		Id:         2,
+		Md5:        "xxxx",
 		PartNumber: 3,
-		Group: "G01",
-		Instance: "001",
-		Finish: 0,
+		Group:      "G01",
+		Instance:   "001",
+		Finish:     0,
 	}
 	part := &app.PartDO{
-		Id: 1,
-		Md5: "123",
+		Id:   1,
+		Md5:  "123",
 		Size: 1024,
 	}
 	parts := make([]app.PartDO, 1)
@@ -206,16 +202,16 @@ func TestInsertPulledTrackerFiles(t *testing.T) {
 
 func TestInsertRegisteredFiles(t *testing.T) {
 	file := &app.FileVO{
-		Id: 3,
-		Md5: "xxxx111",
+		Id:         3,
+		Md5:        "xxxx111",
 		PartNumber: 3,
-		Group: "G01",
-		Instance: "001",
-		Finish: 0,
+		Group:      "G01",
+		Instance:   "001",
+		Finish:     0,
 	}
 	part := &app.PartDO{
-		Id: 4,
-		Md5: "123",
+		Id:   4,
+		Md5:  "123",
 		Size: 1024,
 	}
 	parts := make([]app.PartDO, 1)

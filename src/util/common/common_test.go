@@ -63,7 +63,6 @@ func Test3(t *testing.T) {
 	fmt.Println(parseAdvertiseAddr("192.168.0.122:8888", 1234))
 }
 
-
 func Test22(t *testing.T) {
 	a := TValue(false, "answer is true", "answer is false").(string)
 	fmt.Println(a)
@@ -87,9 +86,6 @@ func TestWalkList(t *testing.T) {
 		return false
 	})
 }
-
-
-
 
 func TestNet1(t *testing.T) {
 	addrs, _ := net.InterfaceAddrs()

@@ -42,11 +42,10 @@ func init() {
 type TrackerMaintainer struct {
 	Collectors       list.List
 	TrackerInstances list.List
-	DieCallback func(tracker string)
+	DieCallback      func(tracker string)
 }
 
-
-// init a download client for file synchronization.
+// initDownloadClient init a download client for file synchronization.
 func initDownloadClient(maintainer *TrackerMaintainer) {
 	lockInitDownloadClient.Lock()
 	defer lockInitDownloadClient.Unlock()
@@ -57,13 +56,12 @@ func initDownloadClient(maintainer *TrackerMaintainer) {
 	downloadClient.TrackerMaintainer = maintainer
 }
 
-// get download client.
+// getDownloadClient get download client.
 func getDownloadClient() *Client {
 	return downloadClient
 }
 
-
-// task of type TaskDownloadFiles can only put in one tracker instance.
+// trackTaskFilter task of type TaskDownloadFiles can only put in one tracker instance.
 func trackTaskFilter(allCollectors *list.List) *list.List {
 	increaseTrackerIndex()
 	if trackerIndex == 1 {
@@ -82,14 +80,13 @@ func trackTaskFilter(allCollectors *list.List) *list.List {
 	return &ret
 }
 
-
 func increaseTrackerIndex() {
 	trackerIndexLock.Lock()
 	defer trackerIndexLock.Unlock()
 	trackerIndex++
 }
 
-// communication with tracker
+// Maintain communication with tracker
 // k,v => <connection string, secret>
 func (maintainer *TrackerMaintainer) Maintain(trackers map[string]string) {
 	if len(trackers) == 0 {
@@ -105,7 +102,7 @@ func (maintainer *TrackerMaintainer) Maintain(trackers map[string]string) {
 	}
 }
 
-// connect to each tracker
+// track connect to each tracker
 func (maintainer *TrackerMaintainer) track(tracker string, secret string) {
 	logger.Debug("start tracker conn with tracker server:", tracker)
 	retry := 0
@@ -144,7 +141,7 @@ func (maintainer *TrackerMaintainer) track(tracker string, secret string) {
 			// validate client
 			respMeta, e1 := client.Validate()
 			if e1 != nil {
-				logger.Error("error validate with tracker", tracker + ":", e1)
+				logger.Error("error validate with tracker", tracker+":", e1)
 				client.GetConnManager().Destroy()
 				// native client will break here
 				if app.RunWith == 3 {
@@ -152,7 +149,7 @@ func (maintainer *TrackerMaintainer) track(tracker string, secret string) {
 				}
 			} else {
 				if respMeta.New4Tracker && app.RunWith == 1 {
-					logger.Info("I'm new to tracker", tracker, "("+ respMeta.UUID +")")
+					logger.Info("I'm new to tracker", tracker, "("+respMeta.UUID+")")
 				}
 				trackerInstance.Ready = true
 				retry = 0
@@ -211,7 +208,7 @@ func (maintainer *TrackerMaintainer) track(tracker string, secret string) {
 	}
 }
 
-// storage members
+// storeMembers storage members
 func storeMembers(members []app.StorageDO) {
 	memberIteLock.Lock()
 	defer memberIteLock.Unlock()
@@ -245,8 +242,7 @@ func storeMembers(members []app.StorageDO) {
 	}
 }
 
-
-// add timer task to list.
+// AddTask add timer task to list.
 func AddTask(task *bridgev2.Task, tracker *TrackerInstance) bool {
 	if task == nil {
 		logger.Debug("can't push nil task")
@@ -318,8 +314,7 @@ func AddTask(task *bridgev2.Task, tracker *TrackerInstance) bool {
 	return false
 }
 
-
-// sync file from other storage server.
+// downloadFile sync file from other storage server.
 func downloadFile(fullFi *app.FileVO) {
 
 	addDownloadingFile(fullFi.Id, false)
@@ -352,9 +347,9 @@ func downloadFile(fullFi *app.FileVO) {
 			if len(fullFi.Parts) > 1 {
 				som = "M"
 			}
-			downloadPath := "/"+app.Group+"/"+fullFi.Instance+"/"+som+"/"+fullFi.Md5
-			logger.Debug("download part of ", strconv.Itoa(i + 1) + "/" + strconv.Itoa(len(fullFi.Parts)),
-				": /" + app.Group+"/" + fullFi.Instance + "/" + som + "/" + fullFi.Md5, " -> ", part.Md5)
+			downloadPath := "/" + app.Group + "/" + fullFi.Instance + "/" + som + "/" + fullFi.Md5
+			logger.Debug("download part of ", strconv.Itoa(i+1)+"/"+strconv.Itoa(len(fullFi.Parts)),
+				": /"+app.Group+"/"+fullFi.Instance+"/"+som+"/"+fullFi.Md5, " -> ", part.Md5)
 
 			e2 := downloadClient.Download(downloadPath,
 				start,
@@ -363,36 +358,36 @@ func downloadFile(fullFi *app.FileVO) {
 				nil,
 				func(manager *bridgev2.ConnectionManager, frame *bridgev2.Frame, resMeta *bridgev2.DownloadFileResponseMeta) (b bool, e error) {
 
-				// stream handler
-				if part.Size != frame.BodyLength {
-					return true, errors.New("download return wrong file length")
-				}
-				fi, e3 := libcommon.CreateTmpFile()
-				if e3 != nil {
-					logger.Debug("error create temp file")
-					return true, e3
-				}
-				e4 := libcommon.WriteOut(manager.Conn, frame.BodyLength, buffer, fi, md)
-				fi.Close()
-				if e4 != nil {
-					file.Delete(fi.Name())
-					return true, e4
-				}
-				// check whether file md5 is correct.
-				md5 := hex.EncodeToString(md.Sum(nil))
-				if md5 != part.Md5 {
-					file.Delete(fi.Name())
-					return true, errors.New("part " + strconv.Itoa(i+1) + " download failed: incorrect file fingerprint: " + md5 + " but true is " + part.Md5)
-				}
-				e5 := libcommon.MoveTmpFileTo(part.Md5, fi)
-				if e5 != nil {
-					file.Delete(fi.Name())
-					logger.Error("error move temp file")
-					return false, e5
-				}
-				logger.Info("synchronize file part success", strconv.Itoa(i+1) + "/" + strconv.Itoa(len(fullFi.Parts)) + " -> " + part.Md5)
-				return false, nil
-			})
+					// stream handler
+					if part.Size != frame.BodyLength {
+						return true, errors.New("download return wrong file length")
+					}
+					fi, e3 := libcommon.CreateTmpFile()
+					if e3 != nil {
+						logger.Debug("error create temp file")
+						return true, e3
+					}
+					e4 := libcommon.WriteOut(manager.Conn, frame.BodyLength, buffer, fi, md)
+					fi.Close()
+					if e4 != nil {
+						file.Delete(fi.Name())
+						return true, e4
+					}
+					// check whether file md5 is correct.
+					md5 := hex.EncodeToString(md.Sum(nil))
+					if md5 != part.Md5 {
+						file.Delete(fi.Name())
+						return true, errors.New("part " + strconv.Itoa(i+1) + " download failed: incorrect file fingerprint: " + md5 + " but true is " + part.Md5)
+					}
+					e5 := libcommon.MoveTmpFileTo(part.Md5, fi)
+					if e5 != nil {
+						file.Delete(fi.Name())
+						logger.Error("error move temp file")
+						return false, e5
+					}
+					logger.Info("synchronize file part success", strconv.Itoa(i+1)+"/"+strconv.Itoa(len(fullFi.Parts))+" -> "+part.Md5)
+					return false, nil
+				})
 			if e2 != nil {
 				logger.Error("error synchronize file part:", e2.Error())
 				dirty++
@@ -438,7 +433,7 @@ func collectMemberInstanceId() string {
 	return string(buffer.Bytes())
 }
 
-// mark file download state.
+// addDownloadingFile mark file download state.
 // fileId: file's id.
 // remove: true is add and false is remove the mark from list.
 func addDownloadingFile(fileId int64, remove bool) {

@@ -1,13 +1,13 @@
 package bridgev2
 
 import (
-	"testing"
 	"app"
 	"fmt"
-	"util/db"
 	json "github.com/json-iterator/go"
-	"util/logger"
 	"libservicev2"
+	"testing"
+	"util/db"
+	"util/logger"
 )
 
 func init() {
@@ -17,7 +17,7 @@ func init() {
 	libservicev2.SetPool(db.NewPool(1))
 }
 
-func PrintResult(result... interface{}) {
+func PrintResult(result ...interface{}) {
 	fmt.Println("\n\n+++~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~+++")
 	if result != nil {
 		for i := range result {
@@ -35,16 +35,14 @@ func TestServer(t *testing.T) {
 	server.Listen()
 }
 
-
-
 func TestClient(t *testing.T) {
 	app.UUID = "storage01"
 	storage := &app.StorageDO{
-		Host: "localhost",
-		Port: 1022,
+		Host:          "localhost",
+		Port:          1022,
 		AdvertiseAddr: "192.168.1.142",
 		AdvertisePort: 1022,
-		AccessFlag: app.AccessFlagNone,
+		AccessFlag:    app.AccessFlagNone,
 	}
 	server := &app.ServerInfo{}
 	server.FromStorage(storage)

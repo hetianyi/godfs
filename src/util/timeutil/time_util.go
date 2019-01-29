@@ -13,7 +13,7 @@ var (
 	increment = 0
 )
 
-// 获取短日期格式：2018-11-11
+// GetDateString 获取短日期格式：2018-11-11
 func GetDateString(t time.Time) string {
 	var buff bytes.Buffer
 	buff.WriteString(strconv.Itoa(GetYear(t)))
@@ -24,7 +24,7 @@ func GetDateString(t time.Time) string {
 	return buff.String()
 }
 
-// 获取长日期格式：2018-11-11 12:12:12
+// GetLongDateString 获取长日期格式：2018-11-11 12:12:12
 func GetLongDateString(t time.Time) string {
 	var buff bytes.Buffer
 	buff.WriteString(strconv.Itoa(GetYear(t)))
@@ -41,7 +41,7 @@ func GetLongDateString(t time.Time) string {
 	return buff.String()
 }
 
-// 获取长日期格式：2018-11-11 12:12:12
+// GetShortDateString 获取长日期格式：2018-11-11 12:12:12
 func GetShortDateString(t time.Time) string {
 	var buff bytes.Buffer
 	buff.WriteString(format2(GetHour(t)))
@@ -52,7 +52,7 @@ func GetShortDateString(t time.Time) string {
 	return buff.String()
 }
 
-// 获取长日期格式：2018-11-11 12:12:12,233
+// GetLongLongDateString 获取长日期格式：2018-11-11 12:12:12,233
 func GetLongLongDateString(t time.Time) string {
 	var buff bytes.Buffer
 	buff.WriteString(strconv.Itoa(GetYear(t)))
@@ -71,7 +71,7 @@ func GetLongLongDateString(t time.Time) string {
 	return buff.String()
 }
 
-// 获取日志文件格式
+// GetLogFileName 获取日志文件格式
 // till:
 //      1: 到年，如2018
 //      2: 到月，如2018-01
@@ -104,7 +104,7 @@ func GetLogFileName(t time.Time) string {
 	return buff.String()
 }
 
-// get current timestamp in milliseconds.
+// GetTimestamp get current timestamp in milliseconds.
 func GetTimestamp(t time.Time) int64 {
 	return t.UnixNano() / 1e6
 }
@@ -113,7 +113,7 @@ func CreateTime(millis int64) time.Time {
 	return time.Unix(millis, 0)
 }
 
-// get current timestamp in Nanosecond.
+// GetNanosecond get current timestamp in Nanosecond.
 func GetNanosecond(t time.Time) int64 {
 	return t.UnixNano()
 }

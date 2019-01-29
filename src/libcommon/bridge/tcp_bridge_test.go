@@ -17,4 +17,3 @@ func Test1(t *testing.T) {
 	var a byte = 1
 	fmt.Println(int(a))
 }
-

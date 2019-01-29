@@ -1,18 +1,19 @@
 package db
 
 import (
-	"database/sql"
-	"sync"
 	"app"
+	"database/sql"
 	"errors"
 	"os"
+	"sync"
 	"time"
 	"util/file"
 	"util/logger"
 
-	_ "github.com/jinzhu/gorm/dialects/sqlite"
 	"github.com/jinzhu/gorm"
+	_ "github.com/jinzhu/gorm/dialects/sqlite"
 )
+
 // db write lock
 // when write event happens, the sys will lock by program in case if error occurs such 'database is locked'
 var dbWriteLock *sync.Mutex
@@ -21,7 +22,7 @@ func init() {
 	dbWriteLock = new(sync.Mutex)
 }
 
-// download sqlite3 studio @
+// IDAO download sqlite3 studio @
 // https://sqlitestudio.pl/index.rvt?act=download
 type IDAO interface {
 	InitDB()
@@ -96,12 +97,12 @@ func (dao *DAO) verifyConn() error {
 	return errors.New("error check db: failed retry many times")
 }
 
-// do db query
+// Query do db query
 func (dao *DAO) Query(handler func(*gorm.DB) error) error {
 	return handler(dao.db)
 }
 
-// do db transaction
+// DoTransaction do db transaction
 func (dao *DAO) DoTransaction(work func(*gorm.DB) error) error {
 	dbWriteLock.Lock()
 	defer dbWriteLock.Unlock()

@@ -26,7 +26,7 @@ func updateStatistic(trackerUUID string, fileCount int, statistic []app.StorageD
 	libservicev2.SaveStorage(trackerUUID, statistic...)
 }
 
-// register tracker instance when start track with tracker
+// registerTrackerInstance register tracker instance when start track with tracker
 func registerTrackerInstance(instance *TrackerInstance) {
 	if instance == nil {
 		return
@@ -41,7 +41,7 @@ func registerTrackerInstance(instance *TrackerInstance) {
 	}
 }
 
-// when delete a tracker, agent must remove the tracker instance and disconnect from tracker
+// unRegisterTrackerInstance when delete a tracker, agent must remove the tracker instance and disconnect from tracker
 func unRegisterTrackerInstance(connStr string) {
 	managedLock.Lock()
 	defer managedLock.Unlock()
@@ -52,7 +52,7 @@ func unRegisterTrackerInstance(connStr string) {
 	}
 }
 
-// update nextRun flag of tracker instance
+// UpdateTrackerInstanceState update nextRun flag of tracker instance
 // secret is optional
 func UpdateTrackerInstanceState(connStr string, secret string, nextRun bool, trackerMaintainer *TrackerMaintainer) {
 	managedLock.Lock()
@@ -66,7 +66,7 @@ func UpdateTrackerInstanceState(connStr string, secret string, nextRun bool, tra
 			trackerMaintainer.Maintain(temp)
 		}
 	} else {
-		//logger.Info("unload tracker instance:", connStr)
+		// logger.Info("unload tracker instance:", connStr)
 		ins := managedTrackerInstance[connStr]
 		ins.nextRun = nextRun
 	}

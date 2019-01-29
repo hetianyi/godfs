@@ -55,7 +55,6 @@ func main() {
 
 }
 
-
 func initDashboardFlags() {
 	appFlag := cli.NewApp()
 	appFlag.Version = app.Version
@@ -63,7 +62,7 @@ func initDashboardFlags() {
 	appFlag.Usage = ""
 
 	// config file location
-	appFlag.Flags = []cli.Flag {
+	appFlag.Flags = []cli.Flag{
 		cli.StringFlag{
 			Name:        "config, c",
 			Value:       "../conf/tracker.conf",
@@ -81,4 +80,3 @@ func initDashboardFlags() {
 		logger.Fatal(err)
 	}
 }
-

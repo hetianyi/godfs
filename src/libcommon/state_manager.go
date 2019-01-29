@@ -15,6 +15,7 @@ import (
 )
 
 var managedStorage = make(map[string]*app.StorageDO)
+
 // in case of when:
 // client disconnect and reconnect immediately, but tracker is now not expire this storage server yet,
 // server will think it is not unique and return error
@@ -22,7 +23,6 @@ var hardCheckStorage = make(map[string]byte)
 var managedStorageStatistics = make(map[string]*list.List)
 
 var operationLock = *new(sync.Mutex)
-
 
 // timer task: remove expired storage servers
 func ExpirationDetection() {
@@ -51,7 +51,7 @@ func CacheStorageServer(storage *app.StorageDO) error {
 
 	storage.ExpireTime = timeutil.GetTimestamp(time.Now().Add(time.Hour * 87600))
 	if managedStorage[storage.Uuid] == nil {
-		logger.Debug("register storage server", storage.Host + ":" + strconv.Itoa(storage.Port), "("+ storage.Uuid +")")
+		logger.Debug("register storage server", storage.Host+":"+strconv.Itoa(storage.Port), "("+storage.Uuid+")")
 	}
 	managedStorage[storage.Uuid] = storage
 	queueStatistics(storage)
@@ -68,12 +68,11 @@ func FutureExpireStorageServer(manager *bridgev2.ConnectionManager) {
 	ReleaseUUIDHolder(manager.UUID)
 	storage := managedStorage[manager.UUID]
 	if storage != nil {
-		logger.Info("expire storage server", storage.Host + ":" + strconv.Itoa(storage.Port), "("+ storage.Uuid +")", "in", app.StorageClientExpireTime)
+		logger.Info("expire storage server", storage.Host+":"+strconv.Itoa(storage.Port), "("+storage.Uuid+")", "in", app.StorageClientExpireTime)
 		storage.ExpireTime = timeutil.GetTimestamp(time.Now().Add(app.StorageClientExpireTime))
 		managedStorage[storage.Uuid] = storage
 	}
 }
-
 
 func HoldUUID(uuid string) {
 	if !IsStorageClientUUID(uuid) {
@@ -153,7 +152,6 @@ func GetSyncStatistic() []app.StorageDO {
 	return collectQueueStatistics()
 }
 
-
 func queueStatistics(storage *app.StorageDO) {
 	if storage == nil {
 		return
@@ -192,9 +190,9 @@ func collectQueueStatistics() []app.StorageDO {
 			Finish:        v.Finish,
 			IOin:          v.IOin,
 			IOout:         v.IOout,
-			Disk:     v.Disk,
-			Download:     v.Download,
-			Upload:       v.Upload,
+			Disk:          v.Disk,
+			Download:      v.Download,
+			Upload:        v.Upload,
 			StartTime:     v.StartTime,
 			Memory:        v.Memory,
 			ReadOnly:      v.ReadOnly,
@@ -215,13 +213,3 @@ func collectQueueStatistics() []app.StorageDO {
 	}
 	return ret
 }
-
-
-
-
-
-
-
-
-
-

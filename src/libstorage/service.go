@@ -21,7 +21,7 @@ import (
 // max client connection set to 1000
 var p, _ = pool.NewPool(200, 0)
 
-// Start service and listen
+// StartService Start service and listen
 // 1. Start task for upload listen
 // 2. Start task for communication with tracker
 func StartService(config map[string]string) {
@@ -114,13 +114,13 @@ func startTrackerMaintainer(trackers string) {
 	maintainer.Maintain(trackerMap)
 }
 
-// storage server start tcp listen.
+// startStorageService storage server start tcp listen.
 func startStorageService() {
 	server := bridgev2.NewServer("", app.Port)
 	server.Listen()
 }
 
-// start http download server.
+// startHttpService start http download server.
 func startHttpService() {
 	if !app.HttpEnable {
 		logger.Info("http server disabled")
@@ -146,7 +146,7 @@ func startHttpService() {
 	go s.ListenAndServe()
 }
 
-// init system statistic info before boot.
+// initDbStatistic init system statistic info before boot.
 func initDbStatistic() {
 	for {
 		statistic, e := libservicev2.QuerySystemStatistic()
@@ -169,7 +169,7 @@ func initDbStatistic() {
 	}
 }
 
-// collect system info.
+// startStatisticService collect system info.
 func startStatisticService() {
 	timer := time.NewTicker(time.Second * 30)
 	for {

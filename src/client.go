@@ -44,8 +44,8 @@ func main() {
 
 	if command == libclient.CommandUpload ||
 		command == libclient.CommandDownload ||
-		command == libclient.CommandInspectFile{
-		client = InitClient()
+		command == libclient.CommandInspectFile {
+		client = initClient()
 	}
 	libclient.ExecuteCommand(client, command)
 }
@@ -74,7 +74,6 @@ func flagVarPreCheck() {
 	}
 }
 
-
 func initClientFlags() {
 
 	appFlag := cli.NewApp()
@@ -83,7 +82,7 @@ func initClientFlags() {
 	appFlag.Usage = ""
 
 	// config file location
-	appFlag.Flags = []cli.Flag {
+	appFlag.Flags = []cli.Flag{
 		cli.StringFlag{
 			Name:        "trackers",
 			Value:       "",
@@ -119,14 +118,13 @@ func initClientFlags() {
 	// sub command 'upload'
 	appFlag.Commands = []cli.Command{
 		{
-			Name:    "upload",
-			Usage:   "upload local files",
-			Action:  func(c *cli.Context) error {
+			Name:  "upload",
+			Usage: "upload local files",
+			Action: func(c *cli.Context) error {
 				command = libclient.CommandUpload
 
 				workDir, _ := file.GetWorkDir()
 				absPath, _ := filepath.Abs(workDir)
-
 
 				if c.Args().First() == "*" {
 					fmt.Println("upload all files of", absPath)
@@ -153,7 +151,7 @@ func initClientFlags() {
 				}
 				return nil
 			},
-			Flags: []cli.Flag {
+			Flags: []cli.Flag{
 				cli.StringFlag{
 					Name:        "group, g",
 					Value:       "",
@@ -163,15 +161,15 @@ func initClientFlags() {
 			},
 		},
 		{
-			Name:    "download",
-			Usage:   "download a file",
-			Action:  func(c *cli.Context) error {
+			Name:  "download",
+			Usage: "download a file",
+			Action: func(c *cli.Context) error {
 				command = libclient.CommandDownload
 				fmt.Println("download file is: ", c.Args().First())
 				libclient.DownloadFilePath = c.Args().First()
 				return nil
 			},
-			Flags: []cli.Flag {
+			Flags: []cli.Flag{
 				cli.StringFlag{
 					Name:        "name, n",
 					Value:       "",
@@ -181,9 +179,9 @@ func initClientFlags() {
 			},
 		},
 		{
-			Name:    "inspect",
-			Usage:   "inspect files information by md5",
-			Action:  func(c *cli.Context) error {
+			Name:  "inspect",
+			Usage: "inspect files information by md5",
+			Action: func(c *cli.Context) error {
 				command = libclient.CommandInspectFile
 				for i := range c.Args() {
 					libclient.InspectFileList.PushBack(c.Args().Get(i))
@@ -192,9 +190,9 @@ func initClientFlags() {
 			},
 		},
 		{ // this sub command is only used by client cli
-			Name:    "config",
-			Usage:   "client cli configuration settings operation",
-			Action:  func(c *cli.Context) error {
+			Name:  "config",
+			Usage: "client cli configuration settings operation",
+			Action: func(c *cli.Context) error {
 				return nil
 			},
 			Subcommands: []cli.Command{
@@ -249,8 +247,6 @@ copyright:
 
 }
 
-
-
 func prepareClient() *app.ClientConfig {
 	user, e := user.Current()
 	if e != nil {
@@ -268,10 +264,10 @@ func prepareClient() *app.ClientConfig {
 	confFilePath := basDir + string(os.PathSeparator) + "config.json"
 	if !file.Exists(confFilePath) {
 		config := &app.ClientConfig{
-			Trackers: []string{"127.0.0.1:1022"},
-			LogLevel: "info",
+			Trackers:            []string{"127.0.0.1:1022"},
+			LogLevel:            "info",
 			LogRotationInterval: "m",
-			Secret: "",
+			Secret:              "",
 		}
 		if e2 := libclient.WriteConf(config); e2 != nil {
 			fmt.Println("error write config file:", e2)
@@ -343,8 +339,7 @@ func prepareClient() *app.ClientConfig {
 	return config
 }
 
-
-func InitClient() *libclient.Client {
+func initClient() *libclient.Client {
 	client := libclient.NewClient(50)
 	collector := libclient.TaskCollector{
 		Interval:   time.Millisecond * 30,
@@ -383,7 +378,6 @@ func InitClient() *libclient.Client {
 	}
 	return client
 }
-
 
 func clientMonitorCollector(tracker *libclient.TrackerInstance) {
 	logger.Debug("create sync task for tracker:", tracker.ConnStr)

@@ -1,13 +1,13 @@
 package http
 
 import (
-	"net/http"
 	"app"
+	"net/http"
 	"strconv"
 )
 
-
-func MethodAllow(writer http.ResponseWriter, request *http.Request, expectMethod... string) bool {
+// MethodAllow tell if http method is allowed
+func MethodAllow(writer http.ResponseWriter, request *http.Request, expectMethod ...string) bool {
 	method := request.Method
 	match := false
 	for i := range expectMethod {
@@ -18,12 +18,13 @@ func MethodAllow(writer http.ResponseWriter, request *http.Request, expectMethod
 		}
 	}
 	if !match {
-		WriteErrResponse(writer, http.StatusMethodNotAllowed, "Method '" + method + "' not allowed.")
+		WriteErrResponse(writer, http.StatusMethodNotAllowed, "Method '"+method+"' not allowed.")
 		return false
 	}
 	return true
 }
 
+// AccessCheck check http basic auth
 func AccessCheck(writer http.ResponseWriter, request *http.Request) bool {
 	if app.HttpAuth != "" {
 		user, pass, _ := request.BasicAuth()
@@ -36,7 +37,7 @@ func AccessCheck(writer http.ResponseWriter, request *http.Request) bool {
 	return true
 }
 
-
+// WriteErrResponse write error response
 func WriteErrResponse(writer http.ResponseWriter, statusCode int, message string) {
 	writer.WriteHeader(statusCode)
 	writer.Write([]byte(strconv.Itoa(statusCode) + " " + message))

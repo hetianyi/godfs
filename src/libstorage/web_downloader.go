@@ -11,8 +11,8 @@ import (
 	"strings"
 	"time"
 	"util/file"
-	"util/logger"
 	httputil "util/http"
+	"util/logger"
 )
 
 const (
@@ -31,7 +31,7 @@ func init() {
 	compiledRegexpRangeHeader = regexp.MustCompile(rangeHeader)
 }
 
-// storage server provide http download service
+// DownloadHandler storage server provide http download service
 func DownloadHandler(writer http.ResponseWriter, request *http.Request) {
 	defer request.Body.Close()
 	// download method must be GET or OPTIONS
@@ -176,7 +176,7 @@ func setMimeHeaders(md5 string, headers *http.Header) {
 	// headers.Set("Connection", "keep-alive")
 }
 
-// if end is 0, then the end represents max
+// parseHeaderRange if end is 0, then the end represents max
 func parseHeaderRange(rang string) (int64, int64) {
 	if rang == "" {
 		return 0, 0

@@ -23,9 +23,9 @@ const (
 	ORegStorage    = 5
 	ORegFile       = 6
 	OSyncStorage   = 7
-	OPullNewFile = 8
-	OUpload         = 9
-	OSyncMember   = 10
+	OPullNewFile   = 8
+	OUpload        = 9
+	OSyncMember    = 10
 	OSyncStatistic = 11
 )
 

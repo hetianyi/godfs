@@ -25,7 +25,7 @@ func transformNotFoundErr(err error) error {
 	return err
 }
 
-// get fileId from table file by md5,
+// GetFileIdByMd5 get fileId from table file by md5,
 func GetFileIdByMd5(md5 string, dao *db.DAO) (id int64, e error) {
 	if dao == nil {
 		dao1, ef := dbPool.GetDB()
@@ -42,8 +42,7 @@ func GetFileIdByMd5(md5 string, dao *db.DAO) (id int64, e error) {
 	return fileDO.Id, e
 }
 
-
-// get fileId from table file by md5,
+// GetPartIdByMd5 get fileId from table file by md5,
 func GetPartIdByMd5(md5 string, dao *db.DAO) (id int64, e error) {
 	if dao == nil {
 		dao1, ef := dbPool.GetDB()
@@ -60,8 +59,7 @@ func GetPartIdByMd5(md5 string, dao *db.DAO) (id int64, e error) {
 	return partDO.Id, e
 }
 
-
-// insert new file to table file,
+// InsertFile insert new file to table file,
 // if file exists, file id will replaced by existing id.
 func InsertFile(file *app.FileVO, dao *db.DAO) error {
 	if dao == nil {
@@ -92,7 +90,7 @@ func InsertFile(file *app.FileVO, dao *db.DAO) error {
 	})
 }
 
-// used by storage client.
+// InsertPulledTrackerFiles used by storage client.
 // insert new file to table file,
 // if file exists, file id will replaced by existing id.
 func InsertPulledTrackerFiles(trackerUUID string, files []app.FileVO, dao *db.DAO) error {
@@ -139,7 +137,7 @@ func InsertPulledTrackerFiles(trackerUUID string, files []app.FileVO, dao *db.DA
 
 }
 
-// used by tracker server.
+// InsertRegisteredFiles used by tracker server.
 // insert new file to table file and return max insert id,
 // if file exists, file id will replaced by existing id.
 func InsertRegisteredFiles(files []app.FileVO) (int64, error) {
@@ -179,21 +177,20 @@ func InsertRegisteredFiles(files []app.FileVO) (int64, error) {
 	return lastInsertId, err
 }
 
-
-// insert new file to table part,
+// insertFilePart insert new file to table part,
 // if part exists, part id will replaced by existing id.
 func insertFilePart(part *app.PartDO, tx *gorm.DB) error {
 	part.Id = 0
 	return transformNotFoundErr(tx.Table("part").Where("md5 = ?", part.Md5).FirstOrCreate(part).Error)
 }
 
-// insert new file_part relation to table relation_file_part,
+// insertFilePartRelation insert new file_part relation to table relation_file_part,
 // if relation exists, relation id will replaced by existing id.
 func insertFilePartRelation(relation *app.FilePartRelationDO, tx *gorm.DB) error {
 	return transformNotFoundErr(tx.Table("relation_file_part").Where("fid = ? and pid = ?", relation.FileId, relation.PartId).FirstOrCreate(relation).Error)
 }
 
-// save current app uuid to table sys,
+// ConfirmAppUUID save current app uuid to table sys,
 // if uuid already exists, skip
 func ConfirmAppUUID(uuid string) (ret string, e error) {
 	dao, ef := dbPool.GetDB()
@@ -207,8 +204,7 @@ func ConfirmAppUUID(uuid string) (ret string, e error) {
 	})
 }
 
-
-// update table tracker
+// SaveTracker update table tracker
 // full update
 func SaveTracker(tracker *app.TrackerDO) error {
 	dao, ef := dbPool.GetDB()
@@ -221,7 +217,7 @@ func SaveTracker(tracker *app.TrackerDO) error {
 	})
 }
 
-// update specify attributes of table tracker
+// UpdateTrackerWithMap update specify attributes of table tracker
 func UpdateTrackerWithMap(trackerUUID string, attrs map[string]interface{}, tx *gorm.DB) error {
 	if tx == nil {
 		dao, ef := dbPool.GetDB()
@@ -237,7 +233,7 @@ func UpdateTrackerWithMap(trackerUUID string, attrs map[string]interface{}, tx *
 	}
 }
 
-// update table tracker
+// GetTracker update table tracker
 func GetTracker(uuid string) (*app.TrackerDO, error) {
 	dao, ef := dbPool.GetDB()
 	if ef != nil {
@@ -258,8 +254,7 @@ func GetTracker(uuid string) (*app.TrackerDO, error) {
 	return &ret, e
 }
 
-
-// get ready push files to tracker.
+// GetReadyPushFiles get ready push files to tracker.
 func GetReadyPushFiles(trackerUUID string) (*list.List, error) {
 	dao, ef := dbPool.GetDB()
 	if ef != nil {
@@ -268,7 +263,7 @@ func GetReadyPushFiles(trackerUUID string) (*list.List, error) {
 	defer dbPool.ReturnDB(dao)
 
 	var files = list.New()
-	
+
 	return files, dao.Query(func(db *gorm.DB) error {
 		total := &app.Total{}
 		result := db.Raw("select count(*) as count from file f where f.id > (select local_push_id from tracker a where a.uuid = ?) and f.instance = ?", trackerUUID, app.InstanceId).Scan(total)
@@ -303,7 +298,7 @@ func GetReadyPushFiles(trackerUUID string) (*list.List, error) {
 			fileIds[index] = ele.Value.(*app.FileVO).Id
 			index++
 		}
-		rows2, e2 := db.Raw("select a.*, r.fid from relation_file_part r left join part a " +
+		rows2, e2 := db.Raw("select a.*, r.fid from relation_file_part r left join part a "+
 			"on r.pid = a.id where r.fid in(?)", fileIds).Rows()
 		if transformNotFoundErr(e2) != nil {
 			return e2
@@ -333,8 +328,7 @@ func GetReadyPushFiles(trackerUUID string) (*list.List, error) {
 	})
 }
 
-
-// get full file by file md5
+// GetFullFileByMd5 get full file by file md5
 // finish:
 // 0|1 : file download finish flag
 // 2   : not add 'finish' query parameter
@@ -353,7 +347,7 @@ func GetFullFileByMd5(md5 string, finish int) (*app.FileVO, error) {
 	var file app.FileVO
 	var rowAffect int64 = 0
 	err := dao.Query(func(db *gorm.DB) error {
-		result := db.Model(&file).Where("md5 = ? " + addOn, md5).First(&file)
+		result := db.Model(&file).Where("md5 = ? "+addOn, md5).First(&file)
 		rowAffect = result.RowsAffected
 		if transformNotFoundErr(result.Error) != nil {
 			return result.Error
@@ -361,7 +355,7 @@ func GetFullFileByMd5(md5 string, finish int) (*app.FileVO, error) {
 		if rowAffect == 0 {
 			return nil
 		}
-		rows, e2 := db.Raw("select a.* from relation_file_part r left join part a " +
+		rows, e2 := db.Raw("select a.* from relation_file_part r left join part a "+
 			"on r.pid = a.id where r.fid = ?", file.Id).Rows()
 		if transformNotFoundErr(e2) != nil {
 			return e2
@@ -385,7 +379,7 @@ func GetFullFileByMd5(md5 string, finish int) (*app.FileVO, error) {
 	return &file, err
 }
 
-// get full file by file md5
+// GetFullFileById get full file by file md5
 // finish:
 // 0|1 : file download finish flag
 // 2   : not add 'finish' query parameter
@@ -406,7 +400,7 @@ func GetFullFileById(fid int64, finish int) (*app.FileVO, error) {
 	var file app.FileVO
 	var rowAffect int64 = 0
 	err := dao.Query(func(db *gorm.DB) error {
-		result := db.Model(&file).Where("id = ? " + addOn, fid).First(&file)
+		result := db.Model(&file).Where("id = ? "+addOn, fid).First(&file)
 		rowAffect = result.RowsAffected
 		if transformNotFoundErr(result.Error) != nil {
 			return result.Error
@@ -414,7 +408,7 @@ func GetFullFileById(fid int64, finish int) (*app.FileVO, error) {
 		if rowAffect == 0 {
 			return nil
 		}
-		rows, e2 := db.Raw("select a.* from relation_file_part r left join part a " +
+		rows, e2 := db.Raw("select a.* from relation_file_part r left join part a "+
 			"on r.pid = a.id where r.fid = ?", file.Id).Rows()
 		if transformNotFoundErr(e2) != nil {
 			return e2
@@ -438,8 +432,7 @@ func GetFullFileById(fid int64, finish int) (*app.FileVO, error) {
 	return &file, err
 }
 
-
-// update file finish status
+// UpdateFileFinishStatus update file finish status
 // status: 0|1
 func UpdateFileFinishStatus(id int64, status int, dao *db.DAO) error {
 	if dao == nil {
@@ -460,8 +453,7 @@ func UpdateFileFinishStatus(id int64, status int, dao *db.DAO) error {
 	})
 }
 
-
-// get files start from specify id,
+// GetFullFilesFromId get files start from specify id,
 // mine: used by storage when push file.
 func GetFullFilesFromId(id int64, mine bool, group string, limit int) (*list.List, error) {
 	dao, ef := dbPool.GetDB()
@@ -508,7 +500,7 @@ func GetFullFilesFromId(id int64, mine bool, group string, limit int) (*list.Lis
 			fileIds[index] = ele.Value.(*app.FileVO).Id
 			index++
 		}
-		rows2, e2 := db.Raw("select a.*, r.fid from relation_file_part r left join part a " +
+		rows2, e2 := db.Raw("select a.*, r.fid from relation_file_part r left join part a "+
 			"on r.pid = a.id where r.fid in(?)", fileIds).Rows()
 		if transformNotFoundErr(e2) != nil {
 			return e2
@@ -540,8 +532,7 @@ func GetFullFilesFromId(id int64, mine bool, group string, limit int) (*list.Lis
 	return files, err
 }
 
-
-// get storage info by uuid
+// GetStorageByUUID get storage info by uuid
 func GetStorageByUUID(uuid string) (*app.StorageDO, error) {
 	dao, ef := dbPool.GetDB()
 	if ef != nil {
@@ -565,7 +556,7 @@ func GetStorageByUUID(uuid string) (*app.StorageDO, error) {
 	return &storageDO, err
 }
 
-
+// ExistsStorage check if the storage exists by storage uuid
 func ExistsStorage(uuid string) (bool, error) {
 	dao, ef := dbPool.GetDB()
 	if ef != nil {
@@ -588,8 +579,7 @@ func ExistsStorage(uuid string) (bool, error) {
 	return common.ConvertBoolFromInt(total.Count), err
 }
 
-
-// query system statistic:
+// QuerySystemStatistic query system statistic:
 // - file count
 // - finish file count
 // - total group disk space (include placeholder)
@@ -614,8 +604,7 @@ func QuerySystemStatistic() (*app.Statistic, error) {
 	return &statistic, err
 }
 
-
-// get all web trackers which is not deleted.
+// GetAllTrackers get all web trackers which is not deleted.
 func GetAllTrackers() (*list.List, error) {
 	dao, ef := dbPool.GetDB()
 	if ef != nil {
@@ -643,8 +632,7 @@ func GetAllTrackers() (*list.List, error) {
 	return trackers, err
 }
 
-
-// insert web tracker
+// UpdateTrackerStatus insert web tracker
 func UpdateTrackerStatus(uuid string, status int, dao *db.DAO) error {
 	if dao == nil {
 		dao1, ef := dbPool.GetDB()
@@ -663,9 +651,8 @@ func UpdateTrackerStatus(uuid string, status int, dao *db.DAO) error {
 	})
 }
 
-
-// insert storage and relation with a tracker
-func SaveStorage(trackerUuid string, storages... app.StorageDO) error {
+// SaveStorage insert storage and relation with a tracker
+func SaveStorage(trackerUuid string, storages ...app.StorageDO) error {
 	dao, ef := dbPool.GetDB()
 	if ef != nil {
 		return ef
@@ -680,7 +667,7 @@ func SaveStorage(trackerUuid string, storages... app.StorageDO) error {
 				return result.Error
 			}
 			if trackerUuid != "" {
-				relation :=&app.RelationTrackerStorageDO{
+				relation := &app.RelationTrackerStorageDO{
 					TrackerUuid: trackerUuid,
 					StorageUuid: storage.Uuid,
 				}
@@ -694,8 +681,7 @@ func SaveStorage(trackerUuid string, storages... app.StorageDO) error {
 	})
 }
 
-
-// insert into table web_storage_log
+// InsertStorageStatisticLog insert into table web_storage_log
 func InsertStorageStatisticLog(log *app.StorageStatisticLogDO, dao *db.DAO) error {
 	if dao == nil {
 		dao1, ef := dbPool.GetDB()
@@ -711,9 +697,7 @@ func InsertStorageStatisticLog(log *app.StorageStatisticLogDO, dao *db.DAO) erro
 	})
 }
 
-
-
-// method is used by tracker for statistic
+// GetFileCount method is used by tracker for statistic
 func GetFileCount() int {
 	dao, ef := dbPool.GetDB()
 	if ef != nil {
@@ -730,8 +714,7 @@ func GetFileCount() int {
 	return total.Count
 }
 
-
-// used by dashboard
+// GetIndexStatistic used by dashboard
 func GetIndexStatistic() (*app.DashboardIndexStatistic, error) {
 	dao, ef := dbPool.GetDB()
 	if ef != nil {
@@ -757,7 +740,7 @@ func GetIndexStatistic() (*app.DashboardIndexStatistic, error) {
 	return &statistic, err
 }
 
-// get ready to synchronize file's id.
+// GetReadyDownloadFiles get ready to synchronize file's id.
 func GetReadyDownloadFiles(limit int) ([]int64, error) {
 	dao, ef := dbPool.GetDB()
 	if ef != nil {

@@ -12,7 +12,7 @@ type BytesPool struct {
 	lock      *sync.Mutex
 }
 
-//
+// NewBytesPool create new bytes pool
 func NewBytesPool(maxSize int) *BytesPool {
 	// by default, cache 50 []byte
 	if maxSize <= 0 {
@@ -37,6 +37,7 @@ func (pool *BytesPool) Apply(length int) []byte {
 	return make([]byte, length)
 }
 
+// Recycle recycle bytes array
 func (pool *BytesPool) Recycle(buffer []byte) {
 	pool.lock.Lock()
 	defer pool.lock.Unlock()

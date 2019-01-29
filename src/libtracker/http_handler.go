@@ -18,15 +18,15 @@ import (
 const MaxUploadFileSize = 1024 * 10
 
 var (
-	downloadServersPlaceholder     = "<%download_upstream_servers%>"
-	uploadServersPlaceholder   = "<%uploadable_upstream_servers%>"
-	downloadLocationsPlaceholder   = "<%download_locations%>"
-	uploadLocationsPlaceholder     = "<%upload_locations%>"
+	downloadServersPlaceholder    = "<%download_upstream_servers%>"
+	uploadServersPlaceholder      = "<%uploadable_upstream_servers%>"
+	downloadLocationsPlaceholder  = "<%download_locations%>"
+	uploadLocationsPlaceholder    = "<%upload_locations%>"
 	allUpstreamServersPlaceholder = "<%all_upstream_servers%>"
-	allServersPlaceholder          = "<%all_servers%>"
+	allServersPlaceholder         = "<%all_servers%>"
 )
 
-// configure nginx template
+// ConfigureNginxHandler configure nginx template
 func ConfigureNginxHandler(writer http.ResponseWriter, request *http.Request) {
 	defer request.Body.Close()
 
@@ -258,9 +258,9 @@ func ConfigureNginxHandler(writer http.ResponseWriter, request *http.Request) {
 				if gMap != nil {
 					for k, v := range *gMap {
 						if v != nil && v.Len() > 0 {
-							bf.WriteString("\n        location /upload/"+ k +" {\n")
+							bf.WriteString("\n        location /upload/" + k + " {\n")
 							bf.WriteString("            proxy_next_upstream non_idempotent http_404;\n")
-							bf.WriteString("            proxy_pass http://upload_servers_"+ k +" ;\n")
+							bf.WriteString("            proxy_pass http://upload_servers_" + k + " ;\n")
 							bf.WriteString("        }\n")
 						}
 					}
@@ -323,7 +323,7 @@ func ConfigureNginxHandler(writer http.ResponseWriter, request *http.Request) {
 
 }
 
-// get all storage servers
+// GetAllStorageServers get all storage servers
 func GetAllStorageServers(writer http.ResponseWriter, request *http.Request) {
 	defer request.Body.Close()
 
@@ -343,6 +343,7 @@ func GetAllStorageServers(writer http.ResponseWriter, request *http.Request) {
 	writer.Write([]byte(ret))
 }
 
+// GroupByGroup group storage servers by group
 func GroupByGroup(servers *list.List) *map[string]*list.List {
 	if servers == nil {
 		return nil
@@ -362,6 +363,7 @@ func GroupByGroup(servers *list.List) *map[string]*list.List {
 	return &tmpMap
 }
 
+// GroupByPort group storage servers by port
 func GroupByPort(servers *list.List) *map[int]*list.List {
 	if servers == nil {
 		return nil

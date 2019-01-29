@@ -3,9 +3,9 @@ package libclient
 import (
 	"app"
 	"container/list"
-	json "github.com/json-iterator/go"
 	"errors"
 	"fmt"
+	json "github.com/json-iterator/go"
 	"io"
 	"libcommon"
 	"libcommon/bridge"
@@ -22,9 +22,9 @@ import (
 )
 
 const (
-	CommandNone          = 0
-	CommandUpload        = 1
-	CommandDownload      = 2
+	CommandNone         = 0
+	CommandUpload       = 1
+	CommandDownload     = 2
 	CommandListConfig   = 3
 	CommandUpdateConfig = 4
 	CommandInspectFile  = 5
@@ -41,7 +41,7 @@ var (
 	UpdateConfigList    list.List
 	InspectFileList     list.List
 	Group               string
-	DownloadFilePath	string
+	DownloadFilePath    string
 	CustomFileName      string
 	SetConfig           string
 )
@@ -49,13 +49,14 @@ var (
 var client *Client
 var skipCheck = false
 
-func ExecuteCommand(_client *Client, command int) {
-	client = _client
+// ExecuteCommand execute client command
+func ExecuteCommand(oClient *Client, command int) {
+	client = oClient
 	switch command {
 	case CommandListConfig:
 		listConfig()
 	case CommandUpdateConfig:
-		UpdateConfig()
+		updateConfig()
 	case CommandUpload:
 		upload()
 	case CommandDownload:
@@ -65,7 +66,7 @@ func ExecuteCommand(_client *Client, command int) {
 	}
 }
 
-// upload files
+// upload upload files.
 // paths: file path to be upload
 // group: file upload group, if not set, use random group
 // skipCheck: whether check md5 before upload
@@ -85,7 +86,7 @@ func upload() {
 	}
 }
 
-// download file
+// download download file
 func download() {
 	DownloadFilePath = strings.TrimSpace(DownloadFilePath)
 	if strings.Index(DownloadFilePath, "/") != 0 {
@@ -148,7 +149,7 @@ func download() {
 	}
 }
 
-func inspect()  {
+func inspect() {
 	common.WalkList(&InspectFileList, func(item interface{}) bool {
 		md5 := item.(string)
 		fileVO, e := client.QueryFile(md5)
@@ -165,8 +166,6 @@ func inspect()  {
 		return false
 	})
 }
-
-
 
 func writeOut(in io.Reader, offset int64, out io.Writer, startTime time.Time) error {
 	buffer, _ := bridge.MakeBytes(app.BufferSize, false, 0, false)
@@ -223,8 +222,7 @@ func listConfig() {
 	})
 }
 
-
-func UpdateConfig() {
+func updateConfig() {
 	configTemp, err := ReadConf()
 	common.TOperation(err == nil, func() interface{} {
 		common.WalkList(&UpdateConfigList, func(item interface{}) bool {
@@ -308,8 +306,6 @@ func ReadConf() (*app.ClientConfig, error) {
 	return config, nil
 }
 
-
-
 func parseConfigItem(item string) (string, string) {
 	firstEQ := strings.Index(item, "=")
 	if firstEQ == -1 {
@@ -357,4 +353,3 @@ func parseConfigItem(item string) (string, string) {
 	logger.Info("set", k, "to", "\""+v+"\"")
 	return writeConf(m["trackers"], m["secret"], m["log_enable"], m["log_level"], m["log_rotation_interval"])*/
 }
-

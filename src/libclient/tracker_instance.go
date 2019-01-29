@@ -11,7 +11,7 @@ import (
 type TrackerInstance struct {
 	taskList    list.List
 	listIteLock *sync.Mutex
-	client  *bridgev2.TcpBridgeClient
+	client      *bridgev2.TcpBridgeClient
 	Collectors  list.List
 	Ready       bool
 	nextRun     bool
@@ -19,7 +19,7 @@ type TrackerInstance struct {
 	trackerUUID string
 }
 
-// init tracker instance and start it's task collectors
+// Init init tracker instance and start it's task collectors
 func (tracker *TrackerInstance) Init() {
 	logger.Debug("init tracker instance:", tracker.ConnStr)
 	tracker.listIteLock = new(sync.Mutex)
@@ -31,12 +31,12 @@ func (tracker *TrackerInstance) SetConnBridgeClient(client *bridgev2.TcpBridgeCl
 	tracker.client = client
 }
 
-// get task size in waiting list
+// GetTaskSize get task size in waiting list
 func (tracker *TrackerInstance) GetTaskSize() int {
 	return tracker.taskList.Len()
 }
 
-// start eac task collectors of a tracker instance
+// startTaskCollector start eac task collectors of a tracker instance
 func (tracker *TrackerInstance) startTaskCollector() {
 	for ele := tracker.Collectors.Front(); ele != nil; ele = ele.Next() {
 		go ele.Value.(*TaskCollector).Start(tracker)
@@ -56,8 +56,7 @@ func (tracker *TrackerInstance) GetTask() *bridgev2.Task {
 	return nil
 }
 
-
-// check task count of this type
+// checkTaskTypeCount check task count of this type
 func (tracker *TrackerInstance) checkTaskTypeCount(taskType int) int {
 	tracker.listIteLock.Lock()
 	defer tracker.listIteLock.Unlock()
@@ -70,8 +69,7 @@ func (tracker *TrackerInstance) checkTaskTypeCount(taskType int) int {
 	return count
 }
 
-
-// exec task
+// ExecTask exec task
 // return bool if the connection is forced close and need reconnect
 func (tracker *TrackerInstance) ExecTask(task *bridgev2.Task) (bool, error) {
 	logger.Debug("exec task:", task.TaskType)
@@ -90,4 +88,3 @@ func (tracker *TrackerInstance) ExecTask(task *bridgev2.Task) (bool, error) {
 	}
 	return false, nil
 }
-

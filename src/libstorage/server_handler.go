@@ -20,7 +20,7 @@ func init() {
 	registerOperationHandlers()
 }
 
-// register handlers as a server side.
+// registerOperationHandlers register handlers as a server side.
 func registerOperationHandlers() {
 	logger.Debug("register server handlers")
 	bridgev2.RegisterOperationHandler(&bridgev2.OperationHandler{bridgev2.FrameOperationValidate, libcommon.ValidateConnectionHandler})
@@ -28,7 +28,7 @@ func registerOperationHandlers() {
 	bridgev2.RegisterOperationHandler(&bridgev2.OperationHandler{bridgev2.FrameOperationDownloadFile, DownFileHandler})
 }
 
-// upload file handler.
+// UploadFileHandler upload file handler.
 func UploadFileHandler(manager *bridgev2.ConnectionManager, frame *bridgev2.Frame) error {
 	if frame == nil {
 		return libcommon.ErrNilFrame
@@ -73,12 +73,12 @@ func UploadFileHandler(manager *bridgev2.ConnectionManager, frame *bridgev2.Fram
 			app.UpdateUploads()
 
 			finalFile := &app.FileVO{
-				Md5: md5,
+				Md5:        md5,
 				PartNumber: fileParts.Len(),
-				Group: app.Group,
-				Instance: app.InstanceId,
-				Finish: 1,
-				FileSize: readBodySize,
+				Group:      app.Group,
+				Instance:   app.InstanceId,
+				Finish:     1,
+				FileSize:   readBodySize,
 			}
 			parts := make([]app.PartDO, fileParts.Len())
 			index := 0
@@ -183,13 +183,11 @@ func UploadFileHandler(manager *bridgev2.ConnectionManager, frame *bridgev2.Fram
 	}
 }
 
-
-// download file handler.
+// DownFileHandler download file handler.
 func DownFileHandler(manager *bridgev2.ConnectionManager, frame *bridgev2.Frame) error {
 	if frame == nil {
 		return libcommon.ErrNilFrame
 	}
-
 
 	var meta = &bridgev2.DownloadFileMeta{}
 	e1 := json.Unmarshal(frame.FrameMeta, meta)
@@ -244,8 +242,7 @@ func DownFileHandler(manager *bridgev2.ConnectionManager, frame *bridgev2.Frame)
 	}
 }
 
-
-// download writer handler.
+// WriteDownloadStream download writer handler.
 func WriteDownloadStream(fullFile *app.FileVO, startPos *bridgev2.ReadPos, endPos *bridgev2.ReadPos, out io.Writer) error {
 	buffer, _ := bridgev2.MakeBytes(app.BufferSize, false, 0, false)
 	defer bridgev2.RecycleBytes(buffer)

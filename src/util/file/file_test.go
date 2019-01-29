@@ -3,12 +3,12 @@ package file
 import (
 	"bytes"
 	"fmt"
+	"io/ioutil"
+	"os"
 	"path/filepath"
 	"regexp"
 	"testing"
-	"os"
 	"util/common"
-	"io/ioutil"
 )
 
 func Test1(t *testing.T) {
@@ -73,7 +73,6 @@ func Test9(t *testing.T) {
 		}).(error)
 	})
 }
-
 
 func Test10(t *testing.T) {
 	f := "D:\\FTP\\instantfap-gifs.part7.zip"

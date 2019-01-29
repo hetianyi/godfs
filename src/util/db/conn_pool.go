@@ -28,7 +28,7 @@ func NewPool(poolSize int) *DbConnPool {
 	return pool
 }
 
-// init db connection pool
+// InitPool init db connection pool
 func (pool *DbConnPool) InitPool(poolSize int) {
 	pool.connSize = poolSize
 	pool.dbList = list.New()
@@ -46,7 +46,7 @@ func (pool *DbConnPool) InitPool(poolSize int) {
 	}
 }
 
-// fetch dao
+// GetDB fetch dao
 func (pool *DbConnPool) GetDB() (*DAO, error) {
 	pool.fetchLock.Lock()
 	defer pool.fetchLock.Unlock()
@@ -69,7 +69,7 @@ func (pool *DbConnPool) GetDB() (*DAO, error) {
 	}
 }
 
-// return dao
+// ReturnDB return dao
 func (pool *DbConnPool) ReturnDB(dao *DAO) {
 	if dao != nil {
 		logger.Trace("return db connection of index:", dao.index)

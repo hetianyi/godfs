@@ -15,7 +15,7 @@ import (
 
 func main() {
 	runtime.GOMAXPROCS(runtime.NumCPU())
-	app.RunWith = 2 // run as tracker
+	app.RunWith = 2                    // run as tracker
 	abs, _ := filepath.Abs(os.Args[0]) // executable file path
 	s, _ := filepath.Split(abs)
 	s = file.FixPath(s)
@@ -49,7 +49,7 @@ func initTrackerFlags() {
 	appFlag.Usage = ""
 
 	// config file location
-	appFlag.Flags = []cli.Flag {
+	appFlag.Flags = []cli.Flag{
 		cli.StringFlag{
 			Name:        "config, c",
 			Value:       "../conf/tracker.conf",
@@ -57,7 +57,7 @@ func initTrackerFlags() {
 			Destination: &libclient.ConfigFile,
 		},
 	}
-	
+
 	appFlag.Action = func(c *cli.Context) error {
 		return nil
 	}

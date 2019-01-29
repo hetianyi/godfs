@@ -38,8 +38,7 @@ func GetFile(path string) (*os.File, error) {
 	return os.Open(path)
 }
 
-// Copy file.
-// 将文件复制为另一个文件
+// CopyFile Copy file.
 func CopyFile(src string, dest string) (s bool, e error) {
 	srcfile, err1 := os.Open(src)
 	if err1 == nil {
@@ -47,7 +46,7 @@ func CopyFile(src string, dest string) (s bool, e error) {
 		destfile, err2 := os.OpenFile(dest, syscall.O_CREAT|os.O_WRONLY|syscall.O_TRUNC, 0660)
 		// ensure close files finally
 		defer func() {
-			//log.Print("close src and dest files")
+			// log.Print("close src and dest files")
 			srcfile.Close()
 			destfile.Close()
 		}()
@@ -79,8 +78,7 @@ func CopyFile(src string, dest string) (s bool, e error) {
 	return s, e
 }
 
-// Copy file to dir.
-// 将文件复制到目标文件夹
+// CopyFileTo Copy file to dir.
 func CopyFileTo(src string, dir string) (s bool, e error) {
 	srcfile, err1 := os.Open(src)
 	if err1 == nil {
@@ -113,8 +111,7 @@ func CopyFileTo(src string, dir string) (s bool, e error) {
 	return s, e
 }
 
-// check whether the file exists.
-// 判断文件是否存在
+// Exists check whether the file exists.
 func Exists(path string) bool {
 	fi, err := os.Stat(path)
 	if os.IsNotExist(err) {
@@ -126,11 +123,9 @@ func Exists(path string) bool {
 	return true
 }
 
-// remove file or directory.
+// Delete delete a file or directory.
 // if delete failed, you should find out by yourself where and what is the problem.
 // special: if the file is not exists, this will return true.
-// 删除文件或者文件夹，当删除失败时，需要你自己查出为什么删除失败，
-// 特别地：当文件不存在时，返回true
 func Delete(path string) bool {
 	_, err := os.Stat(path)
 	if os.IsNotExist(err) {
@@ -140,13 +135,10 @@ func Delete(path string) bool {
 	return nil == err
 }
 
-// remove file or directory.
+// DeleteAll delete file or directory.
 // if delete failed, you should find out by yourself where and what is the problem.
 // if is a directory, it will try to delete all files below.
 // special: if the file is not exists, this will return true.
-// 删除文件或者文件夹，当删除失败时，需要你自己查出为什么删除失败，
-// 如果是文件夹则尝试递归删除该文件夹下的所有文件，直到删除失败，
-// 特别地：当文件不存在时，返回true
 func DeleteAll(path string) bool {
 	_, err := os.Stat(path)
 	if os.IsNotExist(err) {
@@ -156,34 +148,29 @@ func DeleteAll(path string) bool {
 	return nil == err
 }
 
-// create new file.
-// 创建一个新文件
+// CreateFile create new file.
 func CreateFile(path string) (*os.File, error) {
 	fi, err := os.Create(path)
 	return fi, err
 }
 
-// create new file.
-// 创建一个新文件
+// OpenFile4Write create new file.
 func OpenFile4Write(path string) (*os.File, error) {
 	fi, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
 	return fi, err
 }
 
-// create new directory.
-// 创建一个新文件夹
+// CreateDir create new directory.
 func CreateDir(path string) error {
 	return os.Mkdir(path, 0777)
 }
 
-// create new directory.
-// 创建一个新文件夹，如果父文件夹不存在则自动创建
+// CreateAllDir create new directory.
 func CreateAllDir(path string) error {
 	return os.MkdirAll(path, 0777)
 }
 
-// check whether path point to a file.
-// 检查路径是否是一个文件
+// IsFile check whether path point to a file.
 func IsFile(path string) bool {
 	fi, err := os.Stat(path)
 	if nil == err {
@@ -193,8 +180,7 @@ func IsFile(path string) bool {
 	}
 }
 
-// check whether path point to a file.
-// 检查路径是否是一个文件
+// IsFile1 check whether path point to a file.
 func IsFile1(file *os.File) bool {
 	fi, err := file.Stat()
 	if nil == err {
@@ -204,8 +190,7 @@ func IsFile1(file *os.File) bool {
 	}
 }
 
-// check whether path point to a file.
-// 检查路径是否是一个文件夹
+// IsDir check whether path point to a file.
 func IsDir(path string) bool {
 	fi, err := os.Stat(path)
 	if nil == err {
@@ -215,8 +200,7 @@ func IsDir(path string) bool {
 	}
 }
 
-// check whether path point to a file.
-// 检查路径是否是一个文件夹
+// IsDir1 check whether path point to a file.
 func IsDir1(file *os.File) bool {
 	fi, err := file.Stat()
 	if nil == err {
@@ -226,42 +210,37 @@ func IsDir1(file *os.File) bool {
 	}
 }
 
-// rename file / move file
-// 文件重命名 / 移动文件
+// MoveFile rename file / move file
 func MoveFile(src string, dest string) error {
 	return os.Rename(src, dest)
 }
 
-// change work directory to path.
-// 将当前工作目录修改为dir指定的目录。如果出错，会返回*PathError底层类型的错误
+// ChangeWorkDir change work directory to path.
 func ChangeWorkDir(path string) error {
 	return os.Chdir(path)
 }
 
-// get work directory.
-// 返回一个对应当前工作目录的根路径。如果当前目录可以经过多条路径抵达（因为硬链接），Getwd会返回其中一个
+// GetWorkDir get work directory.
 func GetWorkDir() (string, error) {
 	return os.Getwd()
 }
 
-// return a temp directory.
-// 返回一个用于保管临时文件的默认目录。
+// GetTempDir return a temp directory.
 func GetTempDir() string {
 	return os.TempDir()
 }
 
-// 判断给定的路径是否为绝对路径
+// IsAbsPath tell if the path is absolute.
 func IsAbsPath(path string) bool {
 	return filepath.IsAbs(path)
 }
 
-// get file extension
-// 获取文件的扩展名
+// GetFileExt get file extension
 func GetFileExt(filePath string) string {
 	return path.Ext(filePath)
 }
 
-//fix path, ep:
+// FixPath fix path, ep:
 //    /aaa/aa\\bb\\cc/d/////     -> /aaa/aa/bb/cc/d
 //    E:/aaa/aa\\bb\\cc/d////e/  -> E:/aaa/aa/bb/cc/d/e
 //    ""                         -> .
@@ -295,7 +274,7 @@ func FixPath(input string) string {
 	return replaceMent
 }
 
-// read properties file on filesystem.
+// ReadPropFile read properties file on filesystem.
 func ReadPropFile(path string) (map[string]string, error) {
 	f, e := os.Open(path)
 	if e == nil {
@@ -307,7 +286,7 @@ func ReadPropFile(path string) (map[string]string, error) {
 				if e1 == nil || e1 == io.EOF {
 					line = strings.TrimSpace(line)
 					if len(line) != 0 && line[0] != '#' {
-						//li := strings.Split(line, "=")
+						// li := strings.Split(line, "=")
 						eIndex := strings.Index(line, "=")
 						if eIndex == -1 {
 							return nil, errors.New("error parameter: '" + line + "'")
@@ -338,7 +317,7 @@ func ReadPropFile(path string) (map[string]string, error) {
 	}
 }
 
-// only for ReadPropFile()
+// joinLeft only for ReadPropFile()
 func joinLeft(g []string) string {
 	if g == nil || len(g) == 0 {
 		return ""

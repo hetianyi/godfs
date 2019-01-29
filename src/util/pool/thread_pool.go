@@ -39,7 +39,7 @@ type Pool struct {
 	chanNotify           chan int // channel to notify to run next task
 }
 
-// initial pool
+// initPool initial pool
 func initPool(MaxActiveSize int, MaxWaitSize int) (*Pool, error) {
 	logger.Debug("initial thread pool...")
 	if MaxActiveSize <= 0 {
@@ -58,7 +58,7 @@ func initPool(MaxActiveSize int, MaxWaitSize int) (*Pool, error) {
 	return p, nil
 }
 
-// add a new task to pool
+// Exec add a new task to pool
 func (pool *Pool) Exec(t func()) error {
 	logger.Trace("pool get new task")
 	// if no free thread found then put the task in 'pool.WaitingList'.
@@ -74,7 +74,7 @@ func (pool *Pool) Exec(t func()) error {
 	return nil
 }
 
-// get current active task size
+// modifyActiveCount get current active task size
 func (pool *Pool) modifyActiveCount(count int) int {
 	pool.activeGoroutineMutex.Lock()
 	defer pool.activeGoroutineMutex.Unlock()
@@ -82,7 +82,7 @@ func (pool *Pool) modifyActiveCount(count int) int {
 	return pool.activeGoroutine
 }
 
-// call by a finished task for notifying a new task can be run
+// taskFinish call by a finished task for notifying a new task can be run
 func (pool *Pool) taskFinish() {
 	pool.reassignTaskMutex.Lock()
 	defer pool.reassignTaskMutex.Unlock()
@@ -91,7 +91,7 @@ func (pool *Pool) taskFinish() {
 	pool.chanNotify <- 0
 }
 
-// wait signal and fetch task for running
+// runTask wait signal and fetch task for running
 func (pool *Pool) runTask() {
 	for {
 		logger.Trace("waiting for new task...")
@@ -107,7 +107,7 @@ func (pool *Pool) runTask() {
 	}
 }
 
-// run a task here
+// Run run a task here
 func (t *Task) Run(pool *Pool) {
 	logger.Trace("get a new task")
 	// set task to nil and notice finally

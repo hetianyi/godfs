@@ -8,6 +8,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	json "github.com/json-iterator/go"
 	"hash"
 	"io"
 	"libcommon"
@@ -17,14 +18,13 @@ import (
 	"os"
 	"regexp"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 	"util/common"
-	json "github.com/json-iterator/go"
+	httputil "util/http"
 	"util/logger"
 	"util/timeutil"
-	httputil "util/http"
-	"strings"
 )
 
 const ContentDispositionPattern = "^Content-Disposition: form-data; name=\"([^\"]*)\"(; filename=\"([^\"]*)\".*)?$"
@@ -111,7 +111,7 @@ func (handler *FileUploadHandlerV1) onTextField(name string, value string) {
 	handler.params[name] = ls
 }
 
-// begin read request entity and parse form field
+// beginUpload begin read request entity and parse form field
 func (handler *FileUploadHandlerV1) beginUpload() (*HttpUploadResponse, error) {
 	beginTime := time.Now()
 	// test code
@@ -285,7 +285,7 @@ func readNextLine(reader *FileFormReader) (string, error) {
 	}
 }
 
-// begin read file part
+// readFileBody begin read file part
 func readFileBody(reader *FileFormReader, buffer []byte, separator string, md hash.Hash) (*StageUploadStatus, error) {
 	defer func() {
 		md.Reset()
@@ -391,12 +391,12 @@ func readFileBody(reader *FileFormReader, buffer []byte, separator string, md ha
 	logger.Debug("http upload file md5 is", sMd5, "part num:", stateUploadStatus.fileParts.Len())
 
 	finalFile := &app.FileVO{
-		Md5: sMd5,
+		Md5:        sMd5,
 		PartNumber: stateUploadStatus.fileParts.Len(),
-		Group: app.Group,
-		Instance: app.InstanceId,
-		Finish: 1,
-		FileSize: 0,
+		Group:      app.Group,
+		Instance:   app.InstanceId,
+		Finish:     1,
+		FileSize:   0,
 	}
 	parts := make([]app.PartDO, stateUploadStatus.fileParts.Len())
 	index := 0
@@ -481,7 +481,7 @@ func handleStagePartFile(buffer []byte, status *StageUploadStatus) error {
 	return nil
 }
 
-// copy bytes
+// ByteCopy copy bytes
 func ByteCopy(src []byte, start int, end int, cp []byte) {
 	for i := range src {
 		if i >= start && i < end {
@@ -492,7 +492,7 @@ func ByteCopy(src []byte, start int, end int, cp []byte) {
 	}
 }
 
-// web upload entry point
+// WebUploadHandlerV1 web upload entry point
 func WebUploadHandlerV1(writer http.ResponseWriter, request *http.Request) {
 	defer request.Body.Close()
 
@@ -589,17 +589,17 @@ func WebUploadHandlerV1(writer http.ResponseWriter, request *http.Request) {
 }
 
 var count = 0
-var _lock *sync.Mutex
+var testLock *sync.Mutex
 
 func init() {
-	_lock = new(sync.Mutex)
+	testLock = new(sync.Mutex)
 	// go statisticTest()
 }
 
 // code for test
 func increaseTest(value int) int {
-	_lock.Lock()
-	defer _lock.Unlock()
+	testLock.Lock()
+	defer testLock.Unlock()
 	count += value
 	return count
 }

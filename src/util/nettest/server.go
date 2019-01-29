@@ -18,6 +18,4 @@ func main() {
 
 	fmt.Println(conn.RemoteAddr().String())
 
-
-
 }

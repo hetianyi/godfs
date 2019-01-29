@@ -1,30 +1,31 @@
 package bridgev2
 
 import (
-	json "github.com/json-iterator/go"
 	"errors"
+	json "github.com/json-iterator/go"
 )
 
 const (
-	// frame head
+	// FrameHeadFlag frame head
 	FrameHeadFlag byte = 66
-
 )
 
+// Frame is a tcp frame
 type Frame struct {
-	FrameHead []byte
-	FrameStatus byte
-	MetaLength int
-	BodyLength int64
-	FrameMeta []byte
+	FrameHead         []byte
+	FrameStatus       byte
+	MetaLength        int
+	BodyLength        int64
+	FrameMeta         []byte
 	BodyWriterHandler func(manager *ConnectionManager, frame *Frame) error
 }
 
-
+// SetOperation set operation code of the frame
 func (frame *Frame) SetOperation(operation byte) {
 	frame.FrameHead = []byte{FrameHeadFlag, operation}
 }
 
+// GetOperation get operation code of the frame
 func (frame *Frame) GetOperation() byte {
 	if frame.FrameHead == nil || len(frame.FrameHead) != 2 {
 		return FrameOperationNone
@@ -32,16 +33,17 @@ func (frame *Frame) GetOperation() byte {
 	return frame.FrameHead[1]
 }
 
+// SetStatus set frame's status
 func (frame *Frame) SetStatus(status byte) {
 	frame.FrameStatus = status
 }
 
+// GetStatus get frame's status
 func (frame *Frame) GetStatus() byte {
 	return frame.FrameStatus
 }
 
-
-
+// SetMeta set frame's meta info
 func (frame *Frame) SetMeta(meta interface{}) error {
 	if meta == nil {
 		return errors.New("cannot set frame meta to nil")
@@ -55,12 +57,12 @@ func (frame *Frame) SetMeta(meta interface{}) error {
 	return nil
 }
 
-func (frame *Frame) GetMeta() ([]byte) {
+// GetMeta get frame's meta info
+func (frame *Frame) GetMeta() []byte {
 	return frame.FrameMeta
 }
 
-
-func (frame *Frame) SetMetaBodyLength(bodyLength int64)  {
+// SetMetaBodyLength set frame's body length
+func (frame *Frame) SetMetaBodyLength(bodyLength int64) {
 	frame.BodyLength = bodyLength
 }
-

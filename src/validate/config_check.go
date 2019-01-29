@@ -19,7 +19,7 @@ var (
 	GroupInstancePattern = "^[0-9a-zA-Z_]{1,30}$" // group name and instance id pattern
 )
 
-// check configuration file parameter.
+// Check check configuration file parameter.
 // if check failed, system will shutdown.
 // runWith:
 //        1: storage server
@@ -226,11 +226,10 @@ func Check(m map[string]string, runWith int) {
 				tmpStr += item.(string) + "|"
 				return false
 			})
-			tmpStr = tmpStr[0:len(tmpStr) - 1]
+			tmpStr = tmpStr[0 : len(tmpStr)-1]
 			tmpStr += ")"
 			logger.Info("preferred network interfaces:", tmpStr)
 		}
-
 
 		// check: preferred_networks
 		preferredIPPrefix := strings.TrimSpace(m["preferred_ip_prefix"])
@@ -432,7 +431,7 @@ func prepareDirs(finalPath string) {
 	createDirs(finalPath)
 }
 
-// clean tmp dir before boot
+// cleanTmpDir clean tmp dir before boot
 func cleanTmpDir() {
 	logger.Debug("clean tmp path:" + app.BasePath + "/data/tmp")
 	file.DeleteAll(app.BasePath + "/data/tmp")

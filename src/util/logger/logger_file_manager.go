@@ -31,26 +31,26 @@ func check() {
 		lastLogTime = &now
 	}
 
-	year_last, month_last, day_last := lastLogTime.Date()
-	hour_last := timeutil.GetHour(*lastLogTime)
+	yearLast, monthLast, dayLast := lastLogTime.Date()
+	hourLast := timeutil.GetHour(*lastLogTime)
 
-	year_now, month_now, day_now := now.Date()
-	hour_now := timeutil.GetHour(now)
+	yearNow, monthNow, dayNow := now.Date()
+	hourNow := timeutil.GetHour(now)
 
 	if app.LogInterval == "d" {
-		if year_last != year_now || int(month_last) != int(month_now) || day_last != day_now {
+		if yearLast != yearNow || int(monthLast) != int(monthNow) || dayLast != dayNow {
 			resetLogFile(now)
 		}
 	} else if app.LogInterval == "h" {
-		if year_last != year_now || int(month_last) != int(month_now) || day_last != day_now || hour_last != hour_now {
+		if yearLast != yearNow || int(monthLast) != int(monthNow) || dayLast != dayNow || hourLast != hourNow {
 			resetLogFile(now)
 		}
 	} else if app.LogInterval == "m" {
-		if year_last != year_now || int(month_last) != int(month_now) {
+		if yearLast != yearNow || int(monthLast) != int(monthNow) {
 			resetLogFile(now)
 		}
 	} else if app.LogInterval == "y" {
-		if year_last != year_now {
+		if yearLast != yearNow {
 			resetLogFile(now)
 		}
 	}
@@ -102,7 +102,7 @@ func SetLogLevel(level int) {
 	app.LogLevel = logLevel
 }
 
-// enable log
+// SetEnable enable log
 func SetEnable(e bool) {
 	now := time.Now()
 	resetLogFile(now)
