@@ -35,7 +35,7 @@ func UploadFileHandler(manager *bridgev2.ConnectionManager, frame *bridgev2.Fram
 	}
 	manager.Md.Reset()
 	logger.Info("begin read file body, file len is ", frame.BodyLength/1024, "KB")
-	buffer, _ := bridgev2.MakeBytes(app.BUFF_SIZE, false, 0, false)
+	buffer, _ := bridgev2.MakeBytes(app.BufferSize, false, 0, false)
 	defer func() {
 		manager.Md.Reset()
 		bridgev2.RecycleBytes(buffer)
@@ -75,8 +75,8 @@ func UploadFileHandler(manager *bridgev2.ConnectionManager, frame *bridgev2.Fram
 			finalFile := &app.FileVO{
 				Md5: md5,
 				PartNumber: fileParts.Len(),
-				Group: app.GROUP,
-				Instance: app.INSTANCE_ID,
+				Group: app.Group,
+				Instance: app.InstanceId,
 				Finish: 1,
 				FileSize: readBodySize,
 			}
@@ -88,7 +88,7 @@ func UploadFileHandler(manager *bridgev2.ConnectionManager, frame *bridgev2.Fram
 			}
 			finalFile.Parts = parts
 
-			// stoe := libservice.StorageAddFile(md5, app.GROUP, &fileParts)
+			// stoe := libservice.StorageAddFile(md5, app.Group, &fileParts)
 			stoe := libservicev2.InsertFile(finalFile, nil)
 			if stoe != nil {
 				return stoe
@@ -96,9 +96,9 @@ func UploadFileHandler(manager *bridgev2.ConnectionManager, frame *bridgev2.Fram
 			// mark the file is multi part or single part
 			var path string
 			if fileParts.Len() > 1 {
-				path = app.GROUP + "/" + app.INSTANCE_ID + "/M/" + md5
+				path = app.Group + "/" + app.InstanceId + "/M/" + md5
 			} else {
-				path = app.GROUP + "/" + app.INSTANCE_ID + "/S/" + md5
+				path = app.Group + "/" + app.InstanceId + "/S/" + md5
 			}
 
 			responseMeta := &bridgev2.UploadFileResponseMeta{path}
@@ -114,8 +114,8 @@ func UploadFileHandler(manager *bridgev2.ConnectionManager, frame *bridgev2.Fram
 			return nil
 		}
 		// left bytes is more than a buffer
-		if (frame.BodyLength-readBodySize)/int64(app.BUFF_SIZE) >= 1 {
-			nextReadSize = int(app.BUFF_SIZE)
+		if (frame.BodyLength-readBodySize)/int64(app.BufferSize) >= 1 {
+			nextReadSize = int(app.BufferSize)
 		} else { // left bytes less than a buffer
 			nextReadSize = int(frame.BodyLength - readBodySize)
 		}
@@ -123,10 +123,10 @@ func UploadFileHandler(manager *bridgev2.ConnectionManager, frame *bridgev2.Fram
 		len1, e3 := bridgev2.ReadBytes(buffer, nextReadSize, manager, manager.Md)
 		if e3 == nil && len1 == nextReadSize {
 			// if sliceReadSize > sliceSize then create a new slice file
-			if sliceReadSize+int64(len1) > app.SLICE_SIZE {
+			if sliceReadSize+int64(len1) > app.SliceSize {
 				// write bytes to file
-				leftN := app.SLICE_SIZE - sliceReadSize
-				rightN := int64(len1) - (app.SLICE_SIZE - sliceReadSize)
+				leftN := app.SliceSize - sliceReadSize
+				rightN := int64(len1) - (app.SliceSize - sliceReadSize)
 				len2, e1 := out.Write(buffer[0:leftN])
 				len4, e11 := sliceMd5.Write(buffer[0:leftN])
 				if e1 != nil || e11 != nil || int64(len2) != leftN || int64(len4) != leftN {
@@ -144,9 +144,9 @@ func UploadFileHandler(manager *bridgev2.ConnectionManager, frame *bridgev2.Fram
 				if e10 != nil {
 					return e10
 				}
-				tmpPart := &app.PartDO{Md5: sMd5, Size: app.SLICE_SIZE}
+				tmpPart := &app.PartDO{Md5: sMd5, Size: app.SliceSize}
 				fileParts.PushBack(tmpPart)
-				app.UpdateDiskUsage(app.SLICE_SIZE)
+				app.UpdateDiskUsage(app.SliceSize)
 
 				out12, e12 := libcommon.CreateTmpFile()
 				if e12 != nil {
@@ -200,7 +200,7 @@ func DownFileHandler(manager *bridgev2.ConnectionManager, frame *bridgev2.Frame)
 	resMeta := &bridgev2.DownloadFileResponseMeta{}
 	responseFrame := &bridgev2.Frame{}
 
-	if mat, _ := regexp.Match(app.PATH_REGEX, []byte(meta.Path)); !mat {
+	if mat, _ := regexp.Match(app.PathRegex, []byte(meta.Path)); !mat {
 		logger.Debug("error file path format")
 		resMeta.Exist = false
 		responseFrame.SetStatus(bridgev2.STATUS_SUCCESS)
@@ -208,7 +208,7 @@ func DownFileHandler(manager *bridgev2.ConnectionManager, frame *bridgev2.Frame)
 		responseFrame.SetMetaBodyLength(0)
 		return manager.Send(responseFrame)
 	}
-	md5 := regexp.MustCompile(app.PATH_REGEX).ReplaceAllString(meta.Path, "${4}")
+	md5 := regexp.MustCompile(app.PathRegex).ReplaceAllString(meta.Path, "${4}")
 
 	// fullFile, e11 := libservice.GetFullFileByMd5(md5, 1)
 	fileInfo, e2 := libservicev2.GetFullFileByMd5(md5, 1)
@@ -247,7 +247,7 @@ func DownFileHandler(manager *bridgev2.ConnectionManager, frame *bridgev2.Frame)
 
 // download writer handler.
 func WriteDownloadStream(fullFile *app.FileVO, startPos *bridgev2.ReadPos, endPos *bridgev2.ReadPos, out io.Writer) error {
-	buffer, _ := bridgev2.MakeBytes(app.BUFF_SIZE, false, 0, false)
+	buffer, _ := bridgev2.MakeBytes(app.BufferSize, false, 0, false)
 	defer bridgev2.RecycleBytes(buffer)
 	for i := range fullFile.Parts {
 		var start int64 = 0

@@ -21,7 +21,7 @@ var p, _ = pool.NewPool(500, 0)
 // 2. Start task for communication with tracker
 func StartService() {
 	// prepare db connection pool
-	libservicev2.SetPool(db.NewPool(app.DB_POOL_SIZE))
+	libservicev2.SetPool(db.NewPool(app.DbPoolSize))
 
 	uuid, e1 := libservicev2.ConfirmAppUUID(common.UUID())
 	if e1 != nil {
@@ -37,14 +37,14 @@ func StartService() {
 
 // tracker server start tcp listen
 func startTrackerService() {
-	server := bridgev2.NewServer("", app.PORT)
+	server := bridgev2.NewServer("", app.Port)
 	server.Listen(libcommon.FutureExpireStorageServer)
 }
 
 
 // start http download server.
 func startHttpService() {
-	if !app.HTTP_ENABLE {
+	if !app.HttpEnable {
 		logger.Info("http server disabled")
 		return
 	}
@@ -53,12 +53,12 @@ func startHttpService() {
 	http.HandleFunc("/servers", GetAllStorageServers)
 
 	s := &http.Server{
-		Addr: ":" + strconv.Itoa(app.HTTP_PORT),
+		Addr: ":" + strconv.Itoa(app.HttpPort),
 		// ReadTimeout:    10 * time.Second,
 		ReadHeaderTimeout: 10 * time.Second,
 		WriteTimeout:      0,
 		MaxHeaderBytes:    1 << 20,
 	}
-	logger.Info("http server listening on port:", app.HTTP_PORT)
+	logger.Info("http server listening on port:", app.HttpPort)
 	go s.ListenAndServe()
 }

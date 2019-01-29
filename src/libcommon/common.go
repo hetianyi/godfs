@@ -24,7 +24,7 @@ func CreateTmpFile() (*os.File, error) {
 	// begin upload file
 	tmpFileName := timeutil.GetUUID()
 	// using tmp ext and rename after upload success
-	tmpPath := file.FixPath(app.BASE_PATH + "/data/tmp/" + tmpFileName)
+	tmpPath := file.FixPath(app.BasePath + "/data/tmp/" + tmpFileName)
 	fi, e8 := file.CreateFile(tmpPath)
 	if e8 != nil {
 		return nil, e8
@@ -40,7 +40,7 @@ func CloseAndDeleteTmpFile(fi *os.File) {
 func MoveTmpFileTo(md5 string, fi *os.File) error {
 	dig1 := strings.ToUpper(md5[0:2])
 	dig2 := strings.ToUpper(md5[2:4])
-	finalPath := app.BASE_PATH + "/data/" + dig1 + "/" + dig2
+	finalPath := app.BasePath + "/data/" + dig1 + "/" + dig2
 	if !file.Exists(finalPath) {
 		e := file.CreateAllDir(finalPath)
 		if e != nil {
@@ -83,7 +83,7 @@ func ParsePort(port string) int {
 func GetFilePathByMd5(md5 string) string {
 	dig1 := strings.ToUpper(md5[0:2])
 	dig2 := strings.ToUpper(md5[2:4])
-	return app.BASE_PATH + "/data/" + dig1 + "/" + dig2 + "/" + md5
+	return app.BasePath + "/data/" + dig1 + "/" + dig2 + "/" + md5
 }
 
 // get read position from parts of files

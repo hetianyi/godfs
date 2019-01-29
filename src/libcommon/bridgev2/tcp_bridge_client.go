@@ -52,7 +52,7 @@ func (client *TcpBridgeClient) Connect() error {
 // validate this connection.
 func (client *TcpBridgeClient) Validate() (*ConnectResponseMeta, error) {
     meta := &ConnectMeta{
-        Secret: app.SECRET,
+        Secret: app.Secret,
         UUID: app.UUID,
     }
     frame, e := client.sendReceive(FRAME_OPERATION_VALIDATE, STATE_CONNECTED, meta, 0, nil)

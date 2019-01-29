@@ -68,7 +68,7 @@ func (expireMember *ExpireMember) SwitchAccessFlag() {
 func (expireMember *ExpireMember) GetHostAndPortByAccessFlag() (host string, port int) {
     if expireMember.AccessFlag == app.ACCESS_FLAG_NONE {
     	// if run as client, always try from advertise ip
-    	if app.RUN_WITH == 3 {
+    	if app.RunWith == 3 {
 			expireMember.AccessFlag = app.ACCESS_FLAG_ADVERTISE
 			return expireMember.AdvertiseAddr, expireMember.AdvertisePort
 		}

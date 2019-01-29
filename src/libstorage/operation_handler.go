@@ -22,7 +22,7 @@ package libstorage
 //	e1 := json.Unmarshal(request.MetaBody, head)
 //	var response = &bridge.OperationValidationResponse{}
 //	if e1 == nil {
-//		if head.Secret == app.SECRET {
+//		if head.Secret == app.Secret {
 //			response.Status = bridge.STATUS_OK
 //		} else {
 //			response.Status = bridge.STATUS_BAD_SECRET
@@ -43,7 +43,7 @@ package libstorage
 //// 处理文件上传请求
 //func uploadHandler(request *bridge.Meta, md hash.Hash, conn io.ReadCloser, connBridge *bridge.Bridge) error {
 //
-//	if !app.UPLOAD_ENABLE {
+//	if !app.UploadEnable {
 //		var response = &bridge.OperationUploadFileResponse{
 //			Status: bridge.STATUS_UPLOAD_DISABLED,
 //			Path:   "",
@@ -57,7 +57,7 @@ package libstorage
 //
 //	logger.Info("begin read file body, file len is ", request.BodyLength/1024, "KB")
 //	// body buff
-//	buffer, _ := bridge.MakeBytes(app.BUFF_SIZE, false, 0, false)
+//	buffer, _ := bridge.MakeBytes(app.BufferSize, false, 0, false)
 //	defer func() {
 //		md.Reset()
 //		bridge.RecycleBytes(buffer)
@@ -95,16 +95,16 @@ package libstorage
 //			logger.Info("upload finish, total read bytes", readBodySize, " | MD5 is", md5)
 //			app.UpdateUploads()
 //
-//			stoe := libservice.StorageAddFile(md5, app.GROUP, &fileParts)
+//			stoe := libservice.StorageAddFile(md5, app.Group, &fileParts)
 //			if stoe != nil {
 //				return stoe
 //			}
 //			// mark the file is multi part or single part
 //			var path string
 //			if fileParts.Len() > 1 {
-//				path = app.GROUP + "/" + app.INSTANCE_ID + "/M/" + md5
+//				path = app.Group + "/" + app.InstanceId + "/M/" + md5
 //			} else {
-//				path = app.GROUP + "/" + app.INSTANCE_ID + "/S/" + md5
+//				path = app.Group + "/" + app.InstanceId + "/S/" + md5
 //			}
 //
 //			var response = &bridge.OperationUploadFileResponse{
@@ -118,8 +118,8 @@ package libstorage
 //			return nil
 //		}
 //		// left bytes is more than a buffer
-//		if (request.BodyLength-readBodySize)/uint64(app.BUFF_SIZE) >= 1 {
-//			nextReadSize = int(app.BUFF_SIZE)
+//		if (request.BodyLength-readBodySize)/uint64(app.BufferSize) >= 1 {
+//			nextReadSize = int(app.BufferSize)
 //		} else { // left bytes less than a buffer
 //			nextReadSize = int(request.BodyLength - readBodySize)
 //		}
@@ -127,10 +127,10 @@ package libstorage
 //		len1, e3 := bridge.ReadBytes(buffer, nextReadSize, conn, md)
 //		if e3 == nil && len1 == nextReadSize {
 //			// if sliceReadSize > sliceSize then create a new slice file
-//			if sliceReadSize+int64(len1) > app.SLICE_SIZE {
+//			if sliceReadSize+int64(len1) > app.SliceSize {
 //				// write bytes to file
-//				leftN := app.SLICE_SIZE - sliceReadSize
-//				rightN := int64(len1) - (app.SLICE_SIZE - sliceReadSize)
+//				leftN := app.SliceSize - sliceReadSize
+//				rightN := int64(len1) - (app.SliceSize - sliceReadSize)
 //				len2, e1 := out.Write(buffer[0:leftN])
 //				len4, e11 := sliceMd5.Write(buffer[0:leftN])
 //				if e1 != nil || e11 != nil || int64(len2) != leftN || int64(len4) != leftN {
@@ -148,9 +148,9 @@ package libstorage
 //				if e10 != nil {
 //					return e10
 //				}
-//				tmpPart := &bridge.FilePart{Md5: sMd5, FileSize: app.SLICE_SIZE}
+//				tmpPart := &bridge.FilePart{Md5: sMd5, FileSize: app.SliceSize}
 //				fileParts.PushBack(tmpPart)
-//				app.UpdateDiskUsage(app.SLICE_SIZE)
+//				app.UpdateDiskUsage(app.SliceSize)
 //
 //				out12, e12 := libcommon.CreateTmpFile()
 //				if e12 != nil {
@@ -200,10 +200,10 @@ package libstorage
 //		return e1
 //	}
 //	var md5 string
-//	if mat1, _ := regexp.Match(app.MD5_REGEX, []byte(queryMeta.PathOrMd5)); mat1 {
+//	if mat1, _ := regexp.Match(app.Md5Regex, []byte(queryMeta.PathOrMd5)); mat1 {
 //		md5 = queryMeta.PathOrMd5
-//	} else if mat2, _ := regexp.Match(app.PATH_REGEX, []byte(queryMeta.PathOrMd5)); mat2 {
-//		md5 = regexp.MustCompile(app.PATH_REGEX).ReplaceAllString(queryMeta.PathOrMd5, "${4}")
+//	} else if mat2, _ := regexp.Match(app.PathRegex, []byte(queryMeta.PathOrMd5)); mat2 {
+//		md5 = regexp.MustCompile(app.PathRegex).ReplaceAllString(queryMeta.PathOrMd5, "${4}")
 //	} else {
 //		response.Status = bridge.STATUS_NOT_FOUND
 //		response.Exist = false
@@ -239,7 +239,7 @@ package libstorage
 //		connBridge.SendResponse(response, 0, nil)
 //		return e1
 //	}
-//	if mat, _ := regexp.Match(app.PATH_REGEX, []byte(meta.Path)); !mat {
+//	if mat, _ := regexp.Match(app.PathRegex, []byte(meta.Path)); !mat {
 //		response.Status = bridge.STATUS_NOT_FOUND
 //		// ignore if it write success
 //		e2 := connBridge.SendResponse(response, 0, nil)
@@ -248,7 +248,7 @@ package libstorage
 //		}
 //		return nil
 //	}
-//	md5 := regexp.MustCompile(app.PATH_REGEX).ReplaceAllString(meta.Path, "${4}")
+//	md5 := regexp.MustCompile(app.PathRegex).ReplaceAllString(meta.Path, "${4}")
 //
 //	fullFile, e11 := libservice.GetFullFileByMd5(md5, 1)
 //

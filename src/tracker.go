@@ -15,7 +15,7 @@ import (
 
 func main() {
 	runtime.GOMAXPROCS(runtime.NumCPU())
-	app.RUN_WITH = 2 // run as tracker
+	app.RunWith = 2 // run as tracker
 	abs, _ := filepath.Abs(os.Args[0]) // executable file path
 	s, _ := filepath.Split(abs)
 	s = file.FixPath(s)
@@ -32,7 +32,7 @@ func main() {
 	logger.Info("using config file:", confPath)
 	m, e := file.ReadPropFile(confPath)
 	if e == nil {
-		validate.Check(m, app.RUN_WITH)
+		validate.Check(m, app.RunWith)
 		for k, v := range m {
 			logger.Debug(k, "=", v)
 		}
@@ -44,7 +44,7 @@ func main() {
 
 func initTrackerFlags() {
 	appFlag := cli.NewApp()
-	appFlag.Version = app.APP_VERSION
+	appFlag.Version = app.Version
 	appFlag.Name = "godfs tracker"
 	appFlag.Usage = ""
 

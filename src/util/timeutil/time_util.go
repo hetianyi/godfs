@@ -81,22 +81,22 @@ func GetLongLongDateString(t time.Time) string {
 func GetLogFileName(t time.Time) string {
 	var buff bytes.Buffer
 	buff.WriteString(strconv.Itoa(GetYear(t)))
-	if app.LOG_INTERVAL == "y" {
+	if app.LogInterval == "y" {
 		return buff.String()
 	}
 	buff.WriteString("-")
 	buff.WriteString(format2(GetMonth(t)))
-	if app.LOG_INTERVAL == "m" {
+	if app.LogInterval == "m" {
 		return buff.String()
 	}
 	buff.WriteString("-")
 	buff.WriteString(format2(GetDay(t)))
-	if app.LOG_INTERVAL == "d" {
+	if app.LogInterval == "d" {
 		return buff.String()
 	}
 	buff.WriteString("_")
 	buff.WriteString(format2(GetHour(t)))
-	if app.LOG_INTERVAL == "h" {
+	if app.LogInterval == "h" {
 		return buff.String()
 	}
 	buff.WriteString("_")

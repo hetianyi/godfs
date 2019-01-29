@@ -96,7 +96,7 @@ func download() {
 	e := client.DownloadFile(DownloadFilePath, 0, -1, func(manager *bridgev2.ConnectionManager, frame *bridgev2.Frame, resMeta *bridgev2.DownloadFileResponseMeta) (b bool, e error) {
 		var fi *os.File
 		if CustomFileName == "" {
-			md5 := regexp.MustCompile(app.PATH_REGEX).ReplaceAllString(DownloadFilePath, "${4}")
+			md5 := regexp.MustCompile(app.PathRegex).ReplaceAllString(DownloadFilePath, "${4}")
 			CustomFileName = md5
 			f, e1 := file.CreateFile(CustomFileName)
 			if e1 != nil {
@@ -118,7 +118,7 @@ func download() {
 	/*e := client.DownloadFile(path, 0, -1, func(realPath string, fileLen uint64, reader io.Reader) error {
 		var fi *os.File
 		if customDownloadFileName == "" {
-			md5 := regexp.MustCompile(app.PATH_REGEX).ReplaceAllString(realPath, "${4}")
+			md5 := regexp.MustCompile(app.PathRegex).ReplaceAllString(realPath, "${4}")
 			customDownloadFileName = md5
 			f, e1 := file.CreateFile(customDownloadFileName)
 			if e1 != nil {
@@ -169,7 +169,7 @@ func inspect()  {
 
 
 func writeOut(in io.Reader, offset int64, out io.Writer, startTime time.Time) error {
-	buffer, _ := bridge.MakeBytes(app.BUFF_SIZE, false, 0, false)
+	buffer, _ := bridge.MakeBytes(app.BufferSize, false, 0, false)
 	defer bridge.RecycleBytes(buffer)
 	var finish, total int64
 	var stopFlag = false
@@ -233,13 +233,13 @@ func UpdateConfig() {
 			if k == "trackers" {
 				configTemp.Trackers = strings.Split(v, ",")
 			} else if k == "log_level" {
-				if app.LOG_LEVEL_SETS[v] == 0 {
+				if app.LogLevelSet[v] == 0 {
 					logger.Error("value of config key log_level must be one of trace|debug|info|warm|error|fatal")
 				} else {
 					configTemp.LogLevel = v
 				}
 			} else if k == "log_rotation_interval" {
-				if app.LOG_ROTATION_SETS[v] == 0 {
+				if app.LogRotationSet[v] == 0 {
 					logger.Error("value of config key log_rotation_interval must be one of h|d|m|y")
 				} else {
 					configTemp.LogRotationInterval = v
@@ -266,7 +266,7 @@ func UpdateConfig() {
 
 // write client config to file.
 func WriteConf(clientConfig *app.ClientConfig) error {
-	fi, e := file.CreateFile(app.BASE_PATH + string(os.PathSeparator) + "config.json")
+	fi, e := file.CreateFile(app.BasePath + string(os.PathSeparator) + "config.json")
 	if e != nil {
 		return e
 	}
@@ -281,7 +281,7 @@ func WriteConf(clientConfig *app.ClientConfig) error {
 
 // read client config
 func ReadConf() (*app.ClientConfig, error) {
-	configFile, e := file.GetFile(app.BASE_PATH + string(os.PathSeparator) + "config.json")
+	configFile, e := file.GetFile(app.BasePath + string(os.PathSeparator) + "config.json")
 	if e != nil {
 		return nil, e
 	}

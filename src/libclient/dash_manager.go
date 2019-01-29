@@ -73,7 +73,7 @@ func UpdateTrackerInstanceState(connStr string, secret string, nextRun bool, tra
 }
 
 /*func SyncTrackerAliveStatus(trackerMaintainer *TrackerMaintainer) {
-	timer := time.NewTicker(app.SYNC_STATISTIC_INTERVAL + 3)
+	timer := time.NewTicker(app.SyncStatisticInterval + 3)
 	execTimes := 0
 	for {
 		common.Try(func() {
@@ -85,7 +85,7 @@ func UpdateTrackerInstanceState(connStr string, secret string, nextRun bool, tra
 					for ele := trackers.Front(); ele != nil; ele = ele.Next() {
 						tracker := ele.Value.(*bridge.WebTracker)
 						UpdateTrackerInstanceState(tracker.Host+":"+strconv.Itoa(tracker.Port),
-							tracker.Secret, tracker.Status == app.STATUS_ENABLED, trackerMaintainer)
+							tracker.Secret, tracker.Status == app.StatusEnabled, trackerMaintainer)
 					}
 				}
 			}

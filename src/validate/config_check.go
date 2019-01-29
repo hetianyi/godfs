@@ -42,14 +42,14 @@ func Check(m map[string]string, runWith int) {
 		} else {
 			m["base_path"] = file.FixPath(basePath)
 		}
-		app.BASE_PATH = m["base_path"]
+		app.BasePath = m["base_path"]
 		cleanTmpdir()
 		prepareDirs(m["base_path"])
 	}
 
 	// check secret
 	m["secret"] = strings.TrimSpace(m["secret"])
-	app.SECRET = m["secret"]
+	app.Secret = m["secret"]
 
 	// check log_level
 	logLevel := strings.ToLower(strings.TrimSpace(m["log_level"]))
@@ -67,7 +67,7 @@ func Check(m map[string]string, runWith int) {
 		log_rotation_interval = "d"
 	}
 	m["log_rotation_interval"] = log_rotation_interval
-	app.LOG_INTERVAL = log_rotation_interval
+	app.LogInterval = log_rotation_interval
 
 	// enable log config
 	logEnable := strings.ToLower(strings.TrimSpace(m["log_enable"]))
@@ -75,10 +75,10 @@ func Check(m map[string]string, runWith int) {
 		logEnable = "true"
 	}
 	if logEnable == "true" {
-		app.LOG_ENABLE = true
+		app.LogEnable = true
 		logger.SetEnable(true)
 	} else {
-		app.LOG_ENABLE = false
+		app.LogEnable = false
 		logger.SetEnable(false)
 	}
 
@@ -89,7 +89,7 @@ func Check(m map[string]string, runWith int) {
 			if port <= 0 || port > 65535 {
 				logger.Fatal("invalid port range:", m["port"])
 			}
-			app.PORT = port
+			app.Port = port
 		} else {
 			logger.Fatal("invalid port ", m["port"], ":", e)
 		}
@@ -98,22 +98,22 @@ func Check(m map[string]string, runWith int) {
 	if runWith == 1 {
 		// check: advertise_addr
 		advertise_addr := strings.TrimSpace(m["advertise_addr"])
-		app.ADVERTISE_ADDRESS = advertise_addr
+		app.AdvertiseAddress = advertise_addr
 
 		if strings.TrimSpace(m["advertise_port"]) == "" {
-			app.ADVERTISE_PORT = app.PORT
+			app.AdvertisePort = app.Port
 		} else {
 			advertise_port, e := strconv.Atoi(strings.TrimSpace(m["advertise_port"]))
 			if e == nil {
 				if advertise_port <= 0 || advertise_port > 65535 {
-					logger.Warn("invalid advertise_port range:", m["advertise_port"]+", use default port", app.PORT)
-					app.ADVERTISE_PORT = app.PORT
+					logger.Warn("invalid advertise_port range:", m["advertise_port"]+", use default port", app.Port)
+					app.AdvertisePort = app.Port
 				} else {
-					app.ADVERTISE_PORT = advertise_port
+					app.AdvertisePort = advertise_port
 				}
 			} else {
-				logger.Fatal("invalid advertise_port ", m["advertise_port"], ":", e, ", use default port", app.PORT)
-				app.ADVERTISE_PORT = app.PORT
+				logger.Fatal("invalid advertise_port ", m["advertise_port"], ":", e, ", use default port", app.Port)
+				app.AdvertisePort = app.Port
 			}
 		}
 
@@ -122,7 +122,7 @@ func Check(m map[string]string, runWith int) {
 		if mat, _ := regexp.Match(GroupInstancePattern, []byte(m["group"])); !mat {
 			logger.Fatal("error parameter 'group'")
 		}
-		app.GROUP = m["group"]
+		app.Group = m["group"]
 
 		// check instance id
 		m["instance_id"] = strings.TrimSpace(m["instance_id"])
@@ -131,7 +131,7 @@ func Check(m map[string]string, runWith int) {
 				logger.Fatal("error parameter 'instance_id'")
 			}
 		}
-		app.INSTANCE_ID = m["instance_id"]
+		app.InstanceId = m["instance_id"]
 
 		// check assign_disk_space
 		assign_disk_space := strings.ToLower(strings.TrimSpace(m["assign_disk_space"]))
@@ -147,7 +147,7 @@ func Check(m map[string]string, runWith int) {
 			logger.Fatal("error assign_disk_space:", value+unit)
 		}
 		var _unit = GetUnitVal(unit)
-		app.ASSIGN_DISK_SPACE = int64(_val * float64(_unit))
+		app.AssignDiskSpace = int64(_val * float64(_unit))
 		m["assign_disk_space"] = value + unit
 
 		// check slice_size
@@ -164,9 +164,9 @@ func Check(m map[string]string, runWith int) {
 			logger.Fatal("error slice_size:", value1+unit1)
 		}
 		var _unit1 = GetUnitVal(unit1)
-		app.SLICE_SIZE = int64(_val1 * float64(_unit1))
+		app.SliceSize = int64(_val1 * float64(_unit1))
 		m["slice_size"] = value1 + unit1
-		logger.Debug("slice_size:", app.SLICE_SIZE)
+		logger.Debug("slice_size:", app.SliceSize)
 
 		// check upload_enable
 		upload_enable := strings.ToLower(strings.TrimSpace(m["upload_enable"]))
@@ -174,7 +174,7 @@ func Check(m map[string]string, runWith int) {
 			upload_enable = "true"
 		}
 		m["upload_enable"] = upload_enable
-		app.UPLOAD_ENABLE = upload_enable == "true"
+		app.UploadEnable = upload_enable == "true"
 
 		// check enable_mime_types
 		enable_mime_types := strings.ToLower(strings.TrimSpace(m["enable_mime_types"]))
@@ -182,8 +182,8 @@ func Check(m map[string]string, runWith int) {
 			enable_mime_types = "true"
 		}
 		m["enable_mime_types"] = enable_mime_types
-		app.MIME_TYPES_ENABLE = enable_mime_types == "true"
-		if app.MIME_TYPES_ENABLE {
+		app.MimeTypesEnable = enable_mime_types == "true"
+		if app.MimeTypesEnable {
 			app.SetMimeTypesEnable()
 		}
 
@@ -216,13 +216,13 @@ func Check(m map[string]string, runWith int) {
 			for i := range splitNetworkNames {
 				name := strings.TrimSpace(splitNetworkNames[i])
 				if name != "" {
-					app.PREFERRED_NETWORKS.PushBack(name)
+					app.PreferredNetworks.PushBack(name)
 				}
 			}
 		}
-		if app.PREFERRED_NETWORKS.Len() > 0 {
+		if app.PreferredNetworks.Len() > 0 {
 			tmpStr := "("
-			common.WalkList(&app.PREFERRED_NETWORKS, func(item interface{}) bool {
+			common.WalkList(&app.PreferredNetworks, func(item interface{}) bool {
 				tmpStr += item.(string) + "|"
 				return false
 			})
@@ -234,7 +234,7 @@ func Check(m map[string]string, runWith int) {
 
 		// check: preferred_networks
 		preferred_ip_prefix := strings.TrimSpace(m["preferred_ip_prefix"])
-		app.PREFERRED_IP_PREFIX = preferred_ip_prefix
+		app.PreferredIPPrefix = preferred_ip_prefix
 	}
 
 	if runWith == 1 || runWith == 2 || runWith == 4 {
@@ -245,24 +245,24 @@ func Check(m map[string]string, runWith int) {
 			http_enable = "false"
 		}
 		m["http_enable"] = http_enable
-		app.HTTP_ENABLE = http_enable == "true"
+		app.HttpEnable = http_enable == "true"
 
 		// check http_port
 		http_port := strings.ToLower(strings.TrimSpace(m["http_port"]))
 
 		httpPort, ehp := strconv.Atoi(http_port)
-		if runWith == 4 || ((runWith == 1 || runWith == 2) && app.HTTP_ENABLE) {
+		if runWith == 4 || ((runWith == 1 || runWith == 2) && app.HttpEnable) {
 			if ehp != nil || httpPort <= 0 || httpPort > 65535 {
 				logger.Fatal("error http_port:", http_port)
 			} else {
 				m["http_port"] = http_port
-				app.HTTP_PORT = httpPort
+				app.HttpPort = httpPort
 			}
 		}
 
 		// check http auth
 		m["http_auth"] = strings.TrimSpace(m["http_auth"])
-		app.HTTP_AUTH = m["http_auth"]
+		app.HttpAuth = m["http_auth"]
 	}
 
 	if runWith != 2 {
@@ -281,7 +281,7 @@ func Check(m map[string]string, runWith int) {
 			}
 		}
 		m["trackers"] = string(bytebuff.Bytes())
-		app.TRACKERS = m["trackers"]
+		app.Trackers = m["trackers"]
 	}
 }
 
@@ -434,6 +434,6 @@ func prepareDirs(finalPath string) {
 
 // 每次启动前尝试清理tmp目录
 func cleanTmpdir() {
-	logger.Debug("clean tmp path:" + app.BASE_PATH + "/data/tmp")
-	file.DeleteAll(app.BASE_PATH + "/data/tmp")
+	logger.Debug("clean tmp path:" + app.BasePath + "/data/tmp")
+	file.DeleteAll(app.BasePath + "/data/tmp")
 }

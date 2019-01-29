@@ -151,7 +151,7 @@ func scan1(iface *net.Interface) error {
 }
 
 func TestNet3(t *testing.T) {
-	app.PREFERRED_NETWORKS.PushBack("VMware Network Adapter VMnet1")
-	app.PREFERRED_IP_PREFIX = "192.168.0"
+	app.PreferredNetworks.PushBack("VMware Network Adapter VMnet1")
+	app.PreferredIPPrefix = "192.168.0"
 	fmt.Println(GetPreferredIPAddress())
 }

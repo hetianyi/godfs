@@ -28,21 +28,21 @@ func StartService(config map[string]string) {
 	trackers := config["trackers"]
 
 	// set client type
-	app.CLIENT_TYPE = 1
-	app.START_TIME = timeutil.GetTimestamp(time.Now())
-	app.DOWNLOADS = 0
-	app.UPLOADS = 0
-	app.IOIN = 0
-	app.IOOUT = 0
-	app.STAGE_DOWNLOADS = 0
-	app.STAGE_UPLOADS = 0
-	app.STAGE_IOIN = 0
-	app.STAGE_IOOUT = 0
-	app.FILE_TOTAL = 0
-	app.FILE_FINISH = 0
+	app.ClientType = 1
+	app.StartTime = timeutil.GetTimestamp(time.Now())
+	app.Downloads = 0
+	app.Uploads = 0
+	app.IOIn = 0
+	app.IOOut = 0
+	app.StageDownloads = 0
+	app.StageUploads = 0
+	app.StageIOIn = 0
+	app.StageIOOut = 0
+	app.TotalFiles = 0
+	app.FinishFiles = 0
 
 	// init db connection pool
-	libservicev2.SetPool(db.NewPool(app.DB_POOL_SIZE))
+	libservicev2.SetPool(db.NewPool(app.DbPoolSize))
 	newUUID := common.UUID()
 	logger.Debug("generate UUID:", newUUID)
 	uuid, e1 := libservicev2.ConfirmAppUUID(newUUID)
@@ -52,11 +52,11 @@ func StartService(config map[string]string) {
 
 	app.UUID = uuid
 	logger.Info("instance start with uuid:", app.UUID)
-	if app.INSTANCE_ID == "" {
+	if app.InstanceId == "" {
 		// 2018/12/10 if instance_id not set, use app.UUID as instance_id instead.
 		// this feature is mainly used in the docker clustering environment.
 		logger.Warn("app instance_id not set, use app.UUID as instance_id instead")
-		app.INSTANCE_ID = app.UUID
+		app.InstanceId = app.UUID
 	}
 
 	initDbStatistic()
@@ -85,13 +85,13 @@ func startTrackerMaintainer(trackers string) {
 		Job:        libclient.QueryDownloadFileTaskCollector,
 	}
 	collector3 := libclient.TaskCollector{
-		Interval: app.PULL_NEW_FILE_INTERVAL,
+		Interval: app.PullNewFileInterval,
 		Name:     "PULL NEW FILES",
 		Single:   false,
 		Job:      libclient.QueryNewFileTaskCollector,
 	}
 	collector4 := libclient.TaskCollector{
-		Interval: app.SYNC_MEMBER_INTERVAL,
+		Interval: app.SyncMemberInterval,
 		Name:     "SYNCHRONIZED MEMBERS",
 		Single:   false,
 		Job:      libclient.SyncMemberTaskCollector,
@@ -106,7 +106,7 @@ func startTrackerMaintainer(trackers string) {
 	trackerMap := make(map[string]string)
 	if ls != nil {
 		for ele := ls.Front(); ele != nil; ele = ele.Next() {
-			trackerMap[ele.Value.(string)] = app.SECRET
+			trackerMap[ele.Value.(string)] = app.Secret
 		}
 	}
 	// TODO use client object, do not use it directly
@@ -116,19 +116,19 @@ func startTrackerMaintainer(trackers string) {
 
 // storage server start tcp listen.
 func startStorageService() {
-	server := bridgev2.NewServer("", app.PORT)
+	server := bridgev2.NewServer("", app.Port)
 	server.Listen()
 }
 
 // start http download server.
 func startHttpService() {
-	if !app.HTTP_ENABLE {
+	if !app.HttpEnable {
 		logger.Info("http server disabled")
 		return
 	}
 
 	http.HandleFunc("/download/", DownloadHandler)
-	if app.UPLOAD_ENABLE {
+	if app.UploadEnable {
 		http.HandleFunc("/upload", WebUploadHandlerV1)
 		http.HandleFunc("/upload/", WebUploadHandlerV1)
 	} else {
@@ -136,13 +136,13 @@ func startHttpService() {
 	}
 
 	s := &http.Server{
-		Addr: ":" + strconv.Itoa(app.HTTP_PORT),
+		Addr: ":" + strconv.Itoa(app.HttpPort),
 		// ReadTimeout:    10 * time.Second,
 		ReadHeaderTimeout: 10 * time.Second,
 		WriteTimeout:      0,
 		MaxHeaderBytes:    1 << 20,
 	}
-	logger.Info("http server listening on port:", app.HTTP_PORT)
+	logger.Info("http server listening on port:", app.HttpPort)
 	go s.ListenAndServe()
 }
 
@@ -155,14 +155,14 @@ func initDbStatistic() {
 			time.Sleep(time.Second * 5)
 			continue
 		} else {
-			app.FILE_TOTAL = statistic.FileCount
-			app.FILE_FINISH = statistic.FinishCount
-			app.DISK_USAGE = statistic.DiskSpace
+			app.TotalFiles = statistic.FileCount
+			app.FinishFiles = statistic.FinishCount
+			app.DiskUsage = statistic.DiskSpace
 			logger.Info(":::statistic:::")
 			logger.Info("+---------------------------+")
-			logger.Info("* file count       :", app.FILE_TOTAL)
-			logger.Info("* sync finish count:", app.FILE_FINISH)
-			logger.Info("* disk usage       :", libcommon.HumanReadable(app.DISK_USAGE, 1000))
+			logger.Info("* file count       :", app.TotalFiles)
+			logger.Info("* sync finish count:", app.FinishFiles)
+			logger.Info("* disk usage       :", libcommon.HumanReadable(app.DiskUsage, 1000))
 			logger.Info("+---------------------------+")
 			break
 		}
@@ -175,7 +175,7 @@ func startStatisticService() {
 	for {
 		stats := &runtime.MemStats{}
 		runtime.ReadMemStats(stats)
-		app.MEMORY = stats.Sys
+		app.Memory = stats.Sys
 		<-timer.C
 	}
 }

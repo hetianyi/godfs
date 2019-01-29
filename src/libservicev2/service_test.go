@@ -15,7 +15,7 @@ import (
 
 func init() {
 	logger.SetLogLevel(1)
-	app.BASE_PATH = "E:\\godfs-storage\\storage1"
+	app.BasePath = "E:\\godfs-storage\\storage1"
 	SetPool(db.NewPool(1))
 }
 
@@ -126,7 +126,7 @@ func TestSaveStorage(t *testing.T) {
 		Uuid: "123",
 		Host: "",
 		Port: 0,
-		Status: app.STATUS_ENABLED,
+		Status: app.StatusEnabled,
 		TotalFiles: 0,
 		Group: "",
 		InstanceId: "",

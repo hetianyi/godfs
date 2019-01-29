@@ -125,7 +125,7 @@ func (client *Client) Upload(path string, group string, startTime time.Time, ski
 	destroy := false
 	resMeta, err := tcpClient.UploadFile(uploadMeta, func(manager *bridgev2.ConnectionManager, frame *bridgev2.Frame) error {
 		// begin upload file body bytes
-		buff, _ := bridgev2.MakeBytes(app.BUFF_SIZE, false, 0, false)
+		buff, _ := bridgev2.MakeBytes(app.BufferSize, false, 0, false)
 		var finish, total int64
 		var stopFlag = false
 		defer func() {
@@ -176,11 +176,11 @@ func (client *Client) Upload(path string, group string, startTime time.Time, ski
 func (client *Client) QueryFile(pathOrMd5 string) (*app.FileVO, error) {
 	logger.Debug("query file info:", pathOrMd5)
 	var result *app.FileVO
-	ls := libcommon.ParseTrackers(app.TRACKERS)
+	ls := libcommon.ParseTrackers(app.Trackers)
 	trackerMap := make(map[string]string)
 	if ls != nil {
 		for ele := ls.Front(); ele != nil; ele = ele.Next() {
-			trackerMap[ele.Value.(string)] = app.SECRET
+			trackerMap[ele.Value.(string)] = app.Secret
 		}
 	}
 	for k := range trackerMap {
@@ -235,7 +235,7 @@ func (client *Client) DownloadFile(path string,
 	if strings.Index(path, "/") != 0 {
 		path = "/" + path
 	}
-	if mat, _ := regexp.Match(app.PATH_REGEX, []byte(path)); !mat {
+	if mat, _ := regexp.Match(app.PathRegex, []byte(path)); !mat {
 		return errors.New("file path format error")
 	}
 	return client.Download(path, start, offset, true, new(list.List), bodyWriterHandler)
@@ -249,8 +249,8 @@ func (client *Client) Download(path string,
 	excludes *list.List,
 	bodyWriterHandler func(manager *bridgev2.ConnectionManager, frame *bridgev2.Frame, resMeta *bridgev2.DownloadFileResponseMeta) (bool, error)) error {
 
-	group := regexp.MustCompile(app.PATH_REGEX).ReplaceAllString(path, "${1}")
-	instanceId := regexp.MustCompile(app.PATH_REGEX).ReplaceAllString(path, "${2}")
+	group := regexp.MustCompile(app.PathRegex).ReplaceAllString(path, "${1}")
+	instanceId := regexp.MustCompile(app.PathRegex).ReplaceAllString(path, "${2}")
 	if excludes == nil {
 		excludes = new(list.List)
 	}

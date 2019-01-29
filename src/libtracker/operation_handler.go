@@ -19,7 +19,7 @@ package libtracker
 //	e1 := json.Unmarshal(request.MetaBody, head)
 //	var response = &bridge.OperationValidationResponse{}
 //	if e1 == nil {
-//		if head.Secret == app.SECRET {
+//		if head.Secret == app.Secret {
 //			response.Status = bridge.STATUS_OK
 //			response.UUID = app.UUID
 //			exist, e2 := libservice.QueryExistsStorageClient(head.UUID)

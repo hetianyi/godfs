@@ -37,19 +37,19 @@ func check() {
 	year_now, month_now, day_now := now.Date()
 	hour_now := timeutil.GetHour(now)
 
-	if app.LOG_INTERVAL == "d" {
+	if app.LogInterval == "d" {
 		if year_last != year_now || int(month_last) != int(month_now) || day_last != day_now {
 			resetLogFile(now)
 		}
-	} else if app.LOG_INTERVAL == "h" {
+	} else if app.LogInterval == "h" {
 		if year_last != year_now || int(month_last) != int(month_now) || day_last != day_now || hour_last != hour_now {
 			resetLogFile(now)
 		}
-	} else if app.LOG_INTERVAL == "m" {
+	} else if app.LogInterval == "m" {
 		if year_last != year_now || int(month_last) != int(month_now) {
 			resetLogFile(now)
 		}
-	} else if app.LOG_INTERVAL == "y" {
+	} else if app.LogInterval == "y" {
 		if year_last != year_now {
 			resetLogFile(now)
 		}
@@ -65,21 +65,21 @@ func closeLogFile() {
 func resetLogFile(now time.Time) {
 	closeLogFile()
 	logWith := ""
-	if app.RUN_WITH == 1 {
+	if app.RunWith == 1 {
 		logWith = "storage-"
-	} else if app.RUN_WITH == 2 {
+	} else if app.RunWith == 2 {
 		logWith = "tracker-"
-	} else if app.RUN_WITH == 3 {
+	} else if app.RunWith == 3 {
 		logWith = "client-"
 	}
-	logFileName := app.BASE_PATH + string(os.PathSeparator) + "logs" + string(os.PathSeparator) +
+	logFileName := app.BasePath + string(os.PathSeparator) + "logs" + string(os.PathSeparator) +
 		logFilePrefix + logWith + timeutil.GetLogFileName(now) + ".log"
 	index := 0
 	for {
 		index++
 		// exist file is a directory, rename to another.
 		if file.Exists(logFileName) && file.IsDir(logFileName) {
-			logFileName = app.BASE_PATH + string(os.PathSeparator) + "logs" + string(os.PathSeparator) +
+			logFileName = app.BasePath + string(os.PathSeparator) + "logs" + string(os.PathSeparator) +
 				logFilePrefix + timeutil.GetLogFileName(now) + "(" + strconv.Itoa(index) + ").log"
 			continue
 		}
@@ -99,7 +99,7 @@ func resetLogFile(now time.Time) {
 
 func SetLogLevel(level int) {
 	logLevel = level
-	app.LOG_LEVEL = logLevel
+	app.LogLevel = logLevel
 }
 
 // enable log

@@ -170,7 +170,7 @@ func indexStatistic(writer http.ResponseWriter, request *http.Request) {
 		return
 	}
 	now := time.Now()
-	indexStatistic.UpTime = timeutil.GetLongHumanReadableDuration(time.Unix(app.START_TIME/1000, 0), now)
+	indexStatistic.UpTime = timeutil.GetLongHumanReadableDuration(time.Unix(app.StartTime/1000, 0), now)
 	resp := &HttpResponse{
 		Code:    200,
 		Message: "success",

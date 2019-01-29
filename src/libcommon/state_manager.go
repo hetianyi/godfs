@@ -26,7 +26,7 @@ var operationLock = *new(sync.Mutex)
 
 // timer task: remove expired storage servers
 func ExpirationDetection() {
-	timer := time.NewTicker(app.STORAGE_CLIENT_EXPIRE_TIME)
+	timer := time.NewTicker(app.StorageClientExpireTime)
 	for {
 		<-timer.C
 		logger.Debug("detecting expiration")
@@ -68,8 +68,8 @@ func FutureExpireStorageServer(manager *bridgev2.ConnectionManager) {
 	ReleaseUUIDHolder(manager.UUID)
 	storage := managedStorage[manager.UUID]
 	if storage != nil {
-		logger.Info("expire storage server", storage.Host + ":" + strconv.Itoa(storage.Port), "("+ storage.Uuid +")", "in", app.STORAGE_CLIENT_EXPIRE_TIME)
-		storage.ExpireTime = timeutil.GetTimestamp(time.Now().Add(app.STORAGE_CLIENT_EXPIRE_TIME))
+		logger.Info("expire storage server", storage.Host + ":" + strconv.Itoa(storage.Port), "("+ storage.Uuid +")", "in", app.StorageClientExpireTime)
+		storage.ExpireTime = timeutil.GetTimestamp(time.Now().Add(app.StorageClientExpireTime))
 		managedStorage[storage.Uuid] = storage
 	}
 }
@@ -99,7 +99,7 @@ func IsInstanceIdUnique(uuid string) bool {
 		return true
 	}
 	// connection is from other storage server
-	if app.RUN_WITH == 1 {
+	if app.RunWith == 1 {
 		return true
 	}
 	operationLock.Lock()

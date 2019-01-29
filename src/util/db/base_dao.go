@@ -46,18 +46,18 @@ func (dao *DAO) InitDB(index int) error {
 }
 
 func (dao *DAO) connect() (*gorm.DB, error) {
-	logger.Debug("connect db file:", app.BASE_PATH+"/data/storage.db")
-	fInfo, e := os.Stat(app.BASE_PATH + "/data/storage.db")
+	logger.Debug("connect db file:", app.BasePath+"/data/storage.db")
+	fInfo, e := os.Stat(app.BasePath + "/data/storage.db")
 	// if db not exists, copy template db file to data path.
 	if fInfo == nil || e != nil {
 		logger.Info("no db file found, init db file from template.")
-		logger.Debug("copy from", app.BASE_PATH+"/conf/storage.db to", app.BASE_PATH+"/data")
-		s, e1 := file.CopyFileTo(app.BASE_PATH+"/conf/storage.db", app.BASE_PATH+"/data")
+		logger.Debug("copy from", app.BasePath+"/conf/storage.db to", app.BasePath+"/data")
+		s, e1 := file.CopyFileTo(app.BasePath+"/conf/storage.db", app.BasePath+"/data")
 		if !s || e1 != nil {
 			logger.Fatal("error prepare db file:", e1)
 		}
 	}
-	return gorm.Open("sqlite3", app.BASE_PATH+"/data/storage.db?cache=shared&_synchronous=0")
+	return gorm.Open("sqlite3", app.BasePath+"/data/storage.db?cache=shared&_synchronous=0")
 }
 
 func (dao *DAO) checkDb() error {
@@ -67,11 +67,11 @@ func (dao *DAO) checkDb() error {
 		if dao.db == nil {
 			tdb, e := dao.connect()
 			if e != nil {
-				logger.Error("error connect db, wait...:", app.BASE_PATH+"/data/storage.db")
+				logger.Error("error connect db, wait...:", app.BasePath+"/data/storage.db")
 				time.Sleep(time.Second * 1)
 				continue
 			}
-			if app.LOG_LEVEL < 2 {
+			if app.LogLevel < 2 {
 				tdb.LogMode(true)
 			}
 			dao.db = tdb

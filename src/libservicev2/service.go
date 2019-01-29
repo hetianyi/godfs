@@ -271,7 +271,7 @@ func GetReadyPushFiles(trackerUUID string) (*list.List, error) {
 	
 	return files, dao.Query(func(db *gorm.DB) error {
 		total := &app.Total{}
-		result := db.Raw("select count(*) as count from file f where f.id > (select local_push_id from tracker a where a.uuid = ?) and f.instance = ?", trackerUUID, app.INSTANCE_ID).Scan(total)
+		result := db.Raw("select count(*) as count from file f where f.id > (select local_push_id from tracker a where a.uuid = ?) and f.instance = ?", trackerUUID, app.InstanceId).Scan(total)
 		if transformNotFoundErr(result.Error) != nil {
 			return result.Error
 		}
@@ -284,7 +284,7 @@ func GetReadyPushFiles(trackerUUID string) (*list.List, error) {
 			limit = 20
 		}
 
-		rows, e := db.Raw("select * from file f where f.id > (select local_push_id from tracker a where a.uuid = ?) and f.instance = ? order by id limit ?", trackerUUID, app.INSTANCE_ID, limit).Rows()
+		rows, e := db.Raw("select * from file f where f.id > (select local_push_id from tracker a where a.uuid = ?) and f.instance = ? order by id limit ?", trackerUUID, app.InstanceId, limit).Rows()
 		if transformNotFoundErr(e) != nil {
 			return e
 		}
@@ -476,7 +476,7 @@ func GetFullFilesFromId(id int64, mine bool, group string, limit int) (*list.Lis
 	var query = "select * from file where id > ? and grop = ?"
 	if mine {
 		query += " and instance = ? limit ?"
-		params[2] = app.INSTANCE_ID
+		params[2] = app.InstanceId
 		params[3] = limit
 	} else {
 		query += " and 'a'=? limit ?"

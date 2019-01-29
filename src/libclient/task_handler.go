@@ -16,29 +16,29 @@ func TaskSyncMemberHandler(tracker *TrackerInstance) (bool, error) {
 	// storage client to tracker server
 	storageInfo := &app.StorageDO{
 		Uuid:          app.UUID,
-		AdvertiseAddr: app.ADVERTISE_ADDRESS,
-		Group:         app.GROUP,
-		InstanceId:    app.INSTANCE_ID,
+		AdvertiseAddr: app.AdvertiseAddress,
+		Group:         app.Group,
+		InstanceId:    app.InstanceId,
 		Host:          common.GetPreferredIPAddress(),
-		Port:          app.PORT,
-		AdvertisePort: app.ADVERTISE_PORT,
-		HttpPort:      app.HTTP_PORT,
-		HttpEnable:    app.HTTP_ENABLE,
-		TotalFiles:    app.FILE_TOTAL,
-		Finish:        app.FILE_FINISH,
-		IOin:          app.IOIN,
-		IOout:         app.IOOUT,
-		Disk:          app.DISK_USAGE,
-		Download:      app.DOWNLOADS,
-		Upload:        app.UPLOADS,
-		StartTime:     app.START_TIME,
-		Memory:        app.MEMORY,
-		ReadOnly:      !app.UPLOAD_ENABLE,
+		Port:          app.Port,
+		AdvertisePort: app.AdvertisePort,
+		HttpPort:      app.HttpPort,
+		HttpEnable:    app.HttpEnable,
+		TotalFiles:    app.TotalFiles,
+		Finish:        app.FinishFiles,
+		IOin:          app.IOIn,
+		IOout:         app.IOOut,
+		Disk:          app.DiskUsage,
+		Download:      app.Downloads,
+		Upload:        app.Uploads,
+		StartTime:     app.StartTime,
+		Memory:        app.Memory,
+		ReadOnly:      !app.UploadEnable,
 
-		StageIOin:      app.STAGE_IOIN,
-		StageIOout:     app.STAGE_IOOUT,
-		StageDownloads: app.STAGE_DOWNLOADS,
-		StageUploads:   app.STAGE_UPLOADS,
+		StageIOin:      app.StageIOIn,
+		StageIOout:     app.StageIOOut,
+		StageDownloads: app.StageDownloads,
+		StageUploads:   app.StageUploads,
 	}
 
 	response, err := client.SyncStorageMembers(storageInfo)
@@ -51,10 +51,10 @@ func TaskSyncMemberHandler(tracker *TrackerInstance) (bool, error) {
 		return true, errors.New("receive empty response from server")
 	}
 
-	app.STAGE_DOWNLOADS = 0
-	app.STAGE_UPLOADS = 0
-	app.STAGE_IOIN = 0
-	app.STAGE_IOOUT = 0
+	app.StageDownloads = 0
+	app.StageUploads = 0
+	app.StageIOIn = 0
+	app.StageIOOut = 0
 
 	return false, nil
 }
@@ -118,8 +118,8 @@ func TaskPullFileHandler(tracker *TrackerInstance) (bool, error) {
 			LocalPushId:   0,
 			Host:          h,
 			Port:          p,
-			Status:        app.STATUS_ENABLED,
-			Secret:        app.SECRET,
+			Status:        app.StatusEnabled,
+			Secret:        app.Secret,
 			TotalFiles:    0,
 			Remark:        "",
 			AddTime:       timeutil.GetTimestamp(time.Now()),
@@ -131,7 +131,7 @@ func TaskPullFileHandler(tracker *TrackerInstance) (bool, error) {
 	// register storage client to tracker server
 	pullMeta := &bridgev2.PullFileMeta{
 		BaseId: config.TrackerSyncId,
-		Group:  app.GROUP,
+		Group:  app.Group,
 	}
 
 	responseMeta, e2 := client.PullFiles(pullMeta)

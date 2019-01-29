@@ -20,7 +20,7 @@ import (
 // TODO support detect total file size for assigning
 func main() {
 	runtime.GOMAXPROCS(runtime.NumCPU())
-	app.RUN_WITH = 1
+	app.RunWith = 1
 	abs, _ := filepath.Abs(os.Args[0])
 	s, _ := filepath.Split(abs)
 	s = file.FixPath(s)
@@ -37,7 +37,7 @@ func main() {
 	logger.Info("using config file:", confPath)
 	m, e := file.ReadPropFile(confPath)
 	if e == nil {
-		validate.Check(m, app.RUN_WITH)
+		validate.Check(m, app.RunWith)
 		for k, v := range m {
 			logger.Debug(k, "=", v)
 		}
@@ -50,7 +50,7 @@ func main() {
 
 func initStorageFlags() {
 	appFlag := cli.NewApp()
-	appFlag.Version = app.APP_VERSION
+	appFlag.Version = app.Version
 	appFlag.Name = "godfs storage"
 	appFlag.Usage = ""
 

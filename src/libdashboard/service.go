@@ -20,16 +20,16 @@ var p, _ = pool.NewPool(200, 0)
 
 func StartService(config map[string]string) {
 	// init db connection pool
-	libservice.SetPool(db.NewPool(app.DB_POOL_SIZE))
-	app.START_TIME = timeutil.GetTimestamp(time.Now())
-	go startTrackerMaintainer(app.TRACKERS)
+	libservice.SetPool(db.NewPool(app.DbPoolSize))
+	app.StartTime = timeutil.GetTimestamp(time.Now())
+	go startTrackerMaintainer(app.Trackers)
 	startWebService()
 }
 
 func startTrackerMaintainer(trackers string) {
 
 	collector := libclient.TaskCollector{
-		Interval: app.SYNC_STATISTIC_INTERVAL,
+		Interval: app.SyncStatisticInterval,
 		Name:     "同步Statistic",
 		Single:   false,
 		Job:      libclient.SyncStatisticTaskCollector,
@@ -42,7 +42,7 @@ func startTrackerMaintainer(trackers string) {
 	trackerMap := make(map[string]string)
 	if ls != nil {
 		for ele := ls.Front(); ele != nil; ele = ele.Next() {
-			trackerMap[ele.Value.(string)] = app.SECRET
+			trackerMap[ele.Value.(string)] = app.Secret
 		}
 	}
 	maintainer.Maintain(trackerMap)
@@ -55,12 +55,12 @@ func startWebService() {
 	http.HandleFunc("/dashboard/index", indexStatistic)
 
 	s := &http.Server{
-		Addr:              ":" + strconv.Itoa(app.HTTP_PORT),
+		Addr:              ":" + strconv.Itoa(app.HttpPort),
 		ReadHeaderTimeout: 10 * time.Second,
 		WriteTimeout:      0,
 		MaxHeaderBytes:    1 << 20,
 	}
 
-	logger.Info("http server listen on port:", app.HTTP_PORT)
+	logger.Info("http server listen on port:", app.HttpPort)
 	s.ListenAndServe()
 }

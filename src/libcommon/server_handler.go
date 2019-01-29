@@ -37,7 +37,7 @@ func ValidateConnectionHandler(manager *bridgev2.ConnectionManager, frame *bridg
         HoldUUID(meta.UUID)
     }
 
-    if meta.Secret == app.SECRET {
+    if meta.Secret == app.Secret {
         responseFrame.SetStatus(bridgev2.STATUS_SUCCESS)
         manager.UUID = meta.UUID
         manager.State = bridgev2.STATE_VALIDATED
@@ -57,7 +57,7 @@ func ValidateConnectionHandler(manager *bridgev2.ConnectionManager, frame *bridg
                 Uuid: meta.UUID,
                 Host: "",
                 Port: 0,
-                Status: app.STATUS_ENABLED,
+                Status: app.StatusEnabled,
                 TotalFiles: 0,
                 Group: "",
                 InstanceId: "",

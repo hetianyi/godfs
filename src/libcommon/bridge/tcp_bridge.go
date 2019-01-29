@@ -201,7 +201,7 @@ func (bridge *Bridge) SendResponse(meta interface{}, bodyLen uint64, bodyWriterH
 }
 
 func (bridge *Bridge) ValidateConnection(secret string) (bool, error) {
-	var sec = app.SECRET
+	var sec = app.Secret
 	var isNew = false
 	if secret != "" {
 		sec = secret

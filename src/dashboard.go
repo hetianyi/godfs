@@ -24,8 +24,8 @@ import (
 //
 func main() {
 	// set client type
-	app.RUN_WITH = 4
-	app.CLIENT_TYPE = 3
+	app.RunWith = 4
+	app.ClientType = 3
 	app.UUID = "DASHBOARD-CLIENT"
 
 	abs, _ := filepath.Abs(os.Args[0])
@@ -44,7 +44,7 @@ func main() {
 	logger.Info("using config file:", confPath)
 	m, e := file.ReadPropFile(confPath)
 	if e == nil {
-		validate.Check(m, app.RUN_WITH)
+		validate.Check(m, app.RunWith)
 		for k, v := range m {
 			logger.Debug(k, "=", v)
 		}
@@ -58,7 +58,7 @@ func main() {
 
 func initDashboardFlags() {
 	appFlag := cli.NewApp()
-	appFlag.Version = app.APP_VERSION
+	appFlag.Version = app.Version
 	appFlag.Name = "godfs dashboard"
 	appFlag.Usage = ""
 

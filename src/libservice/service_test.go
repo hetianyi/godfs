@@ -16,7 +16,7 @@ package libservice
 // )
 //
 // func initParam() {
-// 	app.BASE_PATH = "E:/godfs-storage/storage1"
+// 	app.BasePath = "E:/godfs-storage/storage1"
 // 	logger.SetLogLevel(2)
 //
 // 	// 连接数据库

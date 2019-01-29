@@ -54,7 +54,7 @@ func CopyFile(src string, dest string) (s bool, e error) {
 		// if "create or truncate dest file" succeed then start copying
 		if err2 == nil {
 			common.Try(func() {
-				bs := make([]byte, app.BUFF_SIZE)
+				bs := make([]byte, app.BufferSize)
 				for {
 					len, e1 := srcfile.Read(bs)
 					if e1 == io.EOF {

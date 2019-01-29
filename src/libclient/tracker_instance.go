@@ -75,17 +75,17 @@ func (tracker *TrackerInstance) checkTaskTypeCount(taskType int) int {
 // return bool if the connection is forced close and need reconnect
 func (tracker *TrackerInstance) ExecTask(task *bridgev2.Task) (bool, error) {
 	logger.Debug("exec task:", task.TaskType)
-	if task.TaskType == app.TASK_SYNC_MEMBER {
+	if task.TaskType == app.TaskSyncMembers {
 		return TaskSyncMemberHandler(tracker)
-	} else if task.TaskType == app.TASK_REGISTER_FILE {
+	} else if task.TaskType == app.TaskRegisterFiles {
 		return TaskRegisterFileHandler(tracker)
-	} else if task.TaskType == app.TASK_PULL_NEW_FILE {
+	} else if task.TaskType == app.TaskPullNewFiles {
 		return TaskPullFileHandler(tracker)
-	} else if task.TaskType == app.TASK_DOWNLOAD_FILE {
+	} else if task.TaskType == app.TaskDownloadFiles {
 		TaskDownloadFileHandler(task)
-	} else if task.TaskType == app.TASK_SYNC_ALL_STORAGES {
+	} else if task.TaskType == app.TaskSyncAllStorages {
 		return TaskSyncAllStorageServerHandler(tracker)
-	} else if task.TaskType == app.TASK_SYNC_STATISTIC {
+	} else if task.TaskType == app.TaskSyncStatistic {
 		return TaskSyncStatisticInfo(tracker)
 	}
 	return false, nil

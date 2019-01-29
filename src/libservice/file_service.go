@@ -127,7 +127,7 @@ package libservice
 // 			return e2
 // 		}
 // 		logger.Debug("exec SQL:\n\t" + insertFileSQL)
-// 		ret, e3 := state.Exec(md5, parts.Len(), group, app.INSTANCE_ID, 1)
+// 		ret, e3 := state.Exec(md5, parts.Len(), group, app.InstanceId, 1)
 // 		if e3 != nil {
 // 			return e3
 // 		}
@@ -241,7 +241,7 @@ package libservice
 // 				return ee
 // 			}
 // 			// no need any more.
-// 			// return AddSyncTask(fid, app.TASK_DOWNLOAD_FILE, tx)
+// 			// return AddSyncTask(fid, app.TaskDownloadFiles, tx)
 // 			return nil
 // 		})
 // 		if e8 != nil {
@@ -754,7 +754,7 @@ package libservice
 // 				}
 // 			}
 // 			return nil
-// 		}, getFullFileSQL12, fid, app.INSTANCE_ID)
+// 		}, getFullFileSQL12, fid, app.InstanceId)
 // 	} else {
 // 		e1 = dao.Query(func(rows *sql.Rows) error {
 // 			if rows != nil {
@@ -1066,7 +1066,7 @@ package libservice
 // 		return e1
 // 	}
 // 	if webTracker != nil {
-// 		if webTracker.Status == app.STATUS_ENABLED || webTracker.Status == app.STATUS_DISABLED {
+// 		if webTracker.Status == app.StatusEnabled || webTracker.Status == app.STATUS_DISABLED {
 // 			return errors.New("web tracker already exist")
 // 		} else {
 // 			if UpdateWebTrackerStatus(webTracker.Id, tracker.Status, dao) {
@@ -1320,7 +1320,7 @@ package libservice
 // 		if e2 != nil {
 // 			return e2
 // 		}
-// 		_, e3 := state.Exec(webStorage.Host, webStorage.Port, app.STATUS_ENABLED, webStorage.TotalFiles, webStorage.Group, webStorage.InstanceId,
+// 		_, e3 := state.Exec(webStorage.Host, webStorage.Port, app.StatusEnabled, webStorage.TotalFiles, webStorage.Group, webStorage.InstanceId,
 // 			webStorage.HttpPort, webStorage.HttpEnable, webStorage.StartTime, webStorage.Downloads, webStorage.Uploads, webStorage.DiskUsage, webStorage.ReadOnly, webStorage.UUID, trackerId)
 // 		if e3 != nil {
 // 			return e3
@@ -1433,7 +1433,7 @@ package libservice
 // 				if e2 != nil {
 // 					return e2
 // 				}
-// 				_, e3 := state.Exec(storage[i].Host, storage[i].Port, app.STATUS_ENABLED, storage[i].TotalFiles, storage[i].Group, storage[i].InstanceId,
+// 				_, e3 := state.Exec(storage[i].Host, storage[i].Port, app.StatusEnabled, storage[i].TotalFiles, storage[i].Group, storage[i].InstanceId,
 // 					storage[i].HttpPort, storage[i].HttpEnable, storage[i].StartTime, storage[i].Downloads, storage[i].Uploads, storage[i].DiskUsage, storage[i].ReadOnly, storage[i].IOin, storage[i].IOout, storage[i].UUID, tracker.Id)
 // 				if e3 != nil {
 // 					return e3
@@ -1454,7 +1454,7 @@ package libservice
 // 				if e2 != nil {
 // 					return e2
 // 				}
-// 				ret, e3 := state.Exec(storage[i].Host, storage[i].Port, app.STATUS_ENABLED, tracker.Id, storage[i].UUID, storage[i].TotalFiles,
+// 				ret, e3 := state.Exec(storage[i].Host, storage[i].Port, app.StatusEnabled, tracker.Id, storage[i].UUID, storage[i].TotalFiles,
 // 					storage[i].Group, storage[i].InstanceId, storage[i].HttpPort, storage[i].HttpEnable, storage[i].StartTime, storage[i].Downloads, storage[i].Uploads,
 // 					storage[i].DiskUsage, storage[i].ReadOnly, storage[i].IOin, storage[i].IOout)
 // 				if e3 != nil {
@@ -1487,7 +1487,7 @@ package libservice
 // 	if oldStorages != nil && oldStorages.Len() > 0 {
 // 		for ele := oldStorages.Front(); ele != nil; ele = ele.Next() {
 // 			item := ele.Value.(*bridge.WebStorage)
-// 			if item.Status == app.STATUS_ENABLED {
+// 			if item.Status == app.StatusEnabled {
 // 				logger.Info("web storage mark as offline:(", item.UUID, ")")
 // 			}
 // 			if i == oldStorages.Len()-1 {

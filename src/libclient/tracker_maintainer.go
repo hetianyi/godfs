@@ -63,7 +63,7 @@ func getDownloadClient() *Client {
 }
 
 
-// task of type TASK_DOWNLOAD_FILE can only put in one tracker instance.
+// task of type TaskDownloadFiles can only put in one tracker instance.
 func trackTaskFilter(allCollectors *list.List) *list.List {
 	increaseTrackerIndex()
 	if trackerIndex == 1 {
@@ -93,9 +93,9 @@ func increaseTrackerIndex() {
 // k,v => <connection string, secret>
 func (maintainer *TrackerMaintainer) Maintain(trackers map[string]string) {
 	if len(trackers) == 0 {
-		if app.RUN_WITH == 1 {
+		if app.RunWith == 1 {
 			logger.Warn("no trackers configured, the storage server will run in stand-alone mode.")
-		} else if app.RUN_WITH == 3 {
+		} else if app.RunWith == 3 {
 			logger.Warn("no trackers configured for client.")
 		}
 		return
@@ -114,7 +114,7 @@ func (maintainer *TrackerMaintainer) track(tracker string, secret string) {
 	trackerInstance.Init()
 
 	// storage type client need to sync file so need a client
-	if app.CLIENT_TYPE == 1 {
+	if app.ClientType == 1 {
 		initDownloadClient(maintainer)
 	}
 
@@ -147,11 +147,11 @@ func (maintainer *TrackerMaintainer) track(tracker string, secret string) {
 				logger.Error("error validate with tracker", tracker + ":", e1)
 				client.GetConnManager().Destroy()
 				// native client will break here
-				if app.RUN_WITH == 3 {
+				if app.RunWith == 3 {
 					break
 				}
 			} else {
-				if respMeta.New4Tracker && app.RUN_WITH == 1 {
+				if respMeta.New4Tracker && app.RunWith == 1 {
 					logger.Info("I'm new to tracker", tracker, "("+ respMeta.UUID +")")
 				}
 				trackerInstance.Ready = true
@@ -253,7 +253,7 @@ func AddTask(task *bridgev2.Task, tracker *TrackerInstance) bool {
 		return false
 	}
 	logger.Trace("push task type:", strconv.Itoa(task.TaskType), "for tracker", tracker.ConnStr)
-	if task.TaskType == app.TASK_SYNC_MEMBER || task.TaskType == app.TASK_SYNC_ALL_STORAGES {
+	if task.TaskType == app.TaskSyncMembers || task.TaskType == app.TaskSyncAllStorages {
 		if tracker.checkTaskTypeCount(task.TaskType) == 0 {
 			tracker.listIteLock.Lock()
 			tracker.taskList.PushFront(task)
@@ -263,7 +263,7 @@ func AddTask(task *bridgev2.Task, tracker *TrackerInstance) bool {
 			logger.Trace("can't push task type " + strconv.Itoa(task.TaskType) + ": task type exists")
 			return false
 		}
-	} else if task.TaskType == app.TASK_REGISTER_FILE {
+	} else if task.TaskType == app.TaskRegisterFiles {
 		if tracker.checkTaskTypeCount(task.TaskType) == 0 {
 			tracker.listIteLock.Lock()
 			tracker.taskList.PushFront(task)
@@ -273,7 +273,7 @@ func AddTask(task *bridgev2.Task, tracker *TrackerInstance) bool {
 			logger.Debug("can't push task type " + strconv.Itoa(task.TaskType) + ": task type exists")
 			return false
 		}
-	} else if task.TaskType == app.TASK_PULL_NEW_FILE {
+	} else if task.TaskType == app.TaskPullNewFiles {
 		if tracker.checkTaskTypeCount(task.TaskType) == 0 {
 			tracker.listIteLock.Lock()
 			tracker.taskList.PushBack(task)
@@ -283,7 +283,7 @@ func AddTask(task *bridgev2.Task, tracker *TrackerInstance) bool {
 			logger.Debug("can't push task type 3: task type exists")
 			return false
 		}
-	} else if task.TaskType == app.TASK_DOWNLOAD_FILE {
+	} else if task.TaskType == app.TaskDownloadFiles {
 		tracker.listIteLock.Lock()
 		defer tracker.listIteLock.Unlock()
 		total := 0
@@ -304,7 +304,7 @@ func AddTask(task *bridgev2.Task, tracker *TrackerInstance) bool {
 			logger.Debug("can't push task type 4: task list full")
 			return false
 		}
-	} else if task.TaskType == app.TASK_SYNC_STATISTIC {
+	} else if task.TaskType == app.TaskSyncStatistic {
 		if tracker.checkTaskTypeCount(task.TaskType) == 0 {
 			tracker.listIteLock.Lock()
 			tracker.taskList.PushFront(task)
@@ -334,7 +334,7 @@ func downloadFile(fullFi *app.FileVO) {
 		// calculate md5
 		md := md5.New()
 		var start int64 = 0
-		buffer, _ := bridgev2.MakeBytes(app.BUFF_SIZE, false, 0, false)
+		buffer, _ := bridgev2.MakeBytes(app.BufferSize, false, 0, false)
 		defer bridgev2.RecycleBytes(buffer)
 
 		for i := range fullFi.Parts {
@@ -352,9 +352,9 @@ func downloadFile(fullFi *app.FileVO) {
 			if len(fullFi.Parts) > 1 {
 				som = "M"
 			}
-			downloadPath := "/"+app.GROUP+"/"+fullFi.Instance+"/"+som+"/"+fullFi.Md5
+			downloadPath := "/"+app.Group+"/"+fullFi.Instance+"/"+som+"/"+fullFi.Md5
 			logger.Debug("download part of ", strconv.Itoa(i + 1) + "/" + strconv.Itoa(len(fullFi.Parts)),
-				": /" + app.GROUP+"/" + fullFi.Instance + "/" + som + "/" + fullFi.Md5, " -> ", part.Md5)
+				": /" + app.Group+"/" + fullFi.Instance + "/" + som + "/" + fullFi.Md5, " -> ", part.Md5)
 
 			e2 := downloadClient.Download(downloadPath,
 				start,
@@ -402,7 +402,7 @@ func downloadFile(fullFi *app.FileVO) {
 		if dirty > 0 {
 			logger.Error("error synchronize full file (" + fullFi.Md5 + "), broken parts:" + strconv.Itoa(dirty) + "/" + strconv.Itoa(len(fullFi.Parts)))
 		} else {
-			ee := libservicev2.UpdateFileFinishStatus(fullFi.Id, app.STATUS_ENABLED, nil)
+			ee := libservicev2.UpdateFileFinishStatus(fullFi.Id, app.StatusEnabled, nil)
 			if ee != nil {
 				logger.Error("error update file finish state:", ee.Error())
 			} else {

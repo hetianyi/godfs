@@ -25,9 +25,9 @@ func MethodAllow(writer http.ResponseWriter, request *http.Request, expectMethod
 }
 
 func AccessCheck(writer http.ResponseWriter, request *http.Request) bool {
-	if app.HTTP_AUTH != "" {
+	if app.HttpAuth != "" {
 		user, pass, _ := request.BasicAuth()
-		if app.HTTP_AUTH == user+":"+pass {
+		if app.HttpAuth == user+":"+pass {
 			return true
 		}
 		WriteErrResponse(writer, http.StatusForbidden, "Forbidden.")

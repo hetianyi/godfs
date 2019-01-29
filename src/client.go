@@ -31,8 +31,8 @@ func main() {
 	s = file.FixPath(s) // client executor parent path
 
 	// set client type
-	app.CLIENT_TYPE = 2
-	app.RUN_WITH = 3
+	app.ClientType = 2
+	app.RunWith = 3
 	app.UUID = "NATIVE-CLIENT"
 
 	initClientFlags()
@@ -78,7 +78,7 @@ func flagVarPreCheck() {
 func initClientFlags() {
 
 	appFlag := cli.NewApp()
-	appFlag.Version = app.APP_VERSION
+	appFlag.Version = app.Version
 	appFlag.Name = "godfs client cli"
 	appFlag.Usage = ""
 
@@ -104,7 +104,7 @@ func initClientFlags() {
 		},
 		/*cli.BoolTFlag{
 			Name:        "log_enable, le",
-			Usage:       "whether enable log `LOG_ENABLE` (true, false)",
+			Usage:       "whether enable log `LogEnable` (true, false)",
 			Destination: &libclient.LogEnable,
 
 		},*/
@@ -258,7 +258,7 @@ func prepareClient() *app.ClientConfig {
 		os.Exit(100)
 	}
 	basDir := user.HomeDir + string(os.PathSeparator) + ".godfs"
-	app.BASE_PATH = basDir
+	app.BasePath = basDir
 	if !file.Exists(basDir) {
 		if e1 := file.CreateDir(basDir); e != nil {
 			fmt.Println("cannot create directory:", e1)
@@ -293,48 +293,48 @@ func prepareClient() *app.ClientConfig {
 		os.Exit(104)
 	}
 
-	app.BASE_PATH = basDir
-	app.TRACKERS = strings.Join(config.Trackers, ",")
+	app.BasePath = basDir
+	app.Trackers = strings.Join(config.Trackers, ",")
 	if libclient.Trackers != "" {
-		app.TRACKERS = libclient.Trackers
-		config.Trackers = strings.Split(app.TRACKERS, ",")
+		app.Trackers = libclient.Trackers
+		config.Trackers = strings.Split(app.Trackers, ",")
 	}
 
-	app.SECRET = strings.TrimSpace(config.Secret)
+	app.Secret = strings.TrimSpace(config.Secret)
 	if libclient.Secret != "" {
-		app.SECRET = libclient.Secret
-		config.Secret = app.SECRET
+		app.Secret = libclient.Secret
+		config.Secret = app.Secret
 	}
 
 	// check log_rotation_interval
 	logRotationInterval := strings.ToLower(strings.TrimSpace(config.LogRotationInterval))
-	if app.LOG_ROTATION_SETS[logRotationInterval] == 0 {
+	if app.LogRotationSet[logRotationInterval] == 0 {
 		logRotationInterval = "d"
 	}
 	config.LogRotationInterval = logRotationInterval
 
 	if libclient.LogRotationInterval != "" {
-		if app.LOG_ROTATION_SETS[libclient.LogRotationInterval] == 0 {
+		if app.LogRotationSet[libclient.LogRotationInterval] == 0 {
 			libclient.LogRotationInterval = "d"
 			config.LogRotationInterval = libclient.LogRotationInterval
 		}
 	}
 
-	app.LOG_INTERVAL = config.LogRotationInterval
+	app.LogInterval = config.LogRotationInterval
 
 	// enable log config
-	app.LOG_ENABLE = libclient.LogEnable
-	logger.SetEnable(app.LOG_ENABLE)
+	app.LogEnable = libclient.LogEnable
+	logger.SetEnable(app.LogEnable)
 
 	// check log_level
 	logLevel := strings.ToLower(strings.TrimSpace(config.LogLevel))
-	if app.LOG_LEVEL_SETS[logLevel] == 0 {
+	if app.LogLevelSet[logLevel] == 0 {
 		logLevel = "info"
 	}
 	config.LogLevel = logLevel
 
 	if libclient.LogLevel != "" {
-		if app.LOG_LEVEL_SETS[libclient.LogLevel] == 0 {
+		if app.LogLevelSet[libclient.LogLevel] == 0 {
 			libclient.LogLevel = "info"
 			config.LogLevel = libclient.LogLevel
 		}
@@ -362,11 +362,11 @@ func InitClient() *libclient.Client {
 		checkChan <- 1
 	}
 
-	trackerList := libcommon.ParseTrackers(app.TRACKERS)
+	trackerList := libcommon.ParseTrackers(app.Trackers)
 	trackerMap := make(map[string]string)
 	if trackerList != nil {
 		for ele := trackerList.Front(); ele != nil; ele = ele.Next() {
-			trackerMap[ele.Value.(string)] = app.SECRET
+			trackerMap[ele.Value.(string)] = app.Secret
 		}
 	}
 	maintainer.Maintain(trackerMap)
@@ -388,7 +388,7 @@ func InitClient() *libclient.Client {
 func clientMonitorCollector(tracker *libclient.TrackerInstance) {
 	logger.Debug("create sync task for tracker:", tracker.ConnStr)
 	task := &bridgev2.Task{
-		TaskType: app.TASK_SYNC_ALL_STORAGES,
+		TaskType: app.TaskSyncAllStorages,
 	}
 	libclient.AddTask(task, tracker)
 }

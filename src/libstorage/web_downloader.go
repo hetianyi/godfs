@@ -91,7 +91,7 @@ func DownloadHandler(writer http.ResponseWriter, request *http.Request) {
 
 	// 304 Not Modified
 	eTag := request.Header["If-None-Match"]
-	if app.MIME_TYPES_ENABLE && eTag != nil && len(eTag) > 0 && eTag[0] == "\""+md5+"\"" {
+	if app.MimeTypesEnable && eTag != nil && len(eTag) > 0 && eTag[0] == "\""+md5+"\"" {
 		setMimeHeaders(md5, &headers)
 		writer.WriteHeader(304)
 		return
@@ -141,7 +141,7 @@ func DownloadHandler(writer http.ResponseWriter, request *http.Request) {
 	headers.Set("Content-Range", "bytes "+strconv.FormatInt(start, 10)+"-"+strconv.FormatInt(end-1, 10)+"/"+strconv.FormatInt(fileSize, 10))
 
 	logger.Trace("range:", start, "-", end)
-	if app.MIME_TYPES_ENABLE && app.SupportWebContent(ext) {
+	if app.MimeTypesEnable && app.SupportWebContent(ext) {
 		gmtLocation, _ := time.LoadLocation("GMT")
 		fInfo, _ := os.Stat(libcommon.GetFilePathByMd5(fullFile.Parts[0].Md5))
 		headers.Set("Last-Modified", fInfo.ModTime().In(gmtLocation).Format(time.RFC1123))

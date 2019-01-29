@@ -91,15 +91,15 @@ func GetPreferredIPAddress() string {
 		}
 		ret.PushBack(info)
 	}
-	if app.PREFERRED_NETWORKS.Len() == 0 { // no preferred
+	if app.PreferredNetworks.Len() == 0 { // no preferred
 		if ret.Len() == 0 {
 			return "127.0.0.1"
 		}
 		// check preferred ip prefix
-		if app.PREFERRED_IP_PREFIX != "" {
+		if app.PreferredIPPrefix != "" {
 			matchResult := ""
 			WalkList(&ret, func(item interface{}) bool {
-				if strings.HasPrefix(item.(*IPInfo).Addr, app.PREFERRED_IP_PREFIX) {
+				if strings.HasPrefix(item.(*IPInfo).Addr, app.PreferredIPPrefix) {
 					matchResult = item.(*IPInfo).Addr
 					return true
 				}
@@ -113,7 +113,7 @@ func GetPreferredIPAddress() string {
 		return ret.Front().Value.(*IPInfo).Addr
 	} else {
 		matchResult := ""
-		WalkList(&app.PREFERRED_NETWORKS, func(item interface{}) bool {
+		WalkList(&app.PreferredNetworks, func(item interface{}) bool {
 			iname := item.(string)
 			WalkList(&ret, func(item1 interface{}) bool {
 				ipInfo := item1.(*IPInfo)
@@ -132,9 +132,9 @@ func GetPreferredIPAddress() string {
 		if matchResult == "" {
 			matchResult = ret.Front().Value.(*IPInfo).Addr
 			// check preferred ip prefix
-			if app.PREFERRED_IP_PREFIX != "" {
+			if app.PreferredIPPrefix != "" {
 				WalkList(&ret, func(item interface{}) bool {
-					if strings.HasPrefix(item.(*IPInfo).Addr, app.PREFERRED_IP_PREFIX) {
+					if strings.HasPrefix(item.(*IPInfo).Addr, app.PreferredIPPrefix) {
 						matchResult = item.(*IPInfo).Addr
 						return true
 					}

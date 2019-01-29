@@ -210,10 +210,10 @@ func QueryFileHandler(manager *bridgev2.ConnectionManager, frame *bridgev2.Frame
 
 
 	var md5 string
-	if mat1, _ := regexp.Match(app.MD5_REGEX, []byte(meta.PathOrMd5)); mat1 {
+	if mat1, _ := regexp.Match(app.Md5Regex, []byte(meta.PathOrMd5)); mat1 {
 		md5 = meta.PathOrMd5
-	} else if mat2, _ := regexp.Match(app.PATH_REGEX, []byte(meta.PathOrMd5)); mat2 {
-		md5 = regexp.MustCompile(app.PATH_REGEX).ReplaceAllString(meta.PathOrMd5, "${4}")
+	} else if mat2, _ := regexp.Match(app.PathRegex, []byte(meta.PathOrMd5)); mat2 {
+		md5 = regexp.MustCompile(app.PathRegex).ReplaceAllString(meta.PathOrMd5, "${4}")
 	} else {
 		resMeta.Exist = false
 		responseFrame.SetStatus(bridgev2.STATUS_SUCCESS)

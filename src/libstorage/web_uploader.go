@@ -147,7 +147,7 @@ func (handler *FileUploadHandlerV1) beginUpload() (*HttpUploadResponse, error) {
 		logger.Debug("form boundary is", paraSeparator)
 		// calculate md5
 		md := md5.New()
-		buffer, _ := bridgev2.MakeBytes(app.BUFF_SIZE, false, 0, false)
+		buffer, _ := bridgev2.MakeBytes(app.BufferSize, false, 0, false)
 		defer bridgev2.RecycleBytes(buffer)
 		for {
 			line, e := readNextLine(formReader)
@@ -393,8 +393,8 @@ func readFileBody(reader *FileFormReader, buffer []byte, separator string, md ha
 	finalFile := &app.FileVO{
 		Md5: sMd5,
 		PartNumber: stateUploadStatus.fileParts.Len(),
-		Group: app.GROUP,
-		Instance: app.INSTANCE_ID,
+		Group: app.Group,
+		Instance: app.InstanceId,
 		Finish: 1,
 		FileSize: 0,
 	}
@@ -408,16 +408,16 @@ func readFileBody(reader *FileFormReader, buffer []byte, separator string, md ha
 	}
 	finalFile.Parts = parts
 	finalFile.FileSize = totalSize
-	// stoe := libservice.StorageAddFile(sMd5, app.GROUP, stateUploadStatus.fileParts)
+	// stoe := libservice.StorageAddFile(sMd5, app.Group, stateUploadStatus.fileParts)
 	stoe := libservicev2.InsertFile(finalFile, nil)
 	if stoe != nil {
 		return nil, stoe
 	}
 	// mark the file is multi part or single part
 	if stateUploadStatus.fileParts.Len() > 1 {
-		stateUploadStatus.path = app.GROUP + "/" + app.INSTANCE_ID + "/M/" + sMd5
+		stateUploadStatus.path = app.Group + "/" + app.InstanceId + "/M/" + sMd5
 	} else {
-		stateUploadStatus.path = app.GROUP + "/" + app.INSTANCE_ID + "/S/" + sMd5
+		stateUploadStatus.path = app.Group + "/" + app.InstanceId + "/S/" + sMd5
 	}
 	logger.Info("http upload fid is", stateUploadStatus.path)
 	app.UpdateUploads()
@@ -428,10 +428,10 @@ func handleStagePartFile(buffer []byte, status *StageUploadStatus) error {
 	len1 := int64(len(buffer))
 	status.readBodySize += uint64(len1)
 	status.md.Write(buffer)
-	if status.sliceReadSize+len1 > app.SLICE_SIZE {
+	if status.sliceReadSize+len1 > app.SliceSize {
 		// write bytes to file
-		leftN := app.SLICE_SIZE - status.sliceReadSize
-		rightN := int64(len(buffer)) - (app.SLICE_SIZE - status.sliceReadSize)
+		leftN := app.SliceSize - status.sliceReadSize
+		rightN := int64(len(buffer)) - (app.SliceSize - status.sliceReadSize)
 		len2, e1 := status.out.Write(buffer[0:leftN])
 		len4, e11 := status.sliceMd5.Write(buffer[0:leftN])
 		if e1 != nil || e11 != nil || int64(len2) != leftN || int64(len4) != leftN {
@@ -449,9 +449,9 @@ func handleStagePartFile(buffer []byte, status *StageUploadStatus) error {
 		if e10 != nil {
 			return e10
 		}
-		tmpPart := &app.PartDO{Md5: sMd5, Size: app.SLICE_SIZE}
+		tmpPart := &app.PartDO{Md5: sMd5, Size: app.SliceSize}
 		status.fileParts.PushBack(tmpPart)
-		app.UpdateDiskUsage(app.SLICE_SIZE)
+		app.UpdateDiskUsage(app.SliceSize)
 
 		out12, e12 := libcommon.CreateTmpFile()
 		if e12 != nil {
@@ -510,7 +510,7 @@ func WebUploadHandlerV1(writer http.ResponseWriter, request *http.Request) {
 
 	if mat, _ := regexp.Match("/upload/[0-9a-zA-Z_]{1,30}", []byte(reqURI)); mat {
 		targetGroup := reqURI[8:]
-		if strings.TrimSpace(targetGroup) != "" && app.GROUP != strings.TrimSpace(targetGroup) {
+		if strings.TrimSpace(targetGroup) != "" && app.Group != strings.TrimSpace(targetGroup) {
 			logger.Debug("group not match, ignore upload")
 			httputil.WriteErrResponse(writer, http.StatusNotFound, "Not Found.")
 			return
@@ -521,7 +521,7 @@ func WebUploadHandlerV1(writer http.ResponseWriter, request *http.Request) {
 	params := request.URL.Query()
 	if params != nil {
 		targetGroup := params["group"]
-		if targetGroup != nil && len(targetGroup) != 0 && strings.TrimSpace(targetGroup[0]) != "" && app.GROUP != strings.TrimSpace(targetGroup[0]) {
+		if targetGroup != nil && len(targetGroup) != 0 && strings.TrimSpace(targetGroup[0]) != "" && app.Group != strings.TrimSpace(targetGroup[0]) {
 			logger.Debug("group not match, ignore upload")
 			httputil.WriteErrResponse(writer, http.StatusNotFound, "Not Found.")
 			return

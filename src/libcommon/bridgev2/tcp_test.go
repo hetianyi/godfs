@@ -12,8 +12,8 @@ import (
 
 func init() {
 	logger.SetLogLevel(1)
-	app.SECRET = "123456"
-	app.BASE_PATH = "E:\\godfs-storage\\storage1"
+	app.Secret = "123456"
+	app.BasePath = "E:\\godfs-storage\\storage1"
 	libservicev2.SetPool(db.NewPool(1))
 }
 

@@ -286,7 +286,7 @@ func (server *ServerInfo) GetHostAndPortByAccessFlag() (host string, port int) {
 	}
 	if server.AccessFlag == ACCESS_FLAG_NONE {
 		// if run as client, always try from advertise ip
-		if RUN_WITH == 3 {
+		if RunWith == 3 {
 			server.AccessFlag = ACCESS_FLAG_ADVERTISE
 			return server.AdvertiseAddr, server.AdvertisePort
 		}
