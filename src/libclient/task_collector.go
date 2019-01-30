@@ -26,7 +26,7 @@ type TaskCollector struct {
 	Job        func(tracker *TrackerInstance) // timer task
 }
 
-// copyTaskCollector copy a task collector in case of share lock
+// copyTaskCollector copy a task collector in case share lock
 func copyTaskCollector(collector *TaskCollector) *TaskCollector {
 	if collector == nil {
 		return nil
@@ -93,6 +93,11 @@ func QueryPushFileTaskCollector(tracker *TrackerInstance) {
 
 // QueryDownloadFileTaskCollector task collector: query files need to sync from other members
 func QueryDownloadFileTaskCollector(tracker *TrackerInstance) {
+	// if current time is busy uploading files, stop synchronize files this time.
+	if app.UploadBusyPoint > app.UploadBusyWarningLine {
+		logger.Debug("server busy, skip synchronize this time")
+		return
+	}
 	members := collectMemberInstanceId()
 	// no member, no server for download.
 	if members == "" {

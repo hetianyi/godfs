@@ -16,7 +16,7 @@ import (
 
 var managedStorage = make(map[string]*app.StorageDO)
 
-// in case of when:
+// in case when:
 // client disconnect and reconnect immediately, but tracker is now not expire this storage server yet,
 // server will think it is not unique and return error
 var hardCheckStorage = make(map[string]byte)

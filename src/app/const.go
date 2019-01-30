@@ -50,6 +50,7 @@ var (
 	Uploads        int64
 	StageDownloads int
 	StageUploads   int
+	SecondUploads  int  // upload files per sec
 	StartTime      int64
 	TotalFiles     int
 	FinishFiles    int
@@ -61,6 +62,9 @@ var (
 
 	PreferredNetworks list.List
 	PreferredIPPrefix string
+	UploadBusyPoint	  int // upload busy point, count upload files within one minute and determine the file synchronization interval.
+						  // we assume that one node can finish 60 transaction per second
+	UploadBusyStatisticsList list.List
 )
 
 const (
@@ -81,6 +85,8 @@ const (
 	AccessFlagNone      = 0
 	AccessFlagInitial   = 1
 	AccessFlagAdvertise = 2
+
+	UploadBusyWarningLine = 30
 )
 
 var ioinLock sync.Mutex
@@ -105,6 +111,7 @@ func UpdateUploads() {
 	defer updownLock.Unlock()
 	Uploads++
 	StageUploads++
+	SecondUploads++
 }
 
 func UpdateDownloads() {
@@ -130,4 +137,23 @@ func UpdateDiskUsage(value int64) {
 	updownLock.Lock()
 	defer updownLock.Unlock()
 	DiskUsage += value
+}
+
+// busy point statistics
+func BusyPointService() {
+	timer := time.NewTicker(time.Second * 1)
+	for {
+		UploadBusyStatisticsList.PushBack(SecondUploads)
+		SecondUploads = 0
+		if UploadBusyStatisticsList.Len() >= 60 {
+			UploadBusyStatisticsList.Remove(UploadBusyStatisticsList.Front())
+		}
+		total := 0
+		for ele := UploadBusyStatisticsList.Front(); ele != nil; ele = ele.Next() {
+			total += ele.Value.(int)
+		}
+		UploadBusyPoint = total / UploadBusyStatisticsList.Len()
+		// fmt.Println("busy point ==>", UploadBusyPoint)
+		<-timer.C
+	}
 }

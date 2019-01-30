@@ -338,7 +338,7 @@ func readFileBody(reader *FileFormReader, buffer []byte, separator string, md ha
 				return nil, errors.New("read file body failed2")
 			}
 			app.UpdateIOIN(int64(len2))
-			// []byte tail is last bytes of buff1 and first bytes of buff2 in case of broken separator.
+			// []byte tail is last bytes of buff1 and first bytes of buff2 in case broken separator.
 			if len1 >= len(separator) {
 				ByteCopy(tail, 0, len(separator), buff1[len1-len(separator):len1])
 			}

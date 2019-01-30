@@ -61,7 +61,8 @@ func StartService(config map[string]string) {
 
 	initDbStatistic()
 	// start statistic service.
-	go startStatisticService()
+	go startStatisticsService()
+	go app.BusyPointService()
 	// start http download server
 	startHttpService()
 	// start tracker maintainer
@@ -170,7 +171,7 @@ func initDbStatistic() {
 }
 
 // startStatisticService collect system info.
-func startStatisticService() {
+func startStatisticsService() {
 	timer := time.NewTicker(time.Second * 30)
 	for {
 		stats := &runtime.MemStats{}
