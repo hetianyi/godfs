@@ -131,6 +131,11 @@ func SyncMemberTaskCollector(tracker *TrackerInstance) {
 
 // QueryNewFileTaskCollector task collector: query new files of other members from tracker
 func QueryNewFileTaskCollector(tracker *TrackerInstance) {
+	// if current time is busy uploading files, stop synchronize files this time.
+	if app.UploadBusyPoint > app.UploadBusyWarningLine {
+		logger.Debug("server busy, skip synchronize this time")
+		return
+	}
 	task := &bridgev2.Task{TaskType: app.TaskPullNewFiles}
 	AddTask(task, tracker)
 }
