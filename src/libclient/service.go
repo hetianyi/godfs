@@ -53,6 +53,14 @@ func (client *Client) Upload(path string, group string, startTime time.Time, ski
 		return "", errors.New("error upload file " + path + " due to " + e.Error())
 	}
 	defer fi.Close()
+	fStat, e1 := fi.Stat()
+	if e1 != nil {
+		return "", errors.New("error stat file " + path + " due to " + e1.Error())
+	}
+	// if file length < 3MB, skip check
+	if fStat.Size() < 3145728 {
+		skipCheck = true
+	}
 
 	fileMd5 := ""
 	logger.Info("upload file:", fi.Name())
