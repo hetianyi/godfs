@@ -20,7 +20,7 @@ import (
 	"util/timeutil"
 )
 
-const ParallelDownload = 50
+const ParallelDownload = 20
 const MaxWaitDownload = 100
 
 var GroupMembers list.List
@@ -385,7 +385,7 @@ func downloadFile(fullFi *app.FileVO) {
 						logger.Error("error move temp file")
 						return false, e5
 					}
-					logger.Info("synchronize file part success", strconv.Itoa(i+1)+"/"+strconv.Itoa(len(fullFi.Parts))+" -> "+part.Md5)
+					logger.Debug("synchronize file part success", strconv.Itoa(i+1)+"/"+strconv.Itoa(len(fullFi.Parts))+" -> "+part.Md5)
 					return false, nil
 				})
 			if e2 != nil {
