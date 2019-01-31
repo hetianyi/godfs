@@ -176,8 +176,8 @@ func (client *Client) Upload(path string, group string, startTime time.Time, ski
 	} else {
 		tcpClient.GetConnManager().Close()
 	}
-	if resMeta != nil {
-		return "", err
+	if resMeta == nil {
+		return "", errors.New("error read response meta")
 	}
 	return resMeta.Path, err
 }
