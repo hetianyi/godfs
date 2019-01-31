@@ -111,6 +111,6 @@ func Serve(manager *ConnectionManager, callbacks ...func(manager *ConnectionMana
 			}
 		}
 	}, func(i interface{}) {
-		logger.Error("server serve error:", i)
+		logger.Debug("server serve error:", i)
 	})
 }
