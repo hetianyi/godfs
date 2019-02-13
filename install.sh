@@ -12,7 +12,7 @@ if [ ! -e "./bin" ];then
 fi
 
 if [ "$1"x = ""x ];then
-    echo "no installation directory specific."
+    echo "no installation directory specified."
     exit 2
 fi
 
