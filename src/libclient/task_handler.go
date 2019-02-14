@@ -140,6 +140,7 @@ func TaskPullFileHandler(tracker *TrackerInstance) (bool, error) {
 	}
 	files := responseMeta.Files
 	if files == nil || len(files) == 0 {
+		logger.Debug("no file pulled from tracker server:", tracker.ConnStr)
 		return false, nil
 	} else {
 		logger.Info("pull", len(files), "files from tracker server:", tracker.ConnStr)
