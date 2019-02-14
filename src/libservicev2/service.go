@@ -114,6 +114,10 @@ func InsertPulledTrackerFiles(trackerUUID string, files []app.FileVO, dao *db.DA
 			if maxId < file.Id {
 				maxId = file.Id
 			}
+			// skip insert files uploaded by this instance
+			if file.Instance == app.InstanceId {
+				continue
+			}
 			file.Id = 0
 			file.Finish = 0
 			e1 := db.Table("file").Where("md5 = ?", file.Md5).FirstOrCreate(&file).Error

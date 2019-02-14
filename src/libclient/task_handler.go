@@ -85,15 +85,15 @@ func TaskRegisterFileHandler(tracker *TrackerInstance) (bool, error) {
 	regFileMeta := &bridgev2.RegisterFileMeta{
 		Files: fs,
 	}
-	logger.Info("register", files.Len(), "files to tracker server")
+	logger.Info("register", files.Len(), "files to tracker server:", tracker.ConnStr)
 
-	responseMeta, e2 := client.RegisterFiles(regFileMeta)
+	_, e2 := client.RegisterFiles(regFileMeta)
 	if e2 != nil {
 		return true, e2
 	}
-
+	// bug fixing: using tracker last insert Id is not correct, move it to pull file task.
 	e3 := libservicev2.UpdateTrackerWithMap(tracker.trackerUUID,
-		map[string]interface{}{"tracker_sync_id": responseMeta.LastInsertId, "local_push_id": maxId}, nil)
+		map[string]interface{}{"local_push_id": maxId}, nil)
 	if e3 != nil {
 		return false, e2
 	}
