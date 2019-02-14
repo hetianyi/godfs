@@ -14,8 +14,8 @@ services:
         constraints:
           - node.labels.tracker == true
           - node.labels.tracker1 == true
-#    volumes:
-#      - tracker1:/godfs/data
+    volumes:
+      - tracker1:/godfs/data
     networks:
       - godfs
 
@@ -32,8 +32,8 @@ services:
         constraints:
           - node.labels.tracker == true
           - node.labels.tracker2 == true
-#    volumes:
-#      - tracker2:/godfs/data
+    volumes:
+      - tracker2:/godfs/data
     networks:
       - godfs
 
@@ -56,8 +56,8 @@ services:
       - advertise_port=1024
       - trackers=tracker1:1022,tracker2:1023
       - preferred_networks=eth0
-#    volumes:
-#      - storage1:/godfs/data
+    volumes:
+      - storage1:/godfs/data
     networks:
       - godfs
 
@@ -78,8 +78,8 @@ services:
       - advertise_port=1025
       - trackers=tracker1:1022,tracker2:1023
       - preferred_networks=eth0
-#    volumes:
-#      - storage2:/godfs/data
+    volumes:
+      - storage2:/godfs/data
     networks:
       - godfs
 
@@ -94,8 +94,6 @@ services:
       - "1025:1025"
     environment:
       - trackers=tracker1:8015,tracker2:8015
-    #volumes:
-    #  - ./nginx.conf:/usr/local/nginx/conf/nginx.conf
     networks:
       - godfs
 
@@ -105,8 +103,8 @@ networks:
   godfs:
     driver: overlay
 
-#volumes:
-#  tracker1:
-#  tracker2:
-#  storage1:
-#  storage2:
+volumes:
+  tracker1:
+  tracker2:
+  storage1:
+  storage2:
