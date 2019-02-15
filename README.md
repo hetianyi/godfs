@@ -200,7 +200,13 @@ docker run -d -p 8080:80 --restart always --name godfs-dashboard hehety/godfs-da
 
 
 
-## Simple load test on vultr
+
+
+
+
+
+
+## Simple load test on vultr(before v1.1.0)
 
 ### HTTP upload test
 |Name|Value|
@@ -284,8 +290,11 @@ And I will do more test in the future.
 1. Import many 3rd part opensource libs for better performance include:
 
    [github.com/mattn/go-sqlite3](https://github.com/mattn/go-sqlite3)
+
    [github.com/jinzhu/gorm](github.com/jinzhu/gorm)
+
    [github.com/json-iterator/go](github.com/json-iterator/go)
+
    [github.com/urfave/cli](https://github.com/urfave/cli)
 
 2. Rewrite the underlying communication protocol which makes the program more scalable.

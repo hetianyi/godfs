@@ -198,9 +198,46 @@ docker run -d -p 8080:80 --restart always --name godfs-dashboard hehety/godfs-da
 ![architecture](/doc/20181205154909.png)
 
 
-### 在vultr上做的简单压力测试
 
-|Name|Value|
+### 在工作站上做的基于tcp client的压力测试（1.1.0以及之后版本）
+
+[测试方案](https://github.com/hetianyi/godfs/tree/master/example)
+
+机器配置
+
+| Node     | CPU                                      | CPU核心数 | 内存 | 磁盘                                    |
+| -------- | ---------------------------------------- | :-------: | :--: | --------------------------------------- |
+| tracker1 | Intel(R) Xeon(R) CPU E5-1620 0 @ 3.60GHz |     1     | 1GB  | Sun Microsystems 500GB Internal 7200RPM |
+| tracker2 | Intel(R) Xeon(R) CPU E5-1620 0 @ 3.60GHz |     1     | 1GB  | Sun Microsystems 500GB Internal 7200RPM |
+| storage1 | Intel(R) Xeon(R) CPU E5-1620 0 @ 3.60GHz |     2     | 1GB  | Sun Microsystems 500GB Internal 7200RPM |
+| storage2 | Intel(R) Xeon(R) CPU E5-1620 0 @ 3.60GHz |     2     | 1GB  | Sun Microsystems 500GB Internal 7200RPM |
+
+测试汇总
+
+| 参数           | 值                        |
+| -------------- | ------------------------- |
+| 类型           | 虚拟机                    |
+| 操作系统       | CentOS7                   |
+| tracker数      | 2                         |
+| group数        | 2（G01,G02）              |
+| storage数      | 4（G01x2,G02x2）          |
+| docker         | 18.06.1-ce, build e68fc7a |
+| 文件总数       | 5,000,000                 |
+| 线程数         | 5                         |
+| 总耗时         | 2h 35min                  |
+| 系统平均吞吐量 | 537文件/秒                |
+| 单节点吞吐量   | 134文件/秒                |
+| 失败           | 0                         |
+
+示意图
+
+![architecture](doc/20190215153655.png)
+
+
+
+### 在vultr上做的基于http client的压力测试（1.0.6以及之前版本）
+
+|参数|值|
 |---|---|
 | OS        | CentOS7   |
 | RAM       | 1GB       |
@@ -273,11 +310,14 @@ storage server 配置(California)
 
 2019/01/17
 
-1. 为了更好的性能，引入许多开源组件:
+1. 为了更好地开发，引入许多开源组件:
 
    [github.com/mattn/go-sqlite3](https://github.com/mattn/go-sqlite3)
+
    [github.com/jinzhu/gorm](github.com/jinzhu/gorm)
+
    [github.com/json-iterator/go](github.com/json-iterator/go)
+
    [github.com/urfave/cli](https://github.com/urfave/cli)
 
 2. 重写了底层的TCP通讯协议，让程序的可拓展性更强。
