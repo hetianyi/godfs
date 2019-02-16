@@ -26,7 +26,7 @@ func (FileDO) TableName() string {
 // table clients
 type StorageDO struct {
 	Uuid          string `gorm:"primary_key" json:"uuid"`
-	Host          string `gorm:"column:host" json:"host""`
+	Host          string `gorm:"column:host" json:"host"`
 	Port          int    `gorm:"column:port" json:"port"`
 	AdvertiseAddr string `gorm:"column:advertise_addr" json:"advertise_addr"`
 	AdvertisePort int    `gorm:"column:advertise_port" json:"advertise_port"`
@@ -46,7 +46,7 @@ type StorageDO struct {
 	IOout         int64  `gorm:"column:ioout" json:"ioout"`
 	// 1: use LookBackAddress:Port 2: use AdvertiseAddr:AdvertisePort
 	AccessFlag int   `gorm:"column:access_flag" json:"access_flag"`
-	LogTime    int64 `gorm:column:log_time json:"log_time"`
+	LogTime    int64 `gorm:"column:log_time" json:"log_time"`
 
 	// not store in db
 	ExpireTime     int64  `gorm:"-" json:"expire_time"`

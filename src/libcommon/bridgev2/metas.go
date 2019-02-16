@@ -11,7 +11,7 @@ type ConnectMeta struct {
 // ConnectResponseMeta operation meta for connect/validate
 type ConnectResponseMeta struct {
 	UUID        string `json:"uuid"` // this is server uuid
-	New4Tracker bool   `json:"new"`
+	New4Tracker bool   `json:"new2Tracker"`
 }
 
 // SyncStorageMembersMeta register storage client operation request

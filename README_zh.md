@@ -205,12 +205,12 @@ docker run -d -p 8080:80 --restart always --name godfs-dashboard hehety/godfs-da
 
 机器配置
 
-| Node     | CPU                                      | CPU核心数 | 内存 | 磁盘                                    |
-| -------- | ---------------------------------------- | :-------: | :--: | --------------------------------------- |
-| tracker1 | Intel(R) Xeon(R) CPU E5-1620 0 @ 3.60GHz |     1     | 1GB  | Sun Microsystems 500GB Internal 7200RPM |
-| tracker2 | Intel(R) Xeon(R) CPU E5-1620 0 @ 3.60GHz |     1     | 1GB  | Sun Microsystems 500GB Internal 7200RPM |
-| storage1 | Intel(R) Xeon(R) CPU E5-1620 0 @ 3.60GHz |     2     | 1GB  | Sun Microsystems 500GB Internal 7200RPM |
-| storage2 | Intel(R) Xeon(R) CPU E5-1620 0 @ 3.60GHz |     2     | 1GB  | Sun Microsystems 500GB Internal 7200RPM |
+| Node     | CPU                                      | CPU核心数 | 内存 | 磁盘 |
+| -------- | ---------------------------------------- | :-------: | :--: | ---- |
+| tracker1 | Intel(R) Xeon(R) CPU E5-1620 0 @ 3.60GHz |     1     | 1GB  | SSD  |
+| tracker2 | Intel(R) Xeon(R) CPU E5-1620 0 @ 3.60GHz |     1     | 1GB  | SSD  |
+| storage1 | Intel(R) Xeon(R) CPU E5-1620 0 @ 3.60GHz |     2     | 1GB  | SSD  |
+| storage2 | Intel(R) Xeon(R) CPU E5-1620 0 @ 3.60GHz |     2     | 1GB  | SSD  |
 
 测试汇总
 

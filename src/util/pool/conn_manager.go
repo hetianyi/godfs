@@ -44,6 +44,7 @@ func GetServerKey(server *app.ServerInfo) string {
 // GetConn connection pool has not been implemented.
 // for now, one client only support single connection with each storage.
 func (pool *ClientConnectionPool) GetConn(server *app.ServerInfo) (net.Conn, error) {
+	// TODO lock range is too wide
 	pool.getLock.Lock()
 	defer pool.getLock.Unlock()
 	list := pool.getConnMap(server)
