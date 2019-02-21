@@ -55,6 +55,7 @@ type StorageDO struct {
 	StageIOin      int64  `gorm:"-" json:"stageIOin"`
 	StageIOout     int64  `gorm:"-" json:"stageIOout"`
 	Memory         uint64 `gorm:"-" json:"mem"`
+	Secret         string `gorm:"-" json:"secret"`
 }
 
 func (StorageDO) TableName() string {
@@ -249,6 +250,7 @@ type ServerInfo struct {
 	AdvertiseAddr string
 	AdvertisePort int
 	IsTracker     bool
+	Secret        string
 }
 
 func (server *ServerInfo) FromStorage(storage *StorageDO) *ServerInfo {
@@ -260,6 +262,15 @@ func (server *ServerInfo) FromStorage(storage *StorageDO) *ServerInfo {
 	server.AdvertiseAddr = storage.AdvertiseAddr
 	server.AdvertisePort = storage.AdvertisePort
 	server.IsTracker = false
+	server.Secret = storage.Secret
+	return server
+}
+
+func (server *ServerInfo) FromTracker(host string, port int, secret string) *ServerInfo {
+	server.Host = host
+	server.Port = port
+	server.IsTracker = true
+	server.Secret = secret
 	return server
 }
 
@@ -267,6 +278,7 @@ func (server *ServerInfo) FromConnStr(connStr string) *ServerInfo {
 	server.Host = strings.Split(connStr, ":")[0]
 	server.Port, _ = strconv.Atoi(strings.Split(connStr, ":")[1])
 	server.IsTracker = true
+	server.Secret = Secret
 	return server
 }
 

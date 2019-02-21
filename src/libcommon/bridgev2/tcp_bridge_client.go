@@ -6,6 +6,7 @@ import (
 	"errors"
 	json "github.com/json-iterator/go"
 	"strconv"
+	"util/common"
 	"util/logger"
 )
 
@@ -50,8 +51,10 @@ func (client *TcpBridgeClient) Connect() error {
 
 // Validate validate this connection.
 func (client *TcpBridgeClient) Validate() (*ConnectResponseMeta, error) {
+	// TODO replace secret
+	secret := common.TValue(client.server.Secret == "", app.Secret, client.server.Secret).(string)
 	meta := &ConnectMeta{
-		Secret: app.Secret,
+		Secret: secret,
 		UUID:   app.UUID,
 	}
 	frame, e := client.sendReceive(FrameOperationValidate, StateConnected, meta, 0, nil)
