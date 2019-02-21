@@ -230,7 +230,7 @@ Test summary
 
 schematic diagram
 
-![architecture](D:/Hetianyi/svn/godfs/doc/20190215153655.png)
+![architecture](doc/20190215153655.png)
 
 
 
