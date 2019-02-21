@@ -198,11 +198,39 @@ docker run -d -p 8080:80 --restart always --name godfs-dashboard hehety/godfs-da
 
 
 
+## Tcp client based stress test on workstations (v1.1.0 and later)
 
+[Test case is here](https://github.com/hetianyi/godfs/tree/master/example)
 
+Machine configuration
 
+| Node     | CPU                                      | CPU core number | Memory | Disk |
+| -------- | ---------------------------------------- | :-------------: | :----: | ---- |
+| tracker1 | Intel(R) Xeon(R) CPU E5-1620 0 @ 3.60GHz |        1        |  1GB   | SSD  |
+| tracker2 | Intel(R) Xeon(R) CPU E5-1620 0 @ 3.60GHz |        1        |  1GB   | SSD  |
+| storage1 | Intel(R) Xeon(R) CPU E5-1620 0 @ 3.60GHz |        2        |  1GB   | SSD  |
+| storage2 | Intel(R) Xeon(R) CPU E5-1620 0 @ 3.60GHz |        2        |  1GB   | SSD  |
 
+Test summary
 
+| Key                       | Value                     |
+| ------------------------- | ------------------------- |
+| type                      | VM                        |
+| operating System          | CentOS7                   |
+| tracker number            | 2                         |
+| group number              | 2（G01,G02）              |
+| storage number            | 4（G01x2,G02x2）          |
+| docker version            | 18.06.1-ce, build e68fc7a |
+| total files               | 5,000,000                 |
+| threads                   | 5                         |
+| total times               | 2h 35min                  |
+| System average throughput | 537 files/s               |
+| Single node throughput    | 134 file/s                |
+| Failure                   | 0                         |
+
+schematic diagram
+
+![architecture](D:/Hetianyi/svn/godfs/doc/20190215153655.png)
 
 
 
