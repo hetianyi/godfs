@@ -225,7 +225,7 @@ Test summary
 | threads                   | 5                         |
 | total times               | 2h 35min                  |
 | System average throughput | 537 files/s               |
-| Single node throughput    | 134 file/s                |
+| Single node throughput    | 134 files/s               |
 | Failure                   | 0                         |
 
 schematic diagram

@@ -13,3 +13,5 @@
 - If there is too many concurrent upload at a time, try to auto slow down the file synchronization or even stop it in case competition in db transaction.
 
 - Merge some transactions(such as file synchronization from tracker, update file synchronization state)
+
+- Java client dev
