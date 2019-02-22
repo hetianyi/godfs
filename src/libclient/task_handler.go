@@ -39,6 +39,7 @@ func TaskSyncMemberHandler(tracker *TrackerInstance) (bool, error) {
 		StageIOout:     app.StageIOOut,
 		StageDownloads: app.StageDownloads,
 		StageUploads:   app.StageUploads,
+		Secret:         app.Secret,
 	}
 
 	response, err := client.SyncStorageMembers(storageInfo)
