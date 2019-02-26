@@ -15,3 +15,5 @@
 - Merge some transactions(such as file synchronization from tracker, update file synchronization state)
 
 - Java client dev
+
+- Add delete API
