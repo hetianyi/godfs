@@ -199,14 +199,14 @@ func Check(m map[string]string, runWith int) {
 		}
 
 		// check web_content_mime_types
-		m["access_control_allow_origin"] = strings.TrimSpace(m["access_control_allow_origin"])
-		acao := strings.Split(m["access_control_allow_origin"], ",")
+		m["allowed_domain"] = strings.TrimSpace(m["allowed_domain"])
+		acao := strings.Split(m["allowed_domain"], ",")
 		for i := range acao {
 			strS := strings.TrimSpace(acao[i])
 			if strS == "" {
 				continue
 			}
-			app.AddAccessAllowOrigin(strS)
+			app.AddAllowedDomain(strS)
 		}
 
 		// check: preferred_networks

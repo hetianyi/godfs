@@ -7,11 +7,11 @@ import (
 
 // mime types for browser download header 'Content-Type'
 var (
-	mimeTypes                    = make(map[string]string)
-	webMimeTypes                 = make(map[string]string)
-	accessControllerAllowOrigins = list.New()
-	enable                       = false
-	defaultMimeType              = "application/octet-stream"
+	mimeTypes       = make(map[string]string)
+	webMimeTypes    = make(map[string]string)
+	allowedDomains  = list.New()
+	enable          = false
+	defaultMimeType = "application/octet-stream"
 )
 
 // if enable it will auto add download header 'Content-Type' before download,
@@ -138,22 +138,22 @@ func AddWebMimeType(format string) {
 }
 
 // add web content file format based on mimeTypes
-func AddAccessAllowOrigin(origin string) {
-	for ele := accessControllerAllowOrigins.Front(); ele != nil; ele = ele.Next() {
+func AddAllowedDomain(origin string) {
+	for ele := allowedDomains.Front(); ele != nil; ele = ele.Next() {
 		if ele.Value.(string) == origin {
 			return
 		}
 	}
-	accessControllerAllowOrigins.PushBack(origin)
+	allowedDomains.PushBack(origin)
 }
 
-// check whether access origin is allowed
-func CheckOriginAllow(origin string) bool {
-	if accessControllerAllowOrigins.Len() == 0 {
+// check whether referer is allowed
+func CheckRefererAllow(referer string) bool {
+	if allowedDomains.Len() == 0 {
 		return true
 	}
-	for ele := accessControllerAllowOrigins.Front(); ele != nil; ele = ele.Next() {
-		if ele.Value.(string) == origin {
+	for ele := allowedDomains.Front(); ele != nil; ele = ele.Next() {
+		if strings.HasPrefix(referer, ele.Value.(string)) {
 			return true
 		}
 	}

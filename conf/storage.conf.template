@@ -34,7 +34,7 @@ advertise_port=1025
 base_path=E:/godfs-storage/storage1
 
 
-trackers=127.0.0.1:1022
+trackers=
 
 # storage server所在的主机或者容器中可能存在多个网卡，那么必定对应多个IP，
 # 此选项配置客户端向tracker上报自身IP时优先选择的网络接口名称，例如：eth0，eth1，以太网...（多个以英文逗号分隔）
@@ -101,7 +101,8 @@ http_auth=
 # http下载服务监听端口
 http_port=8001
 
-# 允许跨域访问的来源，多个值使用英文逗号分隔
+# 允许跨域访问的来源(域名)，多个值使用英文逗号分隔
 # 如果该值为空，则默认允许任何来源访问资源
 # 如果该值不为空，则只允许指定的网站来源访问
-access_control_allow_origin=
+# 例如：http://www.baidu.com,https://xxx.net
+allowed_domain=http://127.0.0.1,http://192.168.1.142

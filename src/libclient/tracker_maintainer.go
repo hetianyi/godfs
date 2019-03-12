@@ -91,9 +91,9 @@ func increaseTrackerIndex() {
 func (maintainer *TrackerMaintainer) Maintain(trackers map[string]string) {
 	if len(trackers) == 0 {
 		if app.RunWith == 1 {
-			logger.Warn("no trackers configured, the storage server will run in stand-alone mode.")
+			logger.Warn("no tracker configured, the server will run in standalone mode.")
 		} else if app.RunWith == 3 {
-			logger.Warn("no trackers configured for client.")
+			logger.Warn("no tracker configured for client.")
 		}
 		return
 	}
