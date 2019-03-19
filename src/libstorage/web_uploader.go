@@ -77,9 +77,10 @@ func (reader *FileFormReader) Read(buff []byte) (int, error) {
 var backSpace = []byte{13, 10}
 
 type FileUploadHandlerV1 struct {
-	writer  http.ResponseWriter
-	request *http.Request
-	params  map[string]*list.List
+	writer      http.ResponseWriter
+	request     *http.Request
+	params      map[string]*list.List
+	PrivateFlag int
 }
 
 type StageUploadStatus struct {
@@ -206,7 +207,7 @@ func (handler *FileUploadHandlerV1) beginUpload() (*HttpUploadResponse, error) {
 								logger.Error("upload error4:", e3)
 								return nil, e3
 							} else { // read file body
-								stageUploadStatus, e4 := readFileBody(formReader, buffer, paraSeparator, md)
+								stageUploadStatus, e4 := readFileBody(formReader, buffer, paraSeparator, md, handler.PrivateFlag)
 								if e4 != nil {
 									logger.Error("upload error5:", e4)
 									return nil, e4
@@ -286,7 +287,7 @@ func readNextLine(reader *FileFormReader) (string, error) {
 }
 
 // readFileBody begin read file part
-func readFileBody(reader *FileFormReader, buffer []byte, separator string, md hash.Hash) (*StageUploadStatus, error) {
+func readFileBody(reader *FileFormReader, buffer []byte, separator string, md hash.Hash, flag int) (*StageUploadStatus, error) {
 	defer func() {
 		md.Reset()
 	}()
@@ -397,6 +398,7 @@ func readFileBody(reader *FileFormReader, buffer []byte, separator string, md ha
 		Instance:   app.InstanceId,
 		Finish:     1,
 		FileSize:   0,
+		Flag:       flag,
 	}
 	parts := make([]app.PartDO, stateUploadStatus.fileParts.Len())
 	index := 0
@@ -519,12 +521,21 @@ func WebUploadHandlerV1(writer http.ResponseWriter, request *http.Request) {
 
 	// check if client really want to upload file to this group.
 	params := request.URL.Query()
+	priv := app.FLAG_PUBLIC
 	if params != nil {
 		targetGroup := params["group"]
-		if targetGroup != nil && len(targetGroup) != 0 && strings.TrimSpace(targetGroup[0]) != "" && app.Group != strings.TrimSpace(targetGroup[0]) {
+		if targetGroup != nil &&
+			len(targetGroup) != 0 &&
+			strings.TrimSpace(targetGroup[0]) != "" &&
+			app.Group != strings.TrimSpace(targetGroup[0]) {
 			logger.Debug("group not match, ignore upload")
 			httputil.WriteErrResponse(writer, http.StatusNotFound, "Not Found.")
 			return
+		}
+		privateFlag := params["private"]
+		if privateFlag != nil && len(privateFlag) > 0 &&
+			strings.TrimSpace(privateFlag[0]) == "true" {
+			priv = app.FLAG_PRIVATE
 		}
 	}
 
@@ -549,8 +560,9 @@ func WebUploadHandlerV1(writer http.ResponseWriter, request *http.Request) {
 
 	writer.Header().Set("Content-Type", "application/json")
 	handler := &FileUploadHandlerV1{
-		writer:  writer,
-		request: request,
+		writer:      writer,
+		request:     request,
+		PrivateFlag: priv,
 	}
 	common.Try(func() {
 		ret, e := handler.beginUpload()

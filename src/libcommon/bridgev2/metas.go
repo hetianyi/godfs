@@ -47,6 +47,7 @@ type UploadFileMeta struct {
 	FileSize int64  `json:"fileSize"` // file length
 	FileExt  string `json:"ext"`      // file extension name, exclude '.'
 	Md5      string `json:"md5"`      // file md5, if file exists, skip upload
+	Flag     int    `json:"flag"`     // flag, 0:public, 1:private
 }
 
 type UploadFileResponseMeta struct {

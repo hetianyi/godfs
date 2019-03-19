@@ -14,6 +14,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"util/common"
 	"util/file"
 	"util/logger"
 	"util/pool"
@@ -47,7 +48,7 @@ func NewClient(MaxConnPerServer int) *Client {
 }
 
 // Upload upload file to storage server.
-func (client *Client) Upload(path string, group string, startTime time.Time, skipCheck bool) (string, error) {
+func (client *Client) Upload(path string, group string, startTime time.Time, skipCheck bool, isPrivate bool) (string, error) {
 	fi, e := file.GetFile(path)
 	if e != nil {
 		return "", errors.New("error upload file " + path + " due to " + e.Error())
@@ -129,6 +130,7 @@ func (client *Client) Upload(path string, group string, startTime time.Time, ski
 		FileSize: fInfo.Size(),
 		FileExt:  file.GetFileExt(fInfo.Name()),
 		Md5:      fileMd5,
+		Flag:     common.TValue(isPrivate, app.FLAG_PRIVATE, app.FLAG_PUBLIC).(int),
 	}
 	destroy := false
 	resMeta, err := tcpClient.UploadFile(uploadMeta, func(manager *bridgev2.ConnectionManager, frame *bridgev2.Frame) error {

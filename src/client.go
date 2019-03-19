@@ -158,6 +158,11 @@ func initClientFlags() {
 					Usage:       "group to be upload",
 					Destination: &libclient.Group,
 				},
+				cli.BoolFlag{
+					Name:        "private, p",
+					Usage:       "mark as private files",
+					Destination: &libclient.FlagPrivate,
+				},
 			},
 		},
 		{

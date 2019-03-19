@@ -12,6 +12,7 @@ import (
 	"libcommon/bridgev2"
 	"libservicev2"
 	"regexp"
+	"util/common"
 	"util/file"
 	"util/logger"
 )
@@ -33,6 +34,14 @@ func UploadFileHandler(manager *bridgev2.ConnectionManager, frame *bridgev2.Fram
 	if frame == nil {
 		return libcommon.ErrNilFrame
 	}
+
+	var meta = &bridgev2.UploadFileMeta{}
+	e1 := json.Unmarshal(frame.FrameMeta, meta)
+	if e1 != nil {
+		return e1
+	}
+	flag := common.TValue(meta.Flag != app.FLAG_PRIVATE && meta.Flag != app.FLAG_PUBLIC, app.FLAG_PUBLIC, meta.Flag).(int)
+
 	manager.Md.Reset()
 	logger.Info("begin read file body, file len is ", frame.BodyLength/1024, "KB")
 	buffer, _ := bridgev2.MakeBytes(app.BufferSize, false, 0, false)
@@ -40,6 +49,7 @@ func UploadFileHandler(manager *bridgev2.ConnectionManager, frame *bridgev2.Fram
 		manager.Md.Reset()
 		bridgev2.RecycleBytes(buffer)
 	}()
+
 	out, oe := libcommon.CreateTmpFile()
 	if oe != nil {
 		return oe
@@ -79,6 +89,7 @@ func UploadFileHandler(manager *bridgev2.ConnectionManager, frame *bridgev2.Fram
 				Instance:   app.InstanceId,
 				Finish:     1,
 				FileSize:   readBodySize,
+				Flag:       flag,
 			}
 			parts := make([]app.PartDO, fileParts.Len())
 			index := 0

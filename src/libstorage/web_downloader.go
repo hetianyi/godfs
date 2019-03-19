@@ -10,9 +10,11 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"util/common"
 	"util/file"
 	httputil "util/http"
 	"util/logger"
+	"util/timeutil"
 )
 
 const (
@@ -79,8 +81,10 @@ func DownloadHandler(writer http.ResponseWriter, request *http.Request) {
 	md5 = compiledRegexpRestful.ReplaceAllString(servletPath, "${4}")
 
 	fn := compiledRegexpRestful.ReplaceAllString(servletPath, "${6}")
+	ts := ""
+	token := ""
+	queryValues := request.URL.Query()
 	if fn == "" {
-		queryValues := request.URL.Query()
 		fns := queryValues["fn"]
 		if fns != nil && len(fns) != 0 {
 			fn = fns[0]
@@ -88,6 +92,15 @@ func DownloadHandler(writer http.ResponseWriter, request *http.Request) {
 			fn = md5
 		}
 	}
+	tsSet := queryValues["ts"]
+	if tsSet != nil && len(tsSet) > 0 {
+		ts = tsSet[0]
+	}
+	tokenSet := queryValues["tk"]
+	if tokenSet != nil && len(tokenSet) > 0 {
+		token = tokenSet[0]
+	}
+
 	logger.Debug("custom download file name is:", fn)
 
 	// 304 Not Modified
@@ -112,6 +125,24 @@ func DownloadHandler(writer http.ResponseWriter, request *http.Request) {
 		httputil.WriteErrResponse(writer, http.StatusInternalServerError, "Internal Server Error.")
 		return
 	}
+
+	// cannot access private file, unless auth defined and pass the auth check.
+	if fullFile.Flag == app.FLAG_PRIVATE && app.HttpAuth == "" {
+		// if http auth not defined, try token.
+		realV := common.Md5sum(ts, md5, app.Secret)
+		if realV != token {
+			httputil.WriteErrResponse(writer, http.StatusForbidden, "Forbidden.")
+			return
+		}
+		// finally check whether the token was expired.
+		nowT := timeutil.GetTimestamp(time.Now())
+		oldT, _ := strconv.ParseInt(ts, 10, 64)
+		if oldT < nowT {
+			httputil.WriteErrResponse(writer, http.StatusForbidden, "Forbidden.")
+			return
+		}
+	}
+
 	ext := file.GetFileExt(fn)
 	headers.Set("Content-Type", *app.GetContentTypeHeader(ext))
 

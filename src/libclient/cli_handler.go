@@ -36,6 +36,7 @@ var (
 	LogLevel            string
 	LogRotationInterval string
 	LogEnable           = true
+	FlagPrivate         = false
 	Secret              string
 	UploadFileList      list.List
 	UpdateConfigList    list.List
@@ -71,9 +72,10 @@ func ExecuteCommand(oClient *Client, command int) {
 // group: file upload group, if not set, use random group
 // skipCheck: whether check md5 before upload
 func upload() {
+	logger.Debug("upload file as", common.TValue(FlagPrivate, "private", "public"))
 	for ele := UploadFileList.Front(); ele != nil; ele = ele.Next() {
 		var startTime = time.Now()
-		fid, e := client.Upload(ele.Value.(string), Group, startTime, skipCheck)
+		fid, e := client.Upload(ele.Value.(string), Group, startTime, skipCheck, FlagPrivate)
 		if e != nil {
 			logger.Error(e)
 		} else {

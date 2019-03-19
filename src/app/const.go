@@ -50,7 +50,7 @@ var (
 	Uploads        int64
 	StageDownloads int
 	StageUploads   int
-	SecondUploads  int  // upload files per sec
+	SecondUploads  int // upload files per sec
 	StartTime      int64
 	TotalFiles     int
 	FinishFiles    int
@@ -62,8 +62,8 @@ var (
 
 	PreferredNetworks list.List
 	PreferredIPPrefix string
-	UploadBusyPoint	  int // upload busy point, count upload files within one minute and determine the file synchronization interval.
-						  // we assume that one node can finish 60 transaction per second
+	UploadBusyPoint   int // upload busy point, count upload files within one minute and determine the file synchronization interval.
+	// we assume that one node can finish 60 transaction per second
 	UploadBusyStatisticsList list.List
 )
 
@@ -87,6 +87,10 @@ const (
 	AccessFlagAdvertise = 2
 
 	UploadBusyWarningLine = 30
+
+	// file flags
+	FLAG_PUBLIC  = 0
+	FLAG_PRIVATE = 1
 )
 
 var ioinLock sync.Mutex

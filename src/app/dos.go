@@ -17,6 +17,7 @@ type FileDO struct {
 	Instance   string `gorm:"column:instance" json:"instance"`
 	Finish     int    `gorm:"column:finish" json:"finish"`
 	FileSize   int64  `gorm:"column:file_size" json:"file_size"`
+	Flag       int    `gorm:"column:flag" json:"flag"` // flag, 0:public, 1:private
 }
 
 func (FileDO) TableName() string {
@@ -149,6 +150,7 @@ type FileVO struct {
 	Instance   string   `gorm:"column:instance" json:"instance"`
 	Finish     int      `gorm:"column:finish" json:"finish"`
 	FileSize   int64    `gorm:"column:file_size" json:"file_size"`
+	Flag       int      `gorm:"column:flag" json:"flag"` // flag, 0:public, 1:private
 	Parts      []PartDO `gorm:"-" json:"parts"`
 }
 
@@ -167,6 +169,7 @@ func (vo *FileVO) From(fileDO *FileDO) *FileVO {
 	vo.Instance = fileDO.Instance
 	vo.Finish = fileDO.Finish
 	vo.FileSize = fileDO.FileSize
+	vo.Flag = fileDO.Flag
 	return vo
 }
 

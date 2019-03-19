@@ -9,6 +9,8 @@ import (
 	"regexp"
 	"strconv"
 	"testing"
+	"time"
+	"util/timeutil"
 )
 
 const ipv4Pattern = "^((25[0-5]|2[0-4]\\d|[0-1]?\\d\\d?)\\.){3}(25[0-5]|2[0-4]\\d|[0-1]?\\d\\d?)$"
@@ -150,4 +152,12 @@ func TestNet3(t *testing.T) {
 	app.PreferredNetworks.PushBack("VMware Network Adapter VMnet1")
 	app.PreferredIPPrefix = "192.168.0"
 	fmt.Println(GetPreferredIPAddress())
+}
+
+func TestNet4(t *testing.T) {
+	fmt.Println(timeutil.GetTimestamp(time.Now()))
+	ts := timeutil.GetTimestamp(time.Now().Add(+time.Second * 30))
+	fmt.Println(Md5sum("123123123123"))
+	fmt.Println(ts)
+	fmt.Println(Md5sum(strconv.FormatInt(ts, 10), "78d3b2c6614972fd9c7ddfaeea1d5649", "OASAD834jA97AAQE761=="))
 }

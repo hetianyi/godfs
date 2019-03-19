@@ -14,7 +14,7 @@
 
 - (x) Merge some transactions(such as file synchronization from tracker, update file synchronization state).
 
-- (x) Java client development.
+- (√) Java client development.
 
 - (x) Add deletion API.
 
