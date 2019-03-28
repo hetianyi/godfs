@@ -82,6 +82,8 @@ cd godfs
 ```shell
 # 例如，为客户端设置tracker服务器
 client config set "trackers=host1:port1[,host2:port2]" "log_level=debug" ...
+# config secret
+client config set "secret=OASAD834jA97AAQE761=="
 # 打印当前的配置
 client config ls
 ```

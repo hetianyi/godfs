@@ -82,6 +82,8 @@ then you can using command ```client``` directly in command line to upload and d
 ```shell
 # set up tracker servers for client
 client config set "trackers=host1:port1[,host2:port2]" "log_level=debug" ...
+# config secret
+client config set "secret=OASAD834jA97AAQE761=="
 # print client config
 client config ls
 ```
