@@ -11,6 +11,8 @@ godfs
 你可以在docker hub上下载最新镜像:
 [https://hub.docker.com/r/hehety/godfs/](https://hub.docker.com/r/hehety/godfs/)
 
+**[2019-03-28 更新] 最新版本1.1.1-dev因数据库改动不兼容之前版本!**
+
 ##### [2019-01-17 更新] 注意：最新的版本 1.1.0+ 和之前版本不兼容！
 
 ##### [2018-12-05 更新] Godfs 现已支持仪表盘来进行简单的资源监控了！
@@ -39,6 +41,7 @@ godfs
 - 支持读写和只读文件节点
 - 文件组内自动同步
 - 仪表盘支持(beta, 开发中)
+- 支持访问令牌
 
 ## 安装
 
@@ -131,6 +134,22 @@ curl -F "file=@/your/file" "http://your.host:http_port/upload"
 # 下载文件
 client download G01/10/M/2c9da7ea280c020db7f4879f8180dfd6 --name 123.zip
 ```
+
+
+
+#### Token的使用
+
+token机制是参考FastDFS实现的，能够控制一个私有文件在一定时间内的可访问性。
+
+token需要在后端自行生成，godfs只需要计算并匹配token，token携带的格式如下：
+
+http://...?tk=<md5>&ts=<timestamp>
+
+token计算：
+
+md5(timestamp+filemd5+secret) ==> token
+
+
 
 ### 从最新源代码构建docker镜像：
 ```shell
@@ -307,6 +326,9 @@ storage server 配置(California)
 
 
 ## 更新日志
+
+2019/03/28
+1. 参考FastDFS实现了访问令牌机制。
 
 2019/01/17
 

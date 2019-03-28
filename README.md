@@ -13,6 +13,8 @@ godfs
 You can pull the image on docker hub:
 [https://hub.docker.com/r/hehety/godfs/](https://hub.docker.com/r/hehety/godfs/)
 
+##### [2019-03-28 UPDATE] Latest Version 1.1.1-dev and later is NOT compatible with previous versions!
+
 ##### [2019-01-17 UPDATE] Latest Version 1.1.0+ is NOT compatible with previous versions!
 
 ##### [2018-12-05 UPDATE] Godfs is now support dashboard for monitoring godfs running state!
@@ -23,22 +25,23 @@ project is here:[https://github.com/hetianyi/godfs-dashboard](https://github.com
 
 ## Features
 
-- Fast, lightweight, stable, out-of-the-box, friendly api.
-- Easy to expand, Stable to RUN.
-- Low resource overhead.
-- Native client api and java client api.
-- API for http upload and download.
-- Support file breakpoint download.
-- Support basic verification for http download and upload.
-- Cross-site resource protection.
-- Clear logs help troubleshoot errors.
+- Fast, lightweight, stable, out-of-the-box, friendly api
+- Easy to expand, Stable to RUN
+- Low resource overhead
+- Native client api and java client api
+- API for http upload and download
+- Support file breakpoint download
+- Support basic verification for http download and upload
+- Cross-site resource protection
+- Clear logs help troubleshoot errors
 - Support different platforms: Linux, Windows, Mac
-- Better support for docker.
-- File fragmentation storage.
-- Better data migration solution.
-- Support readonly node.
-- File synchronization in same group.
+- Better support for docker
+- File fragmentation storage
+- Better data migration solution
+- Support readonly node
+- File synchronization in same group
 - Support dashboard(beta, in development)
+- Support access token
 
 ## Install
 
@@ -131,7 +134,24 @@ If you want to upload file to specified group, you can add parameter ```?group=<
 client download G01/10/M/2c9da7ea280c020db7f4879f8180dfd6 --name 123.zip
 ```
 
+
+
+#### Usage of Token
+
+token refers from FastDFS, it can control a file be accessable within a certain time.
+
+you need to generate token by yourself on backend, godfs only need to calculate from request parameters and compare them, token request format is：
+
+http://...?tk=<md5>&ts=<timestamp>
+
+token calculatation：
+
+md5(timestamp+filemd5+secret) ==> token
+
+
+
 ### build docker image from latest source code:
+
 ```shell
 cd godfs/docker
 docker build -t godfs .
@@ -312,6 +332,10 @@ And I will do more test in the future.
 
 
 ## Update logs
+
+2019/03/28
+1. Refer to FastDFS to implement the token mechanism.
+
 
 2019/01/17
 
