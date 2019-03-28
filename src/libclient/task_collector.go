@@ -94,6 +94,7 @@ func QueryPushFileTaskCollector(tracker *TrackerInstance) {
 // QueryDownloadFileTaskCollector task collector: query files need to sync from other members
 func QueryDownloadFileTaskCollector(tracker *TrackerInstance) {
 	// if current time is busy uploading files, stop synchronize files this time.
+	// TODO
 	if app.UploadBusyPoint > app.UploadBusyWarningLine {
 		logger.Debug("server busy, skip synchronize this time")
 		return
