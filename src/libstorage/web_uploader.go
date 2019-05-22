@@ -132,7 +132,7 @@ func (handler *FileUploadHandlerV1) beginUpload() (*HttpUploadResponse, error) {
 
 	headerContentType := handler.request.Header["Content-Type"]
 	contentType := ""
-	if headerContentType != nil || len(headerContentType) == 0 {
+	if headerContentType != nil && len(headerContentType) > 0 {
 		contentType = headerContentType[0]
 	}
 	if mat, _ := regexp.Match(ContentTypePattern, []byte(contentType)); mat {
