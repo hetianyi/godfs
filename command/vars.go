@@ -22,6 +22,7 @@ var (
 	storageModel           bool      // flag boot as storage mode
 	trackerModel           bool      // flag boot as tracker mode
 	privateUpload          bool      // upload private file
+	showVersion          bool      // show app version
 	uploadGroup            string    // upload group
 	downloadFid            string    // fid to be downloaded
 	customDownloadFileName string    // custom file download location and filename

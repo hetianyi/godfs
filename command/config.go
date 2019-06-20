@@ -1,9 +1,11 @@
 package command
 
 import (
+	"errors"
+	"fmt"
 	"github.com/hetianyi/godfs/common"
-	"github.com/hetianyi/gox/logger"
 	"github.com/urfave/cli"
+	"os"
 )
 
 func Parse(arguments []string) {
@@ -13,6 +15,7 @@ func Parse(arguments []string) {
 	appFlag.HideVersion = true
 	appFlag.Name = "godfs"
 	appFlag.Usage = "godfs"
+	appFlag.HelpName = "godfs"
 
 	// config file location
 	appFlag.Flags = []cli.Flag{
@@ -39,7 +42,7 @@ func Parse(arguments []string) {
 			Destination: &secret,
 		},
 		cli.StringFlag{
-			Name:  "logLevel, ll",
+			Name:  "logLevel",
 			Value: "",
 			Usage: `set log level
 	available options(trace|debug|info|warn|error|fatal)
@@ -47,7 +50,7 @@ func Parse(arguments []string) {
 			Destination: &configFile,
 		},
 		cli.StringFlag{
-			Name:  "trackerServers, ts",
+			Name:  "trackerServers",
 			Value: "",
 			Usage: `set tracker servers, example:
 	[<secret1>@]host1:port1,[<secret2>@]host2:port2
@@ -55,12 +58,17 @@ func Parse(arguments []string) {
 			Destination: &trackers,
 		},
 		cli.StringFlag{
-			Name:  "storageServers, ss",
+			Name:  "storageServers",
 			Value: "",
 			Usage: `set storage servers, example:
 	[<secret1>@]host1:port1,[<secret2>@]host2:port2
 `,
 			Destination: &storages,
+		},
+		cli.BoolFlag{
+			Name:  "version, v",
+			Usage: `show version`,
+			Destination: &showVersion,
 		},
 	}
 
@@ -71,6 +79,10 @@ func Parse(arguments []string) {
 			Usage: "upload local files",
 			Action: func(c *cli.Context) error {
 				finalCommand = UPLOAD_FILE
+				if len(c.Args()) == 0 {
+					return errors.New(`Err: no parameters provided.
+Usage: godfs upload <fid1> <fid2> ...`)
+				}
 				/*workDir, err := file.GetWorkDir()
 				if err != nil {
 					logger.Fatal("error get current work directory: ", err)
@@ -103,6 +115,10 @@ func Parse(arguments []string) {
 			Usage: "download a file through tracker servers or storage servers",
 			Action: func(c *cli.Context) error {
 				finalCommand = DOWNLOAD_FILE
+				if len(c.Args()) == 0 {
+					return errors.New(`Err: no parameters provided.
+Usage: godfs download <fid1> <fid2> ...`)
+				}
 				for i := range c.Args() {
 					uploadFiles.PushBack(c.Args().Get(i))
 				}
@@ -122,6 +138,10 @@ func Parse(arguments []string) {
 			Usage: "inspect infos of some files",
 			Action: func(c *cli.Context) error {
 				finalCommand = INSPECT_FILE
+				if len(c.Args()) == 0 {
+					return errors.New(`Err: no parameters provided.
+Usage: godfs inspect <fid1> <fid2> ...`)
+				}
 				for i := range c.Args() {
 					inspectFiles.PushBack(c.Args().Get(i))
 				}
@@ -130,8 +150,12 @@ func Parse(arguments []string) {
 		},
 		{ // this sub command is only used by client cli
 			Name:  "config",
-			Usage: "config settings command",
+			Usage: "config settings operations",
 			Action: func(c *cli.Context) error {
+				if len(c.Args()) == 0 {
+					cli.ShowSubcommandHelp(c)
+					os.Exit(1)
+				}
 				return nil
 			},
 			Subcommands: []cli.Command{
@@ -140,6 +164,10 @@ func Parse(arguments []string) {
 					Usage: "set configs in 'k=v' form",
 					Action: func(c *cli.Context) error {
 						finalCommand = UPDATE_CONFIG
+						if len(c.Args()) == 0 {
+							return errors.New(`Err: no parameters provided.
+Usage: godfs config set key=value key=value ...`)
+						}
 						for i := range c.Args() {
 							updateConfigList.PushBack(c.Args().Get(i))
 						}
@@ -155,37 +183,33 @@ func Parse(arguments []string) {
 					},
 				},
 			},
-		},
+		},/*
+		{ // this sub command is only used by client cli
+			Name:  "version",
+			Usage: "show version",
+			Action: func(c *cli.Context) error {
+				fmt.Println(common.VERSION)
+				return nil
+			},
+		},*/
 	}
 	cli.AppHelpTemplate = `
-{{if .Usage}} - {{.Usage}}{{end}}Usage: {{if .UsageText}}{{.UsageText}}{{else}}{{.HelpName}} {{if .VisibleFlags}}[global options]{{end}}{{if .Commands}} command [command options]{{end}} {{if .ArgsUsage}}{{.ArgsUsage}}{{else}}[arguments...]{{end}}{{end}}{{if .Version}}{{if not .HideVersion}}
-Version: {{.Version}}{{end}}{{end}}{{if .Description}}
-Description: {{.Description}}{{end}}{{if len .Authors}}
-Author{{with $length := len .Authors}}{{if ne 1 $length}}S{{end}}{{end}}:
-   {{range $index, $author := .Authors}}{{if $index}}
-   {{end}}{{$author}}{{end}}{{end}}{{if .VisibleCommands}}
+Usage: {{if .UsageText}}{{.UsageText}}{{else}}{{.HelpName}} {{if .VisibleFlags}}[global options]{{end}}{{if .Commands}} command [command options]{{end}} {{if .ArgsUsage}}{{.ArgsUsage}}{{else}}[arguments...]{{end}}{{end}}{{if .VisibleCommands}}
 
-Commands: {{range .VisibleCategories}}{{if .Name}}
+Commands:{{range .VisibleCategories}}{{if .Name}}
    {{.Name}}:{{end}}{{range .VisibleCommands}}
      {{join .Names ", "}}{{"\t"}}{{.Usage}}{{end}}{{end}}{{end}}{{if .VisibleFlags}}
 
 Options:
-   {{range $index, $option := .VisibleFlags}}{{if $index}}
-   {{end}}{{$option}}{{end}}{{end}}{{if .Copyright}}
-Copyright:
-   {{.Copyright}}{{end}}
-
+   {{range $index, $option := .VisibleFlags}}{{if $index}}{{end}}{{$option}}
+   {{end}}{{end}}
 `
 
 	cli.CommandHelpTemplate = `
-Usage:
-   {{if .UsageText}}{{.UsageText}}{{else}}{{.HelpName}}{{if .VisibleFlags}} [command options]{{end}} {{if .ArgsUsage}}{{.ArgsUsage}}{{else}}[arguments...]{{end}}{{end}}{{if .Category}}
+Usage: {{if .UsageText}}{{.UsageText}}{{else}}{{.HelpName}}{{if .VisibleFlags}} [command options]{{end}} {{if .ArgsUsage}}{{.ArgsUsage}}{{else}}[arguments...]{{end}}{{end}}
 
 {{.Usage}}
-
-Category:
-   {{.Category}}{{end}}{{if .VisibleFlags}}
-
+{{if .VisibleFlags}}
 Options:
    {{range .VisibleFlags}}{{.}}
    {{end}}{{end}}
@@ -198,15 +222,25 @@ Usage: {{if .UsageText}}{{.UsageText}}{{else}}{{.HelpName}} command{{if .Visible
 
 Commands:{{range .VisibleCategories}}{{if .Name}}
    {{.Name}}:{{end}}{{range .VisibleCommands}}
-     {{join .Names ", "}}{{"\t"}}{{.Usage}}{{end}}
-{{end}}{{if .VisibleFlags}}
+     {{join .Names ", "}}{{"\t"}}{{.Usage}}{{end}}{{end}}{{if .VisibleFlags}}
+
 Options:
    {{range .VisibleFlags}}{{.}}
    {{end}}{{end}}
+
 `
+	appFlag.Action = func(c *cli.Context) error {
+		if showVersion {
+			//fmt.Println(common.VERSION)
+			cli.ShowVersion(c)
+		} else {
+			cli.ShowAppHelp(c)
+		}
+		return nil
+	}
 
 	err := appFlag.Run(arguments)
 	if err != nil {
-		logger.Fatal(err)
+		fmt.Println(err)
 	}
 }
