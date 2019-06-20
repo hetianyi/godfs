@@ -1,1 +1,0 @@
-golang image which has install godfs 3rd libs already
