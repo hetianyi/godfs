@@ -48,6 +48,8 @@ var (
 	httpAuth            string
 	enableMimetypes     bool
 	allowedDomains      string
+	logDir      string
+	disableSaveLogfile     bool
 )
 
 var finalCommand Command

@@ -1,10 +1,16 @@
 package common
 
+import "container/list"
+
 const (
-	VERSION          = "2.0.0"
-	CLIENT  BootMode = 0
-	STORAGE BootMode = 1
-	TRACKER BootMode = 2
+	VERSION                 = "2.0.0"
+	CLIENT         BootMode = 0
+	STORAGE        BootMode = 1
+	TRACKER        BootMode = 2
+	GROUP_PATTERN           = "[0-9a-zA-Z-_]{1,30}"
+	SECRET_PATTERN          = "[^@]{1,30}"
+	SERVER_PATTERN          = "([^@]{1,30}@)?(.+):([1-9][0-9]{0,5})"
+	HTTP_AUTH_PATTERN          = "([^:]+):([^:]+)"
 )
 
 type BootMode uint32
@@ -30,6 +36,8 @@ type StorageConfig struct {
 	HttpAuth              string   `json:"httpAuth"`
 	EnableMimeTypes       bool     `json:"enableMimeTypes"`
 	AllowedDomains        []string `json:"allowedDomains"`
+
+	ParsedTrackers *list.List
 }
 
 type TrackerConfig struct {
@@ -59,4 +67,10 @@ type ClientConfig struct {
 	Storages []string `json:"storages"`
 	LogLevel string   `json:"logLevel"`
 	Secret   string   `json:"secret"`
+}
+
+type Server struct {
+	Host   string `json:"host"`
+	Port   int    `json:"port"`
+	Secret string `json:"secret"`
 }

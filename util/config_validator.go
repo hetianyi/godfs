@@ -1,6 +1,7 @@
 package util
 
 import (
+	"container/list"
 	"errors"
 	"fmt"
 	"github.com/hetianyi/godfs/common"
@@ -16,32 +17,59 @@ func ValidateStorageConfig(c *common.StorageConfig) error {
 	if c == nil {
 		return errors.New("no config provided")
 	}
-
+	// check port range
 	if c.Port < 0 || c.Port > 65535 {
-		return errors.New("invalid port number " + convert.IntToStr(c.Port) + ", port number must in the range of 0 to 65535")
+		return errors.New("invalid port number " +
+			convert.IntToStr(c.Port) + ", port number must in the range of 0 to 65535")
+	}
+	// check advertise port range
+	if c.AdvertisePort < 0 || c.AdvertisePort > 65535 {
+		return errors.New("invalid advertise port number " +
+			convert.IntToStr(c.Port) + ", port number must in the range of 0 to 65535")
+	}
+	// check http port range
+	if c.HttpPort < 0 || c.HttpPort > 65535 {
+		return errors.New("invalid http port number " +
+			convert.IntToStr(c.Port) + ", port number must in the range of 0 to 65535")
+	}
+	// check group
+	if m, err := regexp.MatchString(common.GROUP_PATTERN, c.Group); err != nil || !m {
+		return errors.New("invalid group " + c.Group +
+			", group must match pattern " + common.GROUP_PATTERN)
+	}
+	// check secret
+	if c.Secret != "" {
+		if m, err := regexp.MatchString(common.SECRET_PATTERN, c.Secret); err != nil || !m {
+			return errors.New("invalid secret " + c.Secret +
+				", secret must match pattern " + common.SECRET_PATTERN)
+		}
+	}
+	if c.HttpAuth != "" {
+		if m, err := regexp.MatchString(common.HTTP_AUTH_PATTERN, c.HttpAuth); err != nil || !m {
+			return errors.New("invalid http auth " + c.HttpAuth +
+				", http auth must match pattern " + common.HTTP_AUTH_PATTERN)
+		}
 	}
 
-	if m, err := regexp.MatchString("[0-9a-zA-Z-_]{1,30}", c.Group); err != nil || !m {
-		return errors.New("invalid group " + c.Group + ", group must match pattern " + "[0-9a-zA-Z-_]{1,30}")
-	}
-
+	// check log level
 	c.LogLevel = strings.ToLower(c.LogLevel)
 	if c.LogLevel != "trace" && c.LogLevel != "debug" && c.LogLevel != "info" &&
 		c.LogLevel != "warn" && c.LogLevel != "error" && c.LogLevel != "fatal" {
 		c.LogLevel = "info"
 	}
-
+	// check log rotation interval
 	c.LogRotationInterval = strings.ToLower(c.LogRotationInterval)
 	if c.LogRotationInterval != "h" && c.LogRotationInterval != "d" &&
 		c.LogRotationInterval != "m" && c.LogRotationInterval != "y" {
 		c.LogRotationInterval = "y"
 	}
-
-	if c.MaxRollingLogfileSize != 64 && c.MaxRollingLogfileSize != 128 && c.MaxRollingLogfileSize != 256 &&
-		c.MaxRollingLogfileSize != 512 && c.MaxRollingLogfileSize != 1024 {
+	// check rolling log file size
+	if c.MaxRollingLogfileSize != 64 && c.MaxRollingLogfileSize != 128 &&
+		c.MaxRollingLogfileSize != 256 && c.MaxRollingLogfileSize != 512 &&
+		c.MaxRollingLogfileSize != 1024 {
 		c.MaxRollingLogfileSize = 64
 	}
-
+	// prepare log directory
 	if c.SaveLog2File {
 		if !file.Exists(c.LogDir) {
 			if err := file.CreateDirs(c.LogDir); err != nil {
@@ -49,11 +77,42 @@ func ValidateStorageConfig(c *common.StorageConfig) error {
 			}
 		}
 	}
+	// initialize logger
 	logConfig := &logger.Config{
 		Level: ConvertLogLevel(c.LogLevel),
+		RollingPolicy: []int{ConvertRollInterval(c.LogRotationInterval), ConvertLogFileSize(c.MaxRollingLogfileSize)},
+		Write2File: c.SaveLog2File,
+		AlwaysWriteConsole: true,
+		RollingFileDir: c.LogDir,
+		RollingFileName: "godfs-storage",
 	}
 	logger.Init(logConfig)
 
+	// parse tracker servers
+	if c.Trackers != nil {
+		if c.ParsedTrackers == nil {
+			c.ParsedTrackers = list.New()
+		}
+		for _, t := range c.Trackers {
+			p := regexp.MustCompile(common.SERVER_PATTERN)
+			if p.MatchString(t) {
+				secret := p.ReplaceAllString(t, "$1")
+				host := p.ReplaceAllString(t, "$2")
+				port, _ := convert.StrToInt(p.ReplaceAllString(t, "$3"))
+				server := &common.Server{
+					Host: host,
+					Port: port,
+					Secret: secret,
+				}
+				logger.Debug(fmt.Sprintf("tracker server: %s", t))
+				c.ParsedTrackers.PushBack(server)
+			} else {
+				return errors.New("invalid server string, format must be the pattern of [<secret>@]<host>:<port>")
+			}
+		}
+	}
+	// done!
+	return nil
 }
 
 func ConvertLogLevel(levelString string) logger.Level {
@@ -75,6 +134,7 @@ func ConvertLogLevel(levelString string) logger.Level {
 		return logger.InfoLevel
 	}
 }
+
 func ConvertRollInterval(rollString string) int {
 	rollString = strings.ToLower(rollString)
 	switch rollString {
@@ -88,5 +148,22 @@ func ConvertRollInterval(rollString string) int {
 		return logger.YEAR
 	default:
 		return logger.YEAR
+	}
+}
+
+func ConvertLogFileSize(s int) int {
+	switch s {
+	case 64:
+		return logger.MB64
+	case 128:
+		return logger.MB128
+	case 256:
+		return logger.MB256
+	case 512:
+		return logger.MB512
+	case 1024:
+		return logger.MB1024
+	default:
+		return logger.SIZE_NO_LIMIT
 	}
 }

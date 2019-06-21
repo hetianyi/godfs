@@ -141,6 +141,17 @@ func Parse(arguments []string) {
 	[<secret1>@]host1:port1,[<secret2>@]host2:port2`,
 					Destination: &trackers,
 				},
+				cli.StringFlag{
+					Name:  "logdir",
+					Value: "",
+					Usage: "set log directory",
+					Destination: &logDir,
+				},
+				cli.BoolFlag{
+					Name:  "disable-logfile",
+					Usage: "disable save log to file",
+					Destination: &disableSaveLogfile,
+				},
 			},
 		},
 		{
@@ -244,6 +255,17 @@ func Parse(arguments []string) {
 					Usage: `set tracker servers, example:
 	[<secret1>@]host1:port1,[<secret2>@]host2:port2`,
 					Destination: &trackers,
+				},
+				cli.StringFlag{
+					Name:  "logdir",
+					Value: "",
+					Usage: "set log directory",
+					Destination: &logDir,
+				},
+				cli.BoolFlag{
+					Name:  "disable-logfile",
+					Usage: "disable save log to file",
+					Destination: &disableSaveLogfile,
 				},
 			},
 		},
