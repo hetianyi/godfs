@@ -18,11 +18,8 @@ type Command uint32
 
 // var sets
 var (
-	clientModel            bool      // flag boot as client mode
-	storageModel           bool      // flag boot as storage mode
-	trackerModel           bool      // flag boot as tracker mode
 	privateUpload          bool      // upload private file
-	showVersion          bool      // show app version
+	showVersion            bool      // show app version
 	uploadGroup            string    // upload group
 	downloadFid            string    // fid to be downloaded
 	customDownloadFileName string    // custom file download location and filename
@@ -35,6 +32,22 @@ var (
 	logLevel    string    // log level(trace, debug, info, warn, error, fatal)
 	secret      string    // secret of this instance
 	uploadFiles list.List // files to be uploaded
+
+	group               string
+	instanceId          string
+	bindAddress         string
+	port                int
+	advertiseAddress    string
+	advertisePort       int
+	dataDir             string
+	preferredNetworks   string
+	maxLogfileSize      int
+	logRotationInterval string
+	enableHttp          bool
+	httpPort            int
+	httpAuth            string
+	enableMimetypes     bool
+	allowedDomains      string
 )
 
 var finalCommand Command

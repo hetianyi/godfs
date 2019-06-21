@@ -9,190 +9,391 @@ import (
 )
 
 func Parse(arguments []string) {
-
 	appFlag := cli.NewApp()
 	appFlag.Version = common.VERSION
 	appFlag.HideVersion = true
 	appFlag.Name = "godfs"
 	appFlag.Usage = "godfs"
 	appFlag.HelpName = "godfs"
-
 	// config file location
 	appFlag.Flags = []cli.Flag{
-		cli.BoolFlag{
-			Name:        "tracker",
-			Usage:       "boot as tracker server",
-			Destination: &trackerModel,
-		},
-		cli.BoolFlag{
-			Name:        "storage",
-			Usage:       "boot as storage server",
-			Destination: &storageModel,
-		},
 		cli.StringFlag{
-			Name:        "config, c",
-			Value:       "",
-			Usage:       "use custom config file",
-			Destination: &configFile,
-		},
-		cli.StringFlag{
-			Name:        "secret, s",
-			Value:       "",
-			Usage:       "custom global secret",
-			Destination: &secret,
-		},
-		cli.StringFlag{
-			Name:  "logLevel",
+			Name:  "log-level",
 			Value: "",
-			Usage: `set log level
-	available options(trace|debug|info|warn|error|fatal)
-`,
-			Destination: &configFile,
+			Usage: `set log level, available options:
+	(trace|debug|info|warn|error|fatal)`,
+			Destination: &logLevel,
+		},
+		cli.IntFlag{
+			Name:  "max-logfile-size",
+			Value: 0,
+			Usage: `rolling log file max size, available options:
+	(0|64|128|256|512|1024)`,
+			Destination: &maxLogfileSize,
 		},
 		cli.StringFlag{
-			Name:  "trackerServers",
-			Value: "",
-			Usage: `set tracker servers, example:
-	[<secret1>@]host1:port1,[<secret2>@]host2:port2
-`,
-			Destination: &trackers,
-		},
-		cli.StringFlag{
-			Name:  "storageServers",
-			Value: "",
-			Usage: `set storage servers, example:
-	[<secret1>@]host1:port1,[<secret2>@]host2:port2
-`,
-			Destination: &storages,
+			Name:        "log-rotation-interval",
+			Value:       "d",
+			Usage:       "log rotation interval(h|d|m|y)",
+			Destination: &logRotationInterval,
 		},
 		cli.BoolFlag{
-			Name:  "version, v",
-			Usage: `show version`,
+			Name:        "version, v",
+			Usage:       `show version`,
 			Destination: &showVersion,
 		},
 	}
 
-	// sub command 'upload'
 	appFlag.Commands = []cli.Command{
 		{
-			Name:  "upload",
-			Usage: "upload local files",
+			Name:  "tracker",
+			Usage: "start as tracker server",
 			Action: func(c *cli.Context) error {
-				finalCommand = UPLOAD_FILE
-				if len(c.Args()) == 0 {
-					return errors.New(`Err: no parameters provided.
-Usage: godfs upload <fid1> <fid2> ...`)
-				}
-				/*workDir, err := file.GetWorkDir()
-				if err != nil {
-					logger.Fatal("error get current work directory: ", err)
-				}
-				absPath, err := filepath.Abs(workDir)
-				if err != nil {
-					logger.Fatal("error get absolute work directory: ", err)
-				}*/
-				for i := range c.Args() {
-					uploadFiles.PushBack(c.Args().Get(i))
-				}
+				finalCommand = BOOT_TRACKER
 				return nil
 			},
 			Flags: []cli.Flag{
+				cli.StringFlag{
+					Name:        "config, c",
+					Value:       "",
+					Usage:       "use custom config file",
+					Destination: &configFile,
+				},
+				cli.StringFlag{
+					Name:        "secret, s",
+					Value:       "",
+					Usage:       "custom global secret",
+					Destination: &secret,
+				},
+				cli.StringFlag{
+					Name:        "instance-id",
+					Value:       "",
+					Usage:       "set instance id of server instance",
+					Destination: &instanceId,
+				},
+				cli.StringFlag{
+					Name:        "bind-address",
+					Value:       "",
+					Usage:       "bind listening address",
+					Destination: &bindAddress,
+				},
+				cli.IntFlag{
+					Name:        "port, p",
+					Value:       3389,
+					Usage:       "server tcp port",
+					Destination: &port,
+				},
+				cli.StringFlag{
+					Name:        "advertise-address",
+					Value:       "",
+					Usage:       "advertise address is the broadcast address",
+					Destination: &advertiseAddress,
+				},
+				cli.IntFlag{
+					Name:        "advertise-port",
+					Value:       3389,
+					Usage:       "advertise port is the broadcast port",
+					Destination: &advertisePort,
+				},
+				cli.StringFlag{
+					Name:        "data-dir",
+					Value:       "./data",
+					Usage:       "data directory",
+					Destination: &dataDir,
+				},
+				cli.StringFlag{
+					Name:        "preferred-networks",
+					Value:       "",
+					Usage:       "choose preferred network interface for registering",
+					Destination: &preferredNetworks,
+				},
+				cli.BoolTFlag{
+					Name:        "enable-http",
+					Usage:       "enable http server",
+					Destination: &enableHttp,
+				},
+				cli.IntFlag{
+					Name:        "http-port",
+					Value:       8001,
+					Usage:       "http port",
+					Destination: &httpPort,
+				},
+				cli.StringFlag{
+					Name:        "http-auth",
+					Value:       "",
+					Usage:       "http authentication",
+					Destination: &httpAuth,
+				},
+				cli.BoolTFlag{
+					Name:        "enable-mimetypes",
+					Usage:       "enable http mime type",
+					Destination: &enableMimetypes,
+				},
+				cli.StringFlag{
+					Name:        "allowed-domains",
+					Usage:       "allowed access domains",
+					Destination: &allowedDomains,
+				},
+				cli.StringFlag{
+					Name:  "trackerServers",
+					Value: "",
+					Usage: `set tracker servers, example:
+	[<secret1>@]host1:port1,[<secret2>@]host2:port2`,
+					Destination: &trackers,
+				},
+			},
+		},
+		{
+			Name:  "storage",
+			Usage: "start as storage server",
+			Action: func(c *cli.Context) error {
+				finalCommand = BOOT_STORAGE
+				return nil
+			},
+			Flags: []cli.Flag{
+				cli.StringFlag{
+					Name:        "secret, s",
+					Value:       "",
+					Usage:       "custom global secret",
+					Destination: &secret,
+				},
 				cli.StringFlag{
 					Name:        "group, g",
 					Value:       "",
-					Usage:       "upload files to specific group",
-					Destination: &uploadGroup,
+					Usage:       "set group name of storage server",
+					Destination: &group,
 				},
-				cli.BoolFlag{
-					Name:        "private, p",
-					Usage:       "mark as private files",
-					Destination: &privateUpload,
+				cli.StringFlag{
+					Name:        "config, c",
+					Value:       "",
+					Usage:       "use custom config file",
+					Destination: &configFile,
+				},
+				cli.StringFlag{
+					Name:        "instance-id",
+					Value:       "",
+					Usage:       "set instance id of server instance",
+					Destination: &instanceId,
+				},
+				cli.StringFlag{
+					Name:        "bind-address",
+					Value:       "",
+					Usage:       "bind listening address",
+					Destination: &bindAddress,
+				},
+				cli.IntFlag{
+					Name:        "port, p",
+					Value:       3389,
+					Usage:       "server tcp port",
+					Destination: &port,
+				},
+				cli.StringFlag{
+					Name:        "advertise-address",
+					Value:       "",
+					Usage:       "advertise address is the broadcast address",
+					Destination: &advertiseAddress,
+				},
+				cli.IntFlag{
+					Name:        "advertise-port",
+					Value:       3389,
+					Usage:       "advertise port is the broadcast port",
+					Destination: &advertisePort,
+				},
+				cli.StringFlag{
+					Name:        "data-dir",
+					Value:       "./data",
+					Usage:       "data directory",
+					Destination: &dataDir,
+				},
+				cli.StringFlag{
+					Name:        "preferred-networks",
+					Value:       "",
+					Usage:       "choose preferred network interface for registering",
+					Destination: &preferredNetworks,
+				},
+				cli.BoolTFlag{
+					Name:        "enable-http",
+					Usage:       "enable http server",
+					Destination: &enableHttp,
+				},
+				cli.IntFlag{
+					Name:        "http-port",
+					Value:       8001,
+					Usage:       "http port",
+					Destination: &httpPort,
+				},
+				cli.StringFlag{
+					Name:        "http-auth",
+					Value:       "",
+					Usage:       "http authentication",
+					Destination: &httpAuth,
+				},
+				cli.BoolTFlag{
+					Name:        "enable-mimetypes",
+					Usage:       "enable http mime type",
+					Destination: &enableMimetypes,
+				},
+				cli.StringFlag{
+					Name:        "allowed-domains",
+					Usage:       "allowed access domains",
+					Destination: &allowedDomains,
+				},
+				cli.StringFlag{
+					Name:  "trackerServers",
+					Value: "",
+					Usage: `set tracker servers, example:
+	[<secret1>@]host1:port1,[<secret2>@]host2:port2`,
+					Destination: &trackers,
 				},
 			},
 		},
 		{
-			Name:  "download",
-			Usage: "download a file through tracker servers or storage servers",
+			Name:  "client",
+			Usage: "godfs client cli",
 			Action: func(c *cli.Context) error {
-				finalCommand = DOWNLOAD_FILE
 				if len(c.Args()) == 0 {
-					return errors.New(`Err: no parameters provided.
-Usage: godfs download <fid1> <fid2> ...`)
-				}
-				for i := range c.Args() {
-					uploadFiles.PushBack(c.Args().Get(i))
+					cli.ShowSubcommandHelp(c)
+					os.Exit(0)
 				}
 				return nil
 			},
 			Flags: []cli.Flag{
 				cli.StringFlag{
-					Name:        "name, n",
+					Name:        "config, c",
 					Value:       "",
-					Usage:       "custom filename of the download file",
-					Destination: &customDownloadFileName,
+					Usage:       "use custom config file",
+					Destination: &configFile,
+				},
+				cli.StringFlag{
+					Name:  "storageServers",
+					Value: "",
+					Usage: `set storage servers, example:
+	[<secret1>@]host1:port1,[<secret2>@]host2:port2`,
+					Destination: &storages,
+				},
+				cli.StringFlag{
+					Name:  "trackerServers",
+					Value: "",
+					Usage: `set tracker servers, example:
+	[<secret1>@]host1:port1,[<secret2>@]host2:port2`,
+					Destination: &trackers,
 				},
 			},
-		},
-		{
-			Name:  "inspect",
-			Usage: "inspect infos of some files",
-			Action: func(c *cli.Context) error {
-				finalCommand = INSPECT_FILE
-				if len(c.Args()) == 0 {
-					return errors.New(`Err: no parameters provided.
-Usage: godfs inspect <fid1> <fid2> ...`)
-				}
-				for i := range c.Args() {
-					inspectFiles.PushBack(c.Args().Get(i))
-				}
-				return nil
-			},
-		},
-		{ // this sub command is only used by client cli
-			Name:  "config",
-			Usage: "config settings operations",
-			Action: func(c *cli.Context) error {
-				if len(c.Args()) == 0 {
-					cli.ShowSubcommandHelp(c)
-					os.Exit(1)
-				}
-				return nil
-			},
-			Subcommands: []cli.Command{
+			Subcommands: cli.Commands{
 				{
-					Name:  "set",
-					Usage: "set configs in 'k=v' form",
+					Name:  "upload",
+					Usage: "upload local files",
 					Action: func(c *cli.Context) error {
-						finalCommand = UPDATE_CONFIG
+						finalCommand = UPLOAD_FILE
 						if len(c.Args()) == 0 {
 							return errors.New(`Err: no parameters provided.
-Usage: godfs config set key=value key=value ...`)
+Usage: godfs upload <file1> <file2> ...`)
 						}
+						/*workDir, err := file.GetWorkDir()
+						if err != nil {
+							logger.Fatal("error get current work directory: ", err)
+						}
+						absPath, err := filepath.Abs(workDir)
+						if err != nil {
+							logger.Fatal("error get absolute work directory: ", err)
+						}*/
 						for i := range c.Args() {
-							updateConfigList.PushBack(c.Args().Get(i))
+							uploadFiles.PushBack(c.Args().Get(i))
 						}
 						return nil
+					},
+					Flags: []cli.Flag{
+						cli.StringFlag{
+							Name:        "group, g",
+							Value:       "",
+							Usage:       "upload files to specific group",
+							Destination: &uploadGroup,
+						},
+						cli.BoolFlag{
+							Name:        "private, p",
+							Usage:       "mark as private files",
+							Destination: &privateUpload,
+						},
 					},
 				},
 				{
-					Name:  "ls",
-					Usage: "show configs",
+					Name:  "download",
+					Usage: "download a file through tracker servers or storage servers",
 					Action: func(c *cli.Context) error {
-						finalCommand = SHOW_CONFIG
+						finalCommand = DOWNLOAD_FILE
+						if len(c.Args()) == 0 {
+							return errors.New(`Err: no parameters provided.
+Usage: godfs download <fid1> <fid2> ...`)
+						}
+						for i := range c.Args() {
+							uploadFiles.PushBack(c.Args().Get(i))
+						}
+						return nil
+					},
+					Flags: []cli.Flag{
+						cli.StringFlag{
+							Name:        "name, n",
+							Value:       "",
+							Usage:       "custom filename of the download file",
+							Destination: &customDownloadFileName,
+						},
+					},
+				},
+				{
+					Name:  "inspect",
+					Usage: "inspect infos of some files",
+					Action: func(c *cli.Context) error {
+						finalCommand = INSPECT_FILE
+						if len(c.Args()) == 0 {
+							return errors.New(`Err: no parameters provided.
+Usage: godfs inspect <fid1> <fid2> ...`)
+						}
+						for i := range c.Args() {
+							inspectFiles.PushBack(c.Args().Get(i))
+						}
 						return nil
 					},
 				},
+				{ // this sub command is only used by client cli
+					Name:  "config",
+					Usage: "config settings operations",
+					Action: func(c *cli.Context) error {
+						if len(c.Args()) == 0 {
+							cli.ShowSubcommandHelp(c)
+							os.Exit(0)
+						}
+						return nil
+					},
+					Subcommands: []cli.Command{
+						{
+							Name:  "set",
+							Usage: "set configs in 'k=v' form",
+							Action: func(c *cli.Context) error {
+								finalCommand = UPDATE_CONFIG
+								if len(c.Args()) == 0 {
+									return errors.New(`Err: no parameters provided.
+Usage: godfs config set key=value key=value ...`)
+								}
+								for i := range c.Args() {
+									updateConfigList.PushBack(c.Args().Get(i))
+								}
+								return nil
+							},
+						},
+						{
+							Name:  "ls",
+							Usage: "show configs",
+							Action: func(c *cli.Context) error {
+								finalCommand = SHOW_CONFIG
+								return nil
+							},
+						},
+					},
+				},
 			},
-		},/*
-		{ // this sub command is only used by client cli
-			Name:  "version",
-			Usage: "show version",
-			Action: func(c *cli.Context) error {
-				fmt.Println(common.VERSION)
-				return nil
-			},
-		},*/
+		},
 	}
+
 	cli.AppHelpTemplate = `
 Usage: {{if .UsageText}}{{.UsageText}}{{else}}{{.HelpName}} {{if .VisibleFlags}}[global options]{{end}}{{if .Commands}} command [command options]{{end}} {{if .ArgsUsage}}{{.ArgsUsage}}{{else}}[arguments...]{{end}}{{end}}{{if .VisibleCommands}}
 
@@ -202,8 +403,7 @@ Commands:{{range .VisibleCategories}}{{if .Name}}
 
 Options:
    {{range $index, $option := .VisibleFlags}}{{if $index}}{{end}}{{$option}}
-   {{end}}{{end}}
-`
+   {{end}}{{end}}`
 
 	cli.CommandHelpTemplate = `
 Usage: {{if .UsageText}}{{.UsageText}}{{else}}{{.HelpName}}{{if .VisibleFlags}} [command options]{{end}} {{if .ArgsUsage}}{{.ArgsUsage}}{{else}}[arguments...]{{end}}{{end}}
@@ -212,8 +412,7 @@ Usage: {{if .UsageText}}{{.UsageText}}{{else}}{{.HelpName}}{{if .VisibleFlags}} 
 {{if .VisibleFlags}}
 Options:
    {{range .VisibleFlags}}{{.}}
-   {{end}}{{end}}
-`
+   {{end}}{{end}}`
 
 	cli.SubcommandHelpTemplate = `
 Usage: {{if .UsageText}}{{.UsageText}}{{else}}{{.HelpName}} command{{if .VisibleFlags}} [command options]{{end}} {{if .ArgsUsage}}{{.ArgsUsage}}{{else}}[arguments...]{{end}}{{end}}
@@ -226,21 +425,30 @@ Commands:{{range .VisibleCategories}}{{if .Name}}
 
 Options:
    {{range .VisibleFlags}}{{.}}
-   {{end}}{{end}}
+   {{end}}{{end}}`
 
-`
 	appFlag.Action = func(c *cli.Context) error {
 		if showVersion {
-			//fmt.Println(common.VERSION)
 			cli.ShowVersion(c)
-		} else {
-			cli.ShowAppHelp(c)
+			os.Exit(0)
+			return nil
 		}
+		cli.ShowAppHelp(c)
+		os.Exit(0)
 		return nil
 	}
 
 	err := appFlag.Run(arguments)
 	if err != nil {
 		fmt.Println(err)
+		os.Exit(1)
+		return
 	}
+
+	if finalCommand == SHOW_HELP {
+		os.Exit(0)
+	}
+
+	fmt.Println("finalCommand=", finalCommand)
+	call(finalCommand)
 }
