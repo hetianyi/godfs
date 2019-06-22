@@ -22,12 +22,9 @@ func StartStorageHttpServer(c *common.StorageConfig) {
 		MaxHeaderBytes:    1 << 20, // 1MB
 	}
 	go func() {
-		for {
-			logger.Info("http server started on port ", c.HttpPort)
-			if err := srv.ListenAndServe(); err != nil {
-				logger.Error("cannot start http server: ", err)
-				time.Sleep(time.Second * 5)
-			}
+		logger.Info("http server starting on port ", c.HttpPort)
+		if err := srv.ListenAndServe(); err != nil {
+			logger.Fatal(err)
 		}
 	}()
 }

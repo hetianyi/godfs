@@ -14,3 +14,20 @@ const (
 	DEFAULT_TRACKER_TCP_PORT           = 3390
 	DEFAULT_TRACKER_HTTP_PORT          = 8002
 )
+
+// tcp operation codes
+const (
+	OPERATION_RESPONSE Operation = iota // connect
+	OPERATION_CONNECT         // response
+	OPERATION_UPLOAD         // response
+)
+// status codes
+const (
+	SUCCESS = iota
+	ERROR
+	UNAUTHORIZED
+)
+
+var (
+	Config *StorageConfig
+)

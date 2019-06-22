@@ -13,10 +13,10 @@ func PrintLogo() {
 	    \___.╯ \__/ |__/ |   __,╯
 	`)*/
 	fmt.Print(`
-   ______  ______  _____    _____  _____
-  / ____/ / __  / / ___ ╮  / ___/ / ___   GoDFS::v` + common.VERSION + `
- / /_/ / / /_/ / / /__/ ) / /__/ /__  /   A distribute filesystem.
-/_____/ /_____/ /____.·╯ /_/ ________/    github.com/hetianyi/godfs
+   ____    ____    _____    _____  _____
+  / ___\  / __ \  / ___ \  / ___/ / ___   GoDFS::v` + common.VERSION + `
+ / /_/\  / /_/ / / /__/ | / /__/ /__  /   A distribute filesystem.
+ \____/  \____/ /____, ' /_/ ________/    github.com/hetianyi/godfs
 
 `)
 }

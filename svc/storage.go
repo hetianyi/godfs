@@ -7,8 +7,8 @@ import (
 	"os"
 )
 
-func BootStorageServer(c *common.StorageConfig) {
-	if err := util.ValidateStorageConfig(c); err != nil {
+func BootStorageServer() {
+	if err := util.ValidateStorageConfig(common.Config); err != nil {
 		fmt.Println("Err:", err)
 		os.Exit(1)
 	}
@@ -16,8 +16,8 @@ func BootStorageServer(c *common.StorageConfig) {
 	/*cbs, _ := json.MarshalIndent(c, "", "  ")
 	fmt.Println("boot storage server success!")
 	fmt.Println(string(cbs))*/
-	if c.EnableHttp {
-		StartStorageHttpServer(c)
+	if common.Config.EnableHttp {
+		StartStorageHttpServer(common.Config)
 	}
-	StartStorageTcpServer(c)
+	StartStorageTcpServer()
 }

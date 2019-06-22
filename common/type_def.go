@@ -60,3 +60,12 @@ type Server struct {
 	Port   int    `json:"port"`
 	Secret string `json:"secret"`
 }
+
+type Operation byte
+
+type Header struct {
+	Operation  Operation              `json:"op"`
+	Result     byte                   `json:"ret"`
+	Msg        string                 `json:"msg"`
+	Attributes map[string]interface{} `json:"ats"`
+}

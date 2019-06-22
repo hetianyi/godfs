@@ -8,7 +8,8 @@ import (
 func call(cmd Command) {
 	switch cmd {
 	case BOOT_STORAGE:
-		svc.BootStorageServer(ConfigAssembly(common.STORAGE).(*common.StorageConfig))
+		ConfigAssembly(common.STORAGE)
+		svc.BootStorageServer()
 		break
 	}
 }

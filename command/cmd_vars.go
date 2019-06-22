@@ -107,6 +107,7 @@ func ConfigAssembly(bm common.BootMode) interface{} {
 			c.AllowedDomains = strings.Split(allowedDomains, ",")
 		}
 		// TODO load and initialize instance id.
+		common.Config = c
 		return c
 	}
 	return nil
