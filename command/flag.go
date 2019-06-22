@@ -79,7 +79,7 @@ func Parse(arguments []string) {
 				},
 				cli.IntFlag{
 					Name:        "port, p",
-					Value:       3389,
+					Value:       0,
 					Usage:       "server tcp port",
 					Destination: &port,
 				},
@@ -91,21 +91,21 @@ func Parse(arguments []string) {
 				},
 				cli.IntFlag{
 					Name:        "advertise-port",
-					Value:       3389,
+					Value:       0,
 					Usage:       "advertise port is the broadcast port",
 					Destination: &advertisePort,
 				},
 				cli.StringFlag{
 					Name:        "data-dir",
-					Value:       "./data",
+					Value:       "",
 					Usage:       "data directory",
 					Destination: &dataDir,
 				},
 				cli.StringFlag{
-					Name:        "preferred-networks",
+					Name:        "preferred-network",
 					Value:       "",
 					Usage:       "choose preferred network interface for registering",
-					Destination: &preferredNetworks,
+					Destination: &preferredNetwork,
 				},
 				cli.BoolTFlag{
 					Name:        "enable-http",
@@ -114,7 +114,7 @@ func Parse(arguments []string) {
 				},
 				cli.IntFlag{
 					Name:        "http-port",
-					Value:       8001,
+					Value:       0,
 					Usage:       "http port",
 					Destination: &httpPort,
 				},
@@ -124,7 +124,7 @@ func Parse(arguments []string) {
 					Usage:       "http authentication",
 					Destination: &httpAuth,
 				},
-				cli.BoolTFlag{
+				cli.BoolFlag{
 					Name:        "enable-mimetypes",
 					Usage:       "enable http mime type",
 					Destination: &enableMimetypes,
@@ -135,21 +135,21 @@ func Parse(arguments []string) {
 					Destination: &allowedDomains,
 				},
 				cli.StringFlag{
-					Name:  "trackerServers",
+					Name:  "trackers",
 					Value: "",
 					Usage: `set tracker servers, example:
 	[<secret1>@]host1:port1,[<secret2>@]host2:port2`,
 					Destination: &trackers,
 				},
 				cli.StringFlag{
-					Name:  "logdir",
-					Value: "",
-					Usage: "set log directory",
+					Name:        "logdir",
+					Value:       "",
+					Usage:       "set log directory",
 					Destination: &logDir,
 				},
 				cli.BoolFlag{
-					Name:  "disable-logfile",
-					Usage: "disable save log to file",
+					Name:        "disable-logfile",
+					Usage:       "disable save log to file",
 					Destination: &disableSaveLogfile,
 				},
 			},
@@ -194,7 +194,7 @@ func Parse(arguments []string) {
 				},
 				cli.IntFlag{
 					Name:        "port, p",
-					Value:       3389,
+					Value:       0,
 					Usage:       "server tcp port",
 					Destination: &port,
 				},
@@ -206,21 +206,21 @@ func Parse(arguments []string) {
 				},
 				cli.IntFlag{
 					Name:        "advertise-port",
-					Value:       3389,
+					Value:       0,
 					Usage:       "advertise port is the broadcast port",
 					Destination: &advertisePort,
 				},
 				cli.StringFlag{
 					Name:        "data-dir",
-					Value:       "./data",
+					Value:       "",
 					Usage:       "data directory",
 					Destination: &dataDir,
 				},
 				cli.StringFlag{
-					Name:        "preferred-networks",
+					Name:        "preferred-network",
 					Value:       "",
 					Usage:       "choose preferred network interface for registering",
-					Destination: &preferredNetworks,
+					Destination: &preferredNetwork,
 				},
 				cli.BoolTFlag{
 					Name:        "enable-http",
@@ -229,7 +229,7 @@ func Parse(arguments []string) {
 				},
 				cli.IntFlag{
 					Name:        "http-port",
-					Value:       8001,
+					Value:       0,
 					Usage:       "http port",
 					Destination: &httpPort,
 				},
@@ -239,7 +239,7 @@ func Parse(arguments []string) {
 					Usage:       "http authentication",
 					Destination: &httpAuth,
 				},
-				cli.BoolTFlag{
+				cli.BoolFlag{
 					Name:        "enable-mimetypes",
 					Usage:       "enable http mime type",
 					Destination: &enableMimetypes,
@@ -250,21 +250,21 @@ func Parse(arguments []string) {
 					Destination: &allowedDomains,
 				},
 				cli.StringFlag{
-					Name:  "trackerServers",
+					Name:  "trackers",
 					Value: "",
 					Usage: `set tracker servers, example:
 	[<secret1>@]host1:port1,[<secret2>@]host2:port2`,
 					Destination: &trackers,
 				},
 				cli.StringFlag{
-					Name:  "logdir",
-					Value: "",
-					Usage: "set log directory",
+					Name:        "logdir",
+					Value:       "",
+					Usage:       "set log directory",
 					Destination: &logDir,
 				},
 				cli.BoolFlag{
-					Name:  "disable-logfile",
-					Usage: "disable save log to file",
+					Name:        "disable-logfile",
+					Usage:       "disable save log to file",
 					Destination: &disableSaveLogfile,
 				},
 			},
@@ -287,7 +287,7 @@ func Parse(arguments []string) {
 					Destination: &configFile,
 				},
 				cli.StringFlag{
-					Name:  "storageServers",
+					Name:  "storages",
 					Value: "",
 					Usage: `set storage servers, example:
 	[<secret1>@]host1:port1,[<secret2>@]host2:port2`,
@@ -471,6 +471,5 @@ Options:
 		os.Exit(0)
 	}
 
-	fmt.Println("finalCommand=", finalCommand)
 	call(finalCommand)
 }

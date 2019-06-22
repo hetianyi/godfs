@@ -1,9 +1,7 @@
 package util
 
 import (
-	"container/list"
 	"errors"
-	"fmt"
 	"github.com/hetianyi/godfs/common"
 	"github.com/hetianyi/gox/convert"
 	"github.com/hetianyi/gox/file"
@@ -34,20 +32,20 @@ func ValidateStorageConfig(c *common.StorageConfig) error {
 	}
 	// check group
 	if m, err := regexp.MatchString(common.GROUP_PATTERN, c.Group); err != nil || !m {
-		return errors.New("invalid group " + c.Group +
-			", group must match pattern " + common.GROUP_PATTERN)
+		return errors.New("invalid group \"" + c.Group +
+			"\", group must match pattern " + common.GROUP_PATTERN)
 	}
 	// check secret
 	if c.Secret != "" {
 		if m, err := regexp.MatchString(common.SECRET_PATTERN, c.Secret); err != nil || !m {
-			return errors.New("invalid secret " + c.Secret +
-				", secret must match pattern " + common.SECRET_PATTERN)
+			return errors.New("invalid secret \"" + c.Secret +
+				"\", secret must match pattern " + common.SECRET_PATTERN)
 		}
 	}
 	if c.HttpAuth != "" {
 		if m, err := regexp.MatchString(common.HTTP_AUTH_PATTERN, c.HttpAuth); err != nil || !m {
-			return errors.New("invalid http auth " + c.HttpAuth +
-				", http auth must match pattern " + common.HTTP_AUTH_PATTERN)
+			return errors.New("invalid http auth \"" + c.HttpAuth +
+				"\", http auth must match pattern " + common.HTTP_AUTH_PATTERN)
 		}
 	}
 
@@ -79,33 +77,32 @@ func ValidateStorageConfig(c *common.StorageConfig) error {
 	}
 	// initialize logger
 	logConfig := &logger.Config{
-		Level: ConvertLogLevel(c.LogLevel),
-		RollingPolicy: []int{ConvertRollInterval(c.LogRotationInterval), ConvertLogFileSize(c.MaxRollingLogfileSize)},
-		Write2File: c.SaveLog2File,
+		Level:              ConvertLogLevel(c.LogLevel),
+		RollingPolicy:      []int{ConvertRollInterval(c.LogRotationInterval), ConvertLogFileSize(c.MaxRollingLogfileSize)},
+		Write2File:         c.SaveLog2File,
 		AlwaysWriteConsole: true,
-		RollingFileDir: c.LogDir,
-		RollingFileName: "godfs-storage",
+		RollingFileDir:     c.LogDir,
+		RollingFileName:    "godfs-storage",
 	}
 	logger.Init(logConfig)
 
 	// parse tracker servers
 	if c.Trackers != nil {
 		if c.ParsedTrackers == nil {
-			c.ParsedTrackers = list.New()
+			c.ParsedTrackers = make([]common.Server, len(c.Trackers))
 		}
-		for _, t := range c.Trackers {
+		for i, t := range c.Trackers {
 			p := regexp.MustCompile(common.SERVER_PATTERN)
 			if p.MatchString(t) {
-				secret := p.ReplaceAllString(t, "$1")
-				host := p.ReplaceAllString(t, "$2")
-				port, _ := convert.StrToInt(p.ReplaceAllString(t, "$3"))
-				server := &common.Server{
-					Host: host,
-					Port: port,
+				secret := p.ReplaceAllString(t, "$2")
+				host := p.ReplaceAllString(t, "$3")
+				port, _ := convert.StrToInt(p.ReplaceAllString(t, "$4"))
+				server := common.Server{
+					Host:   host,
+					Port:   port,
 					Secret: secret,
 				}
-				logger.Debug(fmt.Sprintf("tracker server: %s", t))
-				c.ParsedTrackers.PushBack(server)
+				c.ParsedTrackers[i] = server
 			} else {
 				return errors.New("invalid server string, format must be the pattern of [<secret>@]<host>:<port>")
 			}

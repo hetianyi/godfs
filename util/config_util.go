@@ -4,8 +4,11 @@ import (
 	"bytes"
 	"encoding/json"
 	"github.com/hetianyi/godfs/common"
+	"github.com/hetianyi/gox"
 	"github.com/hetianyi/gox/file"
+	"github.com/mitchellh/go-homedir"
 	"io"
+	"runtime"
 )
 
 // LoadConfig loads config from config file.
@@ -37,4 +40,32 @@ func WriteConfig(c string, container interface{}) error {
 		return err
 	}
 	return nil
+}
+
+// DefaultLogDir returns default system log directory.
+func DefaultLogDir() string {
+	if runtime.GOOS == "windows" {
+		user, err := homedir.Dir()
+		if err != nil {
+			return "/var/log/godfs"
+		}
+		return user + "\\AppData\\Local\\godfs\\Logs"
+	}
+	return "/var/log/godfs"
+}
+
+// DefaultLogDir returns default system log directory.
+func DefaultDataDir() string {
+	user, err := homedir.Dir()
+	if err != nil {
+		return "/tmp/godfs"
+	}
+	if runtime.GOOS == "windows" {
+		return user + "\\AppData\\Local\\godfs\\Data"
+	}
+	return user + "/godfs/data"
+}
+
+func DefaultAdvertiseAddress() {
+	gox.GetMyAddress("")
 }
