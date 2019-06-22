@@ -12,6 +12,7 @@ func BootStorageServer(c *common.StorageConfig) {
 		fmt.Println("Err:", err)
 		os.Exit(1)
 	}
+	util.PrintLogo()
 	/*cbs, _ := json.MarshalIndent(c, "", "  ")
 	fmt.Println("boot storage server success!")
 	fmt.Println(string(cbs))*/
