@@ -75,6 +75,13 @@ func ValidateStorageConfig(c *common.StorageConfig) error {
 			}
 		}
 	}
+	c.DataDir = file.FixPath(c.DataDir)
+	if !file.Exists(c.DataDir) {
+		if err := file.CreateDirs(c.DataDir); err != nil {
+			return err
+		}
+	}
+	
 	// initialize logger
 	logConfig := &logger.Config{
 		Level:              ConvertLogLevel(c.LogLevel),

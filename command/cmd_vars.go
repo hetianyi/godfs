@@ -84,6 +84,7 @@ func ConfigAssembly(bm common.BootMode) interface{} {
 			dataDir = util.DefaultDataDir()
 		}
 		c.DataDir = dataDir
+		c.TmpDir = dataDir + "/tmp"
 
 		if advertisePort == 0 {
 			advertisePort = c.Port

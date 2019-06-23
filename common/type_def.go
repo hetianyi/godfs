@@ -6,12 +6,13 @@ type StorageConfig struct {
 	Trackers              []string `json:"trackers"`
 	Secret                string   `json:"secret"`
 	Group                 string   `json:"group"`
-	InstanceId            string   `json:"instanceId"`
-	BindAddress           string   `json:"bindAddress"`
-	Port                  int      `json:"port"`
-	AdvertiseAddress      string   `json:"advertiseAddress"`
-	AdvertisePort         int      `json:"advertisePort"`
-	DataDir               string   `json:"dataDir"`
+	InstanceId            string // one data dir has only one instanceId
+	BindAddress           string `json:"bindAddress"`
+	Port                  int    `json:"port"`
+	AdvertiseAddress      string `json:"advertiseAddress"`
+	AdvertisePort         int    `json:"advertisePort"`
+	DataDir               string `json:"dataDir"`
+	TmpDir                string
 	PreferredNetworks     string   `json:"preferredNetworks"`
 	LogLevel              string   `json:"logLevel"`
 	LogDir                string   `json:"logDir"`
@@ -29,7 +30,7 @@ type StorageConfig struct {
 type TrackerConfig struct {
 	Trackers              []string `json:"trackers"`
 	Secret                string   `json:"secret"`
-	InstanceId            string   `json:"instanceId"`
+	InstanceId            string // one data dir has only one instanceId
 	BindAddress           string   `json:"bindAddress"`
 	Port                  int      `json:"port"`
 	AdvertiseAddress      string   `json:"advertiseAddress"`
@@ -62,10 +63,17 @@ type Server struct {
 }
 
 type Operation byte
+type OperationResult byte
 
 type Header struct {
 	Operation  Operation              `json:"op"`
-	Result     byte                   `json:"ret"`
+	Result     OperationResult        `json:"ret"`
 	Msg        string                 `json:"msg"`
 	Attributes map[string]interface{} `json:"ats"`
+}
+
+type BingLog struct {
+	Id        [8]byte  // offset int64
+	md5       [32]byte // string 32
+	Timestamp [8]byte  // int64
 }
