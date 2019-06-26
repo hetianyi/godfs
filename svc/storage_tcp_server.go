@@ -14,6 +14,7 @@ import (
 	"github.com/logrusorgru/aurora"
 	"io"
 	"net"
+	"strings"
 	"time"
 )
 
@@ -56,26 +57,24 @@ func clientConnHandler(conn net.Conn) {
 				if err != nil {
 					return err
 				}
-				if h.Result != common.UNAUTHORIZED {
+				if h.Result != common.SUCCESS {
+					pip.Send(h, b, l)
 					return errors.New("unauthorized connection, force disconnection by server")
+				} else {
+					validated = true
+					return pip.Send(h, b, l)
 				}
-				validated = true
-				return pip.Send(h, b, l)
 			} else if header.Operation == common.OPERATION_UPLOAD {
-				h, b, l, err := uploadFileHandler(header)
+				h, b, l, err := uploadFileHandler(bodyReader, bodyLength, validated)
 				if err != nil {
 					return err
 				}
-				if h.Result != common.UNAUTHORIZED {
-					return errors.New("unauthorized connection, force disconnection by server")
-				}
-				validated = true
 				return pip.Send(h, b, l)
 			}
 			return pip.Send(&common.Header{
-				Result: common.SUCCESS,
-				Msg:    "",
-				Attributes: map[string]interface{}{"Name":"李四"},
+				Result:     common.SUCCESS,
+				Msg:        "",
+				Attributes: map[string]interface{}{"Name": "李四"},
 			}, nil, 0)
 		})
 		if err != nil {
@@ -86,10 +85,7 @@ func clientConnHandler(conn net.Conn) {
 	}
 }
 
-func authenticationHandler(header *common.Header,
-	bodyReader io.Reader,
-	bodyLength int64,
-	authorized bool) (*common.Header, io.Reader, int64, error) {
+func authenticationHandler(header *common.Header) (*common.Header, io.Reader, int64, error) {
 	if header.Attributes == nil {
 		return &common.Header{
 			Result: common.UNAUTHORIZED,
@@ -105,29 +101,26 @@ func authenticationHandler(header *common.Header,
 	}
 	return &common.Header{
 		Result: common.SUCCESS,
-		Msg: "authentication success",
+		Msg:    "authentication success",
 	}, nil, 0, nil
 }
 
-
-func uploadFileHandler(header *common.Header,
-	bodyReader io.Reader,
-	bodyLength int64,
-	authorized bool) (*common.Header, io.Reader, int64, error) {
+func uploadFileHandler(bodyReader io.Reader, bodyLength int64, authorized bool) (*common.Header, io.Reader, int64, error) {
 	if !authorized {
 		return nil, nil, 0, errors.New("unauthorized connection")
 	}
 	buffer := make([]byte, common.BUFFER_SIZE)
 	var realRead int64 = 0
-	h := util.CreateCrc32Hash()
-	tmpFile := common.Config.TmpDir + "/" + uuid.UUID()
-	out, err := file.CreateFile(tmpFile)
+	crcH := util.CreateCrc32Hash()
+	md5H := util.CreateMd5Hash()
+	tmpFileName := common.Config.TmpDir + "/" + uuid.UUID()
+	out, err := file.CreateFile(tmpFileName)
 	if err != nil {
 		return nil, nil, 0, err
 	}
 	defer func() {
 		defer out.Close()
-		file.Delete(tmpFile)
+		file.Delete(tmpFileName)
 	}()
 	for true {
 		n, err := bodyReader.Read(buffer)
@@ -136,7 +129,11 @@ func uploadFileHandler(header *common.Header,
 			return nil, nil, 0, err
 		}
 		if n > 0 {
-			_, err := h.Write(buffer[0:n])
+			_, err := crcH.Write(buffer[0:n])
+			if err != nil {
+				return nil, nil, 0, err
+			}
+			_, err = md5H.Write(buffer[0:n])
 			if err != nil {
 				return nil, nil, 0, err
 			}
@@ -146,12 +143,40 @@ func uploadFileHandler(header *common.Header,
 			}
 		} else {
 			out.Close()
-			// TODO
-			return &common.Header{}, nil, 0, nil
+			if bodyLength != realRead {
+				return nil, nil, 0, errors.New("mismatch body length")
+			}
+			crc32String := util.GetCrc32HashString(crcH)
+			md5String := util.GetMd5HashString(md5H)
+
+			targetDir := strings.ToUpper(strings.Join([]string{crc32String[len(crc32String)-4 : len(crc32String)-2], "/",
+				crc32String[len(crc32String)-2:]}, ""))
+			// 文件放在crc结尾的目录，防止目恶意伪造md5文件进行覆盖
+			// 避免了暴露文件md5可能出现的风险：保证了在md5相等但是文件不同情况下文件出现的覆盖情况。
+			// 此时要求文件的交流必须携带完整的参数
+			targetLoc := common.Config.DataDir + "/" + targetDir
+			targetFile := common.Config.DataDir + "/" + targetDir + "/" + md5String
+			finalFileId := common.Config.Group + "/" + targetDir + "/" + md5String
+			if !file.Exists(targetLoc) {
+				if err := file.CreateDirs(targetLoc); err != nil {
+					return nil, nil, 0, err
+				}
+			}
+			if file.Exists(targetFile) {
+				return &common.Header{
+					Result:     common.SUCCESS,
+					Attributes: map[string]interface{}{"fid": finalFileId},
+				}, nil, 0, nil
+			}
+			if err := file.MoveFile(tmpFileName, targetFile); err != nil {
+				return nil, nil, 0, err
+			}
+			return &common.Header{
+				Result:     common.SUCCESS,
+				Attributes: map[string]interface{}{"fid": finalFileId},
+			}, nil, 0, nil
 		}
 	}
 
 	return &common.Header{}, nil, 0, nil
 }
-
-

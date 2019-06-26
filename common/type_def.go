@@ -1,17 +1,19 @@
 package common
 
+import "github.com/hetianyi/gox/conn"
+
 type BootMode uint32
 
 type StorageConfig struct {
 	Trackers              []string `json:"trackers"`
 	Secret                string   `json:"secret"`
 	Group                 string   `json:"group"`
-	InstanceId            string // one data dir has only one instanceId
-	BindAddress           string `json:"bindAddress"`
-	Port                  int    `json:"port"`
-	AdvertiseAddress      string `json:"advertiseAddress"`
-	AdvertisePort         int    `json:"advertisePort"`
-	DataDir               string `json:"dataDir"`
+	InstanceId            string   // one data dir has only one instanceId
+	BindAddress           string   `json:"bindAddress"`
+	Port                  int      `json:"port"`
+	AdvertiseAddress      string   `json:"advertiseAddress"`
+	AdvertisePort         int      `json:"advertisePort"`
+	DataDir               string   `json:"dataDir"`
 	TmpDir                string
 	PreferredNetworks     string   `json:"preferredNetworks"`
 	LogLevel              string   `json:"logLevel"`
@@ -30,7 +32,7 @@ type StorageConfig struct {
 type TrackerConfig struct {
 	Trackers              []string `json:"trackers"`
 	Secret                string   `json:"secret"`
-	InstanceId            string // one data dir has only one instanceId
+	InstanceId            string   // one data dir has only one instanceId
 	BindAddress           string   `json:"bindAddress"`
 	Port                  int      `json:"port"`
 	AdvertiseAddress      string   `json:"advertiseAddress"`
@@ -62,7 +64,28 @@ type Server struct {
 	Secret string `json:"secret"`
 }
 
+type StorageServer struct {
+	Server
+	InstanceId string `json:"instanceId"`
+	Group      string `json:"group"`
+}
+
+func (s *Server) ToServer() *conn.Server {
+	return &conn.Server{
+		Host: s.Host,
+		Port: s.Port,
+	}
+}
+
+func (s *StorageServer) ToServer() *conn.Server {
+	return &conn.Server{
+		Host: s.Host,
+		Port: s.Port,
+	}
+}
+
 type Operation byte
+
 type OperationResult byte
 
 type Header struct {
