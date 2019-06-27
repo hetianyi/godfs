@@ -9,7 +9,6 @@ import (
 	"github.com/hetianyi/gox/gpip"
 	"github.com/hetianyi/gox/logger"
 	"io"
-	"net"
 	"sync"
 	"time"
 )
@@ -23,19 +22,25 @@ var (
 )
 
 type Config struct {
-	MaxConnectionsPerServer  uint                   // limit max connection for each server
-	TrackerServers           []common.Server        // tracker servers
-	StaticStorageServers     []common.StorageServer // storage servers
-	RegisteredStorageServers []common.StorageServer // storage servers
+	MaxConnectionsPerServer  uint                    // limit max connection for each server
+	TrackerServers           []*common.Server        // tracker servers
+	StaticStorageServers     []*common.StorageServer // storage servers
+	RegisteredStorageServers []*common.StorageServer // storage servers
 	// Trackers or Storages
 }
 
 type ClientAPI interface {
-	// Init initializes the ClientAPI.
-	Init(config *Config) error
+	Init(config *Config) error // Init initializes the ClientAPI.
 	// RefreshConfig(config *Config) // TODO
 	Upload(src io.Reader, group string) (bool, error)
 	Download(input io.Reader) (bool, error)
+}
+
+func NewClient() *clientAPIImpl {
+	return &clientAPIImpl{
+		lock:    new(sync.Mutex),
+		weights: make(map[string]int64),
+	}
 }
 
 type clientAPIImpl struct {
@@ -62,69 +67,133 @@ func (c *clientAPIImpl) Init(config *Config) {
 	}
 	if c.config.TrackerServers != nil {
 		for _, s := range c.config.TrackerServers {
-			conn.InitServerSettings(&conn.Server{
-				Host: s.Host,
-				Port: s.Port,
-			}, c.config.MaxConnectionsPerServer, time.Minute*5)
+			conn.InitServerSettings(s, c.config.MaxConnectionsPerServer, time.Minute*5)
 		}
 	}
 	if c.config.StaticStorageServers != nil {
 		for _, s := range c.config.StaticStorageServers {
-			conn.InitServerSettings(&conn.Server{
-				Host: s.Host,
-				Port: s.Port,
-			}, c.config.MaxConnectionsPerServer, time.Minute*5)
+			conn.InitServerSettings(s, c.config.MaxConnectionsPerServer, time.Minute*5)
 		}
 	}
 }
 
-func (c *clientAPIImpl) Upload(src io.Reader, group string) (bool, error) {
+func (c *clientAPIImpl) Upload(src io.Reader, length int64, group string) (*common.UploadResult, error) {
+	logger.Debug("begin to upload file")
 	var exclude = list.New()                  // excluded storage list
 	var selectedStorage *common.StorageServer // target server for file uploading.
 	var lastErr error
 
-	for true {
+	for {
 		selectedStorage = c.selectStorageServer(group, exclude)
 		if selectedStorage == nil {
-			return false, NoStorageServerErr
+			if lastErr != nil {
+				return nil, lastErr
+			}
+			return nil, NoStorageServerErr
 		}
-		connection, err := conn.GetConnection(selectedStorage.ToServer())
+		connection, authenticated, err := conn.GetConnection(selectedStorage)
 		if err != nil {
 			lastErr = err
 			exclude.PushBack(selectedStorage)
 			continue
 		}
 		pip := &gpip.Pip{
-			Conn: conn,
+			Conn: *connection,
 		}
-
+		if authenticated == nil || !authenticated.(bool) {
+			if err = authenticate(pip, selectedStorage); err != nil {
+				lastErr = err
+				exclude.PushBack(selectedStorage)
+				continue
+			}
+			logger.Debug("authentication success with server ", selectedStorage.ConnectionString())
+		}
+		defer func() {
+			logger.Debug("upload success")
+			conn.ReturnConnection(selectedStorage, connection, true, lastErr != nil)
+		}()
+		// send file body
+		err = pip.Send(&common.Header{Operation: common.OPERATION_UPLOAD}, src, length)
+		if err != nil {
+			return nil, err
+		}
+		var ret *common.UploadResult
+		// receive response
+		err = pip.Receive(&common.Header{}, func(_header interface{}, bodyReader io.Reader, bodyLength int64) error {
+			header := _header.(*common.Header)
+			if header != nil {
+				if header.Result == common.SUCCESS {
+					ret = &common.UploadResult{
+						Group:  header.Attributes["group"].(string),
+						FileId: header.Attributes["fid"].(string),
+						Node:   header.Attributes["instanceId"].(string),
+					}
+					return nil
+				}
+				return errors.New("upload failed: " + header.Msg)
+			}
+			return errors.New("upload failed: got empty response from server")
+		})
+		if err != nil {
+			lastErr = err
+		}
+		return ret, err
 	}
+	// should never reached
+	return nil, nil
+}
 
-	return false, nil
+// authenticate authenticates width storage server.
+func authenticate(p *gpip.Pip, server conn.Server) error {
+	logger.Debug("trying authentication with server ", server.ConnectionString())
+	secret := ""
+	if _, t := server.(*common.Server); t {
+		secret = server.(*common.Server).Secret
+	} else if _, t := server.(*common.StorageServer); t {
+		secret = server.(*common.StorageServer).Secret
+	}
+	err := p.Send(&common.Header{
+		Operation:  common.OPERATION_CONNECT,
+		Attributes: map[string]interface{}{"secret": secret},
+	}, nil, 0)
+	if err != nil {
+		return err
+	}
+	return p.Receive(&common.Header{}, func(_header interface{}, bodyReader io.Reader, bodyLength int64) error {
+		header := _header.(*common.Header)
+		if header.Result != common.SUCCESS {
+			return errors.New("authentication failed with server: " + server.ConnectionString())
+		}
+		return nil
+	})
 }
 
 // selectStorageServer selects proper storage server.
 func (c *clientAPIImpl) selectStorageServer(group string, exclude *list.List) *common.StorageServer {
 	c.lock.Lock()
 	defer c.lock.Unlock()
+	logger.Debug("select storage server...")
 	var candidates = list.New()
 	// if registered storage server is not empty, use it first.
 	if c.config.RegisteredStorageServers != nil {
 		for _, s := range c.config.RegisteredStorageServers {
-			if isExcluded(&s, exclude) {
+			if isExcluded(s, exclude) {
 				continue
 			}
-			candidates.PushBack(s)
+			if group == "" || group == s.Group {
+				candidates.PushBack(s)
+			}
 		}
 	}
 	if candidates.Len() == 0 {
 		for _, s := range c.config.StaticStorageServers {
-			if isExcluded(&s, exclude) {
+			if isExcluded(s, exclude) {
 				continue
 			}
 			candidates.PushBack(s)
 		}
 	}
+	logger.Debug("candidates: ", candidates)
 	// select smallest weights of storage server.
 	var selectedStorage *common.StorageServer
 	gox.WalkList(candidates, func(item interface{}) bool {
@@ -138,6 +207,7 @@ func (c *clientAPIImpl) selectStorageServer(group string, exclude *list.List) *c
 		}
 		return false
 	})
+	logger.Debug("selected storage server: ", selectedStorage.ConnectionString())
 	return selectedStorage
 }
 

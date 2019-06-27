@@ -1,6 +1,8 @@
 package common
 
-import "github.com/hetianyi/gox/conn"
+import (
+	"github.com/hetianyi/gox/convert"
+)
 
 type BootMode uint32
 
@@ -59,28 +61,36 @@ type ClientConfig struct {
 }
 
 type Server struct {
-	Host   string `json:"host"`
-	Port   int    `json:"port"`
-	Secret string `json:"secret"`
+	Host       string `json:"host"`
+	Port       uint16 `json:"port"`
+	Secret     string `json:"secret"`
+	InstanceId string `json:"instanceId"`
 }
 
 type StorageServer struct {
 	Server
-	InstanceId string `json:"instanceId"`
-	Group      string `json:"group"`
+	Group string `json:"group"`
 }
 
-func (s *Server) ToServer() *conn.Server {
-	return &conn.Server{
-		Host: s.Host,
-		Port: s.Port,
-	}
+func (s *Server) ConnectionString() string {
+	return s.Host + ":" + convert.Uint16ToStr(s.Port)
 }
 
-func (s *StorageServer) ToServer() *conn.Server {
-	return &conn.Server{
-		Host: s.Host,
-		Port: s.Port,
+// GetHost returns server's host.
+func (s *Server) GetHost() string {
+	return s.Host
+}
+
+// GetPort returns server's port.
+func (s *Server) GetPort() uint16 {
+	return s.Port
+}
+
+func (s *StorageServer) ToServer() *Server {
+	return &Server{
+		Host:       s.Host,
+		Port:       s.Port,
+		InstanceId: s.InstanceId,
 	}
 }
 
@@ -93,6 +103,12 @@ type Header struct {
 	Result     OperationResult        `json:"ret"`
 	Msg        string                 `json:"msg"`
 	Attributes map[string]interface{} `json:"ats"`
+}
+
+type UploadResult struct {
+	Group  string `json:"group"`
+	Node   string `json:"node"`
+	FileId string `json:"fileId"`
 }
 
 type BingLog struct {

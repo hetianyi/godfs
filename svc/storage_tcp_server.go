@@ -119,7 +119,7 @@ func uploadFileHandler(bodyReader io.Reader, bodyLength int64, authorized bool) 
 		return nil, nil, 0, err
 	}
 	defer func() {
-		defer out.Close()
+		out.Close()
 		file.Delete(tmpFileName)
 	}()
 	for true {
@@ -164,16 +164,24 @@ func uploadFileHandler(bodyReader io.Reader, bodyLength int64, authorized bool) 
 			}
 			if file.Exists(targetFile) {
 				return &common.Header{
-					Result:     common.SUCCESS,
-					Attributes: map[string]interface{}{"fid": finalFileId},
+					Result: common.SUCCESS,
+					Attributes: map[string]interface{}{
+						"fid":        finalFileId,
+						"instanceId": common.Config.InstanceId,
+						"group":      common.Config.Group,
+					},
 				}, nil, 0, nil
 			}
 			if err := file.MoveFile(tmpFileName, targetFile); err != nil {
 				return nil, nil, 0, err
 			}
 			return &common.Header{
-				Result:     common.SUCCESS,
-				Attributes: map[string]interface{}{"fid": finalFileId},
+				Result: common.SUCCESS,
+				Attributes: map[string]interface{}{
+					"fid":        finalFileId,
+					"instanceId": common.Config.InstanceId,
+					"group":      common.Config.Group,
+				},
 			}, nil, 0, nil
 		}
 	}

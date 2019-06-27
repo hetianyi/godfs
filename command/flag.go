@@ -64,13 +64,13 @@ func Parse(arguments []string) {
 					Value:       "",
 					Usage:       "custom global secret",
 					Destination: &secret,
-				},/*
-				cli.StringFlag{
-					Name:        "instance-id",
-					Value:       "",
-					Usage:       "set instance id of server instance",
-					Destination: &instanceId,
-				},*/
+				}, /*
+					cli.StringFlag{
+						Name:        "instance-id",
+						Value:       "",
+						Usage:       "set instance id of server instance",
+						Destination: &instanceId,
+					},*/
 				cli.StringFlag{
 					Name:        "bind-address",
 					Value:       "",
@@ -179,13 +179,13 @@ func Parse(arguments []string) {
 					Value:       "",
 					Usage:       "use custom config file",
 					Destination: &configFile,
-				},/*
-				cli.StringFlag{
-					Name:        "instance-id",
-					Value:       "",
-					Usage:       "set instance id of server instance",
-					Destination: &instanceId,
-				},*/
+				}, /*
+					cli.StringFlag{
+						Name:        "instance-id",
+						Value:       "",
+						Usage:       "set instance id of server instance",
+						Destination: &instanceId,
+					},*/
 				cli.StringFlag{
 					Name:        "bind-address",
 					Value:       "",

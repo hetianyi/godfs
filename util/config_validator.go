@@ -81,7 +81,7 @@ func ValidateStorageConfig(c *common.StorageConfig) error {
 			return err
 		}
 	}
-	
+
 	// initialize logger
 	logConfig := &logger.Config{
 		Level:              ConvertLogLevel(c.LogLevel),
@@ -103,7 +103,7 @@ func ValidateStorageConfig(c *common.StorageConfig) error {
 			if p.MatchString(t) {
 				secret := p.ReplaceAllString(t, "$2")
 				host := p.ReplaceAllString(t, "$3")
-				port, _ := convert.StrToInt(p.ReplaceAllString(t, "$4"))
+				port, _ := convert.StrToUint16(p.ReplaceAllString(t, "$4"))
 				server := common.Server{
 					Host:   host,
 					Port:   port,

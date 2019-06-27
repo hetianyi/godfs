@@ -15,7 +15,7 @@ import (
 )
 
 var (
-	az09  = []rune{'A', 'B', 'C', 'D', 'E', 'F', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9'}
+	az09 = []rune{'A', 'B', 'C', 'D', 'E', 'F', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9'}
 )
 
 // LoadInstanceData load old instance id from data dir.
@@ -60,6 +60,7 @@ func LoadInstanceData() string {
 }
 
 func PrepareDirs() error {
+	file.DeleteAll(common.Config.TmpDir)
 	// tmp dir
 	if !file.Exists(common.Config.TmpDir) {
 		return file.CreateDirs(common.Config.TmpDir)
