@@ -7,18 +7,19 @@ import (
 	"github.com/hetianyi/godfs/common"
 	"github.com/hetianyi/gox/file"
 	"github.com/hetianyi/gox/logger"
+	"io"
 	"testing"
 )
+
+var client api.ClientAPI
 
 func init() {
 	logger.Init(&logger.Config{
 		Level: logger.DebugLevel,
 	})
-}
 
-func TestClientAPIImpl_Upload(t *testing.T) {
-	client := api.NewClient()
-	client.Init(&api.Config{
+	client = api.NewClient()
+	client.SetConfig(&api.Config{
 		MaxConnectionsPerServer: 1,
 		StaticStorageServers: []*common.StorageServer{
 			{
@@ -32,16 +33,74 @@ func TestClientAPIImpl_Upload(t *testing.T) {
 			},
 		},
 	})
+}
 
+func uploadFile() {
+	fi, _ := file.GetFile("D:/tmp/js.zip")
+	info, _ := fi.Stat()
+	ret, err := client.Upload(fi, info.Size(), "")
+	if err != nil {
+		logger.Fatal(err)
+	}
+	bs, _ := json.MarshalIndent(ret, "", "  ")
+	logger.Info("result is \n")
+	fmt.Println(string(bs))
+}
+
+func TestUploadFile(t *testing.T) {
 	for {
-		fi, _ := file.GetFile("D:/tmp/js.zip")
-		info, _ := fi.Stat()
-		ret, err := client.Upload(fi, info.Size(), "")
+		uploadFile()
+	}
+}
+
+func TestDownload1(t *testing.T) {
+	fileId := "G01/4D/99/fde67f4752cf437ec6c831111127afaa"
+	err := client.Download(fileId, 0, -1, func(body io.Reader, bodyLength int64) error {
+		out, err := file.CreateFile("D:/tmp/godfs-test-download.zip")
 		if err != nil {
-			logger.Fatal(err)
+			return err
 		}
-		bs, _ := json.MarshalIndent(ret, "", "  ")
-		logger.Info("result is \n")
-		fmt.Println(string(bs))
+		defer out.Close()
+		io.Copy(out, body)
+		return nil
+	})
+	if err != nil && err != common.NotFoundErr {
+		logger.Fatal(err)
+	}
+	logger.Info("download file success!")
+
+	err = client.Download(fileId, 0, -1, func(body io.Reader, bodyLength int64) error {
+		out, err := file.CreateFile("D:/tmp/godfs-test-download1.zip")
+		if err != nil {
+			return err
+		}
+		defer out.Close()
+		io.Copy(out, body)
+		return nil
+	})
+	if err != nil && err != common.NotFoundErr {
+		logger.Fatal(err)
+	}
+	logger.Info("download file success!")
+}
+
+func TestDownload2(t *testing.T) {
+	fileId := "G01/4D/99/fde67f4752cf437ec6c831111127afaa"
+	err := client.Download(fileId, 0, -1, func(body io.Reader, bodyLength int64) error {
+		out, err := file.CreateFile("D:/tmp/godfs-test-download.zip")
+		if err != nil {
+			return err
+		}
+		defer out.Close()
+		io.Copy(out, body)
+		return nil
+	})
+	if err != nil && err != common.NotFoundErr {
+		logger.Fatal(err)
+	}
+	if err == common.NotFoundErr {
+		logger.Error(err)
+	} else {
+		logger.Info("download file success!")
 	}
 }

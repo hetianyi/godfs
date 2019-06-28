@@ -99,10 +99,10 @@ type Operation byte
 type OperationResult byte
 
 type Header struct {
-	Operation  Operation              `json:"op"`
-	Result     OperationResult        `json:"ret"`
-	Msg        string                 `json:"msg"`
-	Attributes map[string]interface{} `json:"ats"`
+	Operation  Operation         `json:"op"`
+	Result     OperationResult   `json:"ret"`
+	Msg        string            `json:"msg"`
+	Attributes map[string]string `json:"ats"`
 }
 
 type UploadResult struct {

@@ -6,9 +6,11 @@ import (
 	"github.com/hetianyi/godfs/common"
 	"github.com/hetianyi/gox"
 	"github.com/hetianyi/gox/conn"
+	"github.com/hetianyi/gox/convert"
 	"github.com/hetianyi/gox/gpip"
 	"github.com/hetianyi/gox/logger"
 	"io"
+	"net"
 	"sync"
 	"time"
 )
@@ -30,10 +32,12 @@ type Config struct {
 }
 
 type ClientAPI interface {
-	Init(config *Config) error // Init initializes the ClientAPI.
-	// RefreshConfig(config *Config) // TODO
-	Upload(src io.Reader, group string) (bool, error)
-	Download(input io.Reader) (bool, error)
+	// SetConfig sets or refresh client server config.
+	SetConfig(config *Config) // TODO
+	// Upload uploads file to specific group server.
+	Upload(src io.Reader, length int64, group string) (*common.UploadResult, error)
+	// Download downloads a file from server.
+	Download(fileId string, offset int64, length int64, handler func(body io.Reader, bodyLength int64) error) error
 }
 
 func NewClient() *clientAPIImpl {
@@ -49,7 +53,7 @@ type clientAPIImpl struct {
 	weights map[string]int64 // server use weights
 }
 
-func (c *clientAPIImpl) Init(config *Config) {
+func (c *clientAPIImpl) SetConfig(config *Config) {
 	if config != nil {
 		c.config = config
 	} else {
@@ -82,65 +86,171 @@ func (c *clientAPIImpl) Upload(src io.Reader, length int64, group string) (*comm
 	var exclude = list.New()                  // excluded storage list
 	var selectedStorage *common.StorageServer // target server for file uploading.
 	var lastErr error
-
-	for {
-		selectedStorage = c.selectStorageServer(group, exclude)
-		if selectedStorage == nil {
-			if lastErr != nil {
-				return nil, lastErr
+	var lastConn *net.Conn
+	var ret *common.UploadResult
+	gox.Try(func() {
+		for {
+			selectedStorage = c.selectStorageServer(group, exclude)
+			if selectedStorage == nil {
+				if lastErr == nil {
+					lastErr = NoStorageServerErr
+				}
+				break
 			}
-			return nil, NoStorageServerErr
-		}
-		connection, authenticated, err := conn.GetConnection(selectedStorage)
-		if err != nil {
-			lastErr = err
-			exclude.PushBack(selectedStorage)
-			continue
-		}
-		pip := &gpip.Pip{
-			Conn: *connection,
-		}
-		if authenticated == nil || !authenticated.(bool) {
-			if err = authenticate(pip, selectedStorage); err != nil {
+			connection, authenticated, err := conn.GetConnection(selectedStorage)
+			if err != nil {
 				lastErr = err
 				exclude.PushBack(selectedStorage)
 				continue
 			}
-			logger.Debug("authentication success with server ", selectedStorage.ConnectionString())
-		}
-		defer func() {
-			logger.Debug("upload success")
-			conn.ReturnConnection(selectedStorage, connection, true, lastErr != nil)
-		}()
-		// send file body
-		err = pip.Send(&common.Header{Operation: common.OPERATION_UPLOAD}, src, length)
-		if err != nil {
-			return nil, err
-		}
-		var ret *common.UploadResult
-		// receive response
-		err = pip.Receive(&common.Header{}, func(_header interface{}, bodyReader io.Reader, bodyLength int64) error {
-			header := _header.(*common.Header)
-			if header != nil {
-				if header.Result == common.SUCCESS {
-					ret = &common.UploadResult{
-						Group:  header.Attributes["group"].(string),
-						FileId: header.Attributes["fid"].(string),
-						Node:   header.Attributes["instanceId"].(string),
-					}
-					return nil
-				}
-				return errors.New("upload failed: " + header.Msg)
+			lastConn = connection
+			pip := &gpip.Pip{
+				Conn: *lastConn,
 			}
-			return errors.New("upload failed: got empty response from server")
-		})
-		if err != nil {
-			lastErr = err
+			if authenticated == nil || !authenticated.(bool) {
+				if err = authenticate(pip, selectedStorage); err != nil {
+					lastErr = err
+					exclude.PushBack(selectedStorage)
+					conn.ReturnConnection(selectedStorage, lastConn, nil, true)
+					continue
+				}
+				logger.Debug("authentication success with server ", selectedStorage.ConnectionString())
+			}
+			authenticated = true
+			// send file body
+			err = pip.Send(&common.Header{Operation: common.OPERATION_UPLOAD}, src, length)
+			if err != nil {
+				lastErr = err
+				conn.ReturnConnection(selectedStorage, lastConn, nil, true)
+				break
+			}
+			// receive response
+			err = pip.Receive(&common.Header{}, func(_header interface{}, bodyReader io.Reader, bodyLength int64) error {
+				header := _header.(*common.Header)
+				if header != nil {
+					if header.Result == common.SUCCESS {
+						ret = &common.UploadResult{
+							Group:  header.Attributes["group"],
+							FileId: header.Attributes["fid"],
+							Node:   header.Attributes["instanceId"],
+						}
+						return nil
+					}
+					return errors.New("upload failed: " + header.Msg)
+				}
+				return errors.New("upload failed: got empty response from server")
+			})
+			if err != nil {
+				lastErr = err
+				conn.ReturnConnection(selectedStorage, lastConn, nil, true)
+				break
+			}
+			conn.ReturnConnection(selectedStorage, lastConn, authenticated, false)
+			lastErr = nil
+			lastConn = nil
+			logger.Debug("upload finish")
+			break
 		}
-		return ret, err
+	}, func(e interface{}) {
+		logger.Error(e)
+	})
+	if lastConn != nil {
+		conn.ReturnConnection(selectedStorage, lastConn, nil, true)
 	}
-	// should never reached
-	return nil, nil
+	return ret, lastErr
+}
+
+func (c *clientAPIImpl) Download(fileId string, offset int64, length int64, handler func(body io.Reader, bodyLength int64) error) error {
+	logger.Debug("begin to download file")
+	var exclude = list.New()                  // excluded storage list
+	var selectedStorage *common.StorageServer // target server for file uploading.
+	var lastErr error
+	var lastConn *net.Conn
+	// parse fileId
+	if !common.FileIdPatternRegexp.Match([]byte(fileId)) {
+		return errors.New("invalid fileId: " + fileId)
+	}
+	group := common.FileIdPatternRegexp.ReplaceAllString(fileId, "$1")
+
+	gox.Try(func() {
+		for {
+			selectedStorage = c.selectStorageServer(group, exclude)
+			if selectedStorage == nil {
+				if lastErr == nil {
+					lastErr = NoStorageServerErr
+				}
+				break
+			}
+			connection, authenticated, err := conn.GetConnection(selectedStorage)
+			if err != nil {
+				lastErr = err
+				exclude.PushBack(selectedStorage)
+				continue
+			}
+			lastConn = connection
+			pip := &gpip.Pip{
+				Conn: *lastConn,
+			}
+			if authenticated == nil || !authenticated.(bool) {
+				if err = authenticate(pip, selectedStorage); err != nil {
+					lastErr = err
+					exclude.PushBack(selectedStorage)
+					conn.ReturnConnection(selectedStorage, lastConn, nil, true)
+					lastConn = nil
+					continue
+				}
+				logger.Debug("authentication success with server ", selectedStorage.ConnectionString())
+			}
+			authenticated = true
+			// send file body
+			err = pip.Send(&common.Header{
+				Operation: common.OPERATION_DOWNLOAD,
+				Attributes: map[string]string{
+					"fileId": fileId,
+					"offset": convert.Int64ToStr(offset),
+					"length": convert.Int64ToStr(length),
+				},
+			}, nil, 0)
+			if err != nil {
+				lastErr = err
+				conn.ReturnConnection(selectedStorage, lastConn, nil, true)
+				lastConn = nil
+				exclude.PushBack(selectedStorage)
+				continue
+			}
+			// receive response
+			err = pip.Receive(&common.Header{}, func(_header interface{}, bodyReader io.Reader, bodyLength int64) error {
+				header := _header.(*common.Header)
+				if header != nil {
+					if header.Result == common.SUCCESS {
+						return handler(bodyReader, bodyLength)
+					} else if header.Result == common.NOT_FOUND {
+						return common.NotFoundErr
+					}
+					return errors.New("upload failed: " + header.Msg)
+				}
+				return errors.New("upload failed: got empty response from server")
+			})
+			if err != nil {
+				lastErr = err
+				conn.ReturnConnection(selectedStorage, lastConn, authenticated, err != common.NotFoundErr)
+				lastConn = nil
+				exclude.PushBack(selectedStorage)
+				continue
+			}
+			conn.ReturnConnection(selectedStorage, lastConn, authenticated, false)
+			lastErr = nil
+			lastConn = nil
+			logger.Debug("download finish")
+			break
+		}
+	}, func(e interface{}) {
+		logger.Error(e)
+	})
+	if lastConn != nil {
+		conn.ReturnConnection(selectedStorage, lastConn, nil, true)
+	}
+	return lastErr
 }
 
 // authenticate authenticates width storage server.
@@ -154,7 +264,7 @@ func authenticate(p *gpip.Pip, server conn.Server) error {
 	}
 	err := p.Send(&common.Header{
 		Operation:  common.OPERATION_CONNECT,
-		Attributes: map[string]interface{}{"secret": secret},
+		Attributes: map[string]string{"secret": secret},
 	}, nil, 0)
 	if err != nil {
 		return err
@@ -207,7 +317,9 @@ func (c *clientAPIImpl) selectStorageServer(group string, exclude *list.List) *c
 		}
 		return false
 	})
-	logger.Debug("selected storage server: ", selectedStorage.ConnectionString())
+	if selectedStorage != nil {
+		logger.Debug("selected storage server: ", selectedStorage.ConnectionString())
+	}
 	return selectedStorage
 }
 

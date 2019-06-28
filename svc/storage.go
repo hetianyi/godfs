@@ -21,8 +21,7 @@ func BootStorageServer() {
 	common.Config.InstanceId = util.LoadInstanceData()
 	util.PrintLogo()
 	cbs, _ := json.MarshalIndent(common.Config, "", "  ")
-	fmt.Println("boot storage server success!")
-	fmt.Println(string(cbs))
+	logger.Debug("\n", string(cbs))
 	if common.Config.EnableHttp {
 		StartStorageHttpServer(common.Config)
 	}

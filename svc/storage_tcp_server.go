@@ -49,6 +49,9 @@ func clientConnHandler(conn net.Conn) {
 	validated := false
 	for {
 		err := pip.Receive(&common.Header{}, func(_header interface{}, bodyReader io.Reader, bodyLength int64) error {
+			if _header == nil {
+				return errors.New("invalid request: header is empty")
+			}
 			header := _header.(*common.Header)
 			bs, _ := json.Marshal(header)
 			logger.Debug("server got message:", string(bs))
@@ -70,15 +73,21 @@ func clientConnHandler(conn net.Conn) {
 					return err
 				}
 				return pip.Send(h, b, l)
+			} else if header.Operation == common.OPERATION_DOWNLOAD {
+				h, b, l, err := downFileHandler(header, validated)
+				if err != nil {
+					return err
+				}
+				return pip.Send(h, b, l)
 			}
 			return pip.Send(&common.Header{
 				Result:     common.SUCCESS,
 				Msg:        "",
-				Attributes: map[string]interface{}{"Name": "李四"},
+				Attributes: map[string]string{"Name": "李四"},
 			}, nil, 0)
 		})
 		if err != nil {
-			logger.Error("error receive data:", err)
+			logger.Error(err)
 			pip.Close()
 			break
 		}
@@ -165,7 +174,7 @@ func uploadFileHandler(bodyReader io.Reader, bodyLength int64, authorized bool) 
 			if file.Exists(targetFile) {
 				return &common.Header{
 					Result: common.SUCCESS,
-					Attributes: map[string]interface{}{
+					Attributes: map[string]string{
 						"fid":        finalFileId,
 						"instanceId": common.Config.InstanceId,
 						"group":      common.Config.Group,
@@ -177,7 +186,7 @@ func uploadFileHandler(bodyReader io.Reader, bodyLength int64, authorized bool) 
 			}
 			return &common.Header{
 				Result: common.SUCCESS,
-				Attributes: map[string]interface{}{
+				Attributes: map[string]string{
 					"fid":        finalFileId,
 					"instanceId": common.Config.InstanceId,
 					"group":      common.Config.Group,
@@ -187,4 +196,63 @@ func uploadFileHandler(bodyReader io.Reader, bodyLength int64, authorized bool) 
 	}
 
 	return &common.Header{}, nil, 0, nil
+}
+
+func downFileHandler(header *common.Header, authorized bool) (*common.Header, io.Reader, int64, error) {
+	if !authorized {
+		return nil, nil, 0, errors.New("unauthorized connection")
+	}
+	var offset int64 = 0
+	var length int64 = -1
+	var fileId = header.Attributes["fileId"]
+	// parse fileId
+	if !common.FileIdPatternRegexp.Match([]byte(fileId)) || header.Attributes == nil {
+		return &common.Header{
+			Result: common.NOT_FOUND,
+		}, nil, 0, nil
+	}
+	to, err := convert.StrToInt64(header.Attributes["offset"])
+	if err != nil {
+		offset = 0
+	} else {
+		offset = to
+	}
+	tl, err := convert.StrToInt64(header.Attributes["length"])
+	if err != nil {
+		length = -1
+	} else {
+		length = tl
+	}
+
+	// group := common.FileIdPatternRegexp.ReplaceAllString(fileId, "$1")
+	p1 := common.FileIdPatternRegexp.ReplaceAllString(fileId, "$2")
+	p2 := common.FileIdPatternRegexp.ReplaceAllString(fileId, "$3")
+	md5 := common.FileIdPatternRegexp.ReplaceAllString(fileId, "$4")
+	fullPath := strings.Join([]string{common.Config.DataDir, p1, p2, md5}, "/")
+	if !file.Exists(fullPath) {
+		return &common.Header{
+			Result: common.NOT_FOUND,
+		}, nil, 0, nil
+	}
+	fi, err := file.GetFile(fullPath)
+	if !file.Exists(fullPath) {
+		return &common.Header{
+			Result: common.ERROR,
+		}, nil, 0, err
+	}
+	info, err := fi.Stat()
+	if !file.Exists(fullPath) {
+		return &common.Header{
+			Result: common.ERROR,
+		}, nil, 0, err
+	}
+	if offset >= info.Size() {
+		offset = info.Size()
+	}
+	if length == -1 || offset+length >= info.Size() {
+		length = info.Size() - offset
+	}
+	return &common.Header{
+		Result: common.SUCCESS,
+	}, io.LimitReader(fi, length), length, nil
 }

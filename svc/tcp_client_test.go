@@ -23,7 +23,7 @@ func TestSendMsg(t *testing.T) {
 	}
 	err = pip.Send(&common.Header{
 		Operation:  common.OPERATION_CONNECT,
-		Attributes: map[string]interface{}{"secret": "123456"},
+		Attributes: map[string]string{"secret": "123456"},
 	}, nil, 0)
 	if err != nil {
 		logger.Fatal("error send data:", err)
@@ -51,7 +51,7 @@ func TestUpload(t *testing.T) {
 	// validate
 	err = pip.Send(&common.Header{
 		Operation:  common.OPERATION_CONNECT,
-		Attributes: map[string]interface{}{"secret": "kasd3123"},
+		Attributes: map[string]string{"secret": "kasd3123"},
 	}, nil, 0)
 	if err != nil {
 		logger.Fatal("error send data:", err)
