@@ -87,9 +87,10 @@ func clientConnHandler(conn net.Conn) {
 			}, nil, 0)
 		})
 		if err != nil {
-			if err != io.EOF {
+			// shutdown connection error is now disabled
+			/*if err != io.EOF {
 				logger.Error(err)
-			}
+			}*/
 			pip.Close()
 			break
 		}
