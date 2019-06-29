@@ -15,5 +15,9 @@ func call(cmd Command) {
 		ConfigAssembly(common.CLIENT)
 		handleUploadFile()
 		break
+	case DOWNLOAD_FILE:
+		ConfigAssembly(common.CLIENT)
+		handleDownloadFile()
+		break
 	}
 }

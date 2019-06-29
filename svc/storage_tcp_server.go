@@ -87,7 +87,9 @@ func clientConnHandler(conn net.Conn) {
 			}, nil, 0)
 		})
 		if err != nil {
-			logger.Error(err)
+			if err != io.EOF {
+				logger.Error(err)
+			}
 			pip.Close()
 			break
 		}

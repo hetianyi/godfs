@@ -24,6 +24,7 @@ const (
 	DEFAULT_TRACKER_TCP_PORT           = 3390
 	DEFAULT_TRACKER_HTTP_PORT          = 8002
 	BUFFER_SIZE                        = 1 << 15 // 32k
+	DEFAULT_GROUP                      = "G01"
 )
 
 // tcp operation codes

@@ -31,6 +31,9 @@ func ValidateStorageConfig(c *common.StorageConfig) error {
 			convert.IntToStr(c.Port) + ", port number must in the range of 0 to 65535")
 	}
 	// check group
+	if c.Group == "" {
+		c.Group = common.DEFAULT_GROUP
+	}
 	if m, err := regexp.MatchString(common.GROUP_PATTERN, c.Group); err != nil || !m {
 		return errors.New("invalid group \"" + c.Group +
 			"\", group must match pattern " + common.GROUP_PATTERN)

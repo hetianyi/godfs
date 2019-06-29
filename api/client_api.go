@@ -39,6 +39,10 @@ type ClientAPI interface {
 	// Upload uploads file to specific group server.
 	Upload(src io.Reader, length int64, group string) (*common.UploadResult, error)
 	// Download downloads a file from server.
+	//
+	// Return error can be common.NoStorageServerErr if there is no server available
+	//
+	// or common.NotFoundErr if the file cannot be found on the servers.
 	Download(fileId string, offset int64, length int64, handler func(body io.Reader, bodyLength int64) error) error
 }
 

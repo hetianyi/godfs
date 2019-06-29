@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/hetianyi/godfs/common"
+	"github.com/hetianyi/godfs/util"
 	"github.com/urfave/cli"
 	"os"
 )
@@ -298,7 +299,9 @@ Usage: godfs upload <file1> <file2> ...`)
 							logger.Fatal("error get absolute work directory: ", err)
 						}*/
 						for i := range c.Args() {
-							uploadFiles.PushBack(c.Args().Get(i))
+							if !util.StringListExists(&uploadFiles, c.Args().Get(i)) {
+								uploadFiles.PushBack(c.Args().Get(i))
+							}
 						}
 						return nil
 					},
@@ -346,7 +349,9 @@ Usage: godfs upload <file1> <file2> ...`)
 Usage: godfs download <fid1> <fid2> ...`)
 						}
 						for i := range c.Args() {
-							uploadFiles.PushBack(c.Args().Get(i))
+							if !util.StringListExists(&downloadFiles, c.Args().Get(i)) {
+								downloadFiles.PushBack(c.Args().Get(i))
+							}
 						}
 						return nil
 					},
@@ -354,7 +359,8 @@ Usage: godfs download <fid1> <fid2> ...`)
 						cli.StringFlag{
 							Name:        "name, n",
 							Value:       "",
-							Usage:       "custom filename of the download file",
+							Usage:       `custom download filename or full path of the
+	download file(only valid for single file)`,
 							Destination: &customDownloadFileName,
 						},
 						cli.StringFlag{
@@ -471,8 +477,7 @@ Commands:{{range .VisibleCategories}}{{if .Name}}
 
 Options:
    {{range $index, $option := .VisibleFlags}}{{if $index}}{{end}}{{$option}}
-   {{end}}{{end}}
-`
+   {{end}}{{end}}`
 
 	cli.CommandHelpTemplate = `
 Usage: {{if .UsageText}}{{.UsageText}}{{else}}{{.HelpName}}{{if .VisibleFlags}} [command options]{{end}} {{if .ArgsUsage}}{{.ArgsUsage}}{{else}}[arguments...]{{end}}{{end}}
@@ -481,8 +486,7 @@ Usage: {{if .UsageText}}{{.UsageText}}{{else}}{{.HelpName}}{{if .VisibleFlags}} 
 
 Options:
    {{range .VisibleFlags}}{{.}}
-   {{end}}{{end}}
-`
+   {{end}}{{end}}`
 
 	cli.SubcommandHelpTemplate = `
 Usage: {{if .UsageText}}{{.UsageText}}{{else}}{{.HelpName}} command{{if .VisibleFlags}} [command options]{{end}} {{if .ArgsUsage}}{{.ArgsUsage}}{{else}}[arguments...]{{end}}{{end}}
@@ -495,8 +499,7 @@ Commands:{{range .VisibleCategories}}{{if .Name}}
 
 Options:
    {{range .VisibleFlags}}{{.}}
-   {{end}}{{end}}
-`
+   {{end}}{{end}}`
 
 	appFlag.Action = func(c *cli.Context) error {
 		if showVersion {

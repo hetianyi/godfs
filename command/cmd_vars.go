@@ -32,11 +32,12 @@ var (
 	updateConfigList       list.List // configs to be update
 	configFile             string    // specified config file to be use
 
-	trackers    string    // tracker servers(used by client and storage mode)
-	storages    string    // storage servers(used by client mode)
-	logLevel    string    // log level(trace, debug, info, warn, error, fatal)
-	secret      string    // secret of this instance
-	uploadFiles list.List // files to be uploaded
+	trackers      string    // tracker servers(used by client and storage mode)
+	storages      string    // storage servers(used by client mode)
+	logLevel      string    // log level(trace, debug, info, warn, error, fatal)
+	secret        string    // secret of this instance
+	uploadFiles   list.List // files to be uploaded
+	downloadFiles list.List // files to be downloaded
 
 	group               string
 	instanceId          string
