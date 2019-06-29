@@ -477,7 +477,8 @@ Commands:{{range .VisibleCategories}}{{if .Name}}
 
 Options:
    {{range $index, $option := .VisibleFlags}}{{if $index}}{{end}}{{$option}}
-   {{end}}{{end}}`
+   {{end}}{{end}}
+`
 
 	cli.CommandHelpTemplate = `
 Usage: {{if .UsageText}}{{.UsageText}}{{else}}{{.HelpName}}{{if .VisibleFlags}} [command options]{{end}} {{if .ArgsUsage}}{{.ArgsUsage}}{{else}}[arguments...]{{end}}{{end}}
@@ -486,7 +487,8 @@ Usage: {{if .UsageText}}{{.UsageText}}{{else}}{{.HelpName}}{{if .VisibleFlags}} 
 
 Options:
    {{range .VisibleFlags}}{{.}}
-   {{end}}{{end}}`
+   {{end}}{{end}}
+`
 
 	cli.SubcommandHelpTemplate = `
 Usage: {{if .UsageText}}{{.UsageText}}{{else}}{{.HelpName}} command{{if .VisibleFlags}} [command options]{{end}} {{if .ArgsUsage}}{{.ArgsUsage}}{{else}}[arguments...]{{end}}{{end}}
@@ -499,7 +501,8 @@ Commands:{{range .VisibleCategories}}{{if .Name}}
 
 Options:
    {{range .VisibleFlags}}{{.}}
-   {{end}}{{end}}`
+   {{end}}{{end}}
+`
 
 	appFlag.Action = func(c *cli.Context) error {
 		if showVersion {
