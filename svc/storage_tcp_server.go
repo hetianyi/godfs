@@ -24,7 +24,7 @@ func StartStorageTcpServer() {
 		logger.Fatal(err)
 	}
 	time.Sleep(time.Millisecond * 50)
-	logger.Info("  tcp server starting on port ", common.InitializedStorageConfiguration.Port)
+	logger.Info("  tcp server listening on ", common.InitializedStorageConfiguration.BindAddress, ":", common.InitializedStorageConfiguration.Port)
 	logger.Info(aurora.BrightGreen(":::server started:::"))
 	for {
 		conn, err := listener.Accept()

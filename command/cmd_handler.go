@@ -92,7 +92,6 @@ func handleUploadFile() error {
 				logger.Error(err)
 				return false
 			}
-			total++
 			ret, err := client.Upload(fi, inf.Size(), group)
 			if err != nil {
 				logger.Error(err)
