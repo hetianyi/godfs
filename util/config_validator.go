@@ -99,20 +99,53 @@ func ValidateStorageConfig(c *common.StorageConfig) error {
 			c.ParsedTrackers = make([]common.Server, len(c.Trackers))
 		}
 		for i, t := range c.Trackers {
-			p := regexp.MustCompile(common.SERVER_PATTERN)
-			if p.MatchString(t) {
-				secret := p.ReplaceAllString(t, "$2")
-				host := p.ReplaceAllString(t, "$3")
-				port, _ := convert.StrToUint16(p.ReplaceAllString(t, "$4"))
-				server := common.Server{
-					Host:   host,
-					Port:   port,
-					Secret: secret,
-				}
-				c.ParsedTrackers[i] = server
-			} else {
-				return errors.New("invalid server string, format must be the pattern of [<secret>@]<host>:<port>")
+			server, err := ParseServer(t)
+			if err != nil {
+				return err
 			}
+			c.ParsedTrackers[i] = *server
+		}
+	}
+	// done!
+	return nil
+}
+// ValidateStorageConfig validates storage config.
+func ValidateClientConfig(c *common.ClientConfig) error {
+	if c == nil {
+		return errors.New("no config provided")
+	}
+	// check secret
+	if c.Secret != "" {
+		if m, err := regexp.MatchString(common.SECRET_PATTERN, c.Secret); err != nil || !m {
+			return errors.New("invalid secret \"" + c.Secret +
+				"\", secret must match pattern " + common.SECRET_PATTERN)
+		}
+	}
+	c.LogLevel = strings.ToLower(c.LogLevel)
+	if c.LogLevel != "trace" && c.LogLevel != "debug" && c.LogLevel != "info" &&
+		c.LogLevel != "warn" && c.LogLevel != "error" && c.LogLevel != "fatal" {
+		c.LogLevel = "info"
+	}
+	// initialize logger
+	logConfig := &logger.Config{
+		Level:              ConvertLogLevel(c.LogLevel),
+		Write2File:         false,
+		AlwaysWriteConsole: true,
+	}
+	logger.Init(logConfig)
+
+	// TODO Extract public parts
+	// parse tracker servers
+	if c.Trackers != nil {
+		if c.ParsedTrackers == nil {
+			c.ParsedTrackers = make([]common.Server, len(c.Trackers))
+		}
+		for i, t := range c.Trackers {
+			server, err := ParseServer(t)
+			if err != nil {
+				return err
+			}
+			c.ParsedTrackers[i] = *server
 		}
 	}
 	// done!

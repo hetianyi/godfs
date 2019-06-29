@@ -11,5 +11,9 @@ func call(cmd Command) {
 		ConfigAssembly(common.STORAGE)
 		svc.BootStorageServer()
 		break
+	case UPLOAD_FILE:
+		ConfigAssembly(common.CLIENT)
+		handleUploadFile()
+		break
 	}
 }

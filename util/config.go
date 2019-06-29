@@ -3,8 +3,10 @@ package util
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"github.com/hetianyi/godfs/common"
 	"github.com/hetianyi/gox"
+	"github.com/hetianyi/gox/convert"
 	"github.com/hetianyi/gox/file"
 	"github.com/hetianyi/gox/logger"
 	"github.com/hetianyi/gox/uuid"
@@ -12,6 +14,7 @@ import (
 	"io"
 	"regexp"
 	"runtime"
+	"strings"
 )
 
 var (
@@ -23,7 +26,7 @@ var (
 func LoadInstanceData() string {
 	instanceId := ""
 	isNew := false
-	datFile := common.Config.DataDir + "/instance.dat"
+	datFile := common.InitializedStorageConfiguration.DataDir + "/instance.dat"
 	if !file.Exists(datFile) {
 		instanceId = uuid.UUID()[0:8]
 		isNew = true
@@ -60,10 +63,10 @@ func LoadInstanceData() string {
 }
 
 func PrepareDirs() error {
-	file.DeleteAll(common.Config.TmpDir)
+	file.DeleteAll(common.InitializedStorageConfiguration.TmpDir)
 	// tmp dir
-	if !file.Exists(common.Config.TmpDir) {
-		return file.CreateDirs(common.Config.TmpDir)
+	if !file.Exists(common.InitializedStorageConfiguration.TmpDir) {
+		return file.CreateDirs(common.InitializedStorageConfiguration.TmpDir)
 	}
 	return nil
 }
@@ -125,4 +128,37 @@ func DefaultDataDir() string {
 
 func DefaultAdvertiseAddress() {
 	gox.GetMyAddress("")
+}
+
+func ParseServers(servers string) ([]*common.Server, error) {
+	var registeredServers []*common.Server
+	// parse tracker servers
+	if servers != "" {
+		ss := strings.Split(servers, ",")
+		registeredServers = make([]*common.Server, len(ss))
+		for i, s := range ss {
+			s = strings.TrimSpace(s)
+			s, err := ParseServer(s)
+			if err != nil {
+				return nil, err
+			}
+			registeredServers[i] = s
+		}
+	}
+	return registeredServers, nil
+}
+
+func ParseServer(s string) (*common.Server, error) {
+	if common.ServerPatternRegexp.MatchString(s) {
+		secret := common.ServerPatternRegexp.ReplaceAllString(s, "$2")
+		host := common.ServerPatternRegexp.ReplaceAllString(s, "$3")
+		port, _ := convert.StrToUint16(common.ServerPatternRegexp.ReplaceAllString(s, "$4"))
+		return &common.Server{
+			Host:   host,
+			Port:   port,
+			Secret: secret,
+		}, nil
+	} else {
+		return nil, errors.New("invalid server string, format must be the pattern of [<secret>@]<host>:<port>")
+	}
 }

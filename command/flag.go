@@ -279,28 +279,6 @@ func Parse(arguments []string) {
 				}
 				return nil
 			},
-			Flags: []cli.Flag{
-				cli.StringFlag{
-					Name:        "config, c",
-					Value:       "",
-					Usage:       "use custom config file",
-					Destination: &configFile,
-				},
-				cli.StringFlag{
-					Name:  "storages",
-					Value: "",
-					Usage: `set storage servers, example:
-	[<secret1>@]host1:port1,[<secret2>@]host2:port2`,
-					Destination: &storages,
-				},
-				cli.StringFlag{
-					Name:  "trackers",
-					Value: "",
-					Usage: `set tracker servers, example:
-	[<secret1>@]host1:port1,[<secret2>@]host2:port2`,
-					Destination: &trackers,
-				},
-			},
 			Subcommands: cli.Commands{
 				{
 					Name:  "upload",
@@ -336,6 +314,26 @@ Usage: godfs upload <file1> <file2> ...`)
 							Usage:       "mark as private files",
 							Destination: &privateUpload,
 						},
+						cli.StringFlag{
+							Name:        "config, c",
+							Value:       "",
+							Usage:       "use custom config file",
+							Destination: &configFile,
+						},
+						cli.StringFlag{
+							Name:  "storages",
+							Value: "",
+							Usage: `set storage servers, example:
+	[<secret1>@]host1:port1,[<secret2>@]host2:port2`,
+							Destination: &storages,
+						},
+						cli.StringFlag{
+							Name:  "trackers",
+							Value: "",
+							Usage: `set tracker servers, example:
+	[<secret1>@]host1:port1,[<secret2>@]host2:port2`,
+							Destination: &trackers,
+						},
 					},
 				},
 				{
@@ -359,6 +357,26 @@ Usage: godfs download <fid1> <fid2> ...`)
 							Usage:       "custom filename of the download file",
 							Destination: &customDownloadFileName,
 						},
+						cli.StringFlag{
+							Name:        "config, c",
+							Value:       "",
+							Usage:       "use custom config file",
+							Destination: &configFile,
+						},
+						cli.StringFlag{
+							Name:  "storages",
+							Value: "",
+							Usage: `set storage servers, example:
+	[<secret1>@]host1:port1,[<secret2>@]host2:port2`,
+							Destination: &storages,
+						},
+						cli.StringFlag{
+							Name:  "trackers",
+							Value: "",
+							Usage: `set tracker servers, example:
+	[<secret1>@]host1:port1,[<secret2>@]host2:port2`,
+							Destination: &trackers,
+						},
 					},
 				},
 				{
@@ -374,6 +392,34 @@ Usage: godfs inspect <fid1> <fid2> ...`)
 							inspectFiles.PushBack(c.Args().Get(i))
 						}
 						return nil
+					},
+					Flags: []cli.Flag{
+						cli.StringFlag{
+							Name:        "name, n",
+							Value:       "",
+							Usage:       "custom filename of the download file",
+							Destination: &customDownloadFileName,
+						},
+						cli.StringFlag{
+							Name:        "config, c",
+							Value:       "",
+							Usage:       "use custom config file",
+							Destination: &configFile,
+						},
+						cli.StringFlag{
+							Name:  "storages",
+							Value: "",
+							Usage: `set storage servers, example:
+	[<secret1>@]host1:port1,[<secret2>@]host2:port2`,
+							Destination: &storages,
+						},
+						cli.StringFlag{
+							Name:  "trackers",
+							Value: "",
+							Usage: `set tracker servers, example:
+	[<secret1>@]host1:port1,[<secret2>@]host2:port2`,
+							Destination: &trackers,
+						},
 					},
 				},
 				{ // this sub command is only used by client cli

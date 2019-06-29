@@ -10,12 +10,12 @@ type StorageConfig struct {
 	Trackers              []string `json:"trackers"`
 	Secret                string   `json:"secret"`
 	Group                 string   `json:"group"`
-	InstanceId            string   // one data dir has only one instanceId
-	BindAddress           string   `json:"bindAddress"`
-	Port                  int      `json:"port"`
-	AdvertiseAddress      string   `json:"advertiseAddress"`
-	AdvertisePort         int      `json:"advertisePort"`
-	DataDir               string   `json:"dataDir"`
+	InstanceId            string // one data dir has only one instanceId
+	BindAddress           string `json:"bindAddress"`
+	Port                  int    `json:"port"`
+	AdvertiseAddress      string `json:"advertiseAddress"`
+	AdvertisePort         int    `json:"advertisePort"`
+	DataDir               string `json:"dataDir"`
 	TmpDir                string
 	PreferredNetworks     string   `json:"preferredNetworks"`
 	LogLevel              string   `json:"logLevel"`
@@ -34,7 +34,7 @@ type StorageConfig struct {
 type TrackerConfig struct {
 	Trackers              []string `json:"trackers"`
 	Secret                string   `json:"secret"`
-	InstanceId            string   // one data dir has only one instanceId
+	InstanceId            string // one data dir has only one instanceId
 	BindAddress           string   `json:"bindAddress"`
 	Port                  int      `json:"port"`
 	AdvertiseAddress      string   `json:"advertiseAddress"`
@@ -54,10 +54,11 @@ type TrackerConfig struct {
 }
 
 type ClientConfig struct {
-	Trackers []string `json:"trackers"`
-	Storages []string `json:"storages"`
-	LogLevel string   `json:"logLevel"`
-	Secret   string   `json:"secret"`
+	Trackers       []string `json:"trackers"`
+	Storages       []string `json:"storages"`
+	LogLevel       string   `json:"logLevel"`
+	Secret         string   `json:"secret"`
+	ParsedTrackers []Server
 }
 
 type Server struct {

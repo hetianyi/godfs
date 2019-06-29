@@ -23,6 +23,7 @@ var (
 	NoStorageServerErr = errors.New("no storage available")
 )
 
+// Config is the APIClient config
 type Config struct {
 	MaxConnectionsPerServer  uint                    // limit max connection for each server
 	TrackerServers           []*common.Server        // tracker servers
@@ -31,6 +32,7 @@ type Config struct {
 	// Trackers or Storages
 }
 
+// ClientAPI is godfs APIClient interface.
 type ClientAPI interface {
 	// SetConfig sets or refresh client server config.
 	SetConfig(config *Config) // TODO
@@ -40,6 +42,7 @@ type ClientAPI interface {
 	Download(fileId string, offset int64, length int64, handler func(body io.Reader, bodyLength int64) error) error
 }
 
+// NewClient creates a new APIClient.
 func NewClient() *clientAPIImpl {
 	return &clientAPIImpl{
 		lock:    new(sync.Mutex),
@@ -47,6 +50,7 @@ func NewClient() *clientAPIImpl {
 	}
 }
 
+// clientAPIImpl is the implementation of APIClient.
 type clientAPIImpl struct {
 	config  *Config
 	lock    *sync.Mutex
@@ -61,7 +65,6 @@ func (c *clientAPIImpl) SetConfig(config *Config) {
 			MaxConnectionsPerServer: DefaultMaxConnectionsPerServer,
 		}
 	}
-
 	if c.config.MaxConnectionsPerServer <= 0 {
 		c.config.MaxConnectionsPerServer = DefaultMaxConnectionsPerServer
 	}
@@ -90,6 +93,7 @@ func (c *clientAPIImpl) Upload(src io.Reader, length int64, group string) (*comm
 	var ret *common.UploadResult
 	gox.Try(func() {
 		for {
+			// select storage server.
 			selectedStorage = c.selectStorageServer(group, exclude)
 			if selectedStorage == nil {
 				if lastErr == nil {
@@ -97,6 +101,7 @@ func (c *clientAPIImpl) Upload(src io.Reader, length int64, group string) (*comm
 				}
 				break
 			}
+			// get connection of this server.
 			connection, authenticated, err := conn.GetConnection(selectedStorage)
 			if err != nil {
 				lastErr = err
@@ -104,14 +109,17 @@ func (c *clientAPIImpl) Upload(src io.Reader, length int64, group string) (*comm
 				continue
 			}
 			lastConn = connection
+			// construct tcp bridge.
 			pip := &gpip.Pip{
 				Conn: *lastConn,
 			}
+			// authentication with server.
 			if authenticated == nil || !authenticated.(bool) {
 				if err = authenticate(pip, selectedStorage); err != nil {
 					lastErr = err
 					exclude.PushBack(selectedStorage)
 					conn.ReturnConnection(selectedStorage, lastConn, nil, true)
+					lastConn = nil
 					continue
 				}
 				logger.Debug("authentication success with server ", selectedStorage.ConnectionString())
@@ -122,6 +130,7 @@ func (c *clientAPIImpl) Upload(src io.Reader, length int64, group string) (*comm
 			if err != nil {
 				lastErr = err
 				conn.ReturnConnection(selectedStorage, lastConn, nil, true)
+				lastConn = nil
 				break
 			}
 			// receive response
@@ -143,8 +152,10 @@ func (c *clientAPIImpl) Upload(src io.Reader, length int64, group string) (*comm
 			if err != nil {
 				lastErr = err
 				conn.ReturnConnection(selectedStorage, lastConn, nil, true)
+				lastConn = nil
 				break
 			}
+			// upload finish
 			conn.ReturnConnection(selectedStorage, lastConn, authenticated, false)
 			lastErr = nil
 			lastConn = nil
@@ -152,8 +163,9 @@ func (c *clientAPIImpl) Upload(src io.Reader, length int64, group string) (*comm
 			break
 		}
 	}, func(e interface{}) {
-		logger.Error(e)
+		lastErr = e.(error)
 	})
+	// lastConn should be returned and set to nil.
 	if lastConn != nil {
 		conn.ReturnConnection(selectedStorage, lastConn, nil, true)
 	}

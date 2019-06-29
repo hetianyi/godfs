@@ -47,6 +47,8 @@ var (
 )
 
 var (
-	Config              *StorageConfig
-	FileIdPatternRegexp = regexp.MustCompile(FILE_ID_PATTERN)
+	InitializedStorageConfiguration *StorageConfig
+	InitializedClientConfiguration  *ClientConfig
+	FileIdPatternRegexp             = regexp.MustCompile(FILE_ID_PATTERN)
+	ServerPatternRegexp             = regexp.MustCompile(SERVER_PATTERN)
 )

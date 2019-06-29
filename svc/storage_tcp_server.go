@@ -19,12 +19,12 @@ import (
 )
 
 func StartStorageTcpServer() {
-	listener, err := net.Listen("tcp", common.Config.BindAddress+":"+convert.IntToStr(common.Config.Port))
+	listener, err := net.Listen("tcp", common.InitializedStorageConfiguration.BindAddress+":"+convert.IntToStr(common.InitializedStorageConfiguration.Port))
 	if err != nil {
 		logger.Fatal(err)
 	}
 	time.Sleep(time.Millisecond * 50)
-	logger.Info("  tcp server starting on port ", common.Config.Port)
+	logger.Info("  tcp server starting on port ", common.InitializedStorageConfiguration.Port)
 	logger.Info(aurora.BrightGreen(":::server started:::"))
 	for {
 		conn, err := listener.Accept()
@@ -102,7 +102,7 @@ func authenticationHandler(header *common.Header) (*common.Header, io.Reader, in
 		}, nil, 0, nil
 	}
 	secret := header.Attributes["secret"]
-	if secret != common.Config.Secret {
+	if secret != common.InitializedStorageConfiguration.Secret {
 		return &common.Header{
 			Result: common.UNAUTHORIZED,
 			Msg:    "authentication failed",
@@ -122,7 +122,7 @@ func uploadFileHandler(bodyReader io.Reader, bodyLength int64, authorized bool) 
 	var realRead int64 = 0
 	crcH := util.CreateCrc32Hash()
 	md5H := util.CreateMd5Hash()
-	tmpFileName := common.Config.TmpDir + "/" + uuid.UUID()
+	tmpFileName := common.InitializedStorageConfiguration.TmpDir + "/" + uuid.UUID()
 	out, err := file.CreateFile(tmpFileName)
 	if err != nil {
 		return nil, nil, 0, err
@@ -163,9 +163,9 @@ func uploadFileHandler(bodyReader io.Reader, bodyLength int64, authorized bool) 
 			// 文件放在crc结尾的目录，防止目恶意伪造md5文件进行覆盖
 			// 避免了暴露文件md5可能出现的风险：保证了在md5相等但是文件不同情况下文件出现的覆盖情况。
 			// 此时要求文件的交流必须携带完整的参数
-			targetLoc := common.Config.DataDir + "/" + targetDir
-			targetFile := common.Config.DataDir + "/" + targetDir + "/" + md5String
-			finalFileId := common.Config.Group + "/" + targetDir + "/" + md5String
+			targetLoc := common.InitializedStorageConfiguration.DataDir + "/" + targetDir
+			targetFile := common.InitializedStorageConfiguration.DataDir + "/" + targetDir + "/" + md5String
+			finalFileId := common.InitializedStorageConfiguration.Group + "/" + targetDir + "/" + md5String
 			if !file.Exists(targetLoc) {
 				if err := file.CreateDirs(targetLoc); err != nil {
 					return nil, nil, 0, err
@@ -176,8 +176,8 @@ func uploadFileHandler(bodyReader io.Reader, bodyLength int64, authorized bool) 
 					Result: common.SUCCESS,
 					Attributes: map[string]string{
 						"fid":        finalFileId,
-						"instanceId": common.Config.InstanceId,
-						"group":      common.Config.Group,
+						"instanceId": common.InitializedStorageConfiguration.InstanceId,
+						"group":      common.InitializedStorageConfiguration.Group,
 					},
 				}, nil, 0, nil
 			}
@@ -188,8 +188,8 @@ func uploadFileHandler(bodyReader io.Reader, bodyLength int64, authorized bool) 
 				Result: common.SUCCESS,
 				Attributes: map[string]string{
 					"fid":        finalFileId,
-					"instanceId": common.Config.InstanceId,
-					"group":      common.Config.Group,
+					"instanceId": common.InitializedStorageConfiguration.InstanceId,
+					"group":      common.InitializedStorageConfiguration.Group,
 				},
 			}, nil, 0, nil
 		}
@@ -228,7 +228,7 @@ func downFileHandler(header *common.Header, authorized bool) (*common.Header, io
 	p1 := common.FileIdPatternRegexp.ReplaceAllString(fileId, "$2")
 	p2 := common.FileIdPatternRegexp.ReplaceAllString(fileId, "$3")
 	md5 := common.FileIdPatternRegexp.ReplaceAllString(fileId, "$4")
-	fullPath := strings.Join([]string{common.Config.DataDir, p1, p2, md5}, "/")
+	fullPath := strings.Join([]string{common.InitializedStorageConfiguration.DataDir, p1, p2, md5}, "/")
 	if !file.Exists(fullPath) {
 		return &common.Header{
 			Result: common.NOT_FOUND,

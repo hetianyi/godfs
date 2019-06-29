@@ -27,14 +27,13 @@ var (
 	privateUpload          bool      // upload private file
 	showVersion            bool      // show app version
 	uploadGroup            string    // upload group
-	downloadFid            string    // fid to be downloaded
 	customDownloadFileName string    // custom file download location and filename
 	inspectFiles           list.List // custom file download location and filename
 	updateConfigList       list.List // configs to be update
 	configFile             string    // specified config file to be use
 
 	trackers    string    // tracker servers(used by client and storage mode)
-	storages    string    // storage servers(used by storage mode)
+	storages    string    // storage servers(used by client mode)
 	logLevel    string    // log level(trace, debug, info, warn, error, fatal)
 	secret      string    // secret of this instance
 	uploadFiles list.List // files to be uploaded
@@ -107,8 +106,16 @@ func ConfigAssembly(bm common.BootMode) interface{} {
 		if allowedDomains != "" {
 			c.AllowedDomains = strings.Split(allowedDomains, ",")
 		}
-		// TODO load and initialize instance id.
-		common.Config = c
+		common.InitializedStorageConfiguration = c
+		return c
+	} else if bm == common.CLIENT {
+		c := &common.ClientConfig{}
+		c.Secret = secret
+		c.LogLevel = logLevel
+		if trackers != "" {
+			c.Trackers = strings.Split(trackers, ",")
+		}
+		common.InitializedClientConfiguration = c
 		return c
 	}
 	return nil
