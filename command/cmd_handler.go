@@ -72,10 +72,11 @@ func handleUploadFile() error {
 					logger.Error(err)
 				}
 				r := &pg.WrappedReader{Reader: fi}
-				pg.NewWrappedReaderProgress(inf.Size(), 50, inf.Name(), pg.Top, r)
+				pro := pg.NewWrappedReaderProgress(inf.Size(), 50, inf.Name(), pg.Top, r)
 				ret, err := client.Upload(r, inf.Size(), group)
 				fi.Close()
 				if err != nil {
+					pro.Destroy()
 					logger.Error(err)
 				}
 				success++
@@ -97,9 +98,10 @@ func handleUploadFile() error {
 				return false
 			}
 			r := &pg.WrappedReader{Reader: fi}
-			pg.NewWrappedReaderProgress(inf.Size(), 50, inf.Name(), pg.Top, r)
+			pro := pg.NewWrappedReaderProgress(inf.Size(), 50, inf.Name(), pg.Top, r)
 			ret, err := client.Upload(r, inf.Size(), group)
 			if err != nil {
+				pro.Destroy()
 				logger.Error(err)
 				return false
 			}
@@ -164,13 +166,17 @@ func handleDownloadFile() error {
 			logger.Warn("invalid format fileId: ", item.(string))
 			return false
 		}
+
 		err := client.Download(item.(string), 0, -1, func(body io.Reader, bodyLength int64) error {
 			if downloadFiles.Len() == 1 && customDownloadFileName != "" {
 				logger.Info("downloading ", item.(string), " to ", customDownloadFileName)
 				fi, err := file.CreateFile(customDownloadFileName)
 				w := &pg.WrappedWriter{Writer: fi}
-				pg.NewWrappedWriterProgress(bodyLength, 50, item.(string), pg.Top, w)
+				pro := pg.NewWrappedWriterProgress(bodyLength, 50, item.(string), pg.Top, w)
 				_, err = io.Copy(w, body)
+				if err != nil {
+					pro.Destroy()
+				}
 				return err
 			}
 			md5 := common.FileIdPatternRegexp.ReplaceAllString(item.(string), "$4")
@@ -180,8 +186,11 @@ func handleDownloadFile() error {
 				return err
 			}
 			w := &pg.WrappedWriter{Writer: fi}
-			pg.NewWrappedWriterProgress(bodyLength, 50, item.(string), pg.Top, w)
+			pro := pg.NewWrappedWriterProgress(bodyLength, 50, item.(string), pg.Top, w)
 			_, err = io.Copy(w, body)
+			if err != nil {
+				pro.Destroy()
+			}
 			return err
 		})
 		if err == nil {

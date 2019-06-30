@@ -4,7 +4,7 @@ go 1.12
 
 require (
 	github.com/gorilla/mux v1.7.3
-	github.com/hetianyi/gox v0.0.0-20190630150627-a48c47ef5345
+	github.com/hetianyi/gox v0.0.0-20190630152032-3fb87dd24805
 	github.com/logrusorgru/aurora v0.0.0-20190428105938-cea283e61946
 	github.com/mattn/go-colorable v0.1.2 // indirect
 	github.com/mitchellh/go-homedir v1.1.0
