@@ -8,6 +8,7 @@ import (
 	"github.com/hetianyi/gox"
 	"github.com/hetianyi/gox/file"
 	"github.com/hetianyi/gox/logger"
+	"github.com/hetianyi/gox/pg"
 	"io"
 	"path/filepath"
 )
@@ -70,7 +71,10 @@ func handleUploadFile() error {
 				if err != nil {
 					logger.Error(err)
 				}
-				ret, err := client.Upload(fi, inf.Size(), group)
+				r := &pg.WrappedReader{Reader: fi}
+				pg.NewWrappedReaderProgress(inf.Size(), 50, inf.Name(), pg.Top, r)
+				ret, err := client.Upload(r, inf.Size(), group)
+				fi.Close()
 				if err != nil {
 					logger.Error(err)
 				}
@@ -92,7 +96,9 @@ func handleUploadFile() error {
 				logger.Error(err)
 				return false
 			}
-			ret, err := client.Upload(fi, inf.Size(), group)
+			r := &pg.WrappedReader{Reader: fi}
+			pg.NewWrappedReaderProgress(inf.Size(), 50, inf.Name(), pg.Top, r)
+			ret, err := client.Upload(r, inf.Size(), group)
 			if err != nil {
 				logger.Error(err)
 				return false
@@ -162,7 +168,9 @@ func handleDownloadFile() error {
 			if downloadFiles.Len() == 1 && customDownloadFileName != "" {
 				logger.Info("downloading ", item.(string), " to ", customDownloadFileName)
 				fi, err := file.CreateFile(customDownloadFileName)
-				_, err = io.Copy(fi, body)
+				w := &pg.WrappedWriter{Writer: fi}
+				pg.NewWrappedWriterProgress(bodyLength, 50, item.(string), pg.Top, w)
+				_, err = io.Copy(w, body)
 				return err
 			}
 			md5 := common.FileIdPatternRegexp.ReplaceAllString(item.(string), "$4")
@@ -171,7 +179,9 @@ func handleDownloadFile() error {
 			if err != nil {
 				return err
 			}
-			_, err = io.Copy(fi, body)
+			w := &pg.WrappedWriter{Writer: fi}
+			pg.NewWrappedWriterProgress(bodyLength, 50, item.(string), pg.Top, w)
+			_, err = io.Copy(w, body)
 			return err
 		})
 		if err == nil {
