@@ -1,7 +1,6 @@
 package svc
 
 import (
-	"encoding/json"
 	"errors"
 	"github.com/hetianyi/godfs/common"
 	"github.com/hetianyi/godfs/util"
@@ -11,6 +10,7 @@ import (
 	"github.com/hetianyi/gox/gpip"
 	"github.com/hetianyi/gox/logger"
 	"github.com/hetianyi/gox/uuid"
+	json "github.com/json-iterator/go"
 	"github.com/logrusorgru/aurora"
 	"io"
 	"net"
@@ -75,6 +75,12 @@ func clientConnHandler(conn net.Conn) {
 				return pip.Send(h, b, l)
 			} else if header.Operation == common.OPERATION_DOWNLOAD {
 				h, b, l, err := downFileHandler(header, validated)
+				if err != nil {
+					return err
+				}
+				return pip.Send(h, b, l)
+			} else if header.Operation == common.OPERATION_QUERY {
+				h, b, l, err := inspectFileHandler(header, validated)
 				if err != nil {
 					return err
 				}
@@ -258,4 +264,50 @@ func downFileHandler(header *common.Header, authorized bool) (*common.Header, io
 	return &common.Header{
 		Result: common.SUCCESS,
 	}, io.LimitReader(fi, length), length, nil
+}
+
+func inspectFileHandler(header *common.Header, authorized bool) (*common.Header, io.Reader, int64, error) {
+	if !authorized {
+		return nil, nil, 0, errors.New("unauthorized connection")
+	}
+	var fileId = header.Attributes["fileId"]
+	// parse fileId
+	if !common.FileIdPatternRegexp.Match([]byte(fileId)) || header.Attributes == nil {
+		return &common.Header{
+			Result: common.NOT_FOUND,
+		}, nil, 0, nil
+	}
+	// group := common.FileIdPatternRegexp.ReplaceAllString(fileId, "$1")
+	p1 := common.FileIdPatternRegexp.ReplaceAllString(fileId, "$2")
+	p2 := common.FileIdPatternRegexp.ReplaceAllString(fileId, "$3")
+	md5 := common.FileIdPatternRegexp.ReplaceAllString(fileId, "$4")
+	fullPath := strings.Join([]string{common.InitializedStorageConfiguration.DataDir, p1, p2, md5}, "/")
+	if !file.Exists(fullPath) {
+		return &common.Header{
+			Result: common.NOT_FOUND,
+		}, nil, 0, nil
+	}
+	fi, err := file.GetFile(fullPath)
+	if !file.Exists(fullPath) {
+		return &common.Header{
+			Result: common.ERROR,
+		}, nil, 0, err
+	}
+	info, err := fi.Stat()
+	if !file.Exists(fullPath) {
+		return &common.Header{
+			Result: common.ERROR,
+		}, nil, 0, err
+	}
+	finfo := &common.FileInfo{
+		Group:      common.InitializedStorageConfiguration.Group,
+		FileId:     fileId,
+		FileLength: info.Size(),
+		CreateTime: gox.GetTimestamp(info.ModTime()),
+	}
+	bs, _ := json.Marshal(finfo)
+	return &common.Header{
+		Result:     common.SUCCESS,
+		Attributes: map[string]string{"info": string(bs)},
+	}, nil, 0, nil
 }

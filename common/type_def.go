@@ -10,12 +10,12 @@ type StorageConfig struct {
 	Trackers              []string `json:"trackers"`
 	Secret                string   `json:"secret"`
 	Group                 string   `json:"group"`
-	InstanceId            string // one data dir has only one instanceId
-	BindAddress           string `json:"bindAddress"`
-	Port                  int    `json:"port"`
-	AdvertiseAddress      string `json:"advertiseAddress"`
-	AdvertisePort         int    `json:"advertisePort"`
-	DataDir               string `json:"dataDir"`
+	InstanceId            string   // one data dir has only one instanceId
+	BindAddress           string   `json:"bindAddress"`
+	Port                  int      `json:"port"`
+	AdvertiseAddress      string   `json:"advertiseAddress"`
+	AdvertisePort         int      `json:"advertisePort"`
+	DataDir               string   `json:"dataDir"`
 	TmpDir                string
 	PreferredNetworks     string   `json:"preferredNetworks"`
 	LogLevel              string   `json:"logLevel"`
@@ -34,7 +34,7 @@ type StorageConfig struct {
 type TrackerConfig struct {
 	Trackers              []string `json:"trackers"`
 	Secret                string   `json:"secret"`
-	InstanceId            string // one data dir has only one instanceId
+	InstanceId            string   // one data dir has only one instanceId
 	BindAddress           string   `json:"bindAddress"`
 	Port                  int      `json:"port"`
 	AdvertiseAddress      string   `json:"advertiseAddress"`
@@ -110,6 +110,13 @@ type UploadResult struct {
 	Group  string `json:"group"`
 	Node   string `json:"node"`
 	FileId string `json:"fileId"`
+}
+
+type FileInfo struct {
+	Group      string `json:"group"`
+	FileId     string `json:"fileId"`
+	FileLength int64  `json:"size"`
+	CreateTime int64  `json:"createTime"`
 }
 
 type BingLog struct {

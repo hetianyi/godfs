@@ -2,7 +2,6 @@ package util
 
 import (
 	"bytes"
-	"encoding/json"
 	"errors"
 	"github.com/hetianyi/godfs/common"
 	"github.com/hetianyi/gox"
@@ -10,6 +9,7 @@ import (
 	"github.com/hetianyi/gox/file"
 	"github.com/hetianyi/gox/logger"
 	"github.com/hetianyi/gox/uuid"
+	json "github.com/json-iterator/go"
 	"github.com/mitchellh/go-homedir"
 	"io"
 	"regexp"

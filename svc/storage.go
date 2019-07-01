@@ -1,11 +1,11 @@
 package svc
 
 import (
-	"encoding/json"
 	"fmt"
 	"github.com/hetianyi/godfs/common"
 	"github.com/hetianyi/godfs/util"
 	"github.com/hetianyi/gox/logger"
+	json "github.com/json-iterator/go"
 	"os"
 )
 
@@ -19,9 +19,9 @@ func BootStorageServer() {
 		logger.Fatal("cannot create tmp dir: ", err)
 	}
 	common.InitializedStorageConfiguration.InstanceId = util.LoadInstanceData()
-	util.PrintLogo()
 	cbs, _ := json.MarshalIndent(common.InitializedStorageConfiguration, "", "  ")
 	logger.Debug("\n", string(cbs))
+	util.PrintLogo()
 	if common.InitializedStorageConfiguration.EnableHttp {
 		StartStorageHttpServer(common.InitializedStorageConfiguration)
 	}

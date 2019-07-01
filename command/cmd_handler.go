@@ -1,7 +1,6 @@
 package command
 
 import (
-	"encoding/json"
 	"github.com/hetianyi/godfs/api"
 	"github.com/hetianyi/godfs/common"
 	"github.com/hetianyi/godfs/util"
@@ -9,6 +8,7 @@ import (
 	"github.com/hetianyi/gox/file"
 	"github.com/hetianyi/gox/logger"
 	"github.com/hetianyi/gox/pg"
+	json "github.com/json-iterator/go"
 	"io"
 	"path/filepath"
 )
@@ -27,7 +27,7 @@ func initClient() error {
 	if err != nil {
 		return err
 	}
-	staticServer := make([]*common.StorageServer, gox.TValue(_staticServer == nil , 0, len(_staticServer)).(int))
+	staticServer := make([]*common.StorageServer, gox.TValue(_staticServer == nil, 0, len(_staticServer)).(int))
 	if _staticServer != nil {
 		for i, s := range _staticServer {
 			staticServer[i] = &common.StorageServer{
@@ -38,8 +38,8 @@ func initClient() error {
 	// init client config
 	client.SetConfig(&api.Config{
 		MaxConnectionsPerServer: api.DefaultMaxConnectionsPerServer,
-		StaticStorageServers: staticServer,
-		TrackerServers: trackerServers,
+		StaticStorageServers:    staticServer,
+		TrackerServers:          trackerServers,
 	})
 	return nil
 }
@@ -72,7 +72,7 @@ func handleUploadFile() error {
 					logger.Error(err)
 				}
 				r := &pg.WrappedReader{Reader: fi}
-				pro := pg.NewWrappedReaderProgress(inf.Size(), 50, inf.Name(), pg.Top, r)
+				pro := pg.NewWrappedReaderProgress(inf.Size(), 50, "uploading "+inf.Name(), pg.Top, r)
 				ret, err := client.Upload(r, inf.Size(), group)
 				fi.Close()
 				if err != nil {
@@ -98,7 +98,7 @@ func handleUploadFile() error {
 				return false
 			}
 			r := &pg.WrappedReader{Reader: fi}
-			pro := pg.NewWrappedReaderProgress(inf.Size(), 50, inf.Name(), pg.Top, r)
+			pro := pg.NewWrappedReaderProgress(inf.Size(), 50, "uploading "+inf.Name(), pg.Top, r)
 			ret, err := client.Upload(r, inf.Size(), group)
 			if err != nil {
 				pro.Destroy()
@@ -114,8 +114,6 @@ func handleUploadFile() error {
 	logger.Info("upload finish, success ", success, " of total ", total)
 	return nil
 }
-
-
 
 func handleDownloadFile() error {
 	// initialize APIClient
@@ -172,7 +170,7 @@ func handleDownloadFile() error {
 				logger.Info("downloading ", item.(string), " to ", customDownloadFileName)
 				fi, err := file.CreateFile(customDownloadFileName)
 				w := &pg.WrappedWriter{Writer: fi}
-				pro := pg.NewWrappedWriterProgress(bodyLength, 50, item.(string), pg.Top, w)
+				pro := pg.NewWrappedWriterProgress(bodyLength, 50, "downloading "+item.(string), pg.Top, w)
 				_, err = io.Copy(w, body)
 				if err != nil {
 					pro.Destroy()
@@ -186,7 +184,7 @@ func handleDownloadFile() error {
 				return err
 			}
 			w := &pg.WrappedWriter{Writer: fi}
-			pro := pg.NewWrappedWriterProgress(bodyLength, 50, item.(string), pg.Top, w)
+			pro := pg.NewWrappedWriterProgress(bodyLength, 50, "downloading "+item.(string), pg.Top, w)
 			_, err = io.Copy(w, body)
 			if err != nil {
 				pro.Destroy()
@@ -204,3 +202,40 @@ func handleDownloadFile() error {
 	return nil
 }
 
+func handleInspectFile() error {
+	// initialize APIClient
+	if err := initClient(); err != nil {
+		logger.Fatal(err)
+	}
+	if inspectFiles.Len() == 0 {
+		return nil
+	}
+	resultMap := make(map[string]*common.FileInfo)
+	total := 0
+	success := 0
+	// checking download fileIds.
+	gox.WalkList(&inspectFiles, func(item interface{}) bool {
+		total++
+		if !common.FileIdPatternRegexp.Match([]byte(item.(string))) {
+			logger.Warn("invalid format fileId: ", item.(string))
+			return false
+		}
+
+		info, err := client.Query(item.(string))
+		resultMap[item.(string)] = info
+		if err == nil {
+			success++
+		} else {
+			logger.Error("error inspect file ", item.(string), ": ", err)
+		}
+		return false
+	})
+	bs, err := json.MarshalIndent(resultMap, "", "  ")
+	if err != nil {
+		logger.Error(err)
+	} else {
+		logger.Info("inspect result:\n", string(bs))
+	}
+	logger.Info("inspect finish, success ", success, " of total ", total)
+	return nil
+}

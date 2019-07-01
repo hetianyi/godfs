@@ -19,10 +19,10 @@ const (
 	HTTP_AUTH_PATTERN                  = "^([^:]+):([^:]+)$"
 	INSTANCE_ID_PATTERN                = "^[0-9a-z-]{8}$"
 	FILE_ID_PATTERN                    = "^([0-9a-zA-Z-_]{1,30})/([0-9A-F]{2})/([0-9A-F]{2})/([0-9a-f]{32})$"
-	DEFAULT_STORAGE_TCP_PORT           = 3389
+	DEFAULT_STORAGE_TCP_PORT           = 9012
 	DEFAULT_STORAGE_HTTP_PORT          = 8001
-	DEFAULT_TRACKER_TCP_PORT           = 3390
-	DEFAULT_TRACKER_HTTP_PORT          = 8002
+	DEFAULT_TRACKER_TCP_PORT           = 9022
+	DEFAULT_TRACKER_HTTP_PORT          = 8011
 	BUFFER_SIZE                        = 1 << 15 // 32k
 	DEFAULT_GROUP                      = "G01"
 )
@@ -33,6 +33,7 @@ const (
 	OPERATION_CONNECT                   // response
 	OPERATION_UPLOAD                    // response
 	OPERATION_DOWNLOAD                  // response
+	OPERATION_QUERY                     // response
 )
 
 // status codes
@@ -45,6 +46,7 @@ const (
 
 var (
 	NotFoundErr = errors.New("file not found")
+	ServerErr   = errors.New("server internal error")
 )
 
 var (

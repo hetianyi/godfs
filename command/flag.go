@@ -357,9 +357,9 @@ Usage: godfs download <fid1> <fid2> ...`)
 					},
 					Flags: []cli.Flag{
 						cli.StringFlag{
-							Name:        "name, n",
-							Value:       "",
-							Usage:       `custom download filename or full path of the
+							Name:  "name, n",
+							Value: "",
+							Usage: `custom download filename or full path of the
 	download file(only valid for single file)`,
 							Destination: &customDownloadFileName,
 						},
@@ -395,17 +395,13 @@ Usage: godfs download <fid1> <fid2> ...`)
 Usage: godfs inspect <fid1> <fid2> ...`)
 						}
 						for i := range c.Args() {
-							inspectFiles.PushBack(c.Args().Get(i))
+							if !util.StringListExists(&inspectFiles, c.Args().Get(i)) {
+								inspectFiles.PushBack(c.Args().Get(i))
+							}
 						}
 						return nil
 					},
 					Flags: []cli.Flag{
-						cli.StringFlag{
-							Name:        "name, n",
-							Value:       "",
-							Usage:       "custom filename of the download file",
-							Destination: &customDownloadFileName,
-						},
 						cli.StringFlag{
 							Name:        "config, c",
 							Value:       "",

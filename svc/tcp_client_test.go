@@ -1,12 +1,12 @@
 package svc_test
 
 import (
-	"encoding/json"
 	"fmt"
 	"github.com/hetianyi/godfs/common"
 	"github.com/hetianyi/gox/file"
 	"github.com/hetianyi/gox/gpip"
 	"github.com/hetianyi/gox/logger"
+	json "github.com/json-iterator/go"
 	"io"
 	"net"
 	"strconv"

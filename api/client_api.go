@@ -9,6 +9,7 @@ import (
 	"github.com/hetianyi/gox/convert"
 	"github.com/hetianyi/gox/gpip"
 	"github.com/hetianyi/gox/logger"
+	json "github.com/json-iterator/go"
 	"io"
 	"net"
 	"sync"
@@ -44,6 +45,8 @@ type ClientAPI interface {
 	//
 	// or common.NotFoundErr if the file cannot be found on the servers.
 	Download(fileId string, offset int64, length int64, handler func(body io.Reader, bodyLength int64) error) error
+	// Query query file by fileId.
+	Query(fileId string) (*common.FileInfo, error)
 }
 
 // NewClient creates a new APIClient.
@@ -242,14 +245,16 @@ func (c *clientAPIImpl) Download(fileId string, offset int64, length int64, hand
 						return handler(bodyReader, bodyLength)
 					} else if header.Result == common.NOT_FOUND {
 						return common.NotFoundErr
+					} else if header.Result == common.ERROR {
+						return common.ServerErr
 					}
 					return errors.New("upload failed: " + header.Msg)
 				}
-				return errors.New("upload failed: got empty response from server")
+				return errors.New("download failed: got empty response from server")
 			})
 			if err != nil {
 				lastErr = err
-				conn.ReturnConnection(selectedStorage, lastConn, authenticated, err != common.NotFoundErr)
+				conn.ReturnConnection(selectedStorage, lastConn, authenticated, err != common.NotFoundErr && err != common.ServerErr)
 				lastConn = nil
 				exclude.PushBack(selectedStorage)
 				continue
@@ -267,6 +272,102 @@ func (c *clientAPIImpl) Download(fileId string, offset int64, length int64, hand
 		conn.ReturnConnection(selectedStorage, lastConn, nil, true)
 	}
 	return lastErr
+}
+
+func (c *clientAPIImpl) Query(fileId string) (*common.FileInfo, error) {
+	logger.Debug("begin to query file")
+	var exclude = list.New()                  // excluded storage list
+	var selectedStorage *common.StorageServer // target server for file uploading.
+	var lastErr error
+	var lastConn *net.Conn
+	var result *common.FileInfo
+	// parse fileId
+	if !common.FileIdPatternRegexp.Match([]byte(fileId)) {
+		return nil, errors.New("invalid fileId: " + fileId)
+	}
+	group := common.FileIdPatternRegexp.ReplaceAllString(fileId, "$1")
+
+	gox.Try(func() {
+		for {
+			selectedStorage = c.selectStorageServer(group, exclude)
+			if selectedStorage == nil {
+				if lastErr == nil {
+					lastErr = NoStorageServerErr
+				}
+				break
+			}
+			connection, authenticated, err := conn.GetConnection(selectedStorage)
+			if err != nil {
+				lastErr = err
+				exclude.PushBack(selectedStorage)
+				continue
+			}
+			lastConn = connection
+			pip := &gpip.Pip{
+				Conn: *lastConn,
+			}
+			if authenticated == nil || !authenticated.(bool) {
+				if err = authenticate(pip, selectedStorage); err != nil {
+					lastErr = err
+					exclude.PushBack(selectedStorage)
+					conn.ReturnConnection(selectedStorage, lastConn, nil, true)
+					lastConn = nil
+					continue
+				}
+				logger.Debug("authentication success with server ", selectedStorage.ConnectionString())
+			}
+			authenticated = true
+			// send file body
+			err = pip.Send(&common.Header{
+				Operation: common.OPERATION_QUERY,
+				Attributes: map[string]string{
+					"fileId": fileId,
+				},
+			}, nil, 0)
+			if err != nil {
+				lastErr = err
+				conn.ReturnConnection(selectedStorage, lastConn, nil, true)
+				lastConn = nil
+				exclude.PushBack(selectedStorage)
+				continue
+			}
+			// receive response
+			err = pip.Receive(&common.Header{}, func(_header interface{}, bodyReader io.Reader, bodyLength int64) error {
+				header := _header.(*common.Header)
+				if header != nil {
+					if header.Result == common.SUCCESS {
+						infoS := header.Attributes["info"]
+						result = &common.FileInfo{}
+						return json.Unmarshal([]byte(infoS), result)
+					} else if header.Result == common.NOT_FOUND {
+						return common.NotFoundErr
+					} else if header.Result == common.ERROR {
+						return common.ServerErr
+					}
+					return errors.New("inspect failed: " + header.Msg)
+				}
+				return errors.New("inspect failed: got empty response from server")
+			})
+			if err != nil {
+				lastErr = err
+				conn.ReturnConnection(selectedStorage, lastConn, authenticated, err != common.NotFoundErr && err != common.ServerErr)
+				lastConn = nil
+				exclude.PushBack(selectedStorage)
+				continue
+			}
+			conn.ReturnConnection(selectedStorage, lastConn, authenticated, false)
+			lastErr = nil
+			lastConn = nil
+			logger.Debug("inspect finish")
+			break
+		}
+	}, func(e interface{}) {
+		logger.Error(e)
+	})
+	if lastConn != nil {
+		conn.ReturnConnection(selectedStorage, lastConn, nil, true)
+	}
+	return result, lastErr
 }
 
 // authenticate authenticates width storage server.
