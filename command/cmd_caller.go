@@ -5,6 +5,7 @@ import (
 	"github.com/hetianyi/godfs/svc"
 )
 
+// call calls handler function due to command.
 func call(cmd common.Command) {
 	switch cmd {
 	case common.CMD_BOOT_STORAGE:

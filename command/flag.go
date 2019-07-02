@@ -9,6 +9,7 @@ import (
 	"os"
 )
 
+// Parse parses command flags using `github.com/urfave/cli`
 func Parse(arguments []string) {
 	appFlag := cli.NewApp()
 	appFlag.Version = common.VERSION

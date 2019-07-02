@@ -17,12 +17,11 @@ import (
 )
 
 const (
+	// Default max connection count of each server.
 	DefaultMaxConnectionsPerServer = 100
 )
 
-var (
-	NoStorageServerErr = errors.New("no storage available")
-)
+var NoStorageServerErr = errors.New("no storage available")
 
 // Config is the APIClient config
 type Config struct {
@@ -38,6 +37,8 @@ type ClientAPI interface {
 	// SetConfig sets or refresh client server config.
 	SetConfig(config *Config) // TODO
 	// Upload uploads file to specific group server.
+	//
+	// If no group provided, it will upload file to a random server.
 	Upload(src io.Reader, length int64, group string) (*common.UploadResult, error)
 	// Download downloads a file from server.
 	//
@@ -45,7 +46,9 @@ type ClientAPI interface {
 	//
 	// or common.NotFoundErr if the file cannot be found on the servers.
 	Download(fileId string, offset int64, length int64, handler func(body io.Reader, bodyLength int64) error) error
-	// Query query file by fileId.
+	// Query queries file's information by fileId.
+	//
+	// Parameter `fileId` must be the pattern of common.FILE_ID_PATTERN
 	Query(fileId string) (*common.FileInfo, error)
 }
 
@@ -190,7 +193,6 @@ func (c *clientAPIImpl) Download(fileId string, offset int64, length int64, hand
 		return errors.New("invalid fileId: " + fileId)
 	}
 	group := common.FileIdPatternRegexp.ReplaceAllString(fileId, "$1")
-
 	gox.Try(func() {
 		for {
 			selectedStorage = c.selectStorageServer(group, exclude)
@@ -286,7 +288,6 @@ func (c *clientAPIImpl) Query(fileId string) (*common.FileInfo, error) {
 		return nil, errors.New("invalid fileId: " + fileId)
 	}
 	group := common.FileIdPatternRegexp.ReplaceAllString(fileId, "$1")
-
 	gox.Try(func() {
 		for {
 			selectedStorage = c.selectStorageServer(group, exclude)
@@ -372,7 +373,7 @@ func (c *clientAPIImpl) Query(fileId string) (*common.FileInfo, error) {
 
 // authenticate authenticates width storage server.
 func authenticate(p *gpip.Pip, server conn.Server) error {
-	logger.Debug("trying authentication with server ", server.ConnectionString())
+	logger.Debug("trying to authenticate with server ", server.ConnectionString())
 	secret := ""
 	if _, t := server.(*common.Server); t {
 		secret = server.(*common.Server).Secret
@@ -412,6 +413,8 @@ func (c *clientAPIImpl) selectStorageServer(group string, exclude *list.List) *c
 			}
 		}
 	}
+	// if no candidate server, choose from static storage servers.
+	// static server usually has no group configured, so here ignores the group.
 	if candidates.Len() == 0 {
 		for _, s := range c.config.StaticStorageServers {
 			if isExcluded(s, exclude) {
@@ -420,7 +423,6 @@ func (c *clientAPIImpl) selectStorageServer(group string, exclude *list.List) *c
 			candidates.PushBack(s)
 		}
 	}
-	logger.Debug("candidates: ", candidates)
 	// select smallest weights of storage server.
 	var selectedStorage *common.StorageServer
 	gox.WalkList(candidates, func(item interface{}) bool {
@@ -440,16 +442,18 @@ func (c *clientAPIImpl) selectStorageServer(group string, exclude *list.List) *c
 	return selectedStorage
 }
 
+// isExcluded judges whether a storage server is in the exclude list.
 func isExcluded(s *common.StorageServer, exclude *list.List) bool {
-	con := false
-	if exclude != nil {
-		gox.WalkList(exclude, func(item interface{}) bool {
-			if item.(*common.StorageServer).InstanceId == s.InstanceId {
-				con = true
-				return true
-			}
-			return false
-		})
+	if exclude == nil {
+		return false
 	}
+	con := false
+	gox.WalkList(exclude, func(item interface{}) bool {
+		if item.(*common.StorageServer).InstanceId == s.InstanceId {
+			con = true
+			return true
+		}
+		return false
+	})
 	return con
 }

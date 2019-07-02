@@ -17,34 +17,31 @@ var (
 	inspectFiles           list.List // custom file download location and filename
 	updateConfigList       list.List // configs to be update
 	configFile             string    // specified config file to be use
-
-	trackers      string    // tracker servers(used by client and storage mode)
-	storages      string    // storage servers(used by client mode)
-	logLevel      string    // log level(trace, debug, info, warn, error, fatal)
-	secret        string    // secret of this instance
-	uploadFiles   list.List // files to be uploaded
-	downloadFiles list.List // files to be downloaded
-
-	group               string
-	instanceId          string
-	bindAddress         string
-	port                int
-	advertiseAddress    string
-	advertisePort       int
-	dataDir             string
-	preferredNetwork    string
-	maxLogfileSize      int
-	logRotationInterval string
-	enableHttp          bool
-	httpPort            int
-	httpAuth            string
-	enableMimetypes     bool
-	allowedDomains      string
-	logDir              string
-	disableSaveLogfile  bool
+	trackers               string    // tracker servers(used by client and storage mode)
+	storages               string    // storage servers(used by client mode)
+	logLevel               string    // log level(trace, debug, info, warn, error, fatal)
+	secret                 string    // secret of this instance
+	uploadFiles            list.List // files to be uploaded
+	downloadFiles          list.List // files to be downloaded
+	group                  string
+	instanceId             string
+	bindAddress            string
+	port                   int
+	advertiseAddress       string
+	advertisePort          int
+	dataDir                string
+	preferredNetwork       string
+	maxLogfileSize         int
+	logRotationInterval    string
+	enableHttp             bool
+	httpPort               int
+	httpAuth               string
+	enableMimetypes        bool
+	allowedDomains         string
+	logDir                 string
+	disableSaveLogfile     bool
+	finalCommand           common.Command
 )
-
-var finalCommand common.Command
 
 //
 func ConfigAssembly(bm common.BootMode) interface{} {

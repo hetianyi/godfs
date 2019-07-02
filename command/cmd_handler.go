@@ -15,6 +15,7 @@ import (
 
 var client api.ClientAPI
 
+// initClient initializes APIClient.
 func initClient() error {
 	util.ValidateClientConfig(common.InitializedClientConfiguration)
 	client = api.NewClient()
@@ -44,6 +45,7 @@ func initClient() error {
 	return nil
 }
 
+// handleUploadFile handles upload files by client cli.
 func handleUploadFile() error {
 	// initialize APIClient
 	if err := initClient(); err != nil {
@@ -53,8 +55,8 @@ func handleUploadFile() error {
 	if err != nil {
 		return err
 	}
-	total := 0
-	success := 0
+	total := 0   // total files
+	success := 0 // success files
 	// upload all files in work dir.
 	if uploadFiles.Len() == 1 && uploadFiles.Front().Value.(string) == "*" {
 		files, err := file.ListFiles(wd)
@@ -72,6 +74,7 @@ func handleUploadFile() error {
 					logger.Error(err)
 				}
 				r := &pg.WrappedReader{Reader: fi}
+				// show upload progressbar.
 				pro := pg.NewWrappedReaderProgress(inf.Size(), 50, "uploading "+inf.Name(), pg.Top, r)
 				ret, err := client.Upload(r, inf.Size(), group)
 				fi.Close()
@@ -98,6 +101,7 @@ func handleUploadFile() error {
 				return false
 			}
 			r := &pg.WrappedReader{Reader: fi}
+			// show upload progressbar.
 			pro := pg.NewWrappedReaderProgress(inf.Size(), 50, "uploading "+inf.Name(), pg.Top, r)
 			ret, err := client.Upload(r, inf.Size(), group)
 			if err != nil {
@@ -115,6 +119,7 @@ func handleUploadFile() error {
 	return nil
 }
 
+// handleDownloadFile handles download files by client cli.
 func handleDownloadFile() error {
 	// initialize APIClient
 	if err := initClient(); err != nil {
@@ -127,7 +132,7 @@ func handleDownloadFile() error {
 	if downloadFiles.Len() == 0 {
 		return nil
 	}
-
+	// generate full file path of custom download file name.
 	if customDownloadFileName != "" && !file.IsAbsPath(customDownloadFileName) {
 		absPath, err := file.AbsPath(customDownloadFileName)
 		if err == nil {
@@ -136,7 +141,7 @@ func handleDownloadFile() error {
 			customDownloadFileName = ""
 		}
 	}
-
+	// create directory for download files.
 	if downloadFiles.Len() == 1 && customDownloadFileName != "" {
 		gox.Try(func() {
 			if !file.Exists(customDownloadFileName) || (file.Exists(customDownloadFileName) && file.IsFile1(customDownloadFileName)) {
@@ -155,8 +160,8 @@ func handleDownloadFile() error {
 			customDownloadFileName = ""
 		})
 	}
-	total := 0
-	success := 0
+	total := 0   // total files
+	success := 0 // success files
 	// checking download fileIds.
 	gox.WalkList(&downloadFiles, func(item interface{}) bool {
 		total++
@@ -164,12 +169,13 @@ func handleDownloadFile() error {
 			logger.Warn("invalid format fileId: ", item.(string))
 			return false
 		}
-
 		err := client.Download(item.(string), 0, -1, func(body io.Reader, bodyLength int64) error {
+			// if download only one file and provide a custom filename.
 			if downloadFiles.Len() == 1 && customDownloadFileName != "" {
 				logger.Info("downloading ", item.(string), " to ", customDownloadFileName)
 				fi, err := file.CreateFile(customDownloadFileName)
 				w := &pg.WrappedWriter{Writer: fi}
+				// show download progressbar.
 				pro := pg.NewWrappedWriterProgress(bodyLength, 50, "downloading "+item.(string), pg.Top, w)
 				_, err = io.Copy(w, body)
 				if err != nil {
@@ -184,6 +190,7 @@ func handleDownloadFile() error {
 				return err
 			}
 			w := &pg.WrappedWriter{Writer: fi}
+			// show download progressbar.
 			pro := pg.NewWrappedWriterProgress(bodyLength, 50, "downloading "+item.(string), pg.Top, w)
 			_, err = io.Copy(w, body)
 			if err != nil {
@@ -202,6 +209,7 @@ func handleDownloadFile() error {
 	return nil
 }
 
+// handleInspectFile handles query file information by client cli.
 func handleInspectFile() error {
 	// initialize APIClient
 	if err := initClient(); err != nil {
