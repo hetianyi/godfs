@@ -50,7 +50,7 @@ func Parse(arguments []string) {
 			Name:  "tracker",
 			Usage: "start as tracker server",
 			Action: func(c *cli.Context) error {
-				finalCommand = BOOT_TRACKER
+				finalCommand = common.CMD_BOOT_TRACKER
 				return nil
 			},
 			Flags: []cli.Flag{
@@ -159,7 +159,7 @@ func Parse(arguments []string) {
 			Name:  "storage",
 			Usage: "start as storage server",
 			Action: func(c *cli.Context) error {
-				finalCommand = BOOT_STORAGE
+				finalCommand = common.CMD_BOOT_STORAGE
 				return nil
 			},
 			Flags: []cli.Flag{
@@ -285,7 +285,7 @@ func Parse(arguments []string) {
 					Name:  "upload",
 					Usage: "upload local files",
 					Action: func(c *cli.Context) error {
-						finalCommand = UPLOAD_FILE
+						finalCommand = common.CMD_UPLOAD_FILE
 						if len(c.Args()) == 0 {
 							return errors.New(`Err: no parameters provided.
 Usage: godfs upload <file1> <file2> ...`)
@@ -343,7 +343,7 @@ Usage: godfs upload <file1> <file2> ...`)
 					Name:  "download",
 					Usage: "download a file through tracker servers or storage servers",
 					Action: func(c *cli.Context) error {
-						finalCommand = DOWNLOAD_FILE
+						finalCommand = common.CMD_DOWNLOAD_FILE
 						if len(c.Args()) == 0 {
 							return errors.New(`Err: no parameters provided.
 Usage: godfs download <fid1> <fid2> ...`)
@@ -389,7 +389,7 @@ Usage: godfs download <fid1> <fid2> ...`)
 					Name:  "inspect",
 					Usage: "inspect infos of some files",
 					Action: func(c *cli.Context) error {
-						finalCommand = INSPECT_FILE
+						finalCommand = common.CMD_INSPECT_FILE
 						if len(c.Args()) == 0 {
 							return errors.New(`Err: no parameters provided.
 Usage: godfs inspect <fid1> <fid2> ...`)
@@ -439,7 +439,7 @@ Usage: godfs inspect <fid1> <fid2> ...`)
 							Name:  "set",
 							Usage: "set configs in 'k=v' form",
 							Action: func(c *cli.Context) error {
-								finalCommand = UPDATE_CONFIG
+								finalCommand = common.CMD_UPDATE_CONFIG
 								if len(c.Args()) == 0 {
 									return errors.New(`Err: no parameters provided.
 Usage: godfs config set key=value key=value ...`)
@@ -454,7 +454,7 @@ Usage: godfs config set key=value key=value ...`)
 							Name:  "ls",
 							Usage: "show configs",
 							Action: func(c *cli.Context) error {
-								finalCommand = SHOW_CONFIG
+								finalCommand = common.CMD_SHOW_CONFIG
 								return nil
 							},
 						},
@@ -518,7 +518,7 @@ Options:
 		return
 	}
 
-	if finalCommand == SHOW_HELP {
+	if finalCommand == common.CMD_SHOW_HELP {
 		os.Exit(0)
 	}
 

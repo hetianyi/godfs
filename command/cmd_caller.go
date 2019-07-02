@@ -5,22 +5,26 @@ import (
 	"github.com/hetianyi/godfs/svc"
 )
 
-func call(cmd Command) {
+func call(cmd common.Command) {
 	switch cmd {
-	case BOOT_STORAGE:
-		ConfigAssembly(common.STORAGE)
+	case common.CMD_BOOT_STORAGE:
+		ConfigAssembly(common.BOOT_STORAGE)
 		svc.BootStorageServer()
 		break
-	case UPLOAD_FILE:
-		ConfigAssembly(common.CLIENT)
+	case common.CMD_BOOT_TRACKER:
+		ConfigAssembly(common.BOOT_TRACKER)
+		svc.BootTrackerServer()
+		break
+	case common.CMD_UPLOAD_FILE:
+		ConfigAssembly(common.BOOT_CLIENT)
 		handleUploadFile()
 		break
-	case DOWNLOAD_FILE:
-		ConfigAssembly(common.CLIENT)
+	case common.CMD_DOWNLOAD_FILE:
+		ConfigAssembly(common.BOOT_CLIENT)
 		handleDownloadFile()
 		break
-	case INSPECT_FILE:
-		ConfigAssembly(common.CLIENT)
+	case common.CMD_INSPECT_FILE:
+		ConfigAssembly(common.BOOT_CLIENT)
 		handleInspectFile()
 		break
 	}

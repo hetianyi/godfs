@@ -24,8 +24,8 @@ func StartStorageTcpServer() {
 		logger.Fatal(err)
 	}
 	time.Sleep(time.Millisecond * 50)
-	logger.Info("  tcp server listening on ", common.InitializedStorageConfiguration.BindAddress, ":", common.InitializedStorageConfiguration.Port)
-	logger.Info(aurora.BrightGreen(":::server started:::"))
+	logger.Info(" tcp server listening on ", common.InitializedStorageConfiguration.BindAddress, ":", common.InitializedStorageConfiguration.Port)
+	logger.Info(aurora.BrightGreen("::: storage server started :::"))
 	for {
 		conn, err := listener.Accept()
 		if err != nil {
@@ -33,15 +33,31 @@ func StartStorageTcpServer() {
 			continue
 		}
 		logger.Debug("accept a new connection")
-		gox.Try(func() {
-			go clientConnHandler(conn)
-		}, func(i interface{}) {
-			logger.Error("connection error:", err)
-		})
+		go storageClientConnHandler(conn)
 	}
 }
 
-func clientConnHandler(conn net.Conn) {
+func authenticationHandler(header *common.Header, secret string) (*common.Header, io.Reader, int64, error) {
+	if header.Attributes == nil {
+		return &common.Header{
+			Result: common.UNAUTHORIZED,
+			Msg:    "authentication failed",
+		}, nil, 0, nil
+	}
+	s := header.Attributes["secret"]
+	if s != secret {
+		return &common.Header{
+			Result: common.UNAUTHORIZED,
+			Msg:    "authentication failed",
+		}, nil, 0, nil
+	}
+	return &common.Header{
+		Result: common.SUCCESS,
+		Msg:    "authentication success",
+	}, nil, 0, nil
+}
+
+func storageClientConnHandler(conn net.Conn) {
 	pip := &gpip.Pip{
 		Conn: conn,
 	}
@@ -56,7 +72,7 @@ func clientConnHandler(conn net.Conn) {
 			bs, _ := json.Marshal(header)
 			logger.Debug("server got message:", string(bs))
 			if header.Operation == common.OPERATION_CONNECT {
-				h, b, l, err := authenticationHandler(header)
+				h, b, l, err := authenticationHandler(header, common.InitializedStorageConfiguration.Secret)
 				if err != nil {
 					return err
 				}
@@ -101,26 +117,6 @@ func clientConnHandler(conn net.Conn) {
 			break
 		}
 	}
-}
-
-func authenticationHandler(header *common.Header) (*common.Header, io.Reader, int64, error) {
-	if header.Attributes == nil {
-		return &common.Header{
-			Result: common.UNAUTHORIZED,
-			Msg:    "authentication failed",
-		}, nil, 0, nil
-	}
-	secret := header.Attributes["secret"]
-	if secret != common.InitializedStorageConfiguration.Secret {
-		return &common.Header{
-			Result: common.UNAUTHORIZED,
-			Msg:    "authentication failed",
-		}, nil, 0, nil
-	}
-	return &common.Header{
-		Result: common.SUCCESS,
-		Msg:    "authentication success",
-	}, nil, 0, nil
 }
 
 func uploadFileHandler(bodyReader io.Reader, bodyLength int64, authorized bool) (*common.Header, io.Reader, int64, error) {

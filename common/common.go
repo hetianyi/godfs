@@ -10,9 +10,9 @@ import (
 //
 const (
 	VERSION                            = "2.0.0"
-	CLIENT                    BootMode = 0
-	STORAGE                   BootMode = 1
-	TRACKER                   BootMode = 2
+	BOOT_CLIENT               BootMode = 0
+	BOOT_STORAGE              BootMode = 1
+	BOOT_TRACKER              BootMode = 2
 	GROUP_PATTERN                      = "^[0-9a-zA-Z-_]{1,30}$"
 	SECRET_PATTERN                     = "^[^@]{1,30}$"
 	SERVER_PATTERN                     = "^(([^@^,]{1,30})@)?([^@]+):([1-9][0-9]{0,5})$"
@@ -29,11 +29,11 @@ const (
 
 // tcp operation codes
 const (
-	OPERATION_RESPONSE Operation = iota // connect
-	OPERATION_CONNECT                   // response
-	OPERATION_UPLOAD                    // response
-	OPERATION_DOWNLOAD                  // response
-	OPERATION_QUERY                     // response
+	OPERATION_RESPONSE Operation = iota
+	OPERATION_CONNECT
+	OPERATION_UPLOAD
+	OPERATION_DOWNLOAD
+	OPERATION_QUERY
 )
 
 // status codes
@@ -44,12 +44,36 @@ const (
 	NOT_FOUND
 )
 
+const (
+	CMD_SHOW_HELP Command = iota
+	CMD_SHOW_VERSION
+	CMD_UPDATE_CONFIG
+	CMD_SHOW_CONFIG
+	CMD_UPLOAD_FILE
+	CMD_DOWNLOAD_FILE
+	CMD_INSPECT_FILE
+	CMD_BOOT_TRACKER
+	CMD_BOOT_STORAGE
+)
+
+const (
+	ROLE_TRACKER Role = iota
+	ROLE_STORAGE
+	ROLE_PROXY
+)
+
+const (
+	REGISTER_HOLD RegisterState = iota
+	REGISTER_FREE
+)
+
 var (
 	NotFoundErr = errors.New("file not found")
 	ServerErr   = errors.New("server internal error")
 )
 
 var (
+	InitializedTrackerConfiguration *TrackerConfig
 	InitializedStorageConfiguration *StorageConfig
 	InitializedClientConfiguration  *ClientConfig
 	FileIdPatternRegexp             = regexp.MustCompile(FILE_ID_PATTERN)

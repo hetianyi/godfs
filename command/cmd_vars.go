@@ -8,26 +8,12 @@ import (
 	"strings"
 )
 
-const (
-	SHOW_HELP Command = iota
-	SHOW_VERSION
-	UPDATE_CONFIG
-	SHOW_CONFIG
-	UPLOAD_FILE
-	DOWNLOAD_FILE
-	INSPECT_FILE
-	BOOT_TRACKER
-	BOOT_STORAGE
-)
-
-type Command uint32
-
 // var sets
 var (
 	privateUpload          bool      // upload private file
 	showVersion            bool      // show app version
 	uploadGroup            string    // upload group
-	customDownloadFileName string    // custom file download location and filename
+	customDownloadFileName string    // custom fi                le download location and filename
 	inspectFiles           list.List // custom file download location and filename
 	updateConfigList       list.List // configs to be update
 	configFile             string    // specified config file to be use
@@ -58,11 +44,11 @@ var (
 	disableSaveLogfile  bool
 )
 
-var finalCommand Command
+var finalCommand common.Command
 
 //
 func ConfigAssembly(bm common.BootMode) interface{} {
-	if bm == common.STORAGE {
+	if bm == common.BOOT_STORAGE {
 		c := &common.StorageConfig{}
 		c.Port = gox.TValue(port <= 0, common.DEFAULT_STORAGE_TCP_PORT, port).(int)
 		c.AdvertisePort = gox.TValue(advertisePort <= 0, c.Port, advertisePort).(int)
@@ -109,7 +95,48 @@ func ConfigAssembly(bm common.BootMode) interface{} {
 		}
 		common.InitializedStorageConfiguration = c
 		return c
-	} else if bm == common.CLIENT {
+	} else if bm == common.BOOT_TRACKER {
+		c := &common.TrackerConfig{}
+		c.Port = gox.TValue(port <= 0, common.DEFAULT_TRACKER_TCP_PORT, port).(int)
+		c.AdvertisePort = gox.TValue(advertisePort <= 0, c.Port, advertisePort).(int)
+		c.HttpPort = gox.TValue(httpPort <= 0, common.DEFAULT_TRACKER_HTTP_PORT, httpPort).(int)
+		c.Secret = secret
+		c.HttpAuth = httpAuth
+		c.LogLevel = logLevel
+		c.LogRotationInterval = logRotationInterval
+		c.MaxRollingLogfileSize = maxLogfileSize
+		c.SaveLog2File = !disableSaveLogfile
+
+		if logDir == "" {
+			logDir = util.DefaultLogDir()
+		}
+		c.LogDir = logDir
+
+		if dataDir == "" {
+			dataDir = util.DefaultDataDir()
+		}
+		c.DataDir = dataDir
+
+		if advertisePort == 0 {
+			advertisePort = c.Port
+		}
+		if advertiseAddress == "" {
+			c.AdvertiseAddress = gox.GetMyAddress(preferredNetwork)
+		}
+		c.PreferredNetworks = preferredNetwork
+
+		if bindAddress == "" {
+			bindAddress = "127.0.0.1"
+		}
+		c.BindAddress = bindAddress
+		c.EnableHttp = enableHttp
+
+		if trackers != "" {
+			c.Trackers = strings.Split(trackers, ",")
+		}
+		common.InitializedTrackerConfiguration = c
+		return c
+	} else if bm == common.BOOT_CLIENT {
 		c := &common.ClientConfig{}
 		c.Secret = secret
 		c.LogLevel = logLevel

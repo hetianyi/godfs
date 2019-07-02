@@ -2,20 +2,26 @@ package common
 
 import (
 	"github.com/hetianyi/gox/convert"
+	"strings"
 )
 
+type Command uint32
+type Operation byte
+type OperationResult byte
 type BootMode uint32
+type Role byte
+type RegisterState byte
 
 type StorageConfig struct {
 	Trackers              []string `json:"trackers"`
 	Secret                string   `json:"secret"`
 	Group                 string   `json:"group"`
-	InstanceId            string   // one data dir has only one instanceId
-	BindAddress           string   `json:"bindAddress"`
-	Port                  int      `json:"port"`
-	AdvertiseAddress      string   `json:"advertiseAddress"`
-	AdvertisePort         int      `json:"advertisePort"`
-	DataDir               string   `json:"dataDir"`
+	InstanceId            string
+	BindAddress           string `json:"bindAddress"`
+	Port                  int    `json:"port"`
+	AdvertiseAddress      string `json:"advertiseAddress"`
+	AdvertisePort         int    `json:"advertisePort"`
+	DataDir               string `json:"dataDir"`
 	TmpDir                string
 	PreferredNetworks     string   `json:"preferredNetworks"`
 	LogLevel              string   `json:"logLevel"`
@@ -34,23 +40,22 @@ type StorageConfig struct {
 type TrackerConfig struct {
 	Trackers              []string `json:"trackers"`
 	Secret                string   `json:"secret"`
-	InstanceId            string   // one data dir has only one instanceId
-	BindAddress           string   `json:"bindAddress"`
-	Port                  int      `json:"port"`
-	AdvertiseAddress      string   `json:"advertiseAddress"`
-	AdvertisePort         int      `json:"advertisePort"`
-	DataDir               string   `json:"dataDir"`
-	PreferredNetworks     string   `json:"preferredNetworks"`
-	LogLevel              string   `json:"logLevel"`
-	LogDir                string   `json:"logDir"`
-	SaveLog2File          bool     `json:"saveLog2File"`
-	MaxRollingLogfileSize int      `json:"maxRollingLogfileSize"`
-	LogRotationInterval   string   `json:"logRotationInterval"`
-	EnableHttp            bool     `json:"enableHttp"`
-	HttpPort              int      `json:"httpPort"`
-	HttpAuth              string   `json:"httpAuth"`
-	EnableMimeTypes       bool     `json:"enableMimeTypes"`
-	AllowedDomains        []string `json:"allowedDomains"`
+	InstanceId            string
+	BindAddress           string `json:"bindAddress"`
+	Port                  int    `json:"port"`
+	AdvertiseAddress      string `json:"advertiseAddress"`
+	AdvertisePort         int    `json:"advertisePort"`
+	DataDir               string `json:"dataDir"`
+	PreferredNetworks     string `json:"preferredNetworks"`
+	LogLevel              string `json:"logLevel"`
+	LogDir                string `json:"logDir"`
+	SaveLog2File          bool   `json:"saveLog2File"`
+	MaxRollingLogfileSize int    `json:"maxRollingLogfileSize"`
+	LogRotationInterval   string `json:"logRotationInterval"`
+	EnableHttp            bool   `json:"enableHttp"`
+	HttpPort              int    `json:"httpPort"`
+	HttpAuth              string `json:"httpAuth"`
+	ParsedTrackers        []Server
 }
 
 type ClientConfig struct {
@@ -74,7 +79,7 @@ type StorageServer struct {
 }
 
 func (s *Server) ConnectionString() string {
-	return s.Host + ":" + convert.Uint16ToStr(s.Port)
+	return strings.Join([]string{s.Host, convert.Uint16ToStr(s.Port)}, ":")
 }
 
 // GetHost returns server's host.
@@ -95,10 +100,6 @@ func (s *StorageServer) ToServer() *Server {
 	}
 }
 
-type Operation byte
-
-type OperationResult byte
-
 type Header struct {
 	Operation  Operation         `json:"op"`
 	Result     OperationResult   `json:"ret"`
@@ -117,6 +118,14 @@ type FileInfo struct {
 	FileId     string `json:"fileId"`
 	FileLength int64  `json:"size"`
 	CreateTime int64  `json:"createTime"`
+}
+
+type Instance struct {
+	Server
+	Role         Role              `json:"role"`
+	Attributes   map[string]string `json:"ats"`
+	RegisterTime int64             `json:"ts"`
+	State        RegisterState     `json:"state"`
 }
 
 type BingLog struct {

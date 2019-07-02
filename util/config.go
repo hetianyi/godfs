@@ -23,10 +23,10 @@ var (
 
 // LoadInstanceData load old instance id from data dir.
 // If there is no old instance id before, create a new instance id for this data dir.
-func LoadInstanceData() string {
+func LoadInstanceData(dataDir string) string {
 	instanceId := ""
 	isNew := false
-	datFile := common.InitializedStorageConfiguration.DataDir + "/instance.dat"
+	datFile := dataDir + "/instance.dat"
 	if !file.Exists(datFile) {
 		instanceId = uuid.UUID()[0:8]
 		isNew = true
