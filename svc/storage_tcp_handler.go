@@ -37,32 +37,12 @@ func StartStorageTcpServer() {
 	}
 }
 
-func authenticationHandler(header *common.Header, secret string) (*common.Header, io.Reader, int64, error) {
-	if header.Attributes == nil {
-		return &common.Header{
-			Result: common.UNAUTHORIZED,
-			Msg:    "authentication failed",
-		}, nil, 0, nil
-	}
-	s := header.Attributes["secret"]
-	if s != secret {
-		return &common.Header{
-			Result: common.UNAUTHORIZED,
-			Msg:    "authentication failed",
-		}, nil, 0, nil
-	}
-	return &common.Header{
-		Result: common.SUCCESS,
-		Msg:    "authentication success",
-	}, nil, 0, nil
-}
-
 func storageClientConnHandler(conn net.Conn) {
 	pip := &gpip.Pip{
 		Conn: conn,
 	}
 	defer pip.Close()
-	validated := false
+	authorized := false
 	for {
 		err := pip.Receive(&common.Header{}, func(_header interface{}, bodyReader io.Reader, bodyLength int64) error {
 			if _header == nil {
@@ -80,23 +60,31 @@ func storageClientConnHandler(conn net.Conn) {
 					pip.Send(h, b, l)
 					return errors.New("unauthorized connection, force disconnection by server")
 				} else {
-					validated = true
+					authorized = true
 					return pip.Send(h, b, l)
 				}
-			} else if header.Operation == common.OPERATION_UPLOAD {
-				h, b, l, err := uploadFileHandler(bodyReader, bodyLength, validated)
+			}
+			if !authorized {
+				pip.Send(&common.Header{
+					Result: common.UNAUTHORIZED,
+					Msg:    "authentication failed",
+				}, nil, 0)
+				return errors.New("unauthorized connection, force disconnection by server")
+			}
+			if header.Operation == common.OPERATION_UPLOAD {
+				h, b, l, err := uploadFileHandler(bodyReader, bodyLength)
 				if err != nil {
 					return err
 				}
 				return pip.Send(h, b, l)
 			} else if header.Operation == common.OPERATION_DOWNLOAD {
-				h, b, l, err := downFileHandler(header, validated)
+				h, b, l, err := downFileHandler(header)
 				if err != nil {
 					return err
 				}
 				return pip.Send(h, b, l)
 			} else if header.Operation == common.OPERATION_QUERY {
-				h, b, l, err := inspectFileHandler(header, validated)
+				h, b, l, err := inspectFileHandler(header)
 				if err != nil {
 					return err
 				}
@@ -119,10 +107,27 @@ func storageClientConnHandler(conn net.Conn) {
 	}
 }
 
-func uploadFileHandler(bodyReader io.Reader, bodyLength int64, authorized bool) (*common.Header, io.Reader, int64, error) {
-	if !authorized {
-		return nil, nil, 0, errors.New("unauthorized connection")
+func authenticationHandler(header *common.Header, secret string) (*common.Header, io.Reader, int64, error) {
+	if header.Attributes == nil {
+		return &common.Header{
+			Result: common.UNAUTHORIZED,
+			Msg:    "authentication failed",
+		}, nil, 0, nil
 	}
+	s := header.Attributes["secret"]
+	if s != secret {
+		return &common.Header{
+			Result: common.UNAUTHORIZED,
+			Msg:    "authentication failed",
+		}, nil, 0, nil
+	}
+	return &common.Header{
+		Result: common.SUCCESS,
+		Msg:    "authentication success",
+	}, nil, 0, nil
+}
+
+func uploadFileHandler(bodyReader io.Reader, bodyLength int64) (*common.Header, io.Reader, int64, error) {
 	buffer := make([]byte, common.BUFFER_SIZE)
 	var realRead int64 = 0
 	crcH := util.CreateCrc32Hash()
@@ -203,10 +208,7 @@ func uploadFileHandler(bodyReader io.Reader, bodyLength int64, authorized bool) 
 	return &common.Header{}, nil, 0, nil
 }
 
-func downFileHandler(header *common.Header, authorized bool) (*common.Header, io.Reader, int64, error) {
-	if !authorized {
-		return nil, nil, 0, errors.New("unauthorized connection")
-	}
+func downFileHandler(header *common.Header) (*common.Header, io.Reader, int64, error) {
 	var offset int64 = 0
 	var length int64 = -1
 	var fileId = header.Attributes["fileId"]
@@ -262,10 +264,8 @@ func downFileHandler(header *common.Header, authorized bool) (*common.Header, io
 	}, io.LimitReader(fi, length), length, nil
 }
 
-func inspectFileHandler(header *common.Header, authorized bool) (*common.Header, io.Reader, int64, error) {
-	if !authorized {
-		return nil, nil, 0, errors.New("unauthorized connection")
-	}
+// inspectFileHandler inspects file's information
+func inspectFileHandler(header *common.Header) (*common.Header, io.Reader, int64, error) {
 	var fileId = header.Attributes["fileId"]
 	// parse fileId
 	if !common.FileIdPatternRegexp.Match([]byte(fileId)) || header.Attributes == nil {

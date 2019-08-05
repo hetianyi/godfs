@@ -19,8 +19,10 @@ func BootStorageServer() {
 		logger.Fatal("cannot create tmp dir: ", err)
 	}
 	common.InitializedStorageConfiguration.InstanceId = util.LoadInstanceData(common.InitializedStorageConfiguration.DataDir)
-	cbs, _ := json.MarshalIndent(common.InitializedStorageConfiguration, "", "  ")
-	logger.Debug("\n", string(cbs))
+	if true {
+		cbs, _ := json.MarshalIndent(common.InitializedStorageConfiguration, "", "  ")
+		logger.Debug("\n", string(cbs))
+	}
 	util.PrintLogo()
 	if common.InitializedStorageConfiguration.EnableHttp {
 		StartStorageHttpServer(common.InitializedStorageConfiguration)

@@ -3,6 +3,7 @@ package svc
 import (
 	"errors"
 	"github.com/hetianyi/godfs/common"
+	"github.com/hetianyi/godfs/reg"
 	"github.com/hetianyi/gox/convert"
 	"github.com/hetianyi/gox/gpip"
 	"github.com/hetianyi/gox/logger"
@@ -37,7 +38,7 @@ func trackerClientConnHandler(conn net.Conn) {
 		Conn: conn,
 	}
 	defer pip.Close()
-	validated := false
+	authorized := false
 	for {
 		err := pip.Receive(&common.Header{}, func(_header interface{}, bodyReader io.Reader, bodyLength int64) error {
 			if _header == nil {
@@ -55,23 +56,25 @@ func trackerClientConnHandler(conn net.Conn) {
 					pip.Send(h, b, l)
 					return errors.New("unauthorized connection, force disconnection by server")
 				} else {
-					validated = true
+					authorized = true
 					return pip.Send(h, b, l)
 				}
-			} else if header.Operation == common.OPERATION_UPLOAD {
-				h, b, l, err := uploadFileHandler(bodyReader, bodyLength, validated)
+			}
+			if !authorized {
+				pip.Send(&common.Header{
+					Result: common.UNAUTHORIZED,
+					Msg:    "authentication failed",
+				}, nil, 0)
+				return errors.New("unauthorized connection, force disconnection by server")
+			}
+			if header.Operation == common.OPERATION_REGISTER {
+				h, b, l, err := registerHandler(header)
 				if err != nil {
 					return err
 				}
 				return pip.Send(h, b, l)
-			} else if header.Operation == common.OPERATION_DOWNLOAD {
-				h, b, l, err := downFileHandler(header, validated)
-				if err != nil {
-					return err
-				}
-				return pip.Send(h, b, l)
-			} else if header.Operation == common.OPERATION_QUERY {
-				h, b, l, err := inspectFileHandler(header, validated)
+			} else if header.Operation == common.OPERATION_SYNC_INSTANCES {
+				h, b, l, err := synchronizeInstancesHandler(header)
 				if err != nil {
 					return err
 				}
@@ -84,12 +87,55 @@ func trackerClientConnHandler(conn net.Conn) {
 			}, nil, 0)
 		})
 		if err != nil {
-			// shutdown connection error is now disabled
-			/*if err != io.EOF {
-				logger.Error(err)
-			}*/
 			pip.Close()
 			break
 		}
 	}
 }
+
+
+// inspectFileHandler inspects file's information
+func registerHandler(header *common.Header) (*common.Header, io.Reader, int64, error) {
+	if header.Attributes == nil {
+		return &common.Header{
+			Result: common.ERROR,
+			Msg:    "no message provided",
+		}, nil, 0, nil
+	}
+	s1 := header.Attributes["instance"]
+	instance := &common.Instance{}
+	if err := json.Unmarshal([]byte(s1), instance); err != nil {
+		return &common.Header{
+			Result: common.ERROR,
+			Msg:    err.Error(),
+		}, nil, 0, err
+	}
+	if err := reg.Put(instance); err != nil {
+		return &common.Header{
+			Result: common.ERROR,
+			Msg:    err.Error(),
+		}, nil, 0, err
+	}
+	return &common.Header{
+		Result: common.SUCCESS,
+	}, nil, 0, nil
+}
+
+
+
+// inspectFileHandler inspects file's information
+func synchronizeInstancesHandler(header *common.Header) (*common.Header, io.Reader, int64, error) {
+	snapshot := reg.InstanceSetSnapshot()
+	ret, _ := json.Marshal(snapshot)
+	return &common.Header{
+		Result: common.SUCCESS,
+		Attributes: map[string]string{
+			"instances": string(ret),
+		},
+
+	}, nil, 0, nil
+}
+
+
+
+

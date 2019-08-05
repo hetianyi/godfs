@@ -16,7 +16,7 @@ var (
 	ExpirationTime = time.Second * 30 // 30s
 )
 
-func init() {
+func InitRegistry() {
 	go expirationDetection()
 }
 
@@ -51,12 +51,23 @@ func Free(instanceId string) {
 	}
 }
 
-// Remove declares that the client is deregister from Registry immediately.
+// Remove indicates this client deregister from Registry immediately.
 func Remove(ins *common.Instance) {
 	lock.Lock()
 	defer lock.Unlock()
 	logger.Debug("deregister instance: ", ins.InstanceId, "@", ins.Server.ConnectionString())
 	delete(instanceSet, ins.InstanceId)
+}
+
+// InstanceSetSnapshot takes a snapshot for current instances.
+func InstanceSetSnapshot() map[string]*common.Instance {
+	lock.Lock()
+	defer lock.Unlock()
+	snapshot := make(map[string]*common.Instance)
+	for k, i := range instanceSet {
+		snapshot[k] = i
+	}
+	return snapshot
 }
 
 // isInstanceConflict for judgement whether the new instance
