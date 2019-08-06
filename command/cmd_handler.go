@@ -39,6 +39,7 @@ func initClient() error {
 	// init client config
 	client.SetConfig(&api.Config{
 		MaxConnectionsPerServer: api.DefaultMaxConnectionsPerServer,
+		SynchronizeOnce:         true,
 		StaticStorageServers:    staticServer,
 		TrackerServers:          trackerServers,
 	})

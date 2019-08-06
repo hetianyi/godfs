@@ -21,6 +21,7 @@ func init() {
 	client = api.NewClient()
 	client.SetConfig(&api.Config{
 		MaxConnectionsPerServer: 1,
+		SynchronizeOnce:         true,
 		StaticStorageServers: []*common.StorageServer{
 			{
 				Server: common.Server{

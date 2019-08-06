@@ -93,7 +93,6 @@ func trackerClientConnHandler(conn net.Conn) {
 	}
 }
 
-
 // inspectFileHandler inspects file's information
 func registerHandler(header *common.Header) (*common.Header, io.Reader, int64, error) {
 	if header.Attributes == nil {
@@ -121,8 +120,6 @@ func registerHandler(header *common.Header) (*common.Header, io.Reader, int64, e
 	}, nil, 0, nil
 }
 
-
-
 // inspectFileHandler inspects file's information
 func synchronizeInstancesHandler(header *common.Header) (*common.Header, io.Reader, int64, error) {
 	snapshot := reg.InstanceSetSnapshot()
@@ -132,10 +129,5 @@ func synchronizeInstancesHandler(header *common.Header) (*common.Header, io.Read
 		Attributes: map[string]string{
 			"instances": string(ret),
 		},
-
 	}, nil, 0, nil
 }
-
-
-
-

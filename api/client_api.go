@@ -25,11 +25,10 @@ var NoStorageServerErr = errors.New("no storage available")
 
 // Config is the APIClient config
 type Config struct {
-	MaxConnectionsPerServer  uint                    // limit max connection for each server
-	TrackerServers           []*common.Server        // tracker servers
-	StaticStorageServers     []*common.StorageServer // storage servers
-	RegisteredStorageServers []*common.StorageServer // storage servers
-	// Trackers or Storages
+	MaxConnectionsPerServer uint                    // limit max connection for each server
+	TrackerServers          []*common.Server        // tracker servers
+	SynchronizeOnce         bool                    // synchronize with each tracker server only once
+	StaticStorageServers    []*common.StorageServer // storage servers
 }
 
 // ClientAPI is godfs APIClient interface.
@@ -50,6 +49,10 @@ type ClientAPI interface {
 	//
 	// Parameter `fileId` must be the pattern of common.FILE_ID_PATTERN
 	Query(fileId string) (*common.FileInfo, error)
+	// RegisterInstance register self instance to a tracker server.
+	RegisterInstance(server *common.Server) error
+	// SyncInstances synchronizes instances from specific tracker server.
+	SyncInstances(server *common.Server) (map[string]*common.Instance, error)
 }
 
 // NewClient creates a new APIClient.
@@ -85,6 +88,7 @@ func (c *clientAPIImpl) SetConfig(config *Config) {
 	if c.config.TrackerServers != nil {
 		for _, s := range c.config.TrackerServers {
 			conn.InitServerSettings(s, c.config.MaxConnectionsPerServer, time.Minute*5)
+			tracks(c, s, config.SynchronizeOnce)
 		}
 	}
 	if c.config.StaticStorageServers != nil {
@@ -371,6 +375,129 @@ func (c *clientAPIImpl) Query(fileId string) (*common.FileInfo, error) {
 	return result, lastErr
 }
 
+func (c *clientAPIImpl) RegisterInstance(server *common.Server) error {
+	connection, authenticated, err := conn.GetConnection(server)
+	if err != nil {
+		return err
+	}
+	pip := &gpip.Pip{
+		Conn: *connection,
+	}
+	if authenticated == nil || !authenticated.(bool) {
+		if err = authenticate(pip, server); err != nil {
+			return err
+		}
+		logger.Debug("authentication success with server ", server.ConnectionString())
+	}
+	authenticated = true
+
+	var instance *common.Instance
+	if common.BootAs == common.BOOT_TRACKER {
+		conf := common.InitializedTrackerConfiguration
+		advPort, _ := convert.StrToUint16(convert.IntToStr(conf.AdvertisePort))
+		instance = &common.Instance{
+			Server: common.Server{
+				Host:       conf.AdvertiseAddress,
+				Port:       advPort,
+				Secret:     conf.Secret,
+				InstanceId: conf.InstanceId,
+			},
+			Role: common.ROLE_TRACKER,
+		}
+	} else if common.BootAs == common.BOOT_STORAGE {
+		conf := common.InitializedStorageConfiguration
+		advPort, _ := convert.StrToUint16(convert.IntToStr(conf.AdvertisePort))
+		instance = &common.Instance{
+			Server: common.Server{
+				Host:       conf.AdvertiseAddress,
+				Port:       advPort,
+				Secret:     conf.Secret,
+				InstanceId: conf.InstanceId,
+			},
+		}
+	} /* else if common.BootAs == common.BOOT_PROXY {} */
+	info, err := json.Marshal(instance)
+	if err != nil {
+		return err
+	}
+	logger.Debug("registering instance: ", string(info))
+	// send file body
+	err = pip.Send(&common.Header{
+		Operation: common.OPERATION_REGISTER,
+		Attributes: map[string]string{
+			"instance": string(info),
+		},
+	}, nil, 0)
+	if err != nil {
+		return err
+	}
+	// receive response
+	err = pip.Receive(&common.Header{}, func(_header interface{}, bodyReader io.Reader, bodyLength int64) error {
+		header := _header.(*common.Header)
+		if header != nil {
+			if header.Result == common.SUCCESS {
+				return nil
+			} else {
+				return common.ServerErr
+			}
+			return errors.New("register failed: " + header.Msg)
+		}
+		return errors.New("register failed: got empty response from server")
+	})
+	if err != nil {
+		return err
+	}
+	conn.ReturnConnection(server, connection, authenticated, false)
+	logger.Debug("register finish")
+	return nil
+}
+
+func (c *clientAPIImpl) SyncInstances(server *common.Server) (map[string]*common.Instance, error) {
+	var result map[string]*common.Instance
+	connection, authenticated, err := conn.GetConnection(server)
+	if err != nil {
+		return nil, err
+	}
+	pip := &gpip.Pip{
+		Conn: *connection,
+	}
+	if authenticated == nil || !authenticated.(bool) {
+		if err = authenticate(pip, server); err != nil {
+			return nil, err
+		}
+		logger.Debug("authentication success with server ", server.ConnectionString())
+	}
+	authenticated = true
+	// send file body
+	err = pip.Send(&common.Header{
+		Operation: common.OPERATION_SYNC_INSTANCES,
+	}, nil, 0)
+	if err != nil {
+		return nil, err
+	}
+	// receive response
+	err = pip.Receive(&common.Header{}, func(_header interface{}, bodyReader io.Reader, bodyLength int64) error {
+		header := _header.(*common.Header)
+		if header != nil {
+			if header.Result == common.SUCCESS {
+				infoS := header.Attributes["instances"]
+				result = make(map[string]*common.Instance)
+				return json.Unmarshal([]byte(infoS), result)
+			} else {
+				return common.ServerErr
+			}
+			return errors.New("synchronize failed: " + header.Msg)
+		}
+		return errors.New("synchronize failed: got empty response from server")
+	})
+	if err != nil {
+		return nil, err
+	}
+	conn.ReturnConnection(server, connection, authenticated, false)
+	logger.Debug("synchronize finish")
+	return result, nil
+}
+
 // authenticate authenticates width storage server.
 func authenticate(p *gpip.Pip, server conn.Server) error {
 	logger.Debug("trying to authenticate with server ", server.ConnectionString())
@@ -403,12 +530,18 @@ func (c *clientAPIImpl) selectStorageServer(group string, exclude *list.List) *c
 	logger.Debug("select storage server...")
 	var candidates = list.New()
 	// if registered storage server is not empty, use it first.
-	if c.config.RegisteredStorageServers != nil {
-		for _, s := range c.config.RegisteredStorageServers {
-			if isExcluded(s, exclude) {
+	syncStorages := FilterInstances(common.ROLE_STORAGE)
+	if syncStorages.Len() > 0 {
+		for ele := syncStorages.Front(); ele != nil; ele = ele.Next() {
+			s := ele.Value.(*common.Instance)
+			if isExcluded(s.Server, exclude) {
 				continue
 			}
-			if group == "" || group == s.Group {
+			sg := ""
+			if s.Attributes != nil {
+				sg = s.Attributes["group"]
+			}
+			if group == "" || group == sg {
 				candidates.PushBack(s)
 			}
 		}
@@ -417,7 +550,7 @@ func (c *clientAPIImpl) selectStorageServer(group string, exclude *list.List) *c
 	// static server usually has no group configured, so here ignores the group.
 	if candidates.Len() == 0 {
 		for _, s := range c.config.StaticStorageServers {
-			if isExcluded(s, exclude) {
+			if isExcluded(s.Server, exclude) {
 				continue
 			}
 			candidates.PushBack(s)
@@ -443,7 +576,7 @@ func (c *clientAPIImpl) selectStorageServer(group string, exclude *list.List) *c
 }
 
 // isExcluded judges whether a storage server is in the exclude list.
-func isExcluded(s *common.StorageServer, exclude *list.List) bool {
+func isExcluded(s common.Server, exclude *list.List) bool {
 	if exclude == nil {
 		return false
 	}
