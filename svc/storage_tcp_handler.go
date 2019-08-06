@@ -175,6 +175,11 @@ func uploadFileHandler(bodyReader io.Reader, bodyLength int64) (*common.Header, 
 			// 此时要求文件的交流必须携带完整的参数
 			targetLoc := common.InitializedStorageConfiguration.DataDir + "/" + targetDir
 			targetFile := common.InitializedStorageConfiguration.DataDir + "/" + targetDir + "/" + md5String
+			// TODO fileId need to be redesign.
+			// md5 + crc end + ts + size + srcnode
+			// ts: for download
+			// ref: http://blog.chinaunix.net/uid-20196318-id-4058561.html
+			// another consideration is that the file may be duplicated。
 			finalFileId := common.InitializedStorageConfiguration.Group + "/" + targetDir + "/" + md5String
 			if !file.Exists(targetLoc) {
 				if err := file.CreateDirs(targetLoc); err != nil {
