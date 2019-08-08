@@ -27,36 +27,38 @@ const (
 	BUFFER_SIZE               = 1 << 15 // 32k
 	DEFAULT_GROUP             = "G01"
 	//
-	OPERATION_RESPONSE Operation = iota
-	OPERATION_CONNECT
-	OPERATION_UPLOAD
-	OPERATION_DOWNLOAD
-	OPERATION_QUERY
-	OPERATION_REGISTER
-	OPERATION_SYNC_INSTANCES
+	OPERATION_RESPONSE       Operation = 0
+	OPERATION_CONNECT        Operation = 1
+	OPERATION_UPLOAD         Operation = 2
+	OPERATION_DOWNLOAD       Operation = 3
+	OPERATION_QUERY          Operation = 4
+	OPERATION_REGISTER       Operation = 5
+	OPERATION_SYNC_INSTANCES Operation = 6
 	//
-	SUCCESS OperationResult = iota
-	ERROR
-	UNAUTHORIZED
-	NOT_FOUND
+	SUCCESS           OperationResult = 0
+	ERROR             OperationResult = 1
+	UNAUTHORIZED      OperationResult = 2
+	NOT_FOUND         OperationResult = 3
+	UNKNOWN_OPERATION OperationResult = 4
 	//
-	CMD_SHOW_HELP Command = iota
-	CMD_SHOW_VERSION
-	CMD_UPDATE_CONFIG
-	CMD_SHOW_CONFIG
-	CMD_UPLOAD_FILE
-	CMD_DOWNLOAD_FILE
-	CMD_INSPECT_FILE
-	CMD_BOOT_TRACKER
-	CMD_BOOT_STORAGE
+	CMD_SHOW_HELP     Command = 0
+	CMD_SHOW_VERSION  Command = 1
+	CMD_UPDATE_CONFIG Command = 2
+	CMD_SHOW_CONFIG   Command = 3
+	CMD_UPLOAD_FILE   Command = 4
+	CMD_DOWNLOAD_FILE Command = 5
+	CMD_INSPECT_FILE  Command = 6
+	CMD_BOOT_TRACKER  Command = 7
+	CMD_BOOT_STORAGE  Command = 8
 	//
-	ROLE_TRACKER Role = iota
-	ROLE_STORAGE
-	ROLE_PROXY
-	ROLE_CLIENT
+	ROLE_TRACKER Role = 1
+	ROLE_STORAGE Role = 2
+	ROLE_PROXY   Role = 3
+	ROLE_CLIENT  Role = 4
 	//
-	REGISTER_HOLD RegisterState = iota
-	REGISTER_FREE
+	REGISTER_HOLD RegisterState = 1
+	REGISTER_FREE RegisterState = 2
+	//
 	REGISTER_INTERVAL    = time.Second * 30
 	SYNCHRONIZE_INTERVAL = time.Second * 45
 )

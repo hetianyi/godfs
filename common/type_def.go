@@ -128,6 +128,10 @@ type Instance struct {
 	State        RegisterState     `json:"state"`
 }
 
+type InstanceMap struct {
+	Instances map[string]Instance `json:"instances"`
+}
+
 type BingLog struct {
 	Id        [8]byte  // offset int64
 	md5       [32]byte // string 32

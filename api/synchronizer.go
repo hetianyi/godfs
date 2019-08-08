@@ -45,7 +45,7 @@ func tracks(clientAPI ClientAPI, server *common.Server, synchronizeOnce bool) {
 	timer.Start(0, 0, common.SYNCHRONIZE_INTERVAL, func(t *timer.Timer) {
 		ret, err := clientAPI.SyncInstances(server)
 		if err != nil {
-			logger.Error("error synchronize with tracker server: ", server.ConnectionString(), "(", server.InstanceId, ")", ": ", err)
+			logger.Error("error synchronize with tracker server: ", server.ConnectionString(), ": ", err)
 		} else {
 			syncLock.Lock()
 			defer syncLock.Unlock()
@@ -85,7 +85,7 @@ func expireDetection() {
 		defer syncLock.Unlock()
 		for k, v := range syncInstances {
 			if v.expired() {
-				logger.Debug("instance expired: ", v.instance.ConnectionString(), "(", v.instance.InstanceId, ")")
+				logger.Debug("instance expired: ", v.instance.ConnectionString())
 				delete(syncInstances, k)
 			}
 		}

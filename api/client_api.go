@@ -390,7 +390,6 @@ func (c *clientAPIImpl) RegisterInstance(server *common.Server) error {
 		logger.Debug("authentication success with server ", server.ConnectionString())
 	}
 	authenticated = true
-
 	var instance *common.Instance
 	if common.BootAs == common.BOOT_TRACKER {
 		conf := common.InitializedTrackerConfiguration
@@ -453,7 +452,7 @@ func (c *clientAPIImpl) RegisterInstance(server *common.Server) error {
 }
 
 func (c *clientAPIImpl) SyncInstances(server *common.Server) (map[string]*common.Instance, error) {
-	var result map[string]*common.Instance
+	var result = make(map[string]*common.Instance)
 	connection, authenticated, err := conn.GetConnection(server)
 	if err != nil {
 		return nil, err
@@ -481,10 +480,16 @@ func (c *clientAPIImpl) SyncInstances(server *common.Server) (map[string]*common
 		if header != nil {
 			if header.Result == common.SUCCESS {
 				infoS := header.Attributes["instances"]
-				result = make(map[string]*common.Instance)
-				return json.Unmarshal([]byte(infoS), result)
-			} else {
-				return common.ServerErr
+				var ret = make(map[string]*json.RawMessage)
+				if err = json.Unmarshal([]byte(infoS), &ret); err != nil {
+					return err
+				}
+				for k := range ret {
+					var a common.Instance
+					err = json.Unmarshal(*ret[k], &a)
+					result[k] = &a
+				}
+				return nil
 			}
 			return errors.New("synchronize failed: " + header.Msg)
 		}
@@ -494,7 +499,7 @@ func (c *clientAPIImpl) SyncInstances(server *common.Server) (map[string]*common
 		return nil, err
 	}
 	conn.ReturnConnection(server, connection, authenticated, false)
-	logger.Debug("synchronize finish")
+	logger.Debug("synchronize finish, instances: ", len(result))
 	return result, nil
 }
 

@@ -2,6 +2,7 @@ package svc
 
 import (
 	"errors"
+	"github.com/hetianyi/godfs/api"
 	"github.com/hetianyi/godfs/common"
 	"github.com/hetianyi/godfs/util"
 	"github.com/hetianyi/gox"
@@ -19,13 +20,32 @@ import (
 )
 
 func StartStorageTcpServer() {
-	listener, err := net.Listen("tcp", common.InitializedStorageConfiguration.BindAddress+":"+convert.IntToStr(common.InitializedStorageConfiguration.Port))
+	listener, err := net.Listen("tcp", common.InitializedStorageConfiguration.BindAddress+
+		":"+convert.IntToStr(common.InitializedStorageConfiguration.Port))
 	if err != nil {
 		logger.Fatal(err)
 	}
 	time.Sleep(time.Millisecond * 50)
-	logger.Info(" tcp server listening on ", common.InitializedStorageConfiguration.BindAddress, ":", common.InitializedStorageConfiguration.Port)
+	logger.Info(" tcp server listening on ", common.InitializedStorageConfiguration.BindAddress,
+		":", common.InitializedStorageConfiguration.Port)
 	logger.Info(aurora.BrightGreen("::: storage server started :::"))
+
+	// running in cluster mode.
+	if common.InitializedStorageConfiguration.ParsedTrackers != nil &&
+		len(common.InitializedStorageConfiguration.ParsedTrackers) > 0 {
+
+		servers := make([]*common.Server, len(common.InitializedStorageConfiguration.ParsedTrackers))
+		for i, s := range common.InitializedStorageConfiguration.ParsedTrackers {
+			servers[i] = &s
+		}
+		config := &api.Config{
+			MaxConnectionsPerServer: MaxConnPerServer,
+			SynchronizeOnce:         false,
+			TrackerServers:          servers,
+		}
+		InitializeClientAPI(config)
+	}
+
 	for {
 		conn, err := listener.Accept()
 		if err != nil {
@@ -91,9 +111,8 @@ func storageClientConnHandler(conn net.Conn) {
 				return pip.Send(h, b, l)
 			}
 			return pip.Send(&common.Header{
-				Result:     common.SUCCESS,
-				Msg:        "",
-				Attributes: map[string]string{"Name": "李四"},
+				Result: common.UNKNOWN_OPERATION,
+				Msg:    "unknown operation",
 			}, nil, 0)
 		})
 		if err != nil {

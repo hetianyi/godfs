@@ -39,6 +39,12 @@ func trackerClientConnHandler(conn net.Conn) {
 	}
 	defer pip.Close()
 	authorized := false
+	var registeredInstance *common.Instance
+	defer func() {
+		if registeredInstance != nil {
+			reg.Free(registeredInstance.InstanceId)
+		}
+	}()
 	for {
 		err := pip.Receive(&common.Header{}, func(_header interface{}, bodyReader io.Reader, bodyLength int64) error {
 			if _header == nil {
@@ -48,7 +54,7 @@ func trackerClientConnHandler(conn net.Conn) {
 			bs, _ := json.Marshal(header)
 			logger.Debug("server got message:", string(bs))
 			if header.Operation == common.OPERATION_CONNECT {
-				h, b, l, err := authenticationHandler(header, common.InitializedStorageConfiguration.Secret)
+				h, b, l, err := authenticationHandler(header, common.InitializedTrackerConfiguration.Secret)
 				if err != nil {
 					return err
 				}
@@ -68,10 +74,11 @@ func trackerClientConnHandler(conn net.Conn) {
 				return errors.New("unauthorized connection, force disconnection by server")
 			}
 			if header.Operation == common.OPERATION_REGISTER {
-				h, b, l, err := registerHandler(header)
+				ins, h, b, l, err := registerHandler(header)
 				if err != nil {
 					return err
 				}
+				registeredInstance = ins
 				return pip.Send(h, b, l)
 			} else if header.Operation == common.OPERATION_SYNC_INSTANCES {
 				h, b, l, err := synchronizeInstancesHandler(header)
@@ -81,9 +88,8 @@ func trackerClientConnHandler(conn net.Conn) {
 				return pip.Send(h, b, l)
 			}
 			return pip.Send(&common.Header{
-				Result:     common.SUCCESS,
-				Msg:        "",
-				Attributes: map[string]string{"Name": "李四"},
+				Result: common.UNKNOWN_OPERATION,
+				Msg:    "unknown operation",
 			}, nil, 0)
 		})
 		if err != nil {
@@ -94,9 +100,9 @@ func trackerClientConnHandler(conn net.Conn) {
 }
 
 // inspectFileHandler inspects file's information
-func registerHandler(header *common.Header) (*common.Header, io.Reader, int64, error) {
+func registerHandler(header *common.Header) (*common.Instance, *common.Header, io.Reader, int64, error) {
 	if header.Attributes == nil {
-		return &common.Header{
+		return nil, &common.Header{
 			Result: common.ERROR,
 			Msg:    "no message provided",
 		}, nil, 0, nil
@@ -104,18 +110,18 @@ func registerHandler(header *common.Header) (*common.Header, io.Reader, int64, e
 	s1 := header.Attributes["instance"]
 	instance := &common.Instance{}
 	if err := json.Unmarshal([]byte(s1), instance); err != nil {
-		return &common.Header{
+		return nil, &common.Header{
 			Result: common.ERROR,
 			Msg:    err.Error(),
 		}, nil, 0, err
 	}
 	if err := reg.Put(instance); err != nil {
-		return &common.Header{
+		return instance, &common.Header{
 			Result: common.ERROR,
 			Msg:    err.Error(),
 		}, nil, 0, err
 	}
-	return &common.Header{
+	return instance, &common.Header{
 		Result: common.SUCCESS,
 	}, nil, 0, nil
 }
