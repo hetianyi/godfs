@@ -32,8 +32,8 @@ const (
 	OPERATION_UPLOAD         Operation = 2
 	OPERATION_DOWNLOAD       Operation = 3
 	OPERATION_QUERY          Operation = 4
-	OPERATION_REGISTER       Operation = 5
-	OPERATION_SYNC_INSTANCES Operation = 6
+	OPERATION_SYNC_INSTANCES Operation = 5
+	OPERATION_PUSH_FILES     Operation = 6
 	//
 	SUCCESS           OperationResult = 0
 	ERROR             OperationResult = 1

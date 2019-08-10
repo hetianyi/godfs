@@ -34,17 +34,6 @@ func (ins *instanceStore) expired() bool {
 }
 
 func tracks(clientAPI ClientAPI, server *common.Server, synchronizeOnce bool, c chan int) {
-
-	// tracks must register itself first.
-	for common.BootAs != common.BOOT_CLIENT {
-		if err := clientAPI.RegisterInstance(server); err != nil {
-			time.Sleep(time.Second * 15)
-			continue
-		}
-		logger.Debug("successfully registered to tracker server: ", server.ConnectionString())
-		break
-	}
-
 	timer.Start(0, 0, common.SYNCHRONIZE_INTERVAL, func(t *timer.Timer) {
 		ret, err := clientAPI.SyncInstances(server)
 		if err != nil {

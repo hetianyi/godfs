@@ -33,7 +33,6 @@ func StartStorageTcpServer() {
 	// running in cluster mode.
 	if common.InitializedStorageConfiguration.ParsedTrackers != nil &&
 		len(common.InitializedStorageConfiguration.ParsedTrackers) > 0 {
-
 		servers := make([]*common.Server, len(common.InitializedStorageConfiguration.ParsedTrackers))
 		for i, s := range common.InitializedStorageConfiguration.ParsedTrackers {
 			servers[i] = &s
@@ -72,7 +71,7 @@ func storageClientConnHandler(conn net.Conn) {
 			bs, _ := json.Marshal(header)
 			logger.Debug("server got message:", string(bs))
 			if header.Operation == common.OPERATION_CONNECT {
-				h, b, l, err := authenticationHandler(header, common.InitializedStorageConfiguration.Secret)
+				h, _, b, l, err := authenticationHandler(header, common.InitializedStorageConfiguration.Secret)
 				if err != nil {
 					return err
 				}
@@ -124,26 +123,6 @@ func storageClientConnHandler(conn net.Conn) {
 			break
 		}
 	}
-}
-
-func authenticationHandler(header *common.Header, secret string) (*common.Header, io.Reader, int64, error) {
-	if header.Attributes == nil {
-		return &common.Header{
-			Result: common.UNAUTHORIZED,
-			Msg:    "authentication failed",
-		}, nil, 0, nil
-	}
-	s := header.Attributes["secret"]
-	if s != secret {
-		return &common.Header{
-			Result: common.UNAUTHORIZED,
-			Msg:    "authentication failed",
-		}, nil, 0, nil
-	}
-	return &common.Header{
-		Result: common.SUCCESS,
-		Msg:    "authentication success",
-	}, nil, 0, nil
 }
 
 func uploadFileHandler(bodyReader io.Reader, bodyLength int64) (*common.Header, io.Reader, int64, error) {

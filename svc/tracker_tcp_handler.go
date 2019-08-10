@@ -2,6 +2,7 @@ package svc
 
 import (
 	"errors"
+	"github.com/hetianyi/godfs/api"
 	"github.com/hetianyi/godfs/common"
 	"github.com/hetianyi/godfs/reg"
 	"github.com/hetianyi/gox/convert"
@@ -22,6 +23,22 @@ func StartTrackerTcpServer() {
 	time.Sleep(time.Millisecond * 50)
 	logger.Info(" tcp server listening on ", common.InitializedTrackerConfiguration.BindAddress, ":", common.InitializedTrackerConfiguration.Port)
 	logger.Info(aurora.BrightGreen("::: tracker server started :::"))
+
+	// running in cluster mode.
+	if common.InitializedTrackerConfiguration.ParsedTrackers != nil &&
+		len(common.InitializedTrackerConfiguration.ParsedTrackers) > 0 {
+		servers := make([]*common.Server, len(common.InitializedTrackerConfiguration.ParsedTrackers))
+		for i := range common.InitializedTrackerConfiguration.ParsedTrackers {
+			servers[i] = &common.InitializedTrackerConfiguration.ParsedTrackers[i]
+		}
+		config := &api.Config{
+			MaxConnectionsPerServer: MaxConnPerServer,
+			SynchronizeOnce:         false,
+			TrackerServers:          servers,
+		}
+		InitializeClientAPI(config)
+	}
+
 	for {
 		conn, err := listener.Accept()
 		if err != nil {
@@ -54,7 +71,8 @@ func trackerClientConnHandler(conn net.Conn) {
 			bs, _ := json.Marshal(header)
 			logger.Debug("server got message:", string(bs))
 			if header.Operation == common.OPERATION_CONNECT {
-				h, b, l, err := authenticationHandler(header, common.InitializedTrackerConfiguration.Secret)
+				h, ins, b, l, err := authenticationHandler(header, common.InitializedTrackerConfiguration.Secret)
+				registeredInstance = ins
 				if err != nil {
 					return err
 				}
@@ -73,14 +91,7 @@ func trackerClientConnHandler(conn net.Conn) {
 				}, nil, 0)
 				return errors.New("unauthorized connection, force disconnection by server")
 			}
-			if header.Operation == common.OPERATION_REGISTER {
-				ins, h, b, l, err := registerHandler(header)
-				if err != nil {
-					return err
-				}
-				registeredInstance = ins
-				return pip.Send(h, b, l)
-			} else if header.Operation == common.OPERATION_SYNC_INSTANCES {
+			if header.Operation == common.OPERATION_SYNC_INSTANCES {
 				h, b, l, err := synchronizeInstancesHandler(header)
 				if err != nil {
 					return err

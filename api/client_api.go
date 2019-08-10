@@ -50,8 +50,6 @@ type ClientAPI interface {
 	//
 	// Parameter `fileId` must be the pattern of common.FILE_ID_PATTERN
 	Query(fileId string) (*common.FileInfo, error)
-	// RegisterInstance register self instance to a tracker server.
-	RegisterInstance(server *common.Server) error
 	// SyncInstances synchronizes instances from specific tracker server.
 	SyncInstances(server *common.Server) (map[string]*common.Instance, error)
 }
@@ -376,86 +374,6 @@ func (c *clientAPIImpl) Query(fileId string) (*common.FileInfo, error) {
 	return result, lastErr
 }
 
-func (c *clientAPIImpl) RegisterInstance(server *common.Server) error {
-	connection, authenticated, err := conn.GetConnection(server)
-	if err != nil {
-		return err
-	}
-	pip := &gpip.Pip{
-		Conn: *connection,
-	}
-	if authenticated == nil || !authenticated.(bool) {
-		if err = authenticate(pip, server); err != nil {
-			return err
-		}
-		logger.Debug("authentication success with server ", server.ConnectionString())
-	}
-	authenticated = true
-	var instance *common.Instance
-	if common.BootAs == common.BOOT_TRACKER {
-		conf := common.InitializedTrackerConfiguration
-		advPort, _ := convert.StrToUint16(convert.IntToStr(conf.AdvertisePort))
-		instance = &common.Instance{
-			Server: common.Server{
-				Host:       conf.AdvertiseAddress,
-				Port:       advPort,
-				Secret:     conf.Secret,
-				InstanceId: conf.InstanceId,
-			},
-			Role: common.ROLE_TRACKER,
-		}
-	} else if common.BootAs == common.BOOT_STORAGE {
-		conf := common.InitializedStorageConfiguration
-		advPort, _ := convert.StrToUint16(convert.IntToStr(conf.AdvertisePort))
-		instance = &common.Instance{
-			Server: common.Server{
-				Host:       conf.AdvertiseAddress,
-				Port:       advPort,
-				Secret:     conf.Secret,
-				InstanceId: conf.InstanceId,
-			},
-			Role: common.ROLE_STORAGE,
-			Attributes: map[string]string{
-				"group": conf.Group,
-			},
-		}
-	} /* else if common.BootAs == common.BOOT_PROXY {} */
-	info, err := json.Marshal(instance)
-	if err != nil {
-		return err
-	}
-	logger.Debug("registering instance: ", string(info))
-	// send file body
-	err = pip.Send(&common.Header{
-		Operation: common.OPERATION_REGISTER,
-		Attributes: map[string]string{
-			"instance": string(info),
-		},
-	}, nil, 0)
-	if err != nil {
-		return err
-	}
-	// receive response
-	err = pip.Receive(&common.Header{}, func(_header interface{}, bodyReader io.Reader, bodyLength int64) error {
-		header := _header.(*common.Header)
-		if header != nil {
-			if header.Result == common.SUCCESS {
-				return nil
-			} else {
-				return common.ServerErr
-			}
-			return errors.New("register failed: " + header.Msg)
-		}
-		return errors.New("register failed: got empty response from server")
-	})
-	if err != nil {
-		return err
-	}
-	conn.ReturnConnection(server, connection, authenticated, false)
-	logger.Debug("register finish")
-	return nil
-}
-
 func (c *clientAPIImpl) SyncInstances(server *common.Server) (map[string]*common.Instance, error) {
 	var result = make(map[string]*common.Instance)
 	connection, authenticated, err := conn.GetConnection(server)
@@ -508,7 +426,7 @@ func (c *clientAPIImpl) SyncInstances(server *common.Server) (map[string]*common
 	return result, nil
 }
 
-// authenticate authenticates width storage server.
+// authenticate authenticates with server.
 func authenticate(p *gpip.Pip, server conn.Server) error {
 	logger.Debug("trying to authenticate with server ", server.ConnectionString())
 	secret := ""
@@ -517,9 +435,48 @@ func authenticate(p *gpip.Pip, server conn.Server) error {
 	} else if _, t := server.(*common.StorageServer); t {
 		secret = server.(*common.StorageServer).Secret
 	}
-	err := p.Send(&common.Header{
-		Operation:  common.OPERATION_CONNECT,
-		Attributes: map[string]string{"secret": secret},
+
+	// validate with instance info
+	var instance *common.Instance
+	if common.BootAs == common.BOOT_TRACKER {
+		conf := common.InitializedTrackerConfiguration
+		advPort, _ := convert.StrToUint16(convert.IntToStr(conf.AdvertisePort))
+		instance = &common.Instance{
+			Server: common.Server{
+				Host:       conf.AdvertiseAddress,
+				Port:       advPort,
+				Secret:     conf.Secret,
+				InstanceId: conf.InstanceId,
+			},
+			Role: common.ROLE_TRACKER,
+		}
+	} else if common.BootAs == common.BOOT_STORAGE {
+		conf := common.InitializedStorageConfiguration
+		advPort, _ := convert.StrToUint16(convert.IntToStr(conf.AdvertisePort))
+		instance = &common.Instance{
+			Server: common.Server{
+				Host:       conf.AdvertiseAddress,
+				Port:       advPort,
+				Secret:     conf.Secret,
+				InstanceId: conf.InstanceId,
+			},
+			Role: common.ROLE_STORAGE,
+			Attributes: map[string]string{
+				"group": conf.Group,
+			},
+		}
+	} /* else if common.BootAs == common.BOOT_PROXY {} */
+	info, err := json.Marshal(instance)
+	if err != nil {
+		return err
+	}
+
+	err = p.Send(&common.Header{
+		Operation: common.OPERATION_CONNECT,
+		Attributes: map[string]string{
+			"secret":   secret,
+			"instance": string(info),
+		},
 	}, nil, 0)
 	if err != nil {
 		return err
