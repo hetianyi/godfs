@@ -36,13 +36,29 @@ func initClient() error {
 			}
 		}
 	}
+
+	var readyChan chan int
+	if trackerServers != nil && len(trackerServers) >= 0 {
+		readyChan = make(chan int)
+	}
 	// init client config
 	client.SetConfig(&api.Config{
 		MaxConnectionsPerServer: api.DefaultMaxConnectionsPerServer,
 		SynchronizeOnce:         true,
+		SynchronizeOnceCallback: readyChan,
 		StaticStorageServers:    staticServer,
 		TrackerServers:          trackerServers,
 	})
+
+	if readyChan != nil {
+		logger.Debug("synchronizing with tracker servers...")
+		total := len(trackerServers)
+		stat := 0
+		for i := 0; i < total; i++ {
+			stat += <-readyChan
+		}
+		logger.Debug("synchronized with all tracker servers, errors: ", stat, "  of total: ", total)
+	}
 	return nil
 }
 

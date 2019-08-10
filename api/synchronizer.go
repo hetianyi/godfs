@@ -33,15 +33,18 @@ func (ins *instanceStore) expired() bool {
 	return gox.GetTimestamp(time.Now()) > gox.GetTimestamp(ins.fetchTime)
 }
 
-// SynchronizeFinishedTrackers is used by client mode only.
-func SynchronizeFinishedTrackers(value int) int {
-	countLock.Lock()
-	defer countLock.Unlock()
-	synced += value
-	return synced
-}
+func tracks(clientAPI ClientAPI, server *common.Server, synchronizeOnce bool, c chan int) {
 
-func tracks(clientAPI ClientAPI, server *common.Server, synchronizeOnce bool) {
+	// tracks must register itself first.
+	for common.BootAs != common.BOOT_CLIENT {
+		if err := clientAPI.RegisterInstance(server); err != nil {
+			time.Sleep(time.Second * 15)
+			continue
+		}
+		logger.Debug("successfully registered to tracker server: ", server.ConnectionString())
+		break
+	}
+
 	timer.Start(0, 0, common.SYNCHRONIZE_INTERVAL, func(t *timer.Timer) {
 		ret, err := clientAPI.SyncInstances(server)
 		if err != nil {
@@ -59,9 +62,16 @@ func tracks(clientAPI ClientAPI, server *common.Server, synchronizeOnce bool) {
 				}
 			}
 		}
+		// used by client cli.
 		if synchronizeOnce {
-			SynchronizeFinishedTrackers(1)
 			t.Destroy()
+			if c != nil {
+				if err != nil {
+					c <- 1
+				} else {
+					c <- 0
+				}
+			}
 		}
 	})
 }

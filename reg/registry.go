@@ -87,7 +87,7 @@ func expirationDetection() {
 		gox.Try(func() {
 			lock.Lock()
 			defer lock.Unlock()
-			logger.Debug("current instances: ", len(instanceSet))
+			logger.Debug("current instances: ", len(instanceSet)) // TODO remove
 			deadLine := time.Now().UnixNano() - int64(ExpirationTime)
 			for _, i := range instanceSet {
 				if i.State == common.REGISTER_FREE {

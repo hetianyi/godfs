@@ -13,7 +13,7 @@ import (
 
 var client api.ClientAPI
 
-func init() {
+func Init() {
 	logger.Init(&logger.Config{
 		Level: logger.DebugLevel,
 	})
@@ -49,12 +49,14 @@ func uploadFile() {
 }
 
 func TestUploadFile(t *testing.T) {
+	Init()
 	for {
 		uploadFile()
 	}
 }
 
 func TestDownload1(t *testing.T) {
+	Init()
 	fileId := "G01/4D/99/fde67f4752cf437ec6c831111127afaa"
 	err := client.Download(fileId, 0, -1, func(body io.Reader, bodyLength int64) error {
 		out, err := file.CreateFile("D:/tmp/godfs-test-download.zip")
@@ -86,6 +88,7 @@ func TestDownload1(t *testing.T) {
 }
 
 func TestDownload2(t *testing.T) {
+	Init()
 	fileId := "G01/4D/99/fde67f4752cf437ec6c831111127afaa"
 	err := client.Download(fileId, 0, -1, func(body io.Reader, bodyLength int64) error {
 		out, err := file.CreateFile("D:/tmp/godfs-test-download.zip")

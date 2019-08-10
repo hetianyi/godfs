@@ -26,7 +26,7 @@ var (
 func LoadInstanceData(dataDir string) string {
 	instanceId := ""
 	isNew := false
-	datFile := dataDir + "/instance.dat"
+	datFile := dataDir + "/instance.dat" // TODO separate tracker and storage instance fileName
 	if !file.Exists(datFile) {
 		instanceId = uuid.UUID()[0:8]
 		isNew = true

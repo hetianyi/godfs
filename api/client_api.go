@@ -28,6 +28,7 @@ type Config struct {
 	MaxConnectionsPerServer uint                    // limit max connection for each server
 	TrackerServers          []*common.Server        // tracker servers
 	SynchronizeOnce         bool                    // synchronize with each tracker server only once
+	SynchronizeOnceCallback chan int                // attached with `SynchronizeOnce`, for noticing client cli that whether all server is synced.
 	StaticStorageServers    []*common.StorageServer // storage servers
 }
 
@@ -88,7 +89,7 @@ func (c *clientAPIImpl) SetConfig(config *Config) {
 	if c.config.TrackerServers != nil {
 		for _, s := range c.config.TrackerServers {
 			conn.InitServerSettings(s, c.config.MaxConnectionsPerServer, time.Minute*5)
-			tracks(c, s, config.SynchronizeOnce)
+			tracks(c, s, config.SynchronizeOnce, config.SynchronizeOnceCallback)
 		}
 	}
 	if c.config.StaticStorageServers != nil {
@@ -413,6 +414,10 @@ func (c *clientAPIImpl) RegisterInstance(server *common.Server) error {
 				Secret:     conf.Secret,
 				InstanceId: conf.InstanceId,
 			},
+			Role: common.ROLE_STORAGE,
+			Attributes: map[string]string{
+				"group": conf.Group,
+			},
 		}
 	} /* else if common.BootAs == common.BOOT_PROXY {} */
 	info, err := json.Marshal(instance)
@@ -547,7 +552,10 @@ func (c *clientAPIImpl) selectStorageServer(group string, exclude *list.List) *c
 				sg = s.Attributes["group"]
 			}
 			if group == "" || group == sg {
-				candidates.PushBack(s)
+				candidates.PushBack(&common.StorageServer{
+					Server: s.Server,
+					Group:  sg,
+				})
 			}
 		}
 	}
