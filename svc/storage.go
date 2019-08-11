@@ -2,6 +2,7 @@ package svc
 
 import (
 	"fmt"
+	"github.com/hetianyi/godfs/binlog"
 	"github.com/hetianyi/godfs/common"
 	"github.com/hetianyi/godfs/util"
 	"github.com/hetianyi/gox/logger"
@@ -24,6 +25,7 @@ func BootStorageServer() {
 		logger.Debug("\n", string(cbs))
 	}
 	util.PrintLogo()
+	writableBinlogManager = binlog.NewXBinlogManager(binlog.LOCAL_BINLOG_MANAGER)
 	if common.InitializedStorageConfiguration.EnableHttp {
 		StartStorageHttpServer(common.InitializedStorageConfiguration)
 	}

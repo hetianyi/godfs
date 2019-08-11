@@ -3,6 +3,7 @@ package svc
 import (
 	"errors"
 	"github.com/hetianyi/godfs/api"
+	"github.com/hetianyi/godfs/binlog"
 	"github.com/hetianyi/godfs/common"
 	"github.com/hetianyi/godfs/util"
 	"github.com/hetianyi/gox"
@@ -184,18 +185,14 @@ func uploadFileHandler(bodyReader io.Reader, bodyLength int64) (*common.Header, 
 					return nil, nil, 0, err
 				}
 			}
-			if file.Exists(targetFile) {
-				return &common.Header{
-					Result: common.SUCCESS,
-					Attributes: map[string]string{
-						"fid":        finalFileId,
-						"instanceId": common.InitializedStorageConfiguration.InstanceId,
-						"group":      common.InitializedStorageConfiguration.Group,
-					},
-				}, nil, 0, nil
+			if !file.Exists(targetFile) {
+				if err := file.MoveFile(tmpFileName, targetFile); err != nil {
+					return nil, nil, 0, err
+				}
 			}
-			if err := file.MoveFile(tmpFileName, targetFile); err != nil {
-				return nil, nil, 0, err
+			// write binlog.
+			if err = writableBinlogManager.Write(binlog.CreateLocalBinlog(finalFileId, bodyLength, common.InitializedStorageConfiguration.InstanceId)); err != nil {
+				return nil, nil, 0, errors.New("error writing binlog: " + err.Error())
 			}
 			return &common.Header{
 				Result: common.SUCCESS,
