@@ -3,6 +3,7 @@ package common
 import (
 	"github.com/hetianyi/gox/convert"
 	"strings"
+	"time"
 )
 
 type Command uint32
@@ -141,4 +142,11 @@ type BingLog struct {
 	FileLength     [8]byte  // file length
 	Timestamp      [8]byte  // upload time
 	DownloadFinish byte     // 1 finish, 0 not finish
+}
+
+// FileId is a file
+type FileId struct {
+	FileId     string
+	InstanceId string
+	Timestamp  time.Time
 }
