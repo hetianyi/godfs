@@ -30,6 +30,15 @@ func CreateAlias(fid string, instanceId string, ts time.Time) string {
 	buff.WriteString("|")
 	buff.WriteString(string(bs[5:]))
 	buff.WriteString("|")
-	buff.WriteString(convert.IntToStr(CreateRandNumber(100)))
+	buff.WriteString(FixZeros(CreateRandNumber(100), 3))
 	return base64.StdEncoding.EncodeToString(buff.Bytes())
+}
+
+func FixZeros(i int, width int) string {
+	is := convert.IntToStr(i)
+	l := len(is)
+	for i = 0; i < (width - l); i++ {
+		is = "0" + is
+	}
+	return is
 }

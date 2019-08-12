@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"github.com/hetianyi/godfs/common"
+	"github.com/hetianyi/godfs/util"
 	"github.com/hetianyi/gox/convert"
 	"github.com/hetianyi/gox/file"
 	"github.com/hetianyi/gox/logger"
@@ -206,9 +207,9 @@ func getCurrentBinLogFile() (*os.File, int64, error) {
 
 func getBinLogFileNameByIndex(binlogDir string, i int) string {
 	if common.BootAs == common.BOOT_TRACKER {
-		return binlogDir + "/bin." + FixZeros(i, 3)
+		return binlogDir + "/bin." + util.FixZeros(i, 3)
 	} else if common.BootAs == common.BOOT_STORAGE {
-		return binlogDir + "/bin." + FixZeros(i, 3)
+		return binlogDir + "/bin." + util.FixZeros(i, 3)
 	}
 	return ""
 }
@@ -252,13 +253,4 @@ func Copy38(src []byte) [38]byte {
 		target[i] = src[i]
 	}
 	return target
-}
-
-func FixZeros(i int, width int) string {
-	is := convert.IntToStr(i)
-	l := len(is)
-	for i = 0; i < (width - l); i++ {
-		is = "0" + is
-	}
-	return is
 }
