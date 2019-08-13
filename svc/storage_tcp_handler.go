@@ -16,9 +16,12 @@ import (
 	"github.com/logrusorgru/aurora"
 	"io"
 	"net"
+	"os"
 	"strings"
 	"time"
 )
+
+var tailRefCount = []byte{0, 0, 0, 0}
 
 func StartStorageTcpServer() {
 	listener, err := net.Listen("tcp", common.InitializedStorageConfiguration.BindAddress+
@@ -160,6 +163,11 @@ func uploadFileHandler(bodyReader io.Reader, bodyLength int64) (*common.Header, 
 				return nil, nil, 0, err
 			}
 		} else {
+			// write reference count mark.
+			_, err = out.Write(tailRefCount)
+			if err != nil {
+				return nil, nil, 0, err
+			}
 			out.Close()
 			if bodyLength != realRead {
 				return nil, nil, 0, errors.New("mismatch body length")
@@ -187,6 +195,30 @@ func uploadFileHandler(bodyReader io.Reader, bodyLength int64) (*common.Header, 
 			}
 			if !file.Exists(targetFile) {
 				if err := file.MoveFile(tmpFileName, targetFile); err != nil {
+					return nil, nil, 0, err
+				}
+			} else {
+				// increase file reference count.
+				oldFile, err := file.OpenFile(targetFile, os.O_RDWR, 0666)
+				if err != nil {
+					return nil, nil, 0, err
+				}
+				defer oldFile.Close()
+				tailRefBytes := make([]byte, 8)
+				if _, err := oldFile.Seek(4, 2); err != nil {
+					return nil, nil, 0, err
+				}
+				if _, err := io.ReadAtLeast(oldFile, tailRefBytes[4:], 4); err != nil {
+					return nil, nil, 0, err
+				}
+				// must add lock
+				count := convert.Bytes2Length(tailRefBytes)
+				count++
+				convert.Length2Bytes(count, tailRefBytes)
+				if _, err := oldFile.Seek(4, 2); err != nil {
+					return nil, nil, 0, err
+				}
+				if _, err := oldFile.Write(tailRefBytes[5:]); err != nil {
 					return nil, nil, 0, err
 				}
 			}
@@ -218,50 +250,65 @@ func downFileHandler(header *common.Header) (*common.Header, io.Reader, int64, e
 			Result: common.NOT_FOUND,
 		}, nil, 0, nil
 	}
+
 	to, err := convert.StrToInt64(header.Attributes["offset"])
 	if err != nil {
-		offset = 0
-	} else {
-		offset = to
+		return &common.Header{
+			Result: common.NOT_FOUND,
+		}, nil, 0, nil
 	}
+	offset = to
+
 	tl, err := convert.StrToInt64(header.Attributes["length"])
 	if err != nil {
-		length = -1
-	} else {
-		length = tl
+		return &common.Header{
+			Result: common.NOT_FOUND,
+		}, nil, 0, nil
 	}
+	length = tl
 
 	// group := common.FileIdPatternRegexp.ReplaceAllString(fileId, "$1")
 	p1 := common.FileIdPatternRegexp.ReplaceAllString(fileId, "$2")
 	p2 := common.FileIdPatternRegexp.ReplaceAllString(fileId, "$3")
 	md5 := common.FileIdPatternRegexp.ReplaceAllString(fileId, "$4")
 	fullPath := strings.Join([]string{common.InitializedStorageConfiguration.DataDir, p1, p2, md5}, "/")
-	if !file.Exists(fullPath) {
-		return &common.Header{
-			Result: common.NOT_FOUND,
-		}, nil, 0, nil
-	}
-	fi, err := file.GetFile(fullPath)
-	if !file.Exists(fullPath) {
+
+	readyReader, realLen, err := seekRead(fullPath, offset, length)
+	if err != nil {
 		return &common.Header{
 			Result: common.ERROR,
 		}, nil, 0, err
-	}
-	info, err := fi.Stat()
-	if !file.Exists(fullPath) {
-		return &common.Header{
-			Result: common.ERROR,
-		}, nil, 0, err
-	}
-	if offset >= info.Size() {
-		offset = info.Size()
-	}
-	if length == -1 || offset+length >= info.Size() {
-		length = info.Size() - offset
 	}
 	return &common.Header{
 		Result: common.SUCCESS,
-	}, io.LimitReader(fi, length), length, nil
+	}, readyReader, realLen, nil
+}
+
+func seekRead(fullPath string, offset, length int64) (io.Reader, int64, error) {
+	if !file.Exists(fullPath) {
+		return nil, 0, errors.New("file not found")
+	}
+	fi, err := file.GetFile(fullPath)
+	if err != nil {
+		return nil, 0, err
+	}
+	info, err := fi.Stat()
+	if err != nil {
+		return nil, 0, err
+	}
+	if info.Size() < 4 {
+		return nil, 0, errors.New("invalid format file")
+	}
+	if offset >= info.Size()-4 {
+		offset = info.Size() - 4
+	}
+	if length == -1 || offset+length >= info.Size()-4 {
+		length = info.Size() - 4 - offset
+	}
+	if _, err := fi.Seek(offset, 0); err != nil {
+		return nil, 0, err
+	}
+	return io.LimitReader(fi, length), length, nil
 }
 
 // inspectFileHandler inspects file's information
