@@ -12,6 +12,5 @@ require (
 	github.com/mattn/go-colorable v0.1.2 // indirect
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/pierrec/lz4 v2.2.6+incompatible // indirect
-	github.com/urfave/cli v1.20.0
-	golang.org/x/sys v0.0.0-20190813064441-fde4db37ae7a // indirect
+	github.com/urfave/cli v1.21.0
 )

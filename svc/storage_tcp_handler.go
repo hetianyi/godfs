@@ -16,12 +16,11 @@ import (
 	"github.com/logrusorgru/aurora"
 	"io"
 	"net"
-	"os"
 	"strings"
 	"time"
 )
 
-var tailRefCount = []byte{0, 0, 0, 0}
+var tailRefCount = []byte{0, 0, 0, 1}
 
 func StartStorageTcpServer() {
 	listener, err := net.Listen("tcp", common.InitializedStorageConfiguration.BindAddress+
@@ -130,10 +129,6 @@ func storageClientConnHandler(conn net.Conn) {
 }
 
 func uploadFileHandler(bodyReader io.Reader, bodyLength int64) (*common.Header, io.Reader, int64, error) {
-	buffer := make([]byte, common.BUFFER_SIZE)
-	var realRead int64 = 0
-	crcH := util.CreateCrc32Hash()
-	md5H := util.CreateMd5Hash()
 	tmpFileName := common.InitializedStorageConfiguration.TmpDir + "/" + uuid.UUID()
 	out, err := file.CreateFile(tmpFileName)
 	if err != nil {
@@ -143,101 +138,69 @@ func uploadFileHandler(bodyReader io.Reader, bodyLength int64) (*common.Header, 
 		out.Close()
 		file.Delete(tmpFileName)
 	}()
-	for true {
-		n, err := bodyReader.Read(buffer)
-		realRead += int64(n)
-		if err != nil && err != io.EOF {
-			return nil, nil, 0, err
-		}
-		if n > 0 {
-			_, err := crcH.Write(buffer[0:n])
-			if err != nil {
-				return nil, nil, 0, err
-			}
-			_, err = md5H.Write(buffer[0:n])
-			if err != nil {
-				return nil, nil, 0, err
-			}
-			_, err = out.Write(buffer[0:n])
-			if err != nil {
-				return nil, nil, 0, err
-			}
-		} else {
-			// write reference count mark.
-			_, err = out.Write(tailRefCount)
-			if err != nil {
-				return nil, nil, 0, err
-			}
-			out.Close()
-			if bodyLength != realRead {
-				return nil, nil, 0, errors.New("mismatch body length")
-			}
-			crc32String := util.GetCrc32HashString(crcH)
-			md5String := util.GetMd5HashString(md5H)
 
-			targetDir := strings.ToUpper(strings.Join([]string{crc32String[len(crc32String)-4 : len(crc32String)-2], "/",
-				crc32String[len(crc32String)-2:]}, ""))
-			// 文件放在crc结尾的目录，防止目恶意伪造md5文件进行覆盖
-			// 避免了暴露文件md5可能出现的风险：保证了在md5相等但是文件不同情况下文件出现的覆盖情况。
-			// 此时要求文件的交流必须携带完整的参数
-			targetLoc := common.InitializedStorageConfiguration.DataDir + "/" + targetDir
-			targetFile := common.InitializedStorageConfiguration.DataDir + "/" + targetDir + "/" + md5String
-			// TODO fileId need to be redesign.
-			// md5 + crc end + ts + size + srcnode
-			// ts: for download
-			// ref: http://blog.chinaunix.net/uid-20196318-id-4058561.html
-			// another consideration is that the file may be duplicated。
-			finalFileId := common.InitializedStorageConfiguration.Group + "/" + targetDir + "/" + md5String
-			if !file.Exists(targetLoc) {
-				if err := file.CreateDirs(targetLoc); err != nil {
-					return nil, nil, 0, err
-				}
-			}
-			if !file.Exists(targetFile) {
-				if err := file.MoveFile(tmpFileName, targetFile); err != nil {
-					return nil, nil, 0, err
-				}
-			} else {
-				// increase file reference count.
-				oldFile, err := file.OpenFile(targetFile, os.O_RDWR, 0666)
-				if err != nil {
-					return nil, nil, 0, err
-				}
-				defer oldFile.Close()
-				tailRefBytes := make([]byte, 8)
-				if _, err := oldFile.Seek(4, 2); err != nil {
-					return nil, nil, 0, err
-				}
-				if _, err := io.ReadAtLeast(oldFile, tailRefBytes[4:], 4); err != nil {
-					return nil, nil, 0, err
-				}
-				// must add lock
-				count := convert.Bytes2Length(tailRefBytes)
-				count++
-				convert.Length2Bytes(count, tailRefBytes)
-				if _, err := oldFile.Seek(4, 2); err != nil {
-					return nil, nil, 0, err
-				}
-				if _, err := oldFile.Write(tailRefBytes[5:]); err != nil {
-					return nil, nil, 0, err
-				}
-			}
-			// write binlog.
-			if err = writableBinlogManager.Write(binlog.CreateLocalBinlog(finalFileId, bodyLength, common.InitializedStorageConfiguration.InstanceId)); err != nil {
-				return nil, nil, 0, errors.New("error writing binlog: " + err.Error())
-			}
-			return &common.Header{
-				Result: common.SUCCESS,
-				Attributes: map[string]string{
-					"fid":        finalFileId,
-					"instanceId": common.InitializedStorageConfiguration.InstanceId,
-					"group":      common.InitializedStorageConfiguration.Group,
-				},
-			}, nil, 0, nil
-		}
+	proxy := &DigestProxyWriter{
+		crcH: util.CreateCrc32Hash(),
+		md5H: util.CreateMd5Hash(),
+		out:  out,
 	}
 
-	return &common.Header{}, nil, 0, nil
+	_, err = io.Copy(proxy, io.LimitReader(bodyReader, bodyLength))
+	if err != nil {
+		return nil, nil, 0, err
+	}
+
+	// write reference count mark.
+	_, err = out.Write(tailRefCount)
+	if err != nil {
+		return nil, nil, 0, err
+	}
+	out.Close()
+	crc32String := util.GetCrc32HashString(proxy.crcH)
+	md5String := util.GetMd5HashString(proxy.md5H)
+
+	targetDir := strings.ToUpper(strings.Join([]string{crc32String[len(crc32String)-4 : len(crc32String)-2], "/",
+		crc32String[len(crc32String)-2:]}, ""))
+	// 文件放在crc结尾的目录，防止目恶意伪造md5文件进行覆盖
+	// 避免了暴露文件md5可能出现的风险：保证了在md5相等但是文件不同情况下文件出现的覆盖情况。
+	// 此时要求文件的交流必须携带完整的参数
+	targetLoc := common.InitializedStorageConfiguration.DataDir + "/" + targetDir
+	targetFile := common.InitializedStorageConfiguration.DataDir + "/" + targetDir + "/" + md5String
+	// TODO fileId need to be redesign.
+	// md5 + crc end + ts + size + srcnode
+	// ts: for download
+	// ref: http://blog.chinaunix.net/uid-20196318-id-4058561.html
+	// another consideration is that the file may be duplicated。
+	finalFileId := common.InitializedStorageConfiguration.Group + "/" + targetDir + "/" + md5String
+	if !file.Exists(targetLoc) {
+		if err := file.CreateDirs(targetLoc); err != nil {
+			return nil, nil, 0, err
+		}
+	}
+	if !file.Exists(targetFile) {
+		logger.Debug("file not exists, move to target dir.")
+		if err := file.MoveFile(tmpFileName, targetFile); err != nil {
+			return nil, nil, 0, err
+		}
+	} else {
+		logger.Debug("file already exists, increasing reference count.")
+		// increase file reference count.
+		if err = updateFileReferenceCount(targetFile, 1); err != nil {
+			return nil, nil, 0, err
+		}
+	}
+	// write binlog.
+	if err = writableBinlogManager.Write(binlog.CreateLocalBinlog(finalFileId, bodyLength, common.InitializedStorageConfiguration.InstanceId)); err != nil {
+		return nil, nil, 0, errors.New("error writing binlog: " + err.Error())
+	}
+	return &common.Header{
+		Result: common.SUCCESS,
+		Attributes: map[string]string{
+			"fid":        finalFileId,
+			"instanceId": common.InitializedStorageConfiguration.InstanceId,
+			"group":      common.InitializedStorageConfiguration.Group,
+		},
+	}, nil, 0, nil
 }
 
 func downFileHandler(header *common.Header) (*common.Header, io.Reader, int64, error) {

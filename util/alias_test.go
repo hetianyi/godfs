@@ -14,7 +14,7 @@ func TestCreateAlias(t *testing.T) {
 	fmt.Println(time.Now().Unix())
 
 	buff := make([]byte, 8)
-	convert.Length2Bytes(2147483647, buff)
+	convert.Length2Bytes(1, buff)
 	fmt.Println(buff)
 	// group1/M00/00/0C/rBNM4lrgBU6AH-5BAAzodQCbVVc333
 	// RzAxLzAwL0UyLzAxMjM0NTY3ODkwMTIzNDU2Nzg5MDEyMzQ1Njc4OWVhfGFjMzM0M2FjfFEu9Hw2MQ==

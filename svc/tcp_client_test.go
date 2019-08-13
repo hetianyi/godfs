@@ -135,7 +135,7 @@ func TestRegisterSync(t *testing.T) {
 
 	// register------
 	err := pip.Send(&common.Header{
-		Operation: common.OPERATION_REGISTER,
+		Operation: common.OPERATION_CONNECT,
 		Attributes: map[string]string{
 			"instance": string(bs),
 		},
