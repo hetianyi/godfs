@@ -4,12 +4,14 @@ import (
 	"bytes"
 	"encoding/base64"
 	"github.com/hetianyi/gox/convert"
+	"github.com/hetianyi/gox/logger"
 	"math/rand"
 	"time"
 )
 
 var (
-	rander *rand.Rand
+	rander       *rand.Rand
+	aesEncDecKey = []byte("s8f1lf6nm-lqe9z6smoiw-2k8d6w4nla")
 )
 
 func init() {
@@ -28,10 +30,14 @@ func CreateAlias(fid string, instanceId string, ts time.Time) string {
 	buff.WriteString("|")
 	buff.WriteString(instanceId)
 	buff.WriteString("|")
-	buff.WriteString(string(bs[5:]))
+	buff.WriteString(string(bs[4:]))
 	buff.WriteString("|")
 	buff.WriteString(FixZeros(CreateRandNumber(100), 3))
-	return base64.StdEncoding.EncodeToString(buff.Bytes())
+	result, err := AesEncrypt(buff.Bytes(), aesEncDecKey)
+	if err != nil {
+		logger.Error("error while creating alias: ", err)
+	}
+	return base64.StdEncoding.EncodeToString(result)
 }
 
 func FixZeros(i int, width int) string {

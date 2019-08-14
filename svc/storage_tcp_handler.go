@@ -172,6 +172,7 @@ func uploadFileHandler(bodyReader io.Reader, bodyLength int64) (*common.Header, 
 	// ref: http://blog.chinaunix.net/uid-20196318-id-4058561.html
 	// another consideration is that the file may be duplicated。
 	finalFileId := common.InitializedStorageConfiguration.Group + "/" + targetDir + "/" + md5String
+	finalFileId = util.CreateAlias(finalFileId, common.InitializedStorageConfiguration.InstanceId, time.Now())
 	if !file.Exists(targetLoc) {
 		if err := file.CreateDirs(targetLoc); err != nil {
 			return nil, nil, 0, err
@@ -196,9 +197,7 @@ func uploadFileHandler(bodyReader io.Reader, bodyLength int64) (*common.Header, 
 	return &common.Header{
 		Result: common.SUCCESS,
 		Attributes: map[string]string{
-			"fid":        finalFileId,
-			"instanceId": common.InitializedStorageConfiguration.InstanceId,
-			"group":      common.InitializedStorageConfiguration.Group,
+			"fid": finalFileId,
 		},
 	}, nil, 0, nil
 }

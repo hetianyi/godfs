@@ -135,9 +135,8 @@ type InstanceMap struct {
 
 // length 63 bits
 type BingLog struct {
-	Type byte // 1: local upload binlog, 2: local synchronization binlog, 3: tracker binlog
-
-	FileId         [38]byte // file id like 00/00/<md5>
+	Type           byte     // 1: local upload binlog, 2: local synchronization binlog, 3: tracker binlog
+	FileId         [88]byte // file id like 00/00/<md5>
 	SourceInstance [8]byte  // file source instance
 	FileLength     [8]byte  // file length
 	Timestamp      [8]byte  // upload time

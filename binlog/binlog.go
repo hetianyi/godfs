@@ -9,7 +9,6 @@ import (
 	"github.com/hetianyi/gox/file"
 	"github.com/hetianyi/gox/logger"
 	"os"
-	"strings"
 	"sync"
 )
 
@@ -227,7 +226,7 @@ func CreateLocalBinlog(fileId string, fileLength int64, instanceId string) *comm
 	var ins = Copy8([]byte(instanceId))
 
 	// fileId
-	var fid = Copy38([]byte(fileId[strings.Index(fileId, "/")+1:]))
+	var fid = Copy88([]byte(fileId))
 
 	return &common.BingLog{
 		Type:           byte(LOCAL_BINLOG_MANAGER),
@@ -247,9 +246,9 @@ func Copy8(src []byte) [8]byte {
 	return target
 }
 
-func Copy38(src []byte) [38]byte {
-	var target [38]byte
-	for i := 0; i < 38; i++ {
+func Copy88(src []byte) [88]byte {
+	var target [88]byte
+	for i := 0; i < 88; i++ {
 		target[i] = src[i]
 	}
 	return target
