@@ -2,6 +2,7 @@ package svc
 
 import (
 	"encoding/json"
+	"errors"
 	"github.com/hetianyi/godfs/api"
 	"github.com/hetianyi/godfs/binlog"
 	"github.com/hetianyi/godfs/common"
@@ -111,4 +112,31 @@ func updateFileReferenceCount(path string, value int64) error {
 		return err
 	}
 	return nil
+}
+
+func seekRead(fullPath string, offset, length int64) (io.Reader, int64, error) {
+	if !file.Exists(fullPath) {
+		return nil, 0, errors.New("file not found")
+	}
+	fi, err := file.GetFile(fullPath)
+	if err != nil {
+		return nil, 0, err
+	}
+	info, err := fi.Stat()
+	if err != nil {
+		return nil, 0, err
+	}
+	if info.Size() < 4 {
+		return nil, 0, errors.New("invalid format file")
+	}
+	if offset >= info.Size()-4 {
+		offset = info.Size() - 4
+	}
+	if length == -1 || offset+length >= info.Size()-4 {
+		length = info.Size() - 4 - offset
+	}
+	if _, err := fi.Seek(offset, 0); err != nil {
+		return nil, 0, err
+	}
+	return io.LimitReader(fi, length), length, nil
 }

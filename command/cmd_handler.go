@@ -11,6 +11,7 @@ import (
 	json "github.com/json-iterator/go"
 	"io"
 	"path/filepath"
+	"strings"
 )
 
 var client api.ClientAPI
@@ -92,7 +93,11 @@ func handleUploadFile() error {
 				}
 				r := &pg.WrappedReader{Reader: fi}
 				// show upload progressbar.
-				pro := pg.NewWrappedReaderProgress(inf.Size(), 50, "uploading "+inf.Name(), pg.Top, r)
+				name := inf.Name()
+				if len(name) > 20 {
+					name = name[0:10] + "..." + name[len(name)-10:]
+				}
+				pro := pg.NewWrappedReaderProgress(inf.Size(), 50, "uploading ==> ["+name+"]", pg.Top, r)
 				ret, err := client.Upload(r, inf.Size(), group)
 				fi.Close()
 				if err != nil {
@@ -119,7 +124,11 @@ func handleUploadFile() error {
 			}
 			r := &pg.WrappedReader{Reader: fi}
 			// show upload progressbar.
-			pro := pg.NewWrappedReaderProgress(inf.Size(), 50, "uploading "+inf.Name(), pg.Top, r)
+			name := inf.Name()
+			if len(name) > 20 {
+				name = name[0:10] + "..." + name[len(name)-10:]
+			}
+			pro := pg.NewWrappedReaderProgress(inf.Size(), 50, "uploading ==> ["+name+"]", pg.Top, r)
 			ret, err := client.Upload(r, inf.Size(), group)
 			if err != nil {
 				pro.Destroy()
@@ -182,33 +191,39 @@ func handleDownloadFile() error {
 	// checking download fileIds.
 	gox.WalkList(&downloadFiles, func(item interface{}) bool {
 		total++
-		if !common.FileIdPatternRegexp.Match([]byte(item.(string))) {
-			logger.Warn("invalid format fileId: ", item.(string))
-			return false
-		}
 		err := client.Download(item.(string), 0, -1, func(body io.Reader, bodyLength int64) error {
 			// if download only one file and provide a custom filename.
 			if downloadFiles.Len() == 1 && customDownloadFileName != "" {
-				logger.Info("downloading ", item.(string), " to ", customDownloadFileName)
 				fi, err := file.CreateFile(customDownloadFileName)
 				w := &pg.WrappedWriter{Writer: fi}
 				// show download progressbar.
-				pro := pg.NewWrappedWriterProgress(bodyLength, 50, "downloading "+item.(string), pg.Top, w)
+				fid := item.(string)
+				if len(fid) > 20 {
+					fid = fid[0:10] + "..." + fid[len(fid)-10:]
+				}
+				pro := pg.NewWrappedWriterProgress(bodyLength, 50, "downloading ==> ["+fid+"]", pg.Top, w)
 				_, err = io.Copy(w, body)
 				if err != nil {
 					pro.Destroy()
 				}
 				return err
 			}
-			md5 := common.FileIdPatternRegexp.ReplaceAllString(item.(string), "$4")
+			fileInfo, err := util.ParseAlias(item.(string))
+			if err != nil {
+				return err
+			}
+			md5 := fileInfo.Path[strings.LastIndex(fileInfo.Path, "/")+1:]
 			fi, err := file.CreateFile(wd + "/" + md5)
-			logger.Info("downloading ", item.(string), " to ", fi.Name())
 			if err != nil {
 				return err
 			}
 			w := &pg.WrappedWriter{Writer: fi}
 			// show download progressbar.
-			pro := pg.NewWrappedWriterProgress(bodyLength, 50, "downloading "+item.(string), pg.Top, w)
+			fid := item.(string)
+			if len(fid) > 20 {
+				fid = fid[0:10] + "..." + fid[len(fid)-10:]
+			}
+			pro := pg.NewWrappedWriterProgress(bodyLength, 50, "downloading ==> ["+fid+"]", pg.Top, w)
 			_, err = io.Copy(w, body)
 			if err != nil {
 				pro.Destroy()
@@ -241,11 +256,6 @@ func handleInspectFile() error {
 	// checking download fileIds.
 	gox.WalkList(&inspectFiles, func(item interface{}) bool {
 		total++
-		if !common.FileIdPatternRegexp.Match([]byte(item.(string))) {
-			logger.Warn("invalid format fileId: ", item.(string))
-			return false
-		}
-
 		info, err := client.Query(item.(string))
 		resultMap[item.(string)] = info
 		if err == nil {

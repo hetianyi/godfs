@@ -2,7 +2,7 @@ package binlog_test
 
 import (
 	"fmt"
-	"github.com/hetianyi/godfs/binlog"
+	"github.com/hetianyi/godfs/util"
 	"github.com/hetianyi/gox"
 	"github.com/hetianyi/gox/convert"
 	"testing"
@@ -17,14 +17,14 @@ func Test1(t *testing.T) {
 }
 
 func TestFixZeros(t *testing.T) {
-	fmt.Println(binlog.FixZeros(0, 5))
-	fmt.Println(binlog.FixZeros(1, 5))
-	fmt.Println(binlog.FixZeros(11, 5))
-	fmt.Println(binlog.FixZeros(111, 5))
-	fmt.Println(binlog.FixZeros(1111, 5))
-	fmt.Println(binlog.FixZeros(11111, 5))
-	fmt.Println(binlog.FixZeros(0, 3))
-	fmt.Println(binlog.FixZeros(1, 3))
-	fmt.Println(binlog.FixZeros(11, 3))
-	fmt.Println(binlog.FixZeros(111, 3))
+	fmt.Println(util.FixZeros(0, 5))
+	fmt.Println(util.FixZeros(1, 5))
+	fmt.Println(util.FixZeros(11, 5))
+	fmt.Println(util.FixZeros(111, 5))
+	fmt.Println(util.FixZeros(1111, 5))
+	fmt.Println(util.FixZeros(11111, 5))
+	fmt.Println(util.FixZeros(0, 3))
+	fmt.Println(util.FixZeros(1, 3))
+	fmt.Println(util.FixZeros(11, 3))
+	fmt.Println(util.FixZeros(111, 3))
 }

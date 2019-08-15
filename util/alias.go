@@ -3,15 +3,19 @@ package util
 import (
 	"bytes"
 	"encoding/base64"
+	"errors"
+	"github.com/hetianyi/godfs/common"
 	"github.com/hetianyi/gox/convert"
 	"github.com/hetianyi/gox/logger"
 	"math/rand"
+	"strings"
 	"time"
 )
 
 var (
-	rander       *rand.Rand
-	aesEncDecKey = []byte("s8f1lf6nm-lqe9z6smoiw-2k8d6w4nla")
+	rander           *rand.Rand
+	aesEncDecKey     = []byte("s8f1lf6nm-lqe9z6smoiw-2k8d6w4nla")
+	ErrInvalidFileId = errors.New("invalid file id")
 )
 
 func init() {
@@ -22,6 +26,7 @@ func CreateRandNumber(max int) int {
 	return rander.Intn(max)
 }
 
+// CreateAlias create an alias name from file meta info.
 func CreateAlias(fid string, instanceId string, ts time.Time) string {
 	tsBuff := make([]byte, 8)
 	bs := convert.Length2Bytes(ts.Unix(), tsBuff)
@@ -38,6 +43,41 @@ func CreateAlias(fid string, instanceId string, ts time.Time) string {
 		logger.Error("error while creating alias: ", err)
 	}
 	return base64.StdEncoding.EncodeToString(result)
+}
+
+// ParseAlias parses file info from file alias name,
+// and returns *common.FileInfo
+func ParseAlias(alias string) (fileInfo *common.FileInfo, err error) {
+	bs, err := base64.StdEncoding.DecodeString(alias)
+	if err != nil {
+		return
+	}
+	recovered, err := AesDecrypt(bs, aesEncDecKey)
+	if err != nil {
+		return
+	}
+	parts := strings.Split(string(recovered), "|")
+	if len(parts) != 4 {
+		return nil, errors.New("invalid format fileId")
+	}
+	if !common.FileMetaPatternRegexp.Match([]byte(parts[0])) || len(parts[1]) != 8 {
+		return nil, ErrInvalidFileId
+	}
+
+	group := common.FileMetaPatternRegexp.ReplaceAllString(parts[0], "$1")
+	p1 := common.FileMetaPatternRegexp.ReplaceAllString(parts[0], "$2")
+	p2 := common.FileMetaPatternRegexp.ReplaceAllString(parts[0], "$3")
+	md5 := common.FileMetaPatternRegexp.ReplaceAllString(parts[0], "$4")
+
+	tsBuff := []byte{0, 0, 0, 0, parts[2][0], parts[2][1], parts[2][2], parts[2][3]}
+	ts := convert.Bytes2Length(tsBuff)
+	return &common.FileInfo{
+		Group:      group,
+		FileLength: 0,
+		Path:       strings.Join([]string{p1, p2, md5}, "/"),
+		InstanceId: parts[1],
+		CreateTime: ts,
+	}, nil
 }
 
 func FixZeros(i int, width int) string {

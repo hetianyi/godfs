@@ -38,3 +38,7 @@ func TestAesCbcEncrypt(t *testing.T) {
 		fmt.Println(string(recovered))
 	}
 }
+
+func TestParseAlias(t *testing.T) {
+	fmt.Println(util.ParseAlias("7zO5kRe1uwcup9KdOMXZntgpg2fcA1sxFj1xZOLk2EIN5Y1S+nf61RT8JIcOm5YENgDHqPLSSfLla3E1UC0x5g=="))
+}

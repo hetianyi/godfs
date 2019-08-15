@@ -109,15 +109,16 @@ type Header struct {
 }
 
 type UploadResult struct {
-	Group  string `json:"group"`
-	Node   string `json:"node"`
-	FileId string `json:"fileId"`
+	Group    string `json:"group"`
+	Instance string `json:"instance"`
+	FileId   string `json:"fileId"`
 }
 
 type FileInfo struct {
 	Group      string `json:"group"`
-	FileId     string `json:"fileId"`
+	Path       string `json:"path"`
 	FileLength int64  `json:"size"`
+	InstanceId string `json:"instance"`
 	CreateTime int64  `json:"createTime"`
 }
 

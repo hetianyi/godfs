@@ -4,6 +4,7 @@ import (
 	"container/list"
 	"errors"
 	"github.com/hetianyi/godfs/common"
+	"github.com/hetianyi/godfs/util"
 	"github.com/hetianyi/gox"
 	"github.com/hetianyi/gox/conn"
 	"github.com/hetianyi/gox/convert"
@@ -152,9 +153,9 @@ func (c *clientAPIImpl) Upload(src io.Reader, length int64, group string) (*comm
 				if header != nil {
 					if header.Result == common.SUCCESS {
 						ret = &common.UploadResult{
-							Group:  header.Attributes["group"],
-							FileId: header.Attributes["fid"],
-							Node:   header.Attributes["instanceId"],
+							Group:    header.Attributes["group"],
+							FileId:   header.Attributes["fid"],
+							Instance: header.Attributes["instance"],
 						}
 						return nil
 					}
@@ -191,14 +192,14 @@ func (c *clientAPIImpl) Download(fileId string, offset int64, length int64, hand
 	var selectedStorage *common.StorageServer // target server for file uploading.
 	var lastErr error
 	var lastConn *net.Conn
-	// parse fileId
-	if !common.FileIdPatternRegexp.Match([]byte(fileId)) {
-		return errors.New("invalid fileId: " + fileId)
+
+	fileInfo, err := util.ParseAlias(fileId)
+	if err != nil {
+		return err
 	}
-	group := common.FileIdPatternRegexp.ReplaceAllString(fileId, "$1")
 	gox.Try(func() {
 		for {
-			selectedStorage = c.selectStorageServer(group, exclude)
+			selectedStorage = c.selectStorageServer(fileInfo.Group, exclude)
 			if selectedStorage == nil {
 				if lastErr == nil {
 					lastErr = NoStorageServerErr
@@ -286,14 +287,15 @@ func (c *clientAPIImpl) Query(fileId string) (*common.FileInfo, error) {
 	var lastErr error
 	var lastConn *net.Conn
 	var result *common.FileInfo
-	// parse fileId
-	if !common.FileIdPatternRegexp.Match([]byte(fileId)) {
-		return nil, errors.New("invalid fileId: " + fileId)
+
+	fileInfo, err := util.ParseAlias(fileId)
+	if err != nil {
+		return nil, err
 	}
-	group := common.FileIdPatternRegexp.ReplaceAllString(fileId, "$1")
+	// TODO offline function
 	gox.Try(func() {
 		for {
-			selectedStorage = c.selectStorageServer(group, exclude)
+			selectedStorage = c.selectStorageServer(fileInfo.Group, exclude)
 			if selectedStorage == nil {
 				if lastErr == nil {
 					lastErr = NoStorageServerErr

@@ -6,7 +6,6 @@ import (
 	"github.com/hetianyi/godfs/binlog"
 	"github.com/hetianyi/godfs/common"
 	"github.com/hetianyi/godfs/util"
-	"github.com/hetianyi/gox"
 	"github.com/hetianyi/gox/convert"
 	"github.com/hetianyi/gox/file"
 	"github.com/hetianyi/gox/gpip"
@@ -197,7 +196,9 @@ func uploadFileHandler(bodyReader io.Reader, bodyLength int64) (*common.Header, 
 	return &common.Header{
 		Result: common.SUCCESS,
 		Attributes: map[string]string{
-			"fid": finalFileId,
+			"fid":      finalFileId,
+			"group":    common.InitializedStorageConfiguration.Group,
+			"instance": common.InitializedStorageConfiguration.InstanceId,
 		},
 	}, nil, 0, nil
 }
@@ -205,9 +206,8 @@ func uploadFileHandler(bodyReader io.Reader, bodyLength int64) (*common.Header, 
 func downFileHandler(header *common.Header) (*common.Header, io.Reader, int64, error) {
 	var offset int64 = 0
 	var length int64 = -1
-	var fileId = header.Attributes["fileId"]
-	// parse fileId
-	if !common.FileIdPatternRegexp.Match([]byte(fileId)) || header.Attributes == nil {
+	// TODO duplicate code
+	if header.Attributes == nil {
 		return &common.Header{
 			Result: common.NOT_FOUND,
 		}, nil, 0, nil
@@ -216,23 +216,32 @@ func downFileHandler(header *common.Header) (*common.Header, io.Reader, int64, e
 	to, err := convert.StrToInt64(header.Attributes["offset"])
 	if err != nil {
 		return &common.Header{
-			Result: common.NOT_FOUND,
-		}, nil, 0, nil
+			Result: common.ERROR,
+		}, nil, 0, err
 	}
 	offset = to
 
 	tl, err := convert.StrToInt64(header.Attributes["length"])
 	if err != nil {
 		return &common.Header{
-			Result: common.NOT_FOUND,
-		}, nil, 0, nil
+			Result: common.ERROR,
+		}, nil, 0, err
 	}
 	length = tl
 
+	// parse fileId
+	var fileId = header.Attributes["fileId"]
+	fileInfo, err := util.ParseAlias(fileId)
+	if err != nil {
+		return &common.Header{
+			Result: common.ERROR,
+		}, nil, 0, err
+	}
+	fileMeta := fileInfo.Group + "/" + fileInfo.Path
 	// group := common.FileIdPatternRegexp.ReplaceAllString(fileId, "$1")
-	p1 := common.FileIdPatternRegexp.ReplaceAllString(fileId, "$2")
-	p2 := common.FileIdPatternRegexp.ReplaceAllString(fileId, "$3")
-	md5 := common.FileIdPatternRegexp.ReplaceAllString(fileId, "$4")
+	p1 := common.FileMetaPatternRegexp.ReplaceAllString(fileMeta, "$2")
+	p2 := common.FileMetaPatternRegexp.ReplaceAllString(fileMeta, "$3")
+	md5 := common.FileMetaPatternRegexp.ReplaceAllString(fileMeta, "$4")
 	fullPath := strings.Join([]string{common.InitializedStorageConfiguration.DataDir, p1, p2, md5}, "/")
 
 	readyReader, realLen, err := seekRead(fullPath, offset, length)
@@ -246,46 +255,28 @@ func downFileHandler(header *common.Header) (*common.Header, io.Reader, int64, e
 	}, readyReader, realLen, nil
 }
 
-func seekRead(fullPath string, offset, length int64) (io.Reader, int64, error) {
-	if !file.Exists(fullPath) {
-		return nil, 0, errors.New("file not found")
-	}
-	fi, err := file.GetFile(fullPath)
-	if err != nil {
-		return nil, 0, err
-	}
-	info, err := fi.Stat()
-	if err != nil {
-		return nil, 0, err
-	}
-	if info.Size() < 4 {
-		return nil, 0, errors.New("invalid format file")
-	}
-	if offset >= info.Size()-4 {
-		offset = info.Size() - 4
-	}
-	if length == -1 || offset+length >= info.Size()-4 {
-		length = info.Size() - 4 - offset
-	}
-	if _, err := fi.Seek(offset, 0); err != nil {
-		return nil, 0, err
-	}
-	return io.LimitReader(fi, length), length, nil
-}
-
 // inspectFileHandler inspects file's information
 func inspectFileHandler(header *common.Header) (*common.Header, io.Reader, int64, error) {
-	var fileId = header.Attributes["fileId"]
-	// parse fileId
-	if !common.FileIdPatternRegexp.Match([]byte(fileId)) || header.Attributes == nil {
+	// TODO duplicate code
+	if header.Attributes == nil {
 		return &common.Header{
 			Result: common.NOT_FOUND,
 		}, nil, 0, nil
 	}
+
+	// parse fileId
+	var fileId = header.Attributes["fileId"]
+	fileInfo, err := util.ParseAlias(fileId)
+	if err != nil {
+		return &common.Header{
+			Result: common.ERROR,
+		}, nil, 0, err
+	}
+	fileMeta := fileInfo.Group + "/" + fileInfo.Path
 	// group := common.FileIdPatternRegexp.ReplaceAllString(fileId, "$1")
-	p1 := common.FileIdPatternRegexp.ReplaceAllString(fileId, "$2")
-	p2 := common.FileIdPatternRegexp.ReplaceAllString(fileId, "$3")
-	md5 := common.FileIdPatternRegexp.ReplaceAllString(fileId, "$4")
+	p1 := common.FileMetaPatternRegexp.ReplaceAllString(fileMeta, "$2")
+	p2 := common.FileMetaPatternRegexp.ReplaceAllString(fileMeta, "$3")
+	md5 := common.FileMetaPatternRegexp.ReplaceAllString(fileMeta, "$4")
 	fullPath := strings.Join([]string{common.InitializedStorageConfiguration.DataDir, p1, p2, md5}, "/")
 	if !file.Exists(fullPath) {
 		return &common.Header{
@@ -304,13 +295,8 @@ func inspectFileHandler(header *common.Header) (*common.Header, io.Reader, int64
 			Result: common.ERROR,
 		}, nil, 0, err
 	}
-	finfo := &common.FileInfo{
-		Group:      common.InitializedStorageConfiguration.Group,
-		FileId:     fileId,
-		FileLength: info.Size(),
-		CreateTime: gox.GetTimestamp(info.ModTime()),
-	}
-	bs, _ := json.Marshal(finfo)
+	fileInfo.FileLength = info.Size()
+	bs, _ := json.Marshal(fileInfo)
 	return &common.Header{
 		Result:     common.SUCCESS,
 		Attributes: map[string]string{"info": string(bs)},

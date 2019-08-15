@@ -230,6 +230,7 @@ func ValidateClientConfig(c *common.ClientConfig) error {
 		Level:              ConvertLogLevel(c.LogLevel),
 		Write2File:         false,
 		AlwaysWriteConsole: true,
+		Formatter:          &logger.NoneTextFormatter{},
 	}
 	logger.Init(logConfig)
 

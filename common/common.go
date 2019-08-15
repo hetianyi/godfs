@@ -18,7 +18,7 @@ const (
 	SERVER_PATTERN      = "^(([^@^,]{1,30})@)?([^@]+):([1-9][0-9]{0,5})$"
 	HTTP_AUTH_PATTERN   = "^([^:]+):([^:]+)$"
 	INSTANCE_ID_PATTERN = "^[0-9a-z-]{8}$"
-	FILE_ID_PATTERN     = "^([0-9a-zA-Z-_]{1,30})/([0-9A-F]{2})/([0-9A-F]{2})/([0-9a-f]{32})$"
+	FILE_META_PATTERN   = "^([0-9a-zA-Z-_]{1,30})/([0-9A-F]{2})/([0-9A-F]{2})/([0-9a-f]{32})$"
 	//
 	DEFAULT_STORAGE_TCP_PORT  = 9012
 	DEFAULT_STORAGE_HTTP_PORT = 8001
@@ -69,7 +69,7 @@ var (
 	InitializedTrackerConfiguration *TrackerConfig
 	InitializedStorageConfiguration *StorageConfig
 	InitializedClientConfiguration  *ClientConfig
-	FileIdPatternRegexp             = regexp.MustCompile(FILE_ID_PATTERN)
+	FileMetaPatternRegexp           = regexp.MustCompile(FILE_META_PATTERN)
 	ServerPatternRegexp             = regexp.MustCompile(SERVER_PATTERN)
 	BootAs                          BootMode
 )
