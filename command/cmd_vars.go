@@ -33,7 +33,7 @@ var (
 	preferredNetwork       string
 	maxLogfileSize         int
 	logRotationInterval    string
-	enableHttp             bool
+	disableHttp            bool
 	httpPort               int
 	httpAuth               string
 	enableMimetypes        bool
@@ -82,7 +82,7 @@ func ConfigAssembly(bm common.BootMode) interface{} {
 		}
 		c.BindAddress = bindAddress
 		c.EnableMimeTypes = enableMimetypes
-		c.EnableHttp = enableHttp
+		c.EnableHttp = !disableHttp
 
 		if trackers != "" {
 			c.Trackers = strings.Split(trackers, ",")
@@ -126,7 +126,7 @@ func ConfigAssembly(bm common.BootMode) interface{} {
 			bindAddress = "127.0.0.1"
 		}
 		c.BindAddress = bindAddress
-		c.EnableHttp = enableHttp
+		c.EnableHttp = !disableHttp
 
 		if trackers != "" {
 			c.Trackers = strings.Split(trackers, ",")

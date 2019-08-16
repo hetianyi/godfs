@@ -26,19 +26,6 @@ func Parse(arguments []string) {
 	(trace|debug|info|warn|error|fatal)`,
 			Destination: &logLevel,
 		},
-		cli.IntFlag{
-			Name:  "max-logfile-size",
-			Value: 0,
-			Usage: `rolling log file max size, available options:
-	(0|64|128|256|512|1024)`,
-			Destination: &maxLogfileSize,
-		},
-		cli.StringFlag{
-			Name:        "log-rotation-interval",
-			Value:       "d",
-			Usage:       "log rotation interval(h|d|m|y)",
-			Destination: &logRotationInterval,
-		},
 		cli.BoolFlag{
 			Name:        "version, v",
 			Usage:       `show version`,
@@ -66,13 +53,7 @@ func Parse(arguments []string) {
 					Value:       "",
 					Usage:       "custom global secret",
 					Destination: &secret,
-				}, /*
-					cli.StringFlag{
-						Name:        "instance-id",
-						Value:       "",
-						Usage:       "set instance id of server instance",
-						Destination: &instanceId,
-					},*/
+				},
 				cli.StringFlag{
 					Name:        "bind-address",
 					Value:       "",
@@ -109,10 +90,10 @@ func Parse(arguments []string) {
 					Usage:       "choose preferred network interface for registering",
 					Destination: &preferredNetwork,
 				},
-				cli.BoolTFlag{
-					Name:        "enable-http",
-					Usage:       "enable http server",
-					Destination: &enableHttp,
+				cli.BoolFlag{
+					Name:        "disable-http",
+					Usage:       "disable http server",
+					Destination: &disableHttp,
 				},
 				cli.IntFlag{
 					Name:        "http-port",
@@ -144,10 +125,23 @@ func Parse(arguments []string) {
 					Destination: &trackers,
 				},
 				cli.StringFlag{
-					Name:        "logdir",
+					Name:        "log-dir",
 					Value:       "",
 					Usage:       "set log directory",
 					Destination: &logDir,
+				},
+				cli.IntFlag{
+					Name:  "max-logfile-size",
+					Value: 0,
+					Usage: `rolling log file max size, available options:
+	(0|64|128|256|512|1024)`,
+					Destination: &maxLogfileSize,
+				},
+				cli.StringFlag{
+					Name:        "log-rotation-interval",
+					Value:       "d",
+					Usage:       "log rotation interval(h|d|m|y)",
+					Destination: &logRotationInterval,
 				},
 				cli.BoolFlag{
 					Name:        "disable-logfile",
@@ -181,13 +175,7 @@ func Parse(arguments []string) {
 					Value:       "",
 					Usage:       "use custom config file",
 					Destination: &configFile,
-				}, /*
-					cli.StringFlag{
-						Name:        "instance-id",
-						Value:       "",
-						Usage:       "set instance id of server instance",
-						Destination: &instanceId,
-					},*/
+				},
 				cli.StringFlag{
 					Name:        "bind-address",
 					Value:       "",
@@ -224,10 +212,10 @@ func Parse(arguments []string) {
 					Usage:       "choose preferred network interface for registering",
 					Destination: &preferredNetwork,
 				},
-				cli.BoolTFlag{
-					Name:        "enable-http",
-					Usage:       "enable http server",
-					Destination: &enableHttp,
+				cli.BoolFlag{
+					Name:        "disable-http",
+					Usage:       "disable http server",
+					Destination: &disableHttp,
 				},
 				cli.IntFlag{
 					Name:        "http-port",
@@ -259,10 +247,23 @@ func Parse(arguments []string) {
 					Destination: &trackers,
 				},
 				cli.StringFlag{
-					Name:        "logdir",
+					Name:        "log-dir",
 					Value:       "",
 					Usage:       "set log directory",
 					Destination: &logDir,
+				},
+				cli.IntFlag{
+					Name:  "max-logfile-size",
+					Value: 0,
+					Usage: `rolling log file max size, available options:
+	(0|64|128|256|512|1024)`,
+					Destination: &maxLogfileSize,
+				},
+				cli.StringFlag{
+					Name:        "log-rotation-interval",
+					Value:       "d",
+					Usage:       "log rotation interval(h|d|m|y)",
+					Destination: &logRotationInterval,
 				},
 				cli.BoolFlag{
 					Name:        "disable-logfile",

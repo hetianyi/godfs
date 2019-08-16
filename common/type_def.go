@@ -134,14 +134,13 @@ type InstanceMap struct {
 	Instances map[string]Instance `json:"instances"`
 }
 
-// length 63 bits
 type BingLog struct {
-	Type           byte     // 1: local upload binlog, 2: local synchronization binlog, 3: tracker binlog
-	FileId         [88]byte // file id like 00/00/<md5>
-	SourceInstance [8]byte  // file source instance
-	FileLength     [8]byte  // file length
-	Timestamp      [8]byte  // upload time
-	DownloadFinish byte     // 1 finish, 0 not finish
+	Type           byte    // 1: local upload binlog, 2: local synchronization binlog, 3: tracker binlog
+	DownloadFinish byte    // 1 finish, 0 not finish
+	SourceInstance [8]byte // file source instance
+	Timestamp      [8]byte // upload time
+	FileLength     [8]byte // file length
+	FileId         []byte  // fileId
 }
 
 // FileId is a file

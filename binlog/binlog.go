@@ -86,11 +86,11 @@ func (m *localBinlogManager) Write(bin *common.BingLog) error {
 
 	// build buffer
 	defer m.buffer.Reset()
-	m.buffer.Write(bin.FileId[:])
-	m.buffer.Write(bin.SourceInstance[:])
-	m.buffer.Write(bin.FileLength[:])
-	m.buffer.Write(bin.Timestamp[:])
 	m.buffer.WriteByte(bin.DownloadFinish)
+	m.buffer.Write(bin.SourceInstance[:])
+	m.buffer.Write(bin.Timestamp[:])
+	m.buffer.Write(bin.FileLength[:])
+	m.buffer.Write(bin.FileId[:])
 	m.buffer.WriteRune('\n')
 	// persist binlog data.
 	if _, err := m.currentBinLogFile.Write(m.buffer.Bytes()); err != nil {
@@ -225,12 +225,9 @@ func CreateLocalBinlog(fileId string, fileLength int64, instanceId string) *comm
 	// instance
 	var ins = Copy8([]byte(instanceId))
 
-	// fileId
-	var fid = Copy88([]byte(fileId))
-
 	return &common.BingLog{
 		Type:           byte(LOCAL_BINLOG_MANAGER),
-		FileId:         fid,
+		FileId:         []byte(fileId),
 		SourceInstance: ins,
 		FileLength:     flen,
 		Timestamp:      ts,
@@ -241,14 +238,6 @@ func CreateLocalBinlog(fileId string, fileLength int64, instanceId string) *comm
 func Copy8(src []byte) [8]byte {
 	var target [8]byte
 	for i := 0; i < 8; i++ {
-		target[i] = src[i]
-	}
-	return target
-}
-
-func Copy88(src []byte) [88]byte {
-	var target [88]byte
-	for i := 0; i < 88; i++ {
 		target[i] = src[i]
 	}
 	return target
