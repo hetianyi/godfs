@@ -191,7 +191,7 @@ func uploadFileHandler(bodyReader io.Reader, bodyLength int64) (*common.Header, 
 	}
 	// write binlog.
 	if err = writableBinlogManager.Write(binlog.CreateLocalBinlog(finalFileId,
-		bodyLength, common.InitializedStorageConfiguration.InstanceId)); err != nil {
+		bodyLength, common.InitializedStorageConfiguration.InstanceId, time.Now())); err != nil {
 		return nil, nil, 0, errors.New("error writing binlog: " + err.Error())
 	}
 	return &common.Header{

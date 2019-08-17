@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"github.com/hetianyi/godfs/util"
 	"github.com/hetianyi/gox/convert"
+	"github.com/hetianyi/gox/file"
 	"github.com/hetianyi/gox/logger"
+	"os"
 	"testing"
 	"time"
 )
@@ -16,8 +18,9 @@ func TestCreateAlias(t *testing.T) {
 	fmt.Println(time.Now().Unix())
 
 	buff := make([]byte, 8)
-	convert.Length2Bytes(1, buff)
+	convert.Length2Bytes(2000000, buff)
 	fmt.Println(buff)
+	fmt.Println(byte('\n'))
 	// group1/M00/00/0C/rBNM4lrgBU6AH-5BAAzodQCbVVc333
 	// RzAxLzAwL0UyLzAxMjM0NTY3ODkwMTIzNDU2Nzg5MDEyMzQ1Njc4OWVhfGFjMzM0M2FjfFEu9Hw2MQ==
 	// G01/00/E2/MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTIzNDU2Nzg5ZWF8YWMzMzQzYWN8Ukg9fDAxMA==
@@ -41,4 +44,15 @@ func TestAesCbcEncrypt(t *testing.T) {
 
 func TestParseAlias(t *testing.T) {
 	fmt.Println(util.ParseAlias("7zO5kRe1uwcup9KdOMXZntgpg2fcA1sxFj1xZOLk2EIN5Y1S+nf61RT8JIcOm5YENgDHqPLSSfLla3E1UC0x5g=="))
+}
+
+func TestSeek(t *testing.T) {
+	a := "D:/seek"
+	fi, err := file.OpenFile(a, os.O_RDWR|os.O_CREATE, 0666)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	defer fi.Close()
+	fi.WriteAt([]byte{0}, 2999)
 }
