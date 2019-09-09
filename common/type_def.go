@@ -64,6 +64,7 @@ type ClientConfig struct {
 	Storages       []string `json:"storages"`
 	LogLevel       string   `json:"logLevel"`
 	Secret         string   `json:"secret"`
+	PrivateUpload  bool     `json:"private_upload"`
 	ParsedTrackers []Server
 }
 
@@ -119,6 +120,7 @@ type FileInfo struct {
 	Path       string `json:"path"`
 	FileLength int64  `json:"size"`
 	InstanceId string `json:"instance"`
+	IsPrivate  bool   `json:"isPrivate"`
 	CreateTime int64  `json:"createTime"`
 }
 

@@ -314,7 +314,7 @@ Usage: godfs upload <file1> <file2> ...`)
 							Usage:       "upload files to specific group",
 							Destination: &uploadGroup,
 						},
-						cli.BoolFlag{
+						cli.BoolTFlag{
 							Name:        "private, p",
 							Usage:       "mark as private files",
 							Destination: &privateUpload,

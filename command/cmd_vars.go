@@ -140,6 +140,7 @@ func ConfigAssembly(bm common.BootMode) interface{} {
 		if trackers != "" {
 			c.Trackers = strings.Split(trackers, ",")
 		}
+		c.PrivateUpload = privateUpload
 		common.InitializedClientConfiguration = c
 		return c
 	}

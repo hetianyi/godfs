@@ -40,7 +40,7 @@ type ClientAPI interface {
 	// Upload uploads file to specific group server.
 	//
 	// If no group provided, it will upload file to a random server.
-	Upload(src io.Reader, length int64, group string) (*common.UploadResult, error)
+	Upload(src io.Reader, length int64, group string, isPrivate bool) (*common.UploadResult, error)
 	// Download downloads a file from server.
 	//
 	// Return error can be common.NoStorageServerErr if there is no server available
@@ -98,7 +98,7 @@ func (c *clientAPIImpl) SetConfig(config *Config) {
 	}
 }
 
-func (c *clientAPIImpl) Upload(src io.Reader, length int64, group string) (*common.UploadResult, error) {
+func (c *clientAPIImpl) Upload(src io.Reader, length int64, group string, isPrivate bool) (*common.UploadResult, error) {
 	logger.Debug("begin to upload file")
 	var exclude = list.New()                  // excluded storage list
 	var selectedStorage *common.StorageServer // target server for file uploading.
@@ -140,7 +140,12 @@ func (c *clientAPIImpl) Upload(src io.Reader, length int64, group string) (*comm
 			}
 			authenticated = true
 			// send file body
-			err = pip.Send(&common.Header{Operation: common.OPERATION_UPLOAD}, src, length)
+			err = pip.Send(&common.Header{
+				Operation: common.OPERATION_UPLOAD,
+				Attributes: map[string]string{
+					"isPrivate": gox.TValue(isPrivate, "1", "0").(string),
+				},
+			}, src, length)
 			if err != nil {
 				lastErr = err
 				conn.ReturnConnection(selectedStorage, lastConn, nil, true)

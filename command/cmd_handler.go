@@ -98,7 +98,7 @@ func handleUploadFile() error {
 					name = name[0:10] + "..." + name[len(name)-10:]
 				}
 				pro := pg.NewWrappedReaderProgress(inf.Size(), 50, "uploading ==> ["+name+"]", pg.Top, r)
-				ret, err := client.Upload(r, inf.Size(), group)
+				ret, err := client.Upload(r, inf.Size(), group, common.InitializedClientConfiguration.PrivateUpload)
 				fi.Close()
 				if err != nil {
 					pro.Destroy()
@@ -129,7 +129,7 @@ func handleUploadFile() error {
 				name = name[0:10] + "..." + name[len(name)-10:]
 			}
 			pro := pg.NewWrappedReaderProgress(inf.Size(), 50, "uploading ==> ["+name+"]", pg.Top, r)
-			ret, err := client.Upload(r, inf.Size(), group)
+			ret, err := client.Upload(r, inf.Size(), group, common.InitializedClientConfiguration.PrivateUpload)
 			if err != nil {
 				pro.Destroy()
 				logger.Error(err)

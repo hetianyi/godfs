@@ -10,6 +10,7 @@ require (
 	github.com/json-iterator/go v1.1.7
 	github.com/logrusorgru/aurora v0.0.0-20190803045625-94edacc10f9b
 	github.com/mattn/go-colorable v0.1.2 // indirect
+	github.com/mholt/archiver v3.1.1+incompatible
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/pierrec/lz4 v2.2.6+incompatible // indirect
 	github.com/urfave/cli v1.21.0

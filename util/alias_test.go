@@ -13,7 +13,7 @@ import (
 )
 
 func TestCreateAlias(t *testing.T) {
-	base64S := util.CreateAlias("G01/00/E2/012345678901234567890123456789ea", "ac3343ac", time.Now())
+	base64S := util.CreateAlias("G01/00/E2/012345678901234567890123456789ea", "ac3343ac", true, time.Now())
 	fmt.Println(base64S)
 	fmt.Println(time.Now().Unix())
 
@@ -43,7 +43,7 @@ func TestAesCbcEncrypt(t *testing.T) {
 }
 
 func TestParseAlias(t *testing.T) {
-	fmt.Println(util.ParseAlias("7zO5kRe1uwcup9KdOMXZntgpg2fcA1sxFj1xZOLk2EIN5Y1S+nf61RT8JIcOm5YENgDHqPLSSfLla3E1UC0x5g=="))
+	fmt.Println(util.ParseAlias("A3AE1i_kNI5gneeop4tWUocv9bYLwyiXDuJSker1VmeWWJ0ioeLA6jIWyPrtRmsZ_RBn0tWAeRXQ8o3lnqWjpg"))
 }
 
 func TestSeek(t *testing.T) {

@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"errors"
 	"github.com/hetianyi/godfs/common"
+	"github.com/hetianyi/gox"
 	"github.com/hetianyi/gox/convert"
 	"github.com/hetianyi/gox/logger"
 	"math/rand"
@@ -27,13 +28,15 @@ func CreateRandNumber(max int) int {
 }
 
 // CreateAlias create an alias name from file meta info.
-func CreateAlias(fid string, instanceId string, ts time.Time) string {
+func CreateAlias(fid string, instanceId string, isPrivate bool, ts time.Time) string {
 	tsBuff := make([]byte, 8)
 	bs := convert.Length2Bytes(ts.Unix(), tsBuff)
 	var buff bytes.Buffer
 	buff.WriteString(fid)
 	buff.WriteString("|")
 	buff.WriteString(instanceId)
+	buff.WriteString("|")
+	buff.WriteString(gox.TValue(isPrivate, "1", "0").(string))
 	buff.WriteString("|")
 	buff.WriteString(string(bs[4:]))
 	buff.WriteString("|")
@@ -42,13 +45,13 @@ func CreateAlias(fid string, instanceId string, ts time.Time) string {
 	if err != nil {
 		logger.Error("error while creating alias: ", err)
 	}
-	return base64.StdEncoding.EncodeToString(result)
+	return base64.RawURLEncoding.EncodeToString(result)
 }
 
 // ParseAlias parses file info from file alias name,
 // and returns *common.FileInfo
 func ParseAlias(alias string) (fileInfo *common.FileInfo, err error) {
-	bs, err := base64.StdEncoding.DecodeString(alias)
+	bs, err := base64.RawURLEncoding.DecodeString(alias)
 	if err != nil {
 		return
 	}
@@ -57,7 +60,7 @@ func ParseAlias(alias string) (fileInfo *common.FileInfo, err error) {
 		return
 	}
 	parts := strings.Split(string(recovered), "|")
-	if len(parts) != 4 {
+	if len(parts) != 5 {
 		return nil, errors.New("invalid format fileId")
 	}
 	if !common.FileMetaPatternRegexp.Match([]byte(parts[0])) || len(parts[1]) != 8 {
@@ -69,13 +72,14 @@ func ParseAlias(alias string) (fileInfo *common.FileInfo, err error) {
 	p2 := common.FileMetaPatternRegexp.ReplaceAllString(parts[0], "$3")
 	md5 := common.FileMetaPatternRegexp.ReplaceAllString(parts[0], "$4")
 
-	tsBuff := []byte{0, 0, 0, 0, parts[2][0], parts[2][1], parts[2][2], parts[2][3]}
+	tsBuff := []byte{0, 0, 0, 0, parts[3][0], parts[3][1], parts[3][2], parts[3][3]}
 	ts := convert.Bytes2Length(tsBuff)
 	return &common.FileInfo{
 		Group:      group,
 		FileLength: 0,
 		Path:       strings.Join([]string{p1, p2, md5}, "/"),
 		InstanceId: parts[1],
+		IsPrivate:  gox.TValue(parts[2] == "1", true, false).(bool),
 		CreateTime: ts,
 	}, nil
 }

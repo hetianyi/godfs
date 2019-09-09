@@ -93,7 +93,7 @@ func storageClientConnHandler(conn net.Conn) {
 				return errors.New("unauthorized connection, force disconnection by server")
 			}
 			if header.Operation == common.OPERATION_UPLOAD {
-				h, b, l, err := uploadFileHandler(bodyReader, bodyLength)
+				h, b, l, err := uploadFileHandler(header, bodyReader, bodyLength)
 				if err != nil {
 					return err
 				}
@@ -127,7 +127,7 @@ func storageClientConnHandler(conn net.Conn) {
 	}
 }
 
-func uploadFileHandler(bodyReader io.Reader, bodyLength int64) (*common.Header, io.Reader, int64, error) {
+func uploadFileHandler(header *common.Header, bodyReader io.Reader, bodyLength int64) (*common.Header, io.Reader, int64, error) {
 	tmpFileName := common.InitializedStorageConfiguration.TmpDir + "/" + uuid.UUID()
 	out, err := file.CreateFile(tmpFileName)
 	if err != nil {
@@ -142,6 +142,13 @@ func uploadFileHandler(bodyReader io.Reader, bodyLength int64) (*common.Header, 
 		crcH: util.CreateCrc32Hash(),
 		md5H: util.CreateMd5Hash(),
 		out:  out,
+	}
+
+	isPrivate := true
+	if header.Attributes != nil {
+		if header.Attributes["isPrivate"] == "0" {
+			isPrivate = false
+		}
 	}
 
 	_, err = io.Copy(proxy, io.LimitReader(bodyReader, bodyLength))
@@ -171,7 +178,7 @@ func uploadFileHandler(bodyReader io.Reader, bodyLength int64) (*common.Header, 
 	// ref: http://blog.chinaunix.net/uid-20196318-id-4058561.html
 	// another consideration is that the file may be duplicated。
 	finalFileId := common.InitializedStorageConfiguration.Group + "/" + targetDir + "/" + md5String
-	finalFileId = util.CreateAlias(finalFileId, common.InitializedStorageConfiguration.InstanceId, time.Now())
+	finalFileId = util.CreateAlias(finalFileId, common.InitializedStorageConfiguration.InstanceId, isPrivate, time.Now())
 	if !file.Exists(targetLoc) {
 		if err := file.CreateDirs(targetLoc); err != nil {
 			return nil, nil, 0, err

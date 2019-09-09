@@ -1,0 +1,22 @@
+version: 2
+jobs:
+  build-godfs:
+    machine: true
+    working_directory: ~/godfs
+    # The primary container is an instance of the first image listed. The job's commands run in this container.
+    steps:
+      - checkout
+      # Download and cache dependencies
+      - run:
+          name: build godfs
+          command: |
+            echo "$dockerhub_pass" | docker login -u "$dockerhub_user" --password-stdin
+            docker build --build-arg github_user=$github_user --build-arg github_pass=$github_pass -t hehety/godfs:latest .
+            docker push hehety/godfs:latest
+
+
+workflows:
+  version: 2
+  build-all:
+    jobs:
+      - build-godfs
