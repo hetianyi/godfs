@@ -59,11 +59,15 @@ func httpUpload(w http.ResponseWriter, r *http.Request) {
 }
 
 func httpDownload(w http.ResponseWriter, r *http.Request) {
-	defer r.Body.Close()
-	logger.Debug("accept new request")
+	logger.Debug("accept download file request")
+	defer func() {
+		r.Body.Close()
+		logger.Debug("download file finish")
+	}()
 
 	// TODO check refer
 	// TODO check auth
+	// TODO cache support
 
 	// handle http options method
 	headers := w.Header()
@@ -93,6 +97,16 @@ func httpDownload(w http.ResponseWriter, r *http.Request) {
 		fileNotFound(w)
 		return
 	}
+
+	// 304 Not Modified
+	eTag := r.Header["If-None-Match"]
+	if common.InitializedStorageConfiguration.EnableMimeTypes &&
+		eTag != nil && len(eTag) > 0 && eTag[0] == "\""+strings.Split(info.Path, "/")[2]+"\"" {
+		setMimeHeaders(strings.Split(info.Path, "/")[2], &headers)
+		w.WriteHeader(304)
+		return
+	}
+
 	// parse header: range
 	rangeS := r.Header.Get("Range")
 	start, end := parseHeaderRange(rangeS)
@@ -130,10 +144,10 @@ func httpDownload(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	headers.Set("Content-Length", strconv.FormatInt(totalLen, 10))
+	headers.Set("Content-Length", convert.Int64ToStr(totalLen))
 	headers.Set("Accept-Ranges", "bytes")
 	if rangeS != "" {
-		headers.Set("Content-Range", "bytes "+strconv.FormatInt(start, 10)+"-"+strconv.FormatInt(end-1, 10)+"/"+convert.Int64ToStr(fileInfo.Size()))
+		headers.Set("Content-Range", "bytes "+convert.Int64ToStr(start)+"-"+convert.Int64ToStr(end-1)+"/"+convert.Int64ToStr(fileInfo.Size()-4))
 	}
 
 	if t := common.GetMimeType(ext); common.InitializedStorageConfiguration.EnableMimeTypes && t != "" {
@@ -141,6 +155,7 @@ func httpDownload(w http.ResponseWriter, r *http.Request) {
 		headers.Set("Last-Modified", fileInfo.ModTime().In(gmtLocation).Format(time.RFC1123))
 		headers.Set("Expires", time.Now().Add(time.Hour*2400).In(gmtLocation).Format(time.RFC1123))
 		setMimeHeaders(strings.Split(info.Path, "/")[2], &headers)
+		headers.Set("Content-Type", t)
 	} else {
 		headers.Set("Expires", "0")
 		headers.Set("Pragma", "public")
