@@ -6,6 +6,7 @@ import (
 	"github.com/hetianyi/godfs/util"
 	"github.com/hetianyi/gox/convert"
 	"github.com/hetianyi/gox/file"
+	"github.com/hetianyi/gox/httpx"
 	"github.com/hetianyi/gox/logger"
 	"io"
 	"net/http"
@@ -18,12 +19,22 @@ import (
 
 const (
 	rangeHeader = "^bytes=([0-9]+)-([0-9]+)?$"
+	FORM_TEXT   = "text"
+	FORM_FILE   = "file"
 )
 
 var (
 	compiledRegexpRangeHeader *regexp.Regexp
 	gmtLocation, _            = time.LoadLocation("GMT")
 )
+
+type FormEntry struct {
+	Index         int
+	Type          string
+	ParameterName string
+	FileName      string
+	FileLength    int64
+}
 
 func init() {
 	compiledRegexpRangeHeader = regexp.MustCompile(rangeHeader)
@@ -32,8 +43,10 @@ func init() {
 // StartStorageHttpServer starts an storage http server.
 func StartStorageHttpServer(c *common.StorageConfig) {
 	r := mux.NewRouter()
-	r.HandleFunc("/", httpUpload).Methods("POST")
-	r.HandleFunc("/", httpDownload).Methods("GET")
+	r.HandleFunc("/up", httpUpload).Methods("POST")
+	r.HandleFunc("/upload", httpUpload).Methods("POST")
+	r.HandleFunc("/dl", httpDownload).Methods("GET")
+	r.HandleFunc("/download", httpDownload).Methods("GET")
 
 	srv := &http.Server{
 		Handler: r,
@@ -54,10 +67,23 @@ func StartStorageHttpServer(c *common.StorageConfig) {
 
 func httpUpload(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
-	logger.Debug("accept new request")
+	logger.Debug("accept new upload request")
+	handler := &httpx.FileUploadHandler{
+		Request: r,
+	}
+	handler.OnFormField = func(paraName, paraValue string) {
+		logger.Debug("form parameter: name=", paraName, ", value=", paraValue)
+	}
+	handler.OnFileField = func(paraName, fileName string) *httpx.FileTransactionProcessor {
+		return &httpx.FileTransactionProcessor{}
+	}
+	if err := handler.Parse(); err != nil {
+		logger.Error("error upload files: ", err)
+	}
 
 }
 
+// httpDownload handles http file upload.
 func httpDownload(w http.ResponseWriter, r *http.Request) {
 	logger.Debug("accept download file request")
 	defer func() {
