@@ -462,6 +462,59 @@ Usage: godfs config set key=value key=value ...`)
 						},
 					},
 				},
+				{
+					Name:  "test",
+					Usage: "running benchmark",
+					Action: func(c *cli.Context) error {
+						finalCommand = common.CMD_TEST_UPLOAD
+						return nil
+					},
+					Flags: []cli.Flag{
+						cli.StringFlag{
+							Name:        "group, g",
+							Value:       "",
+							Usage:       "upload files to specific group",
+							Destination: &uploadGroup,
+						},
+						cli.BoolTFlag{
+							Name:        "private, p",
+							Usage:       "mark as private files",
+							Destination: &privateUpload,
+						},
+						cli.IntFlag{
+							Name:        "scale",
+							Usage:       "test scale",
+							Value:       10000,
+							Destination: &testScale,
+						},
+						cli.IntFlag{
+							Name:        "thread",
+							Usage:       "test thread size",
+							Value:       5,
+							Destination: &testScale,
+						},
+						cli.StringFlag{
+							Name:        "config, c",
+							Value:       "",
+							Usage:       "use custom config file",
+							Destination: &configFile,
+						},
+						cli.StringFlag{
+							Name:  "storages",
+							Value: "",
+							Usage: `set storage servers, example:
+	[<secret1>@]host1:port1,[<secret2>@]host2:port2`,
+							Destination: &storages,
+						},
+						cli.StringFlag{
+							Name:  "trackers",
+							Value: "",
+							Usage: `set tracker servers, example:
+	[<secret1>@]host1:port1,[<secret2>@]host2:port2`,
+							Destination: &trackers,
+						},
+					},
+				},
 			},
 		},
 	}

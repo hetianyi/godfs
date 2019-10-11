@@ -1,10 +1,12 @@
 package command
 
 import (
+	"bytes"
 	"github.com/hetianyi/godfs/api"
 	"github.com/hetianyi/godfs/common"
 	"github.com/hetianyi/godfs/util"
 	"github.com/hetianyi/gox"
+	"github.com/hetianyi/gox/convert"
 	"github.com/hetianyi/gox/file"
 	"github.com/hetianyi/gox/logger"
 	"github.com/hetianyi/gox/pg"
@@ -97,7 +99,7 @@ func handleUploadFile() error {
 				if len(name) > 20 {
 					name = name[0:10] + "..." + name[len(name)-10:]
 				}
-				pro := pg.NewWrappedReaderProgress(inf.Size(), 50, "uploading ==> ["+name+"]", pg.Top, r)
+				pro := pg.NewWrappedReaderProgress(inf.Size(), 50, "uploading: ["+name+"]", pg.Top, r)
 				ret, err := client.Upload(r, inf.Size(), group, common.InitializedClientConfiguration.PrivateUpload)
 				fi.Close()
 				if err != nil {
@@ -128,7 +130,7 @@ func handleUploadFile() error {
 			if len(name) > 20 {
 				name = name[0:10] + "..." + name[len(name)-10:]
 			}
-			pro := pg.NewWrappedReaderProgress(inf.Size(), 50, "uploading ==> ["+name+"]", pg.Top, r)
+			pro := pg.NewWrappedReaderProgress(inf.Size(), 50, "uploading: ["+name+"]", pg.Top, r)
 			ret, err := client.Upload(r, inf.Size(), group, common.InitializedClientConfiguration.PrivateUpload)
 			if err != nil {
 				pro.Destroy()
@@ -274,3 +276,40 @@ func handleInspectFile() error {
 	logger.Info("inspect finish, success ", success, " of total ", total)
 	return nil
 }
+
+
+
+// handleUploadFile handles upload files by client cli.
+func handleTestUploadFile() error {
+	// initialize APIClient
+	if err := initClient(); err != nil {
+		logger.Fatal(err)
+	}
+	total := common.InitializedClientConfiguration.TestScale   // total files
+	success := 0 // success files
+	for i := 0; i < total; i++ {
+		name := convert.IntToStr(i)
+		data := []byte(name)
+		size := int64(len(data))
+		r1 := bytes.NewReader(data)
+		r := &pg.WrappedReader{Reader: r1}
+		// show upload progressbar.
+		if len(name) > 20 {
+			name = name[0:10] + "..." + name[len(name)-10:]
+		}
+		pro := pg.NewWrappedReaderProgress(size, 50, "uploading: ["+name+"]", pg.Top, r)
+		ret, err := client.Upload(r, size, group, common.InitializedClientConfiguration.PrivateUpload)
+		if err != nil {
+			pro.Destroy()
+			logger.Error(err)
+		}
+		success++
+		bs, _ := json.MarshalIndent(ret, "", "  ")
+		logger.Info("\n", string(bs))
+	}
+
+	logger.Info("upload finish, success ", success, " of total ", total)
+	return nil
+}
+
+func uploadThread

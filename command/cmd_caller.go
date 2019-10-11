@@ -33,5 +33,10 @@ func call(cmd common.Command) {
 		ConfigAssembly(common.BOOT_CLIENT)
 		handleInspectFile()
 		break
+	case common.CMD_TEST_UPLOAD:
+		common.BootAs = common.BOOT_CLIENT
+		ConfigAssembly(common.BOOT_CLIENT)
+		handleInspectFile()
+		break
 	}
 }

@@ -20,9 +20,11 @@ func TestCreateAlias(t *testing.T) {
 	buff := make([]byte, 8)
 	convert.Length2Bytes(2000000, buff)
 	fmt.Println(buff)
+	fmt.Println("group1/M00/00/0C/rBNM4lrgBU6AH-5BAAzodQCbVVc333")
 	fmt.Println(byte('\n'))
 	// group1/M00/00/0C/rBNM4lrgBU6AH-5BAAzodQCbVVc333
 	// RzAxLzAwL0UyLzAxMjM0NTY3ODkwMTIzNDU2Nzg5MDEyMzQ1Njc4OWVhfGFjMzM0M2FjfFEu9Hw2MQ==
+	// A3AE1i_kNI5gneeop4tWUocv9bYLwyiXDuJSker1VmeWWJ0ioeLA6jIWyPrtRmsZYarNIt0HprjZgXr0H1QNpg
 	// G01/00/E2/MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTIzNDU2Nzg5ZWF8YWMzMzQzYWN8Ukg9fDAxMA==
 }
 

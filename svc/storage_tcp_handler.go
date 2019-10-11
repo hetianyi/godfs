@@ -128,6 +128,7 @@ func storageClientConnHandler(conn net.Conn) {
 }
 
 func uploadFileHandler(header *common.Header, bodyReader io.Reader, bodyLength int64) (*common.Header, io.Reader, int64, error) {
+	logger.Debug("receiving file...")
 	tmpFileName := common.InitializedStorageConfiguration.TmpDir + "/" + uuid.UUID()
 	out, err := file.CreateFile(tmpFileName)
 	if err != nil {
@@ -151,11 +152,13 @@ func uploadFileHandler(header *common.Header, bodyReader io.Reader, bodyLength i
 		}
 	}
 
+	logger.Debug("coping file...")
 	_, err = io.Copy(proxy, io.LimitReader(bodyReader, bodyLength))
 	if err != nil {
 		return nil, nil, 0, err
 	}
 
+	logger.Debug("write tail")
 	// write reference count mark.
 	_, err = out.Write(tailRefCount)
 	if err != nil {
@@ -178,6 +181,7 @@ func uploadFileHandler(header *common.Header, bodyReader io.Reader, bodyLength i
 	// ref: http://blog.chinaunix.net/uid-20196318-id-4058561.html
 	// another consideration is that the file may be duplicated。
 	finalFileId := common.InitializedStorageConfiguration.Group + "/" + targetDir + "/" + md5String
+	logger.Debug("create alias")
 	finalFileId = util.CreateAlias(finalFileId, common.InitializedStorageConfiguration.InstanceId, isPrivate, time.Now())
 	if !file.Exists(targetLoc) {
 		if err := file.CreateDirs(targetLoc); err != nil {
@@ -197,10 +201,12 @@ func uploadFileHandler(header *common.Header, bodyReader io.Reader, bodyLength i
 		}
 	}
 	// write binlog.
+	logger.Debug("write binlog...")
 	if err = writableBinlogManager.Write(binlog.CreateLocalBinlog(finalFileId,
 		bodyLength, common.InitializedStorageConfiguration.InstanceId, time.Now())); err != nil {
 		return nil, nil, 0, errors.New("error writing binlog: " + err.Error())
 	}
+	logger.Debug("done!!!")
 	return &common.Header{
 		Result: common.SUCCESS,
 		Attributes: map[string]string{

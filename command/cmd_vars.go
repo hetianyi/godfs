@@ -11,6 +11,8 @@ import (
 // var sets
 var (
 	privateUpload          bool      // upload private file
+	testScale              int       // test scale
+	testThread             int       // test thread
 	showVersion            bool      // show app version
 	uploadGroup            string    // upload group
 	customDownloadFileName string    // custom fi                le download location and filename
@@ -136,6 +138,7 @@ func ConfigAssembly(bm common.BootMode) interface{} {
 	} else if bm == common.BOOT_CLIENT {
 		c := &common.ClientConfig{}
 		c.Secret = secret
+		c.TestScale = testScale
 		c.LogLevel = logLevel
 		if trackers != "" {
 			c.Trackers = strings.Split(trackers, ",")

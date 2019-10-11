@@ -50,6 +50,7 @@ const (
 	CMD_INSPECT_FILE  Command = 6
 	CMD_BOOT_TRACKER  Command = 7
 	CMD_BOOT_STORAGE  Command = 8
+	CMD_TEST_UPLOAD   Command = 9
 	//
 	ROLE_TRACKER Role = 1
 	ROLE_STORAGE Role = 2
