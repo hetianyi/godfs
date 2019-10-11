@@ -17,7 +17,7 @@ const (
 	LOCAL_BINLOG_MANAGER   XBinlogManagerType = 1
 	SYNC_BINLOG_MANAGER    XBinlogManagerType = 2
 	TRACKER_BINLOG_MANAGER XBinlogManagerType = 3
-	MAX_BINLOG_SIZE        int                = 5 // 200w binlog records
+	MAX_BINLOG_SIZE        int                = 2 << 20 // 200w binlog records
 )
 
 var binlogMapManager *XBinlogMapManager

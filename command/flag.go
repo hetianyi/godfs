@@ -491,7 +491,7 @@ Usage: godfs config set key=value key=value ...`)
 							Name:        "thread",
 							Usage:       "test thread size",
 							Value:       5,
-							Destination: &testScale,
+							Destination: &testThread,
 						},
 						cli.StringFlag{
 							Name:        "config, c",

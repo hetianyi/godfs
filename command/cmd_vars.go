@@ -139,6 +139,7 @@ func ConfigAssembly(bm common.BootMode) interface{} {
 		c := &common.ClientConfig{}
 		c.Secret = secret
 		c.TestScale = testScale
+		c.TestThread = testThread
 		c.LogLevel = logLevel
 		if trackers != "" {
 			c.Trackers = strings.Split(trackers, ",")

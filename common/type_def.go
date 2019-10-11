@@ -66,6 +66,7 @@ type ClientConfig struct {
 	Secret         string   `json:"secret"`
 	PrivateUpload  bool     `json:"private_upload"`
 	TestScale      int      `json:"test_scale"`
+	TestThread     int      `json:"test_thread"`
 	ParsedTrackers []Server
 }
 

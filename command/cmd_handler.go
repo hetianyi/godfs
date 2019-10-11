@@ -2,6 +2,7 @@ package command
 
 import (
 	"bytes"
+	"fmt"
 	"github.com/hetianyi/godfs/api"
 	"github.com/hetianyi/godfs/common"
 	"github.com/hetianyi/godfs/util"
@@ -14,6 +15,8 @@ import (
 	"io"
 	"path/filepath"
 	"strings"
+	"sync"
+	"time"
 )
 
 var client api.ClientAPI
@@ -277,39 +280,59 @@ func handleInspectFile() error {
 	return nil
 }
 
-
-
 // handleUploadFile handles upload files by client cli.
 func handleTestUploadFile() error {
 	// initialize APIClient
 	if err := initClient(); err != nil {
 		logger.Fatal(err)
 	}
-	total := common.InitializedClientConfiguration.TestScale   // total files
-	success := 0 // success files
-	for i := 0; i < total; i++ {
-		name := convert.IntToStr(i)
-		data := []byte(name)
-		size := int64(len(data))
-		r1 := bytes.NewReader(data)
-		r := &pg.WrappedReader{Reader: r1}
-		// show upload progressbar.
-		if len(name) > 20 {
-			name = name[0:10] + "..." + name[len(name)-10:]
+	startTime := gox.GetTimestamp(time.Now())
+	waitGroup := sync.WaitGroup{}
+	step := common.InitializedClientConfiguration.TestScale / common.InitializedClientConfiguration.TestThread
+	for i := 1; i <= common.InitializedClientConfiguration.TestThread; i++ {
+		if i == common.InitializedClientConfiguration.TestThread {
+			go uploadTask((i-1)*step, common.InitializedClientConfiguration.TestScale, &waitGroup)
+		} else {
+			go uploadTask((i-1)*step, i*step, &waitGroup)
 		}
-		pro := pg.NewWrappedReaderProgress(size, 50, "uploading: ["+name+"]", pg.Top, r)
-		ret, err := client.Upload(r, size, group, common.InitializedClientConfiguration.PrivateUpload)
-		if err != nil {
-			pro.Destroy()
-			logger.Error(err)
-		}
-		success++
-		bs, _ := json.MarshalIndent(ret, "", "  ")
-		logger.Info("\n", string(bs))
 	}
-
-	logger.Info("upload finish, success ", success, " of total ", total)
+	waitGroup.Add(common.InitializedClientConfiguration.TestThread)
+	waitGroup.Wait()
+	endTime := gox.GetTimestamp(time.Now())
+	fmt.Println("[---------------------------]")
+	fmt.Println("total  :", common.InitializedClientConfiguration.TestScale)
+	fmt.Println("failed :", testFailed)
+	fmt.Println("time   :", (endTime-startTime)/1000, "s")
+	fmt.Println("average:", int64(common.InitializedClientConfiguration.TestScale)/((endTime-startTime)/1000), "/s")
+	fmt.Println("[---------------------------]")
 	return nil
 }
 
-func uploadThread
+func uploadTask(start int, end int, waitGroup *sync.WaitGroup) {
+	for i := start; i < end; i++ {
+		name := convert.IntToStr(i)
+		data := []byte(name)
+		size := int64(len(data))
+		r := bytes.NewReader(data)
+		fmt.Println(gox.GetLongLongDateString(time.Now()), "  start upload")
+		ret, err := client.Upload(r, size, group, common.InitializedClientConfiguration.PrivateUpload)
+		fmt.Println(gox.GetLongLongDateString(time.Now()), "  end   upload")
+		if err != nil {
+			logger.Error(err)
+			updateTestSuccessCount()
+		} else {
+			bs, _ := json.MarshalIndent(ret, "", "  ")
+			logger.Info("upload success:\n", string(bs))
+		}
+	}
+	waitGroup.Done()
+}
+
+var testLock = new(sync.Mutex)
+var testFailed = 0
+
+func updateTestSuccessCount() {
+	testLock.Lock()
+	defer testLock.Unlock()
+	testFailed++
+}
