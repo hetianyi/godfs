@@ -60,7 +60,7 @@ type ClientAPI interface {
 	SyncInstances(server *common.Server) (map[string]*common.Instance, error)
 
 	// PushBinlog pushes binlog to tracker server.
-	PushBinlog(server *common.Server, binlogs []common.BingLog) error
+	PushBinlog(server *common.Server, binlogs []common.BingLogDTO) error
 }
 
 // NewClient creates a new APIClient.

@@ -14,6 +14,10 @@ func Test1(t *testing.T) {
 	buff := make([]byte, 8)
 	convert.Length2Bytes(a, buff)
 	fmt.Println(buff)
+
+	b := 2 << 20
+	convert.Length2Bytes(int64(b), buff)
+	fmt.Println(buff)
 }
 
 func TestFixZeros(t *testing.T) {

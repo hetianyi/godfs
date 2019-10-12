@@ -2,6 +2,7 @@ package svc
 
 import (
 	"errors"
+	"github.com/boltdb/bolt"
 	"github.com/hetianyi/godfs/api"
 	"github.com/hetianyi/godfs/binlog"
 	"github.com/hetianyi/godfs/common"
@@ -336,12 +337,23 @@ func binlogPusher(server *common.Server) {
 			logger.Error("error reading pusher config: ", err)
 			return
 		}
-		bls, err := writableBinlogManager.Read(fileIndex, offset, 10)
+		bls, nOffset, err := writableBinlogManager.Read(fileIndex, offset, 10)
 		if err != nil {
 			logger.Error("error reading binlog: ", err)
 			return
 		}
-
+		if err := clientAPI.PushBinlog(server, bls); err != nil {
+			logger.Error("error reading binlog: ", err)
+			return
+		}
+		if err == nil && (bls == nil || len(bls) == 0) {
+			fileIndex++
+			nOffset = 0
+		}
+		if err := setPusherStatus(server.InstanceId, fileIndex, nOffset); err != nil {
+			logger.Error("error save binlog config for tracker instance: ", err)
+			return
+		}
 	})
 }
 
@@ -374,4 +386,21 @@ func getPusherStatus(instanceId string) (fileIndex int, offset int64, err error)
 		return
 	}
 	return
+}
+
+func setPusherStatus(instanceId string, fileIndex int, offset int64) error {
+	configMap := common.GetConfigMap(common.STORAGE_CONFIG_MAP_KEY)
+	return configMap.BatchUpdateConfig(func(b *bolt.Bucket) error {
+		err := b.Put([]byte("binlog_pos_"+instanceId), []byte(convert.Int64ToStr(offset)))
+		if err != nil {
+			logger.Error("error load binlog position for tracker instance: ", instanceId)
+			return err
+		}
+		err = b.Put([]byte("binlog_index_"+instanceId), []byte(convert.IntToStr(fileIndex)))
+		if err != nil {
+			logger.Error("error load binlog file index for tracker instance: ", instanceId)
+			return err
+		}
+		return nil
+	})
 }

@@ -11,6 +11,7 @@ import (
 	"github.com/hetianyi/gox/convert"
 	"github.com/hetianyi/gox/file"
 	"github.com/hetianyi/gox/logger"
+	"io"
 	"os"
 	"sync"
 	"time"
@@ -20,8 +21,8 @@ const (
 	LOCAL_BINLOG_MANAGER   XBinlogManagerType = 1
 	SYNC_BINLOG_MANAGER    XBinlogManagerType = 2
 	TRACKER_BINLOG_MANAGER XBinlogManagerType = 3
-	MAX_BINLOG_SIZE        int                = 2 << 20 // 200w binlog records
-	LOCAL_BINLOG_SIZE                         = 112     // single binlog size.
+	MAX_BINLOG_SIZE        int                = 1   //2 << 20 // 200w binlog records
+	LOCAL_BINLOG_SIZE                         = 112 // single binlog size.
 )
 
 var binlogMapManager *XBinlogMapManager
@@ -38,6 +39,9 @@ type XBinlogManager interface {
 	// `TRACKER_BINLOG_MANAGER`
 	GetType() XBinlogManagerType
 
+	// GetCurrentIndex gets current binlog file index.
+	GetCurrentIndex() int
+
 	// Write writes a binlog to file.
 	Write(bin *common.BingLog) error
 
@@ -46,7 +50,7 @@ type XBinlogManager interface {
 	// fileIndex: the binlog file index, -1 means reads from latest binlog file.
 	//
 	// offset: read offset in bytes, must be integer multiple of the binlog.
-	Read(fileIndex int, offset int64, fetchLine int) ([]common.BingLogDTO, error)
+	Read(fileIndex int, offset int64, fetchLine int) ([]common.BingLogDTO, int64, error)
 }
 
 func NewXBinlogManager(managerType XBinlogManagerType) XBinlogManager {
@@ -92,6 +96,10 @@ type localBinlogManager struct {
 
 func (m *localBinlogManager) GetType() XBinlogManagerType {
 	return LOCAL_BINLOG_MANAGER
+}
+
+func (m *localBinlogManager) GetCurrentIndex() int {
+	return m.currentIndex
 }
 
 func (m *localBinlogManager) Write(bin *common.BingLog) error {
@@ -142,36 +150,39 @@ func (m *localBinlogManager) Write(bin *common.BingLog) error {
 	return nil
 }
 
-func (m *localBinlogManager) Read(fileIndex int, offset int64, fetchLine int) ([]common.BingLogDTO, error) {
+func (m *localBinlogManager) Read(fileIndex int, offset int64, fetchLine int) ([]common.BingLogDTO, int64, error) {
 	binlogDir := getBinlogDir()
 	if err := initialBinlogDir(binlogDir); err != nil {
-		return nil, err
+		return nil, offset, err
 	}
 	binLogFileName := getBinLogFileNameByIndex(binlogDir, fileIndex)
 	iInfo, err := os.Stat(binLogFileName)
 	if err != nil {
-		return nil, err
+		return nil, offset, err
 	}
 	if iInfo.Size() <= offset {
-		return nil, nil
+		return nil, offset, nil
 	}
 	f, err := file.GetFile(binLogFileName)
 	if err != nil {
-		return nil, err
+		return nil, offset, err
 	}
 	_, err = f.Seek(offset, 0)
 	if err != nil {
-		return nil, err
+		return nil, offset, err
 	}
 	bf := bufio.NewReader(f)
 	tmpContainer := list.New()
-	forwardOffset := 0
+	var forwardOffset int64 = 0
 	for {
 		bs, err := bf.ReadBytes('\n')
-		if err != nil {
-			return nil, err
+		if err == io.EOF {
+			break
 		}
-		forwardOffset += len(bs)
+		if err != nil {
+			return nil, offset, err
+		}
+		forwardOffset += int64(len(bs))
 		if bs == nil || len(bs) != LOCAL_BINLOG_SIZE {
 			continue
 		}
@@ -197,7 +208,7 @@ func (m *localBinlogManager) Read(fileIndex int, offset int64, fetchLine int) ([
 		i++
 		return false
 	})
-	return ret, nil
+	return ret, offset + forwardOffset, nil
 }
 
 // Create creates binlog file under datadir.

@@ -186,6 +186,13 @@ func NewConfigMap(path string) (*ConfigMap, error) {
 	return &ConfigMap{db}, err
 }
 
+func (c *ConfigMap) BatchUpdateConfig(w func(b *bolt.Bucket) error) error {
+	return c.db.Update(func(tx *bolt.Tx) error {
+		b := tx.Bucket([]byte("configMap"))
+		return w(b)
+	})
+}
+
 func (c *ConfigMap) PutConfig(key string, value []byte) error {
 	return c.db.Update(func(tx *bolt.Tx) error {
 		b := tx.Bucket([]byte("configMap"))
