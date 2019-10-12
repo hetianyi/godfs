@@ -12,7 +12,6 @@ import (
 	json "github.com/json-iterator/go"
 	"github.com/mitchellh/go-homedir"
 	"io"
-	"regexp"
 	"runtime"
 	"strings"
 )
@@ -23,43 +22,19 @@ var (
 
 // LoadInstanceData load old instance id from data dir.
 // If there is no old instance id before, create a new instance id for this data dir.
-func LoadInstanceData(dataDir string) string {
-	instanceId := ""
-	isNew := false
-	datFile := dataDir + "/instance.dat" // TODO separate tracker and storage instance fileName
-	if !file.Exists(datFile) {
-		instanceId = uuid.UUID()[0:8]
-		isNew = true
-	} else {
-		var buffer bytes.Buffer
-		fi, err := file.GetFile(datFile)
-		if err != nil {
-			logger.Error("error while loading dat file:", err)
-			fi.Close()
-			isNew = true
-			instanceId = uuid.UUID()[0:8]
-		} else {
-			io.Copy(&buffer, fi)
-			fi.Close()
-			if m, err := regexp.Match(common.INSTANCE_ID_PATTERN, buffer.Bytes()); err != nil || !m {
-				logger.Warn("invalid instance id:", buffer.String())
-				instanceId = uuid.UUID()[0:8]
-				isNew = true
-			} else {
-				instanceId = buffer.String()
-			}
-		}
+func LoadInstanceData(configKey string) string {
+	configMap := common.GetConfigMap(configKey)
+	key := "instanceId"
+	bInsId, err := configMap.GetConfig(key)
+	if err != nil {
+		logger.Fatal("cannot load instanceId")
 	}
-	if isNew {
-		fi, err := file.CreateFile(datFile)
-		if err != nil {
-			logger.Fatal("cannot create dat file:", err)
-		}
-		defer fi.Close()
-		fi.WriteString(instanceId)
+	if bInsId == nil {
+		bInsId = []byte(uuid.UUID()[0:8])
+		configMap.PutConfig(key, bInsId)
 	}
-	logger.Debug("instance id:", instanceId)
-	return instanceId
+	logger.Debug("instance id:", string(bInsId))
+	return string(bInsId)
 }
 
 func PrepareDirs() error {

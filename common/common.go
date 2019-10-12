@@ -33,7 +33,7 @@ const (
 	OPERATION_DOWNLOAD       Operation = 3
 	OPERATION_QUERY          Operation = 4
 	OPERATION_SYNC_INSTANCES Operation = 5
-	OPERATION_PUSH_FILES     Operation = 6
+	OPERATION_PUSH_BINLOGS   Operation = 6
 	//
 	SUCCESS           OperationResult = 0
 	ERROR             OperationResult = 1
@@ -62,6 +62,10 @@ const (
 	//
 	REGISTER_INTERVAL    = time.Second * 30
 	SYNCHRONIZE_INTERVAL = time.Second * 45
+
+	STORAGE_CONFIG_MAP_KEY = "STORAGE_CONFIG_MAP_KEY"
+	TRACKER_CONFIG_MAP_KEY = "TRACKER_CONFIG_MAP_KEY"
+	PROXY_CONFIG_MAP_KEY   = "PROXY_CONFIG_MAP_KEY"
 )
 
 var (
@@ -73,4 +77,13 @@ var (
 	FileMetaPatternRegexp           = regexp.MustCompile(FILE_META_PATTERN)
 	ServerPatternRegexp             = regexp.MustCompile(SERVER_PATTERN)
 	BootAs                          BootMode
+	configMaps                      = make(map[string]*ConfigMap)
 )
+
+func SetConfigMap(configName string, config *ConfigMap) {
+	configMaps[configName] = config
+}
+
+func GetConfigMap(configName string) *ConfigMap {
+	return configMaps[configName]
+}

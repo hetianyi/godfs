@@ -1,10 +1,13 @@
 package binlog
 
 import (
+	"bufio"
 	"bytes"
+	"container/list"
 	"errors"
 	"github.com/hetianyi/godfs/common"
 	"github.com/hetianyi/godfs/util"
+	"github.com/hetianyi/gox"
 	"github.com/hetianyi/gox/convert"
 	"github.com/hetianyi/gox/file"
 	"github.com/hetianyi/gox/logger"
@@ -18,6 +21,7 @@ const (
 	SYNC_BINLOG_MANAGER    XBinlogManagerType = 2
 	TRACKER_BINLOG_MANAGER XBinlogManagerType = 3
 	MAX_BINLOG_SIZE        int                = 2 << 20 // 200w binlog records
+	LOCAL_BINLOG_SIZE                         = 112     // single binlog size.
 )
 
 var binlogMapManager *XBinlogMapManager
@@ -25,6 +29,7 @@ var binlogMapManager *XBinlogMapManager
 type XBinlogManagerType byte
 
 type XBinlogManager interface {
+
 	// GetType returns this manager type.
 	//
 	// manager type could be one of:
@@ -32,17 +37,22 @@ type XBinlogManager interface {
 	// `SYNC_BINLOG_MANAGER`,
 	// `TRACKER_BINLOG_MANAGER`
 	GetType() XBinlogManagerType
+
 	// Write writes a binlog to file.
 	Write(bin *common.BingLog) error
+
 	// Read reads binlog from file.
 	//
 	// fileIndex: the binlog file index, -1 means reads from latest binlog file.
 	//
 	// offset: read offset in bytes, must be integer multiple of the binlog.
-	Read(fileIndex int, offset int64) (*common.BingLog, error)
+	Read(fileIndex int, offset int64, fetchLine int) ([]common.BingLogDTO, error)
 }
 
 func NewXBinlogManager(managerType XBinlogManagerType) XBinlogManager {
+	defer func() {
+		TryFixBinlogFile()
+	}()
 	// check binlog dirs
 	binlogDir := getBinlogDir()
 	if err := initialBinlogDir(binlogDir); err != nil {
@@ -132,9 +142,62 @@ func (m *localBinlogManager) Write(bin *common.BingLog) error {
 	return nil
 }
 
-func (m *localBinlogManager) Read(fileIndex int, offset int64) (*common.BingLog, error) {
-	// TODO
-	return nil, nil
+func (m *localBinlogManager) Read(fileIndex int, offset int64, fetchLine int) ([]common.BingLogDTO, error) {
+	binlogDir := getBinlogDir()
+	if err := initialBinlogDir(binlogDir); err != nil {
+		return nil, err
+	}
+	binLogFileName := getBinLogFileNameByIndex(binlogDir, fileIndex)
+	iInfo, err := os.Stat(binLogFileName)
+	if err != nil {
+		return nil, err
+	}
+	if iInfo.Size() <= offset {
+		return nil, nil
+	}
+	f, err := file.GetFile(binLogFileName)
+	if err != nil {
+		return nil, err
+	}
+	_, err = f.Seek(offset, 0)
+	if err != nil {
+		return nil, err
+	}
+	bf := bufio.NewReader(f)
+	tmpContainer := list.New()
+	forwardOffset := 0
+	for {
+		bs, err := bf.ReadBytes('\n')
+		if err != nil {
+			return nil, err
+		}
+		forwardOffset += len(bs)
+		if bs == nil || len(bs) != LOCAL_BINLOG_SIZE {
+			continue
+		}
+		bs = bs[0 : len(bs)-1]
+		bl := common.BingLog{
+			DownloadFinish: bs[0],
+			SourceInstance: Copy8(bs[1:9]),
+			Timestamp:      Copy8(bs[10:18]),
+			FileLength:     Copy8(bs[19:27]),
+			FileId:         bs[27:],
+		}
+		tmpContainer.PushBack(bl)
+	}
+	ret := make([]common.BingLogDTO, tmpContainer.Len())
+	i := 0
+	gox.WalkList(tmpContainer, func(item interface{}) bool {
+		sit := item.(common.BingLog)
+		ret[i] = common.BingLogDTO{
+			SourceInstance: string(sit.SourceInstance[:]),
+			FileLength:     convert.Bytes2Length(sit.FileLength[:]),
+			FileId:         string(sit.FileId),
+		}
+		i++
+		return false
+	})
+	return ret, nil
 }
 
 // Create creates binlog file under datadir.
@@ -152,7 +215,7 @@ func create() (*os.File, int, error) {
 		if file.Exists(binLogFileName) {
 			continue
 		}
-		out, err := file.CreateFile(binLogFileName)
+		out, err := file.AppendFile(binLogFileName)
 		if err != nil {
 			return nil, 0, err
 		}
@@ -163,7 +226,7 @@ func create() (*os.File, int, error) {
 
 // getCurrentBinLogFile gets current binlog file for writing.
 //
-// Returns the binlog file, binlog record size, binlog file index NO., and error.
+// returns the binlog file, binlog record size, binlog file index NO., and error.
 func getCurrentBinLogFile() (*os.File, int, int, error) {
 	dataDir := ""
 	if common.BootAs == common.BOOT_TRACKER {
@@ -225,7 +288,7 @@ func getCurrentBinLogFile() (*os.File, int, int, error) {
 		return ret, 0, _index, err
 	}
 	logger.Debug("use binlog file: ", latestLogFileName)
-	ret, err := file.OpenFile(latestLogFileName, os.O_RDWR, 0666)
+	ret, err := file.AppendFile(latestLogFileName)
 	return ret, binlogSize, index, err
 }
 
@@ -287,4 +350,16 @@ func initialBinlogDir(path string) (err error) {
 		}
 	}
 	return
+}
+
+// TryFixBinlogFile tries to fix binlog file by appending '\n'
+// to current binlog file in every boot.
+func TryFixBinlogFile() error {
+	// create new binlog file.
+	newFile, _, _, err := getCurrentBinLogFile()
+	if err != nil {
+		return err
+	}
+	_, err = newFile.WriteString("\n")
+	return err
 }

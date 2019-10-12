@@ -15,7 +15,7 @@ func BootTrackerServer() {
 		fmt.Println("Err:", err)
 		os.Exit(1)
 	}
-	common.InitializedTrackerConfiguration.InstanceId = util.LoadInstanceData(common.InitializedTrackerConfiguration.DataDir)
+	common.InitializedTrackerConfiguration.InstanceId = util.LoadInstanceData(common.TRACKER_CONFIG_MAP_KEY)
 	if true {
 		cbs, _ := json.MarshalIndent(common.InitializedTrackerConfiguration, "", "  ")
 		logger.Debug("\n", string(cbs))

@@ -35,24 +35,32 @@ type Config struct {
 
 // ClientAPI is godfs APIClient interface.
 type ClientAPI interface {
+
 	// SetConfig sets or refresh client server config.
 	SetConfig(config *Config) // TODO
+
 	// Upload uploads file to specific group server.
 	//
 	// If no group provided, it will upload file to a random server.
 	Upload(src io.Reader, length int64, group string, isPrivate bool) (*common.UploadResult, error)
+
 	// Download downloads a file from server.
 	//
 	// Return error can be common.NoStorageServerErr if there is no server available
 	//
 	// or common.NotFoundErr if the file cannot be found on the servers.
 	Download(fileId string, offset int64, length int64, handler func(body io.Reader, bodyLength int64) error) error
+
 	// Query queries file's information by fileId.
 	//
 	// Parameter `fileId` must be the pattern of common.FILE_ID_PATTERN
 	Query(fileId string) (*common.FileInfo, error)
+
 	// SyncInstances synchronizes instances from specific tracker server.
 	SyncInstances(server *common.Server) (map[string]*common.Instance, error)
+
+	// PushBinlog pushes binlog to tracker server.
+	PushBinlog(server *common.Server, binlogs []common.BingLog) error
 }
 
 // NewClient creates a new APIClient.
@@ -410,6 +418,7 @@ func (c *clientAPIImpl) SyncInstances(server *common.Server) (map[string]*common
 		if header != nil {
 			if header.Result == common.SUCCESS {
 				infoS := header.Attributes["instances"]
+				instanceId := header.Attributes["instanceId"]
 				var ret = make(map[string]*json.RawMessage)
 				if err = json.Unmarshal([]byte(infoS), &ret); err != nil {
 					return err
@@ -419,6 +428,7 @@ func (c *clientAPIImpl) SyncInstances(server *common.Server) (map[string]*common
 					err = json.Unmarshal(*ret[k], &a)
 					result[k] = &a
 				}
+				server.InstanceId = instanceId
 				return nil
 			}
 			return errors.New("synchronize failed: " + header.Msg)
@@ -431,6 +441,50 @@ func (c *clientAPIImpl) SyncInstances(server *common.Server) (map[string]*common
 	conn.ReturnConnection(server, connection, authenticated, false)
 	logger.Debug("synchronize finish, instances: ", len(result))
 	return result, nil
+}
+
+func (c *clientAPIImpl) PushBinlog(server *common.Server, binlogs []common.BingLogDTO) error {
+	connection, authenticated, err := conn.GetConnection(server)
+	if err != nil {
+		return err
+	}
+	pip := &gpip.Pip{
+		Conn: *connection,
+	}
+	if authenticated == nil || !authenticated.(bool) {
+		if err = authenticate(pip, server); err != nil {
+			return err
+		}
+		logger.Debug("authentication success with server ", server.ConnectionString())
+	}
+	authenticated = true
+	jsonAttr, _ := json.Marshal(binlogs)
+	// send file body
+	err = pip.Send(&common.Header{
+		Operation: common.OPERATION_PUSH_BINLOGS,
+		Attributes: map[string]string{
+			"binlogs": string(jsonAttr),
+		},
+	}, nil, 0)
+	if err != nil {
+		return err
+	}
+	// receive response
+	err = pip.Receive(&common.Header{}, func(_header interface{}, bodyReader io.Reader, bodyLength int64) error {
+		header := _header.(*common.Header)
+		if header != nil {
+			if header.Result == common.SUCCESS {
+				return nil
+			}
+			return errors.New("push failed: " + header.Msg)
+		}
+		return errors.New("push failed: got empty response from server")
+	})
+	if err != nil {
+		return err
+	}
+	conn.ReturnConnection(server, connection, authenticated, false)
+	return nil
 }
 
 // authenticate authenticates with server.

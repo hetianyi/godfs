@@ -85,6 +85,8 @@ func ValidateStorageConfig(c *common.StorageConfig) error {
 		}
 	}
 
+	InitialConfigMap(common.STORAGE_CONFIG_MAP_KEY, c.DataDir+"/cfg.dat")
+
 	// initialize logger
 	logConfig := &logger.Config{
 		Level:              ConvertLogLevel(c.LogLevel),
@@ -180,6 +182,8 @@ func ValidateTrackerConfig(c *common.TrackerConfig) error {
 		}
 	}
 
+	InitialConfigMap(common.TRACKER_CONFIG_MAP_KEY, c.DataDir+"/cfg.dat")
+
 	// initialize logger
 	logConfig := &logger.Config{
 		Level:              ConvertLogLevel(c.LogLevel),
@@ -250,6 +254,14 @@ func ValidateClientConfig(c *common.ClientConfig) error {
 	}
 	// done!
 	return nil
+}
+
+func InitialConfigMap(key, path string) {
+	configMap, err := common.NewConfigMap(path)
+	if err != nil {
+		logger.Fatal("cannot initialize configMap file")
+	}
+	common.SetConfigMap(key, configMap)
 }
 
 func ConvertLogLevel(levelString string) logger.Level {

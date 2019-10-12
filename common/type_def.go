@@ -1,6 +1,7 @@
 package common
 
 import (
+	"github.com/boltdb/bolt"
 	"github.com/hetianyi/gox/convert"
 	"strings"
 	"time"
@@ -17,13 +18,11 @@ type StorageConfig struct {
 	Trackers              []string `json:"trackers"`
 	Secret                string   `json:"secret"`
 	Group                 string   `json:"group"`
-	InstanceId            string
-	BindAddress           string `json:"bindAddress"`
-	Port                  int    `json:"port"`
-	AdvertiseAddress      string `json:"advertiseAddress"`
-	AdvertisePort         int    `json:"advertisePort"`
-	DataDir               string `json:"dataDir"`
-	TmpDir                string
+	BindAddress           string   `json:"bindAddress"`
+	Port                  int      `json:"port"`
+	AdvertiseAddress      string   `json:"advertiseAddress"`
+	AdvertisePort         int      `json:"advertisePort"`
+	DataDir               string   `json:"dataDir"`
 	PreferredNetworks     string   `json:"preferredNetworks"`
 	LogLevel              string   `json:"logLevel"`
 	LogDir                string   `json:"logDir"`
@@ -35,6 +34,8 @@ type StorageConfig struct {
 	HttpAuth              string   `json:"httpAuth"`
 	EnableMimeTypes       bool     `json:"enableMimeTypes"`
 	AllowedDomains        []string `json:"allowedDomains"`
+	InstanceId            string
+	TmpDir                string
 	ParsedTrackers        []Server
 }
 
@@ -147,9 +148,78 @@ type BingLog struct {
 	FileId         []byte  // fileId
 }
 
+type BingLogDTO struct {
+	SourceInstance string
+	FileLength     int64
+	FileId         string
+}
+
 // FileId is a file
 type FileId struct {
 	FileId     string
 	InstanceId string
 	Timestamp  time.Time
+}
+
+type ConfigMap struct {
+	db *bolt.DB
+}
+
+func NewConfigMap(path string) (*ConfigMap, error) {
+	db, err := bolt.Open(path, 0600, nil)
+	if err != nil {
+		return nil, err
+	}
+	err = db.Update(func(tx *bolt.Tx) error {
+		_, e := tx.CreateBucketIfNotExists([]byte("configMap"))
+		if e != nil {
+			return nil
+		}
+		if BootAs == BOOT_TRACKER {
+			_, e := tx.CreateBucketIfNotExists([]byte("fileIds"))
+			if e != nil {
+				return nil
+			}
+		}
+		return e
+	})
+	return &ConfigMap{db}, err
+}
+
+func (c *ConfigMap) PutConfig(key string, value []byte) error {
+	return c.db.Update(func(tx *bolt.Tx) error {
+		b := tx.Bucket([]byte("configMap"))
+		b.Put([]byte(key), value)
+		return nil
+	})
+}
+
+func (c *ConfigMap) GetConfig(key string) (ret []byte, err error) {
+	err = c.db.View(func(tx *bolt.Tx) error {
+		b := tx.Bucket([]byte("configMap"))
+		ret = b.Get([]byte(key))
+		return nil
+	})
+	return
+}
+
+func (c *ConfigMap) PutFile(binlogs []BingLogDTO) error {
+	return c.db.Update(func(tx *bolt.Tx) error {
+		b := tx.Bucket([]byte("fileIds"))
+		for _, log := range binlogs {
+			if err := b.Put([]byte(log.FileId), []byte(convert.Int64ToStr(log.FileLength))); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+}
+
+func (c *ConfigMap) GetFile(key string) (ret []byte, err error) {
+	err = c.db.View(func(tx *bolt.Tx) error {
+		b := tx.Bucket([]byte("fileIds"))
+		ret = b.Get([]byte(key))
+		return nil
+	})
+	return
 }

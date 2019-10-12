@@ -46,6 +46,8 @@ func TestAesCbcEncrypt(t *testing.T) {
 
 func TestParseAlias(t *testing.T) {
 	fmt.Println(util.ParseAlias("A3AE1i_kNI5gneeop4tWUocv9bYLwyiXDuJSker1VmeWWJ0ioeLA6jIWyPrtRmsZ_RBn0tWAeRXQ8o3lnqWjpg"))
+	a := []byte{1, 2, 3}
+	fmt.Println(a[0:1])
 }
 
 func TestSeek(t *testing.T) {

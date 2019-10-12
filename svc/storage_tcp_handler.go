@@ -10,6 +10,7 @@ import (
 	"github.com/hetianyi/gox/file"
 	"github.com/hetianyi/gox/gpip"
 	"github.com/hetianyi/gox/logger"
+	"github.com/hetianyi/gox/timer"
 	"github.com/hetianyi/gox/uuid"
 	json "github.com/json-iterator/go"
 	"github.com/logrusorgru/aurora"
@@ -22,14 +23,16 @@ import (
 var tailRefCount = []byte{0, 0, 0, 1}
 
 func StartStorageTcpServer() {
-	listener, err := net.Listen("tcp", common.InitializedStorageConfiguration.BindAddress+
-		":"+convert.IntToStr(common.InitializedStorageConfiguration.Port))
+	listener, err := net.Listen("tcp",
+		common.InitializedStorageConfiguration.BindAddress+":"+
+			convert.IntToStr(common.InitializedStorageConfiguration.Port))
 	if err != nil {
 		logger.Fatal(err)
 	}
 	time.Sleep(time.Millisecond * 50)
-	logger.Info(" tcp server listening on ", common.InitializedStorageConfiguration.BindAddress,
-		":", common.InitializedStorageConfiguration.Port)
+	logger.Info(" tcp server listening on ",
+		common.InitializedStorageConfiguration.BindAddress, ":",
+		common.InitializedStorageConfiguration.Port)
 	logger.Info(aurora.BrightGreen("::: storage server started :::"))
 
 	// running in cluster mode.
@@ -45,6 +48,9 @@ func StartStorageTcpServer() {
 			TrackerServers:          servers,
 		}
 		InitializeClientAPI(config)
+		for _, s := range servers {
+			go binlogPusher(s)
+		}
 	}
 
 	for {
@@ -175,7 +181,6 @@ func uploadFileHandler(header *common.Header, bodyReader io.Reader, bodyLength i
 	// 此时要求文件的交流必须携带完整的参数
 	targetLoc := common.InitializedStorageConfiguration.DataDir + "/" + targetDir
 	targetFile := common.InitializedStorageConfiguration.DataDir + "/" + targetDir + "/" + md5String
-	// TODO fileId need to be redesign.
 	// md5 + crc end + ts + size + srcnode
 	// ts: for download
 	// ref: http://blog.chinaunix.net/uid-20196318-id-4058561.html
@@ -315,4 +320,58 @@ func inspectFileHandler(header *common.Header) (*common.Header, io.Reader, int64
 		Result:     common.SUCCESS,
 		Attributes: map[string]string{"info": string(bs)},
 	}, nil, 0, nil
+}
+
+func binlogPusher(server *common.Server) {
+	// allow 2 round failure synchronization
+	timer.Start(time.Second*3, time.Second*5, 0, func(t *timer.Timer) {
+		// waiting for instanceId
+		if server.InstanceId == "" {
+			return
+		}
+		logger.Debug("reading binlog for tracker instance: ", server.InstanceId)
+
+		fileIndex, offset, err := getPusherStatus(server.InstanceId)
+		if err != nil {
+			logger.Error("error reading pusher config: ", err)
+			return
+		}
+		bls, err := writableBinlogManager.Read(fileIndex, offset, 10)
+		if err != nil {
+			logger.Error("error reading binlog: ", err)
+			return
+		}
+
+	})
+}
+
+func getPusherStatus(instanceId string) (fileIndex int, offset int64, err error) {
+	configMap := common.GetConfigMap(common.STORAGE_CONFIG_MAP_KEY)
+	pos, err := configMap.GetConfig("binlog_pos_" + instanceId)
+	if err != nil {
+		logger.Error("error load binlog position for tracker instance: ", instanceId)
+		return
+	}
+	if pos == nil || len(pos) == 0 {
+		configMap.PutConfig("binlog_pos_"+instanceId, []byte("0"))
+		pos = []byte("0")
+	}
+	ind, err := configMap.GetConfig("binlog_index_" + instanceId)
+	if err != nil {
+		logger.Error("error load binlog file index for tracker instance: ", instanceId)
+		return
+	}
+	if ind == nil || len(ind) == 0 {
+		configMap.PutConfig("binlog_index_"+instanceId, []byte("0"))
+		ind = []byte("0")
+	}
+	fileIndex, err = convert.StrToInt(string(ind))
+	if err != nil {
+		return
+	}
+	offset, err = convert.StrToInt64(string(pos))
+	if err != nil {
+		return
+	}
+	return
 }

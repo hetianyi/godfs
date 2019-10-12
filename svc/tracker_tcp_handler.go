@@ -16,12 +16,16 @@ import (
 )
 
 func StartTrackerTcpServer() {
-	listener, err := net.Listen("tcp", common.InitializedTrackerConfiguration.BindAddress+":"+convert.IntToStr(common.InitializedTrackerConfiguration.Port))
+	listener, err := net.Listen("tcp",
+		common.InitializedTrackerConfiguration.BindAddress+":"+
+			convert.IntToStr(common.InitializedTrackerConfiguration.Port))
 	if err != nil {
 		logger.Fatal(err)
 	}
 	time.Sleep(time.Millisecond * 50)
-	logger.Info(" tcp server listening on ", common.InitializedTrackerConfiguration.BindAddress, ":", common.InitializedTrackerConfiguration.Port)
+	logger.Info(" tcp server listening on ",
+		common.InitializedTrackerConfiguration.BindAddress, ":",
+		common.InitializedTrackerConfiguration.Port)
 	logger.Info(aurora.BrightGreen("::: tracker server started :::"))
 
 	// running in cluster mode.
@@ -63,7 +67,8 @@ func trackerClientConnHandler(conn net.Conn) {
 		}
 	}()
 	for {
-		err := pip.Receive(&common.Header{}, func(_header interface{}, bodyReader io.Reader, bodyLength int64) error {
+		err := pip.Receive(&common.Header{}, func(_header interface{},
+			bodyReader io.Reader, bodyLength int64) error {
 			if _header == nil {
 				return errors.New("invalid request: header is empty")
 			}
@@ -93,6 +98,12 @@ func trackerClientConnHandler(conn net.Conn) {
 			}
 			if header.Operation == common.OPERATION_SYNC_INSTANCES {
 				h, b, l, err := synchronizeInstancesHandler(header)
+				if err != nil {
+					return err
+				}
+				return pip.Send(h, b, l)
+			} else if header.Operation == common.OPERATION_PUSH_BINLOGS {
+				h, b, l, err := pushStorageBinLogHandler(header)
 				if err != nil {
 					return err
 				}
@@ -144,7 +155,39 @@ func synchronizeInstancesHandler(header *common.Header) (*common.Header, io.Read
 	return &common.Header{
 		Result: common.SUCCESS,
 		Attributes: map[string]string{
-			"instances": string(ret),
+			"instances":  string(ret),
+			"instanceId": common.InitializedTrackerConfiguration.InstanceId,
 		},
+	}, nil, 0, nil
+}
+
+// syncStorageBinLog saves storage server binlog.
+func pushStorageBinLogHandler(header *common.Header) (*common.Header, io.Reader, int64, error) {
+	jsonAddr := ""
+	if header.Attributes != nil && len(header.Attributes) > 0 {
+		jsonAddr = header.Attributes["binlogs"]
+	} else {
+		return &common.Header{
+			Result: common.SUCCESS,
+		}, nil, 0, nil
+	}
+
+	var ret []common.BingLogDTO
+	if err := json.UnmarshalFromString(jsonAddr, &ret); err != nil {
+		return &common.Header{
+			Result: common.ERROR,
+			Msg:    err.Error(),
+		}, nil, 0, nil
+	}
+
+	configMap := common.GetConfigMap(common.TRACKER_CONFIG_MAP_KEY)
+	if err := configMap.PutFile(ret); err != nil {
+		return &common.Header{
+			Result: common.ERROR,
+			Msg:    err.Error(),
+		}, nil, 0, nil
+	}
+	return &common.Header{
+		Result: common.SUCCESS,
 	}, nil, 0, nil
 }

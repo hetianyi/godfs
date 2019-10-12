@@ -19,7 +19,7 @@ func BootStorageServer() {
 	if err := util.PrepareDirs(); err != nil {
 		logger.Fatal("cannot create tmp dir: ", err)
 	}
-	common.InitializedStorageConfiguration.InstanceId = util.LoadInstanceData(common.InitializedStorageConfiguration.DataDir)
+	common.InitializedStorageConfiguration.InstanceId = util.LoadInstanceData(common.STORAGE_CONFIG_MAP_KEY)
 	if true {
 		cbs, _ := json.MarshalIndent(common.InitializedStorageConfiguration, "", "  ")
 		logger.Debug("\n", string(cbs))
