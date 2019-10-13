@@ -21,8 +21,8 @@ const (
 	LOCAL_BINLOG_MANAGER   XBinlogManagerType = 1
 	SYNC_BINLOG_MANAGER    XBinlogManagerType = 2
 	TRACKER_BINLOG_MANAGER XBinlogManagerType = 3
-	MAX_BINLOG_SIZE        int                = 1   //2 << 20 // 200w binlog records
-	LOCAL_BINLOG_SIZE                         = 112 // single binlog size.
+	MAX_BINLOG_SIZE        int                = 2 << 20 // 200w binlog records
+	LOCAL_BINLOG_SIZE                         = 112     // single binlog size.
 )
 
 var binlogMapManager *XBinlogMapManager
@@ -174,6 +174,7 @@ func (m *localBinlogManager) Read(fileIndex int, offset int64, fetchLine int) ([
 	bf := bufio.NewReader(f)
 	tmpContainer := list.New()
 	var forwardOffset int64 = 0
+	readedLines := 0
 	for {
 		bs, err := bf.ReadBytes('\n')
 		if err == io.EOF {
@@ -194,7 +195,11 @@ func (m *localBinlogManager) Read(fileIndex int, offset int64, fetchLine int) ([
 			FileLength:     Copy8(bs[19:27]),
 			FileId:         bs[27:],
 		}
+		readedLines++
 		tmpContainer.PushBack(bl)
+		if readedLines >= fetchLine {
+			break
+		}
 	}
 	ret := make([]common.BingLogDTO, tmpContainer.Len())
 	i := 0

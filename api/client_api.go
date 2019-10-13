@@ -37,7 +37,7 @@ type Config struct {
 type ClientAPI interface {
 
 	// SetConfig sets or refresh client server config.
-	SetConfig(config *Config) // TODO
+	SetConfig(config *Config)
 
 	// Upload uploads file to specific group server.
 	//
@@ -191,6 +191,7 @@ func (c *clientAPIImpl) Upload(src io.Reader, length int64, group string, isPriv
 		}
 	}, func(e interface{}) {
 		lastErr = e.(error)
+		panic(lastErr)
 	})
 	// lastConn should be returned and set to nil.
 	if lastConn != nil {

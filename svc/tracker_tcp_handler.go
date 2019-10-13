@@ -103,7 +103,7 @@ func trackerClientConnHandler(conn net.Conn) {
 				}
 				return pip.Send(h, b, l)
 			} else if header.Operation == common.OPERATION_PUSH_BINLOGS {
-				h, b, l, err := pushStorageBinLogHandler(header)
+				h, b, l, err := pushStorageBinLogHandler(header, registeredInstance.InstanceId)
 				if err != nil {
 					return err
 				}
@@ -115,37 +115,11 @@ func trackerClientConnHandler(conn net.Conn) {
 			}, nil, 0)
 		})
 		if err != nil {
+			logger.Debug(err)
 			pip.Close()
 			break
 		}
 	}
-}
-
-// inspectFileHandler inspects file's information
-func registerHandler(header *common.Header) (*common.Instance, *common.Header, io.Reader, int64, error) {
-	if header.Attributes == nil {
-		return nil, &common.Header{
-			Result: common.ERROR,
-			Msg:    "no message provided",
-		}, nil, 0, nil
-	}
-	s1 := header.Attributes["instance"]
-	instance := &common.Instance{}
-	if err := json.Unmarshal([]byte(s1), instance); err != nil {
-		return nil, &common.Header{
-			Result: common.ERROR,
-			Msg:    err.Error(),
-		}, nil, 0, err
-	}
-	if err := reg.Put(instance); err != nil {
-		return instance, &common.Header{
-			Result: common.ERROR,
-			Msg:    err.Error(),
-		}, nil, 0, err
-	}
-	return instance, &common.Header{
-		Result: common.SUCCESS,
-	}, nil, 0, nil
 }
 
 // inspectFileHandler inspects file's information
@@ -162,7 +136,10 @@ func synchronizeInstancesHandler(header *common.Header) (*common.Header, io.Read
 }
 
 // syncStorageBinLog saves storage server binlog.
-func pushStorageBinLogHandler(header *common.Header) (*common.Header, io.Reader, int64, error) {
+func pushStorageBinLogHandler(header *common.Header, clientId string) (*common.Header, io.Reader, int64, error) {
+
+	logger.Debug("push binlog from storage client \"", clientId, "\"")
+
 	jsonAddr := ""
 	if header.Attributes != nil && len(header.Attributes) > 0 {
 		jsonAddr = header.Attributes["binlogs"]
@@ -187,6 +164,9 @@ func pushStorageBinLogHandler(header *common.Header) (*common.Header, io.Reader,
 			Msg:    err.Error(),
 		}, nil, 0, nil
 	}
+
+	logger.Debug("binlog write success: ", len(ret))
+
 	return &common.Header{
 		Result: common.SUCCESS,
 	}, nil, 0, nil

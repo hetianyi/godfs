@@ -24,13 +24,16 @@ import (
 var tailRefCount = []byte{0, 0, 0, 1}
 
 func StartStorageTcpServer() {
+
 	listener, err := net.Listen("tcp",
 		common.InitializedStorageConfiguration.BindAddress+":"+
 			convert.IntToStr(common.InitializedStorageConfiguration.Port))
 	if err != nil {
 		logger.Fatal(err)
 	}
+
 	time.Sleep(time.Millisecond * 50)
+
 	logger.Info(" tcp server listening on ",
 		common.InitializedStorageConfiguration.BindAddress, ":",
 		common.InitializedStorageConfiguration.Port)
@@ -326,33 +329,51 @@ func inspectFileHandler(header *common.Header) (*common.Header, io.Reader, int64
 func binlogPusher(server *common.Server) {
 	// allow 2 round failure synchronization
 	timer.Start(time.Second*3, time.Second*5, 0, func(t *timer.Timer) {
-		// waiting for instanceId
-		if server.InstanceId == "" {
-			return
-		}
-		logger.Debug("reading binlog for tracker instance: ", server.InstanceId)
+		for true {
+			// waiting for instanceId
+			if server.InstanceId == "" {
+				break
+			}
 
-		fileIndex, offset, err := getPusherStatus(server.InstanceId)
-		if err != nil {
-			logger.Error("error reading pusher config: ", err)
-			return
-		}
-		bls, nOffset, err := writableBinlogManager.Read(fileIndex, offset, 10)
-		if err != nil {
-			logger.Error("error reading binlog: ", err)
-			return
-		}
-		if err := clientAPI.PushBinlog(server, bls); err != nil {
-			logger.Error("error reading binlog: ", err)
-			return
-		}
-		if err == nil && (bls == nil || len(bls) == 0) {
-			fileIndex++
-			nOffset = 0
-		}
-		if err := setPusherStatus(server.InstanceId, fileIndex, nOffset); err != nil {
-			logger.Error("error save binlog config for tracker instance: ", err)
-			return
+			logger.Debug("reading binlog for tracker instance: ", server.InstanceId)
+
+			fileIndex, offset, err := getPusherStatus(server.InstanceId)
+			if err != nil {
+				logger.Error("error reading pusher config: ", err)
+				break
+			}
+
+			logger.Debug("tracker instanceId: ", server.InstanceId,
+				", pusher status: binlog index is ", fileIndex, " and binlog offset is ", offset)
+
+			bls, nOffset, err := writableBinlogManager.Read(fileIndex, offset, 10)
+			if err != nil {
+				logger.Error("error reading binlog: ", err)
+				break
+			}
+			if bls != nil && len(bls) > 0 {
+				if err := clientAPI.PushBinlog(server, bls); err != nil {
+					logger.Error("error push binlog: ", err)
+					break
+				}
+				logger.Debug(len(bls), " binlog pushed success")
+			}
+			if fileIndex == writableBinlogManager.GetCurrentIndex() && offset == nOffset {
+				logger.Debug("no new binlog available")
+				break
+			}
+			if writableBinlogManager.GetCurrentIndex() > fileIndex &&
+				(bls == nil || len(bls) == 0) {
+				fileIndex++
+				nOffset = 0
+				if err := setPusherStatus(server.InstanceId, fileIndex, nOffset); err != nil {
+					logger.Error("error save binlog config for tracker instance: ", err)
+				}
+				break
+			}
+			if err := setPusherStatus(server.InstanceId, fileIndex, nOffset); err != nil {
+				logger.Error("error save binlog config for tracker instance: ", err)
+			}
 		}
 	})
 }

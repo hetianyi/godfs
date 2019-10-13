@@ -21,7 +21,6 @@ func init() {
 	syncLock = new(sync.Mutex)
 	countLock = new(sync.Mutex)
 	syncInstances = make(map[string]*instanceStore)
-	expireDetection()
 }
 
 type instanceStore struct {
@@ -34,7 +33,10 @@ func (ins *instanceStore) expired() bool {
 }
 
 func tracks(clientAPI ClientAPI, server *common.Server, synchronizeOnce bool, c chan int) {
-	timer.Start(0, 0, common.SYNCHRONIZE_INTERVAL, func(t *timer.Timer) {
+	if !synchronizeOnce {
+		go expireDetection()
+	}
+	timer.Start(0, common.SYNCHRONIZE_INTERVAL, 0, func(t *timer.Timer) {
 		ret, err := clientAPI.SyncInstances(server)
 		if err != nil {
 			logger.Error("error synchronize with tracker server: ", server.ConnectionString(), ": ", err)
