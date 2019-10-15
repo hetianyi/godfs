@@ -1,13 +1,19 @@
 package svc
 
 import (
+	"container/list"
+	"encoding/json"
+	"errors"
 	"github.com/gorilla/mux"
+	"github.com/hetianyi/godfs/binlog"
 	"github.com/hetianyi/godfs/common"
 	"github.com/hetianyi/godfs/util"
+	"github.com/hetianyi/gox"
 	"github.com/hetianyi/gox/convert"
 	"github.com/hetianyi/gox/file"
 	"github.com/hetianyi/gox/httpx"
 	"github.com/hetianyi/gox/logger"
+	"github.com/hetianyi/gox/uuid"
 	"io"
 	"net/http"
 	"os"
@@ -29,11 +35,14 @@ var (
 )
 
 type FormEntry struct {
-	Index         int
-	Type          string
-	ParameterName string
-	FileName      string
-	FileLength    int64
+	Index          int
+	Type           string
+	ParameterName  string
+	ParameterValue string
+	FileLength     int64
+	Group          string
+	InstanceId     string
+	FileId         string
 }
 
 func init() {
@@ -67,21 +76,188 @@ func StartStorageHttpServer(c *common.StorageConfig) {
 
 func httpUpload(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
+
 	logger.Debug("accept new upload request")
+
+	// file is private or public
+	s := strings.TrimSpace(r.URL.Query().Get("s"))
+	isPrivate := common.InitializedStorageConfiguration.PublicAccessMode
+	if s == "false" || s == "0" {
+		isPrivate = false
+	} else if s == "true" || s == "1" {
+		isPrivate = true
+	}
+
+	// formEntries stores form's text fields and file fields.
+	formEntries := list.New()
+	var result = make(map[string]interface{})
+	result["accessMode"] = gox.TValue(isPrivate, "private", "public")
+
+	// define a handler for file upload.
 	handler := &httpx.FileUploadHandler{
 		Request: r,
 	}
+
+	formEntryIndex := 0
+
+	// handle form text field.
 	handler.OnFormField = func(paraName, paraValue string) {
 		logger.Debug("form parameter: name=", paraName, ", value=", paraValue)
+		formEntryIndex++
+		formEntries.PushBack(FormEntry{
+			Index:          formEntryIndex,
+			Type:           FORM_TEXT,
+			ParameterName:  paraName,
+			ParameterValue: paraValue,
+			FileLength:     0,
+		})
 	}
+
+	// handle form file field.
 	handler.OnFileField = func(paraName, fileName string) *httpx.FileTransactionProcessor {
-		return &httpx.FileTransactionProcessor{}
+		tmpFileName := ""
+		var out *os.File
+		var proxy *DigestProxyWriter
+		return &httpx.FileTransactionProcessor{
+
+			Before: func() error {
+				tmpFileName = common.InitializedStorageConfiguration.TmpDir + "/" + uuid.UUID()
+				o, err := file.CreateFile(tmpFileName)
+				if err != nil {
+					return err
+				}
+				out = o
+				proxy = &DigestProxyWriter{
+					crcH: util.CreateCrc32Hash(),
+					md5H: util.CreateMd5Hash(),
+					out:  out,
+				}
+				return nil
+			},
+
+			Error: func(err error) {
+				if out != nil {
+					out.Close()
+				}
+				file.Delete(tmpFileName)
+			},
+
+			Success: func() error {
+				logger.Debug("write tail")
+				// write reference count mark.
+				_, err := out.Write(tailRefCount)
+				if err != nil {
+					return err
+				}
+				out.Close()
+
+				fInfo, err := os.Stat(tmpFileName)
+				if err != nil {
+					return err
+				}
+
+				crc32String := util.GetCrc32HashString(proxy.crcH)
+				md5String := util.GetMd5HashString(proxy.md5H)
+
+				targetDir := strings.ToUpper(strings.Join([]string{crc32String[len(crc32String)-4 : len(crc32String)-2], "/",
+					crc32String[len(crc32String)-2:]}, ""))
+				targetLoc := common.InitializedStorageConfiguration.DataDir + "/" + targetDir
+				targetFile := common.InitializedStorageConfiguration.DataDir + "/" + targetDir + "/" + md5String
+				finalFileId := common.InitializedStorageConfiguration.Group + "/" + targetDir + "/" + md5String
+				logger.Debug("create alias")
+				finalFileId = util.CreateAlias(finalFileId, common.InitializedStorageConfiguration.InstanceId, isPrivate, time.Now())
+
+				if !file.Exists(targetLoc) {
+					if err := file.CreateDirs(targetLoc); err != nil {
+						return err
+					}
+				}
+				if !file.Exists(targetFile) {
+					logger.Debug("file not exists, move to target dir.")
+					if err := file.MoveFile(tmpFileName, targetFile); err != nil {
+						return err
+					}
+				} else {
+					logger.Debug("file already exists, increasing reference count.")
+					// increase file reference count.
+					if err = updateFileReferenceCount(targetFile, 1); err != nil {
+						return err
+					}
+				}
+				// write binlog.
+				logger.Debug("write binlog...")
+				if err = writableBinlogManager.Write(binlog.CreateLocalBinlog(finalFileId,
+					fInfo.Size()-int64(len(tailRefCount)), common.InitializedStorageConfiguration.InstanceId, time.Now())); err != nil {
+					return errors.New("error writing binlog: " + err.Error())
+				}
+				formEntryIndex++
+				formEntries.PushBack(FormEntry{
+					Index:          formEntryIndex,
+					Type:           FORM_FILE,
+					ParameterName:  paraName,
+					ParameterValue: fileName,
+					FileLength:     fInfo.Size() - int64(len(tailRefCount)),
+					Group:          common.InitializedStorageConfiguration.Group,
+					InstanceId:     common.InitializedStorageConfiguration.InstanceId,
+					FileId:         finalFileId,
+				})
+				return nil
+			},
+
+			Write: func(bs []byte) error {
+				_, err := proxy.Write(bs)
+				return err
+			},
+		}
 	}
+
+	// begin to parse form.
 	if err := handler.Parse(); err != nil {
 		logger.Error("error upload files: ", err)
 	}
 
+	// result form field entries
+	formEntriesArray := make([]FormEntry, formEntries.Len())
+	i := 0
+	gox.WalkList(formEntries, func(item interface{}) bool {
+		formEntriesArray[i] = item.(FormEntry)
+		i++
+		return false
+	})
+
+	result["form"] = formEntriesArray
+	retJSON, err := json.Marshal(result)
+	if err != nil {
+		internalServerError(w, "Internal Server Error")
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json;charset=UTF-8")
+	writeResponse(w, http.StatusOK, string(retJSON))
 }
+
+/*func httpUpload1(w http.ResponseWriter, r *http.Request) {
+	defer r.Body.Close()
+
+	logger.Debug("accept new upload request")
+
+	// file is private or public
+	s := strings.TrimSpace(r.URL.Query().Get("s"))
+	isPrivate := common.InitializedStorageConfiguration.PublicAccessMode
+	if s == "false" || s == "0" {
+		isPrivate = false
+	} else if s == "true" || s == "1" {
+		isPrivate = true
+	}
+
+	// formEntries stores form's text fields and file fields.
+	formEntries := list.New()
+	var result= make(map[string]interface{})
+	result["accessMode"] = gox.TValue(isPrivate, "private", "public")
+
+
+
+}*/
 
 // httpDownload handles http file upload.
 func httpDownload(w http.ResponseWriter, r *http.Request) {
@@ -165,7 +341,7 @@ func httpDownload(w http.ResponseWriter, r *http.Request) {
 	if rangeS != "" {
 		if _, err = outFile.Seek(start, 0); err != nil {
 			logger.Debug("error seek file: ", info.Path, ": ", err)
-			internalServerError(w)
+			internalServerError(w, "Not Found.")
 			return
 		}
 	}
@@ -203,15 +379,15 @@ func httpDownload(w http.ResponseWriter, r *http.Request) {
 }
 
 func fileNotFound(w http.ResponseWriter) {
-	writeErrResponse(w, http.StatusNotFound, "Not Found.")
+	writeResponse(w, http.StatusNotFound, "Not Found.")
 }
 
-func internalServerError(w http.ResponseWriter) {
-	writeErrResponse(w, http.StatusInternalServerError, "Not Found.")
+func internalServerError(w http.ResponseWriter, message string) {
+	writeResponse(w, http.StatusInternalServerError, message)
 }
 
 // WriteErrResponse write error response
-func writeErrResponse(writer http.ResponseWriter, statusCode int, message string) {
+func writeResponse(writer http.ResponseWriter, statusCode int, message string) {
 	writer.WriteHeader(statusCode)
 	writer.Write([]byte(strconv.Itoa(statusCode) + " " + message))
 }

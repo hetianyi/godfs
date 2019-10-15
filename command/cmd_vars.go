@@ -11,6 +11,7 @@ import (
 // var sets
 var (
 	privateUpload          bool      // upload private file
+	defaultAccessMode      string    // default access mode of the uploaded files
 	testScale              int       // test scale
 	testThread             int       // test thread
 	showVersion            bool      // show app version
@@ -59,6 +60,12 @@ func ConfigAssembly(bm common.BootMode) interface{} {
 		c.LogRotationInterval = logRotationInterval
 		c.MaxRollingLogfileSize = maxLogfileSize
 		c.SaveLog2File = !disableSaveLogfile
+
+		if defaultAccessMode == "public" {
+			c.PublicAccessMode = true
+		} else {
+			c.PublicAccessMode = false
+		}
 
 		if logDir == "" {
 			logDir = util.DefaultLogDir()

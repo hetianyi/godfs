@@ -133,7 +133,7 @@ func Parse(arguments []string) {
 				cli.IntFlag{
 					Name:  "max-logfile-size",
 					Value: 0,
-					Usage: `rolling log file max size, available options:
+					Usage: `rolling log file max size, options:
 	(0|64|128|256|512|1024)`,
 					Destination: &maxLogfileSize,
 				},
@@ -175,6 +175,13 @@ func Parse(arguments []string) {
 					Value:       "",
 					Usage:       "use custom config file",
 					Destination: &configFile,
+				},
+				cli.StringFlag{
+					Name:  "access-mode, m",
+					Value: "private",
+					Usage: `the access mode used by uploaded files by default,
+	options:(private|public)`,
+					Destination: &defaultAccessMode,
 				},
 				cli.StringFlag{
 					Name:        "bind-address",
