@@ -1,13 +1,16 @@
 package util
 
 import (
+	"encoding/json"
 	"errors"
 	"github.com/hetianyi/godfs/common"
+	"github.com/hetianyi/gox"
 	"github.com/hetianyi/gox/convert"
 	"github.com/hetianyi/gox/file"
 	"github.com/hetianyi/gox/logger"
 	"regexp"
 	"strings"
+	"time"
 )
 
 // ValidateStorageConfig validates storage config.
@@ -86,6 +89,12 @@ func ValidateStorageConfig(c *common.StorageConfig) error {
 	}
 
 	InitialConfigMap(common.STORAGE_CONFIG_MAP_KEY, c.DataDir+"/cfg.dat")
+
+	historySecret, err := loadHistorySecret(common.STORAGE_CONFIG_MAP_KEY, c.Secret)
+	if err != nil {
+		logger.Fatal(err)
+	}
+	c.HistorySecrets = historySecret
 
 	// initialize logger
 	logConfig := &logger.Config{
@@ -183,6 +192,12 @@ func ValidateTrackerConfig(c *common.TrackerConfig) error {
 	}
 
 	InitialConfigMap(common.TRACKER_CONFIG_MAP_KEY, c.DataDir+"/cfg.dat")
+
+	historySecret, err := loadHistorySecret(common.STORAGE_CONFIG_MAP_KEY, c.Secret)
+	if err != nil {
+		logger.Fatal(err)
+	}
+	c.HistorySecrets = historySecret
 
 	// initialize logger
 	logConfig := &logger.Config{
@@ -315,4 +330,38 @@ func ConvertLogFileSize(s int) int {
 	default:
 		return logger.SIZE_NO_LIMIT
 	}
+}
+
+// loadHistorySecret loads history secrets from db.
+func loadHistorySecret(key, secret string) (map[string]int64, error) {
+	retMap := make(map[string]int64)
+	configKey := "history_secret"
+	configMap := common.GetConfigMap(key)
+	ret, err := configMap.GetConfig(configKey)
+	if err != nil {
+		return nil, err
+	}
+
+	storeNewSecret := func(s string) (map[string]int64, error) {
+		retMap[s] = gox.GetTimestamp(time.Now())
+		ret, err := json.Marshal(retMap)
+		if err != nil {
+			return retMap, err
+		}
+		if err = configMap.PutConfig(configKey, ret); err != nil {
+			return retMap, err
+		}
+		return retMap, nil
+	}
+
+	if ret == nil || len(ret) == 0 {
+		return storeNewSecret(secret)
+	}
+	if err = json.Unmarshal(ret, retMap); err != nil {
+		return nil, err
+	}
+	if retMap[secret] == 0 {
+		return storeNewSecret(secret)
+	}
+	return retMap, err
 }

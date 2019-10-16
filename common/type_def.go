@@ -36,6 +36,7 @@ type StorageConfig struct {
 	PublicAccessMode      bool     `json:"publicAccessMode"`
 	AllowedDomains        []string `json:"allowedDomains"`
 	InstanceId            string
+	HistorySecrets        map[string]int64
 	TmpDir                string
 	ParsedTrackers        []Server
 }
@@ -58,6 +59,7 @@ type TrackerConfig struct {
 	EnableHttp            bool   `json:"enableHttp"`
 	HttpPort              int    `json:"httpPort"`
 	HttpAuth              string `json:"httpAuth"`
+	HistorySecrets        map[string]int64
 	ParsedTrackers        []Server
 }
 
