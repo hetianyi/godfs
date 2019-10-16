@@ -33,3 +33,8 @@ func CreateMD5FileID(instanceId string, md5 string) string {
 	all := instanceId + timestamp + md5
 	return fmt.Sprintf("%s%s", base64.StdEncoding.EncodeToString([]byte(all)), randInt)
 }
+
+// GenerateToken generates token for http file download.
+func GenerateToken(fileId, secret string, expireTime time.Time) string {
+	return gox.Md5Sum(convert.Int64ToStr(gox.GetTimestamp(expireTime)), fileId, secret)
+}

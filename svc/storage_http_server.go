@@ -1,6 +1,7 @@
 package svc
 
 import (
+	"bytes"
 	"container/list"
 	"encoding/json"
 	"errors"
@@ -15,6 +16,7 @@ import (
 	"github.com/hetianyi/gox/logger"
 	"github.com/hetianyi/gox/uuid"
 	"io"
+	"mime/multipart"
 	"net/http"
 	"os"
 	"regexp"
@@ -24,25 +26,28 @@ import (
 )
 
 const (
-	rangeHeader = "^bytes=([0-9]+)-([0-9]+)?$"
-	FORM_TEXT   = "text"
-	FORM_FILE   = "file"
+	rangeHeader        = "^bytes=([0-9]+)-([0-9]+)?$"
+	FORM_TEXT          = "text"
+	FORM_FILE          = "file"
+	ContentTypePattern = "^multipart/form-data; boundary=(.*)$"
 )
 
 var (
 	compiledRegexpRangeHeader *regexp.Regexp
 	gmtLocation, _            = time.LoadLocation("GMT")
+	RegexContentTypePattern   = regexp.MustCompile(ContentTypePattern)
 )
 
 type FormEntry struct {
-	Index          int
-	Type           string
-	ParameterName  string
-	ParameterValue string
-	FileLength     int64
-	Group          string
-	InstanceId     string
-	FileId         string
+	Index          int    `json:"index"`
+	Type           string `json:"type"`
+	ParameterName  string `json:"name"`
+	ParameterValue string `json:"value"`
+	Size           int64  `json:"size,omitempty"`
+	Group          string `json:"group,omitempty"`
+	InstanceId     string `json:"instanceId,omitempty"`
+	Md5            string `json:"md5,omitempty"`
+	FileId         string `json:"fileId,omitempty"`
 }
 
 func init() {
@@ -54,13 +59,13 @@ func StartStorageHttpServer(c *common.StorageConfig) {
 	r := mux.NewRouter()
 	r.HandleFunc("/up", httpUpload).Methods("POST")
 	r.HandleFunc("/upload", httpUpload).Methods("POST")
+	r.HandleFunc("/upload1", httpUpload1).Methods("POST")
 	r.HandleFunc("/dl", httpDownload).Methods("GET")
 	r.HandleFunc("/download", httpDownload).Methods("GET")
 
 	srv := &http.Server{
-		Handler: r,
-		Addr:    c.BindAddress + ":" + convert.IntToStr(c.HttpPort),
-		// Good practice: enforce timeouts for servers you create!
+		Handler:           r,
+		Addr:              c.BindAddress + ":" + convert.IntToStr(c.HttpPort),
 		ReadHeaderTimeout: time.Second * 15,
 		WriteTimeout:      0,
 		ReadTimeout:       0,
@@ -74,6 +79,7 @@ func StartStorageHttpServer(c *common.StorageConfig) {
 	}()
 }
 
+// httpUpload handles http file upload.
 func httpUpload(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 
@@ -109,7 +115,7 @@ func httpUpload(w http.ResponseWriter, r *http.Request) {
 			Type:           FORM_TEXT,
 			ParameterName:  paraName,
 			ParameterValue: paraValue,
-			FileLength:     0,
+			Size:           0,
 		})
 	}
 
@@ -119,7 +125,6 @@ func httpUpload(w http.ResponseWriter, r *http.Request) {
 		var out *os.File
 		var proxy *DigestProxyWriter
 		return &httpx.FileTransactionProcessor{
-
 			Before: func() error {
 				tmpFileName = common.InitializedStorageConfiguration.TmpDir + "/" + uuid.UUID()
 				o, err := file.CreateFile(tmpFileName)
@@ -134,14 +139,13 @@ func httpUpload(w http.ResponseWriter, r *http.Request) {
 				}
 				return nil
 			},
-
 			Error: func(err error) {
+				// close tmp file and delete it.
 				if out != nil {
 					out.Close()
 				}
 				file.Delete(tmpFileName)
 			},
-
 			Success: func() error {
 				logger.Debug("write tail")
 				// write reference count mark.
@@ -151,14 +155,17 @@ func httpUpload(w http.ResponseWriter, r *http.Request) {
 				}
 				out.Close()
 
+				// get file info.
 				fInfo, err := os.Stat(tmpFileName)
 				if err != nil {
 					return err
 				}
 
+				// get crc and md5.
 				crc32String := util.GetCrc32HashString(proxy.crcH)
 				md5String := util.GetMd5HashString(proxy.md5H)
 
+				// build target dir and fileId.
 				targetDir := strings.ToUpper(strings.Join([]string{crc32String[len(crc32String)-4 : len(crc32String)-2], "/",
 					crc32String[len(crc32String)-2:]}, ""))
 				targetLoc := common.InitializedStorageConfiguration.DataDir + "/" + targetDir
@@ -190,20 +197,20 @@ func httpUpload(w http.ResponseWriter, r *http.Request) {
 					fInfo.Size()-int64(len(tailRefCount)), common.InitializedStorageConfiguration.InstanceId, time.Now())); err != nil {
 					return errors.New("error writing binlog: " + err.Error())
 				}
+				// append form entry.
 				formEntryIndex++
 				formEntries.PushBack(FormEntry{
 					Index:          formEntryIndex,
 					Type:           FORM_FILE,
 					ParameterName:  paraName,
 					ParameterValue: fileName,
-					FileLength:     fInfo.Size() - int64(len(tailRefCount)),
+					Size:           fInfo.Size() - int64(len(tailRefCount)),
 					Group:          common.InitializedStorageConfiguration.Group,
 					InstanceId:     common.InitializedStorageConfiguration.InstanceId,
 					FileId:         finalFileId,
 				})
 				return nil
 			},
-
 			Write: func(bs []byte) error {
 				_, err := proxy.Write(bs)
 				return err
@@ -228,15 +235,17 @@ func httpUpload(w http.ResponseWriter, r *http.Request) {
 	result["form"] = formEntriesArray
 	retJSON, err := json.Marshal(result)
 	if err != nil {
+		logger.Debug(err)
 		internalServerError(w, "Internal Server Error")
 		return
 	}
 
+	// write response.
 	w.Header().Set("Content-Type", "application/json;charset=UTF-8")
 	writeResponse(w, http.StatusOK, string(retJSON))
 }
 
-/*func httpUpload1(w http.ResponseWriter, r *http.Request) {
+func httpUpload1(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 
 	logger.Debug("accept new upload request")
@@ -252,12 +261,180 @@ func httpUpload(w http.ResponseWriter, r *http.Request) {
 
 	// formEntries stores form's text fields and file fields.
 	formEntries := list.New()
-	var result= make(map[string]interface{})
+	var result = make(map[string]interface{})
 	result["accessMode"] = gox.TValue(isPrivate, "private", "public")
 
+	// get form boundary
+	headerContentType := r.Header["Content-Type"]
+	var contentType, boundary string
+	if headerContentType != nil && len(headerContentType) > 0 {
+		contentType = headerContentType[0]
+	}
+	if RegexContentTypePattern.Match([]byte(contentType)) {
+		boundary = RegexContentTypePattern.ReplaceAllString(contentType, "${1}")
+	}
+	reader := multipart.NewReader(r.Body, boundary)
 
+	var buffer = new(bytes.Buffer)
+	var lastErr error
+	formEntryIndex := 0
 
-}*/
+	for {
+		buffer.Reset()
+		p, err := reader.NextPart()
+		if err != nil {
+			if err == io.EOF {
+				break
+			}
+			logger.Debug(err)
+			lastErr = err
+			break
+		}
+
+		// read text field.
+		if strings.TrimSpace(p.FileName()) == "" {
+			if _, err := io.Copy(buffer, p); err != nil {
+				logger.Debug(err)
+				lastErr = err
+				break
+			}
+			formEntryIndex++
+			formEntries.PushBack(FormEntry{
+				Index:          formEntryIndex,
+				Type:           FORM_TEXT,
+				ParameterName:  p.FormName(),
+				ParameterValue: string(buffer.Bytes()),
+				Size:           0,
+			})
+			continue
+		}
+
+		// read file field.
+		tmpFileName := common.InitializedStorageConfiguration.TmpDir + "/" + uuid.UUID()
+		out, err := file.CreateFile(tmpFileName)
+		if err != nil {
+			logger.Debug(err)
+			lastErr = err
+			break
+		}
+
+		clean := func() {
+			out.Close()
+			file.Delete(tmpFileName)
+		}
+		proxy := &DigestProxyWriter{
+			crcH: util.CreateCrc32Hash(),
+			md5H: util.CreateMd5Hash(),
+			out:  out,
+		}
+		n, err := io.Copy(proxy, p)
+		if err != nil {
+			logger.Debug(err)
+			lastErr = err
+			clean()
+			break
+		}
+		logger.Debug("write tail")
+		// write reference count mark.
+		_, err = out.Write(tailRefCount)
+		if err != nil {
+			logger.Debug(err)
+			lastErr = err
+			clean()
+			break
+		}
+		out.Close()
+
+		// TODO duplicate code
+		// get crc and md5.
+		crc32String := util.GetCrc32HashString(proxy.crcH)
+		md5String := util.GetMd5HashString(proxy.md5H)
+
+		// build target dir and fileId.
+		targetDir := strings.ToUpper(strings.Join([]string{crc32String[len(crc32String)-4 : len(crc32String)-2], "/",
+			crc32String[len(crc32String)-2:]}, ""))
+		targetLoc := common.InitializedStorageConfiguration.DataDir + "/" + targetDir
+		targetFile := common.InitializedStorageConfiguration.DataDir + "/" + targetDir + "/" + md5String
+		finalFileId := common.InitializedStorageConfiguration.Group + "/" + targetDir + "/" + md5String
+		logger.Debug("create alias")
+		finalFileId = util.CreateAlias(finalFileId, common.InitializedStorageConfiguration.InstanceId, isPrivate, time.Now())
+
+		if !file.Exists(targetLoc) {
+			if err := file.CreateDirs(targetLoc); err != nil {
+				logger.Debug(err)
+				lastErr = err
+				clean()
+				break
+			}
+		}
+		if !file.Exists(targetFile) {
+			logger.Debug("file not exists, move to target dir.")
+			if err := file.MoveFile(tmpFileName, targetFile); err != nil {
+				logger.Debug(err)
+				lastErr = err
+				clean()
+				break
+			}
+		} else {
+			logger.Debug("file already exists, increasing reference count.")
+			// increase file reference count.
+			if err = updateFileReferenceCount(targetFile, 1); err != nil {
+				logger.Debug(err)
+				lastErr = err
+				clean()
+				break
+			}
+		}
+		// write binlog.
+		logger.Debug("write binlog...")
+		if err = writableBinlogManager.Write(binlog.CreateLocalBinlog(finalFileId,
+			n, common.InitializedStorageConfiguration.InstanceId, time.Now())); err != nil {
+			lastErr = errors.New("error writing binlog: " + err.Error())
+			logger.Debug(lastErr)
+			clean()
+			break
+		}
+		// append form entry.
+		formEntryIndex++
+		formEntries.PushBack(FormEntry{
+			Index:          formEntryIndex,
+			Type:           FORM_FILE,
+			ParameterName:  p.FormName(),
+			ParameterValue: p.FileName(),
+			Size:           n,
+			Group:          common.InitializedStorageConfiguration.Group,
+			InstanceId:     common.InitializedStorageConfiguration.InstanceId,
+			Md5:            md5String,
+			FileId:         finalFileId,
+		})
+	}
+
+	if lastErr != nil {
+		internalServerError(w, "Internal Server Error")
+		return
+	}
+
+	// result form field entries
+	formEntriesArray := make([]FormEntry, formEntries.Len())
+	i := 0
+	gox.WalkList(formEntries, func(item interface{}) bool {
+		formEntriesArray[i] = item.(FormEntry)
+		i++
+		return false
+	})
+
+	result["form"] = formEntriesArray
+	retJSON, err := json.Marshal(result)
+	if err != nil {
+		logger.Debug(err)
+		internalServerError(w, "Internal Server Error")
+		return
+	}
+
+	// write response.
+	w.Header().Set("Content-Type", "application/json;charset=UTF-8")
+	writeResponse(w, http.StatusOK, string(retJSON))
+}
 
 // httpDownload handles http file upload.
 func httpDownload(w http.ResponseWriter, r *http.Request) {
@@ -270,6 +447,7 @@ func httpDownload(w http.ResponseWriter, r *http.Request) {
 	// TODO check refer
 	// TODO check auth
 	// TODO cache support
+	// TODO token support
 
 	// handle http options method
 	headers := w.Header()
@@ -284,13 +462,32 @@ func httpDownload(w http.ResponseWriter, r *http.Request) {
 	}
 
 	fid := ""
+	token := ""
+	timestamp := ""
 	fileName := ""
+	// if EnableMimeTypes is on and fileName is not empty,
+	// EnableMimeTypes will be ignored.
 	ext := ""
 	qs := r.URL.Query()
 	if qs != nil {
 		fid = qs.Get("id")
 		fileName = qs.Get("fn")
-		ext = file.GetFileExt(fileName)
+		ext = qs.Get("type")
+		token = qs.Get("token")
+		timestamp = qs.Get("timestamp")
+		// custom content type
+		if fileName == "" {
+			fileName = qs.Get("fileName")
+		}
+		if fileName != "" {
+			ext = file.GetFileExt(fileName)
+		}
+		if token == "" {
+			token = qs.Get("tk")
+		}
+		if timestamp == "" {
+			timestamp = qs.Get("ts")
+		}
 	}
 
 	info, err := util.ParseAlias(fid)
@@ -352,12 +549,12 @@ func httpDownload(w http.ResponseWriter, r *http.Request) {
 		headers.Set("Content-Range", "bytes "+convert.Int64ToStr(start)+"-"+convert.Int64ToStr(end-1)+"/"+convert.Int64ToStr(fileInfo.Size()-4))
 	}
 
-	if t := common.GetMimeType(ext); common.InitializedStorageConfiguration.EnableMimeTypes && t != "" {
+	if fileName == "" && common.InitializedStorageConfiguration.EnableMimeTypes {
 		gmtLocation, _ := time.LoadLocation("GMT")
 		headers.Set("Last-Modified", fileInfo.ModTime().In(gmtLocation).Format(time.RFC1123))
 		headers.Set("Expires", time.Now().Add(time.Hour*2400).In(gmtLocation).Format(time.RFC1123))
 		setMimeHeaders(strings.Split(info.Path, "/")[2], &headers)
-		headers.Set("Content-Type", t)
+		headers.Set("Content-Type", common.GetMimeType(ext))
 	} else {
 		headers.Set("Expires", "0")
 		headers.Set("Pragma", "public")

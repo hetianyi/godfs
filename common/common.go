@@ -7,7 +7,7 @@ import (
 )
 
 const (
-	VERSION = "2.0.0"
+	VERSION = "2.0.0-dev"
 	//
 	BOOT_CLIENT  BootMode = 0
 	BOOT_STORAGE BootMode = 1
@@ -20,10 +20,10 @@ const (
 	INSTANCE_ID_PATTERN = "^[0-9a-z-]{8}$"
 	FILE_META_PATTERN   = "^([0-9a-zA-Z-_]{1,30})/([0-9A-F]{2})/([0-9A-F]{2})/([0-9a-f]{32})$"
 	//
-	DEFAULT_STORAGE_TCP_PORT  = 9012
-	DEFAULT_STORAGE_HTTP_PORT = 8001
-	DEFAULT_TRACKER_TCP_PORT  = 9022
-	DEFAULT_TRACKER_HTTP_PORT = 8011
+	DEFAULT_STORAGE_TCP_PORT  = 10706
+	DEFAULT_STORAGE_HTTP_PORT = 11222
+	DEFAULT_TRACKER_TCP_PORT  = 11706
+	DEFAULT_TRACKER_HTTP_PORT = 12222
 	BUFFER_SIZE               = 1 << 15 // 32k
 	DEFAULT_GROUP             = "G01"
 	//
@@ -41,16 +41,17 @@ const (
 	NOT_FOUND         OperationResult = 3
 	UNKNOWN_OPERATION OperationResult = 4
 	//
-	CMD_SHOW_HELP     Command = 0
-	CMD_SHOW_VERSION  Command = 1
-	CMD_UPDATE_CONFIG Command = 2
-	CMD_SHOW_CONFIG   Command = 3
-	CMD_UPLOAD_FILE   Command = 4
-	CMD_DOWNLOAD_FILE Command = 5
-	CMD_INSPECT_FILE  Command = 6
-	CMD_BOOT_TRACKER  Command = 7
-	CMD_BOOT_STORAGE  Command = 8
-	CMD_TEST_UPLOAD   Command = 9
+	CMD_SHOW_HELP      Command = 0
+	CMD_SHOW_VERSION   Command = 1
+	CMD_UPDATE_CONFIG  Command = 2
+	CMD_SHOW_CONFIG    Command = 3
+	CMD_UPLOAD_FILE    Command = 4
+	CMD_DOWNLOAD_FILE  Command = 5
+	CMD_INSPECT_FILE   Command = 6
+	CMD_BOOT_TRACKER   Command = 7
+	CMD_BOOT_STORAGE   Command = 8
+	CMD_TEST_UPLOAD    Command = 9
+	CMD_GENERATE_TOKEN Command = 10
 	//
 	ROLE_TRACKER Role = 1
 	ROLE_STORAGE Role = 2

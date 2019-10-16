@@ -231,9 +231,10 @@ func Parse(arguments []string) {
 					Destination: &httpPort,
 				},
 				cli.StringFlag{
-					Name:        "http-auth",
-					Value:       "",
-					Usage:       "http authentication",
+					Name:  "http-auth",
+					Value: "",
+					Usage: `http authentication, format:
+	<username>:<password>`,
 					Destination: &httpAuth,
 				},
 				cli.BoolFlag{
@@ -242,8 +243,8 @@ func Parse(arguments []string) {
 					Destination: &enableMimetypes,
 				},
 				cli.StringFlag{
-					Name:        "allowed-domains",
-					Usage:       "allowed access domains",
+					Name:        "allowed-hosts",
+					Usage:       "allowed access hosts",
 					Destination: &allowedDomains,
 				},
 				cli.StringFlag{
@@ -297,7 +298,7 @@ func Parse(arguments []string) {
 						finalCommand = common.CMD_UPLOAD_FILE
 						if len(c.Args()) == 0 {
 							return errors.New(`Err: no parameters provided.
-Usage: godfs upload <file1> <file2> ...`)
+Usage: godfs client upload <file1> <file2> ...`)
 						}
 						/*workDir, err := file.GetWorkDir()
 						if err != nil {
@@ -355,7 +356,7 @@ Usage: godfs upload <file1> <file2> ...`)
 						finalCommand = common.CMD_DOWNLOAD_FILE
 						if len(c.Args()) == 0 {
 							return errors.New(`Err: no parameters provided.
-Usage: godfs download <fid1> <fid2> ...`)
+Usage: godfs client download <fid1> <fid2> ...`)
 						}
 						for i := range c.Args() {
 							if !util.StringListExists(&downloadFiles, c.Args().Get(i)) {
@@ -401,7 +402,7 @@ Usage: godfs download <fid1> <fid2> ...`)
 						finalCommand = common.CMD_INSPECT_FILE
 						if len(c.Args()) == 0 {
 							return errors.New(`Err: no parameters provided.
-Usage: godfs inspect <fid1> <fid2> ...`)
+Usage: godfs client inspect <fid1> <fid2> ...`)
 						}
 						for i := range c.Args() {
 							if !util.StringListExists(&inspectFiles, c.Args().Get(i)) {
@@ -451,7 +452,7 @@ Usage: godfs inspect <fid1> <fid2> ...`)
 								finalCommand = common.CMD_UPDATE_CONFIG
 								if len(c.Args()) == 0 {
 									return errors.New(`Err: no parameters provided.
-Usage: godfs config set key=value key=value ...`)
+Usage: godfs client config set key=value key=value ...`)
 								}
 								for i := range c.Args() {
 									updateConfigList.PushBack(c.Args().Get(i))
@@ -466,6 +467,33 @@ Usage: godfs config set key=value key=value ...`)
 								finalCommand = common.CMD_SHOW_CONFIG
 								return nil
 							},
+						},
+					},
+				},
+				{
+					Name:  "token",
+					Usage: "generate file access token",
+					Action: func(c *cli.Context) error {
+						finalCommand = common.CMD_GENERATE_TOKEN
+						if len(c.Args()) == 0 {
+							return errors.New(`Err: no parameters provided.
+Usage: godfs client token <fid1> <fid2> ...`)
+						}
+						tokenFileId = c.Args()[0]
+						return nil
+					},
+					Flags: []cli.Flag{
+						cli.StringFlag{
+							Name:        "secret, s",
+							Value:       "",
+							Usage:       "secret used for generating token",
+							Destination: &secret,
+						},
+						cli.IntFlag{
+							Name:        "life, l",
+							Value:       3600,
+							Usage:       "token life(in seconds)",
+							Destination: &tokenLife,
 						},
 					},
 				},
@@ -529,11 +557,13 @@ Usage: godfs config set key=value key=value ...`)
 	cli.AppHelpTemplate = `
 Usage: {{if .UsageText}}{{.UsageText}}{{else}}{{.HelpName}} {{if .VisibleFlags}}[global options]{{end}}{{if .Commands}} command [command options]{{end}} {{if .ArgsUsage}}{{.ArgsUsage}}{{else}}[arguments...]{{end}}{{end}}{{if .VisibleCommands}}
 
-Commands:{{range .VisibleCategories}}{{if .Name}}
+Commands:{{range .VisibleCategories}}
+{{if .Name}}
    {{.Name}}:{{end}}{{range .VisibleCommands}}
      {{join .Names ", "}}{{"\t"}}{{.Usage}}{{end}}{{end}}{{end}}{{if .VisibleFlags}}
 
 Options:
+
    {{range $index, $option := .VisibleFlags}}{{if $index}}{{end}}{{$option}}
    {{end}}{{end}}
 `
@@ -544,6 +574,7 @@ Usage: {{if .UsageText}}{{.UsageText}}{{else}}{{.HelpName}}{{if .VisibleFlags}} 
 {{.Usage}}{{if .VisibleFlags}}
 
 Options:
+
    {{range .VisibleFlags}}{{.}}
    {{end}}{{end}}
 `
@@ -553,11 +584,13 @@ Usage: {{if .UsageText}}{{.UsageText}}{{else}}{{.HelpName}} command{{if .Visible
 
 {{if .Description}}{{.Description}}{{else}}{{.Usage}}{{end}}
 
-Commands:{{range .VisibleCategories}}{{if .Name}}
+Commands:
+{{range .VisibleCategories}}{{if .Name}}
    {{.Name}}:{{end}}{{range .VisibleCommands}}
      {{join .Names ", "}}{{"\t"}}{{.Usage}}{{end}}{{end}}{{if .VisibleFlags}}
 
 Options:
+
    {{range .VisibleFlags}}{{.}}
    {{end}}{{end}}
 `

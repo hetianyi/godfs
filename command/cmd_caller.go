@@ -38,5 +38,9 @@ func call(cmd common.Command) {
 		ConfigAssembly(common.BOOT_CLIENT)
 		handleTestUploadFile()
 		break
+	case common.CMD_GENERATE_TOKEN:
+		common.BootAs = common.BOOT_CLIENT
+		handleGenerateToken()
+		break
 	}
 }

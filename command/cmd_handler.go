@@ -280,6 +280,10 @@ func handleInspectFile() error {
 	return nil
 }
 
+func handleGenerateToken() {
+	fmt.Println(util.GenerateToken(tokenFileId, secret, time.Now().Add(time.Second*time.Duration(tokenLife))))
+}
+
 // handleUploadFile handles upload files by client cli.
 func handleTestUploadFile() error {
 	// initialize APIClient

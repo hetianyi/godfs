@@ -43,6 +43,8 @@ var (
 	allowedDomains         string
 	logDir                 string
 	disableSaveLogfile     bool
+	tokenFileId            string
+	tokenLife              int // token life(in seconds)
 	finalCommand           common.Command
 )
 
