@@ -193,7 +193,7 @@ func ValidateTrackerConfig(c *common.TrackerConfig) error {
 
 	InitialConfigMap(common.TRACKER_CONFIG_MAP_KEY, c.DataDir+"/cfg.dat")
 
-	historySecret, err := loadHistorySecret(common.STORAGE_CONFIG_MAP_KEY, c.Secret)
+	historySecret, err := loadHistorySecret(common.TRACKER_CONFIG_MAP_KEY, c.Secret)
 	if err != nil {
 		logger.Fatal(err)
 	}
