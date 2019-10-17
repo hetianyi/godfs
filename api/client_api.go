@@ -207,7 +207,7 @@ func (c *clientAPIImpl) Download(fileId string, offset int64, length int64, hand
 	var lastErr error
 	var lastConn *net.Conn
 
-	fileInfo, err := util.ParseAlias(fileId)
+	fileInfo, _, err := util.ParseAlias(fileId, "")
 	if err != nil {
 		return err
 	}
@@ -302,7 +302,7 @@ func (c *clientAPIImpl) Query(fileId string) (*common.FileInfo, error) {
 	var lastConn *net.Conn
 	var result *common.FileInfo
 
-	fileInfo, err := util.ParseAlias(fileId)
+	fileInfo, _, err := util.ParseAlias(fileId, "")
 	if err != nil {
 		return nil, err
 	}
@@ -515,12 +515,14 @@ func authenticate(p *gpip.Pip, server conn.Server) error {
 	} else if common.BootAs == common.BOOT_STORAGE {
 		conf := common.InitializedStorageConfiguration
 		advPort, _ := convert.StrToUint16(convert.IntToStr(conf.AdvertisePort))
+		historySecrets := make([]string, len(common.InitializedStorageConfiguration.HistorySecrets))
 		instance = &common.Instance{
 			Server: common.Server{
-				Host:       conf.AdvertiseAddress,
-				Port:       advPort,
-				Secret:     conf.Secret,
-				InstanceId: conf.InstanceId,
+				Host:           conf.AdvertiseAddress,
+				Port:           advPort,
+				Secret:         conf.Secret,
+				InstanceId:     conf.InstanceId,
+				HistorySecrets: historySecrets,
 			},
 			Role: common.ROLE_STORAGE,
 			Attributes: map[string]string{

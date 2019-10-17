@@ -101,12 +101,6 @@ func Parse(arguments []string) {
 					Usage:       "http port",
 					Destination: &httpPort,
 				},
-				cli.StringFlag{
-					Name:        "http-auth",
-					Value:       "",
-					Usage:       "http authentication",
-					Destination: &httpAuth,
-				},
 				cli.BoolFlag{
 					Name:        "enable-mimetypes",
 					Usage:       "enable http mime type",
@@ -230,14 +224,7 @@ func Parse(arguments []string) {
 					Usage:       "http port",
 					Destination: &httpPort,
 				},
-				cli.StringFlag{
-					Name:  "http-auth",
-					Value: "",
-					Usage: `http authentication, format:
-	<username>:<password>`,
-					Destination: &httpAuth,
-				},
-				cli.BoolFlag{
+				cli.BoolTFlag{
 					Name:        "enable-mimetypes",
 					Usage:       "enable http mime type",
 					Destination: &enableMimetypes,
@@ -494,6 +481,12 @@ Usage: godfs client token <fid1> <fid2> ...`)
 							Value:       3600,
 							Usage:       "token life(in seconds)",
 							Destination: &tokenLife,
+						},
+						cli.StringFlag{
+							Name:        "format, f",
+							Value:       "url",
+							Usage:       "token format:json|url",
+							Destination: &tokenFormat,
 						},
 					},
 				},

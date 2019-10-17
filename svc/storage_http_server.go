@@ -236,13 +236,13 @@ func httpUpload(w http.ResponseWriter, r *http.Request) {
 	retJSON, err := json.Marshal(result)
 	if err != nil {
 		logger.Debug(err)
-		internalServerError(w, "Internal Server Error")
+		util.HttpInternalServerError(w, "Internal Server Error.")
 		return
 	}
 
 	// write response.
 	w.Header().Set("Content-Type", "application/json;charset=UTF-8")
-	writeResponse(w, http.StatusOK, string(retJSON))
+	util.HttpWriteResponse(w, http.StatusOK, string(retJSON))
 }
 
 func httpUpload1(w http.ResponseWriter, r *http.Request) {
@@ -410,7 +410,7 @@ func httpUpload1(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if lastErr != nil {
-		internalServerError(w, "Internal Server Error")
+		util.HttpInternalServerError(w, "Internal Server Error")
 		return
 	}
 
@@ -427,13 +427,13 @@ func httpUpload1(w http.ResponseWriter, r *http.Request) {
 	retJSON, err := json.Marshal(result)
 	if err != nil {
 		logger.Debug(err)
-		internalServerError(w, "Internal Server Error")
+		util.HttpInternalServerError(w, "Internal Server Error")
 		return
 	}
 
 	// write response.
 	w.Header().Set("Content-Type", "application/json;charset=UTF-8")
-	writeResponse(w, http.StatusOK, string(retJSON))
+	util.HttpWriteResponse(w, http.StatusOK, string(retJSON))
 }
 
 // httpDownload handles http file upload.
@@ -490,11 +490,29 @@ func httpDownload(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	info, err := util.ParseAlias(fid)
+	info, curSecret, err := util.ParseAlias(fid, common.InitializedStorageConfiguration.Secret)
 	if err != nil {
 		logger.Debug("error parse alias: ", err)
-		fileNotFound(w)
+		util.HttpFileNotFoundError(w)
 		return
+	}
+
+	// check token
+	if info.IsPrivate {
+		if len(token) != 32 || timestamp == "" {
+			util.HttpForbiddenError(w, "Forbidden.")
+			return
+		}
+		cToken := util.GenerateToken(fid, curSecret, timestamp)
+		nts, err := convert.StrToInt64(timestamp)
+		if err != nil {
+			util.HttpForbiddenError(w, "Forbidden.")
+			return
+		}
+		if token != cToken || nts < gox.GetTimestamp(time.Now()) {
+			util.HttpForbiddenError(w, "Forbidden.")
+			return
+		}
 	}
 
 	// 304 Not Modified
@@ -514,13 +532,13 @@ func httpDownload(w http.ResponseWriter, r *http.Request) {
 	outFile, err := file.GetFile(filePath)
 	if err != nil {
 		logger.Debug("error open file: ", info.Path, ": ", err)
-		fileNotFound(w)
+		util.HttpFileNotFoundError(w)
 		return
 	}
 	fileInfo, err := os.Stat(filePath)
 	if err != nil {
 		logger.Debug("error stat file: ", info.Path, ": ", err)
-		fileNotFound(w)
+		util.HttpFileNotFoundError(w)
 		return
 	}
 
@@ -538,7 +556,7 @@ func httpDownload(w http.ResponseWriter, r *http.Request) {
 	if rangeS != "" {
 		if _, err = outFile.Seek(start, 0); err != nil {
 			logger.Debug("error seek file: ", info.Path, ": ", err)
-			internalServerError(w, "Not Found.")
+			util.HttpInternalServerError(w, "Not Found.")
 			return
 		}
 	}
@@ -573,20 +591,6 @@ func httpDownload(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		logger.Debug("error write file: ", err)
 	}
-}
-
-func fileNotFound(w http.ResponseWriter) {
-	writeResponse(w, http.StatusNotFound, "Not Found.")
-}
-
-func internalServerError(w http.ResponseWriter, message string) {
-	writeResponse(w, http.StatusInternalServerError, message)
-}
-
-// WriteErrResponse write error response
-func writeResponse(writer http.ResponseWriter, statusCode int, message string) {
-	writer.WriteHeader(statusCode)
-	writer.Write([]byte(strconv.Itoa(statusCode) + " " + message))
 }
 
 // parseHeaderRange if end is 0, then the end represents max

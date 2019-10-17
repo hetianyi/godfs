@@ -4,6 +4,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"github.com/hetianyi/godfs/util"
+	"github.com/hetianyi/gox"
 	"github.com/hetianyi/gox/convert"
 	"github.com/hetianyi/gox/file"
 	"github.com/hetianyi/gox/logger"
@@ -13,6 +14,7 @@ import (
 )
 
 func TestCreateAlias(t *testing.T) {
+	util.GenerateDecKey("123456", nil)
 	base64S := util.CreateAlias("G01/00/E2/012345678901234567890123456789ea", "ac3343ac", true, time.Now())
 	fmt.Println(base64S)
 	fmt.Println(time.Now().Unix())
@@ -45,7 +47,8 @@ func TestAesCbcEncrypt(t *testing.T) {
 }
 
 func TestParseAlias(t *testing.T) {
-	fmt.Println(util.ParseAlias("A3AE1i_kNI5gneeop4tWUocv9bYLwyiXDuJSker1VmeWWJ0ioeLA6jIWyPrtRmsZ_RBn0tWAeRXQ8o3lnqWjpg"))
+	util.GenerateDecKey("123456", nil)
+	fmt.Println(util.ParseAlias("tqZbw_9VNFpaVDaEbcdal8jINLjKQfNN58f9BrfEkKeTEaWObbtYa49jbGfmQilu8r9imVKFdPv5tEo1pjai5g", ""))
 	a := []byte{1, 2, 3}
 	fmt.Println(a[0:1])
 }
@@ -59,4 +62,13 @@ func TestSeek(t *testing.T) {
 	}
 	defer fi.Close()
 	fi.WriteAt([]byte{0}, 2999)
+}
+
+func TestN(t *testing.T) {
+	//aesEncDecKey := []byte("qmwn-ebrv_tcyx#uzia@ospd!lfkg+jh")
+	//						  e10adc3949ba59abbe56e057f20f883e
+	//secret := []byte("123456")
+	fmt.Println(gox.Md5Sum("123456"))
+	var a map[string]int = nil
+	fmt.Println(len(a))
 }

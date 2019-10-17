@@ -31,7 +31,6 @@ type StorageConfig struct {
 	LogRotationInterval   string   `json:"logRotationInterval"`
 	EnableHttp            bool     `json:"enableHttp"`
 	HttpPort              int      `json:"httpPort"`
-	HttpAuth              string   `json:"httpAuth"`
 	EnableMimeTypes       bool     `json:"enableMimeTypes"`
 	PublicAccessMode      bool     `json:"publicAccessMode"`
 	AllowedDomains        []string `json:"allowedDomains"`
@@ -58,7 +57,6 @@ type TrackerConfig struct {
 	LogRotationInterval   string `json:"logRotationInterval"`
 	EnableHttp            bool   `json:"enableHttp"`
 	HttpPort              int    `json:"httpPort"`
-	HttpAuth              string `json:"httpAuth"`
 	HistorySecrets        map[string]int64
 	ParsedTrackers        []Server
 }
@@ -75,10 +73,11 @@ type ClientConfig struct {
 }
 
 type Server struct {
-	Host       string `json:"host"`
-	Port       uint16 `json:"port"`
-	Secret     string `json:"secret"`
-	InstanceId string `json:"instanceId"`
+	Host           string   `json:"host"`
+	Port           uint16   `json:"port"`
+	Secret         string   `json:"secret"`
+	HistorySecrets []string `json:"history_secret"` // 历史密码
+	InstanceId     string   `json:"instanceId"`
 }
 
 type StorageServer struct {

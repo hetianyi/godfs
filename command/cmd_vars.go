@@ -38,13 +38,13 @@ var (
 	logRotationInterval    string
 	disableHttp            bool
 	httpPort               int
-	httpAuth               string
 	enableMimetypes        bool
 	allowedDomains         string
 	logDir                 string
 	disableSaveLogfile     bool
 	tokenFileId            string
-	tokenLife              int // token life(in seconds)
+	tokenLife              int    // token life(in seconds)
+	tokenFormat            string // token format: url or json
 	finalCommand           common.Command
 )
 
@@ -57,7 +57,6 @@ func ConfigAssembly(bm common.BootMode) interface{} {
 		c.HttpPort = gox.TValue(httpPort <= 0, common.DEFAULT_STORAGE_HTTP_PORT, httpPort).(int)
 		c.Group = group
 		c.Secret = secret
-		c.HttpAuth = httpAuth
 		c.LogLevel = logLevel
 		c.LogRotationInterval = logRotationInterval
 		c.MaxRollingLogfileSize = maxLogfileSize
@@ -109,7 +108,6 @@ func ConfigAssembly(bm common.BootMode) interface{} {
 		c.AdvertisePort = gox.TValue(advertisePort <= 0, c.Port, advertisePort).(int)
 		c.HttpPort = gox.TValue(httpPort <= 0, common.DEFAULT_TRACKER_HTTP_PORT, httpPort).(int)
 		c.Secret = secret
-		c.HttpAuth = httpAuth
 		c.LogLevel = logLevel
 		c.LogRotationInterval = logRotationInterval
 		c.MaxRollingLogfileSize = maxLogfileSize
@@ -152,6 +150,9 @@ func ConfigAssembly(bm common.BootMode) interface{} {
 		c.LogLevel = logLevel
 		if trackers != "" {
 			c.Trackers = strings.Split(trackers, ",")
+		}
+		if tokenFormat != "url" && tokenFormat != "json" {
+			tokenFormat = "url"
 		}
 		c.PrivateUpload = privateUpload
 		common.InitializedClientConfiguration = c

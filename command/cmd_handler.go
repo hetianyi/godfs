@@ -213,7 +213,7 @@ func handleDownloadFile() error {
 				}
 				return err
 			}
-			fileInfo, err := util.ParseAlias(item.(string))
+			fileInfo, _, err := util.ParseAlias(item.(string), "")
 			if err != nil {
 				return err
 			}
@@ -281,7 +281,17 @@ func handleInspectFile() error {
 }
 
 func handleGenerateToken() {
-	fmt.Println(util.GenerateToken(tokenFileId, secret, time.Now().Add(time.Second*time.Duration(tokenLife))))
+	ts := convert.Int64ToStr(gox.GetTimestamp(time.Now().Add(time.Second * time.Duration(tokenLife))))
+	token := util.GenerateToken(tokenFileId, secret, ts)
+	if tokenFormat == "json" {
+		ret := make(map[string]string)
+		ret["token"] = token
+		ret["ts"] = ts
+		r, _ := json.Marshal(ret)
+		fmt.Println(string(r))
+	} else {
+		fmt.Println("token=" + token + "&ts=" + ts)
+	}
 }
 
 // handleUploadFile handles upload files by client cli.

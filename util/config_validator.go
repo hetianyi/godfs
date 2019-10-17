@@ -48,12 +48,6 @@ func ValidateStorageConfig(c *common.StorageConfig) error {
 				"\", secret must match pattern " + common.SECRET_PATTERN)
 		}
 	}
-	if c.HttpAuth != "" {
-		if m, err := regexp.MatchString(common.HTTP_AUTH_PATTERN, c.HttpAuth); err != nil || !m {
-			return errors.New("invalid http auth \"" + c.HttpAuth +
-				"\", http auth must match pattern " + common.HTTP_AUTH_PATTERN)
-		}
-	}
 
 	// check log level
 	c.LogLevel = strings.ToLower(c.LogLevel)
@@ -90,12 +84,6 @@ func ValidateStorageConfig(c *common.StorageConfig) error {
 
 	InitialConfigMap(common.STORAGE_CONFIG_MAP_KEY, c.DataDir+"/cfg.dat")
 
-	historySecret, err := loadHistorySecret(common.STORAGE_CONFIG_MAP_KEY, c.Secret)
-	if err != nil {
-		logger.Fatal(err)
-	}
-	c.HistorySecrets = historySecret
-
 	// initialize logger
 	logConfig := &logger.Config{
 		Level:              ConvertLogLevel(c.LogLevel),
@@ -106,6 +94,13 @@ func ValidateStorageConfig(c *common.StorageConfig) error {
 		RollingFileName:    "godfs-storage",
 	}
 	logger.Init(logConfig)
+
+	historySecret, err := loadHistorySecret(common.STORAGE_CONFIG_MAP_KEY, c.Secret)
+	if err != nil {
+		logger.Fatal(err)
+	}
+	c.HistorySecrets = historySecret
+	GenerateDecKey(c.Secret, historySecret)
 
 	// parse tracker servers
 	if c.Trackers != nil {
@@ -151,12 +146,6 @@ func ValidateTrackerConfig(c *common.TrackerConfig) error {
 				"\", secret must match pattern " + common.SECRET_PATTERN)
 		}
 	}
-	if c.HttpAuth != "" {
-		if m, err := regexp.MatchString(common.HTTP_AUTH_PATTERN, c.HttpAuth); err != nil || !m {
-			return errors.New("invalid http auth \"" + c.HttpAuth +
-				"\", http auth must match pattern " + common.HTTP_AUTH_PATTERN)
-		}
-	}
 
 	// check log level
 	c.LogLevel = strings.ToLower(c.LogLevel)
@@ -193,12 +182,6 @@ func ValidateTrackerConfig(c *common.TrackerConfig) error {
 
 	InitialConfigMap(common.TRACKER_CONFIG_MAP_KEY, c.DataDir+"/cfg.dat")
 
-	historySecret, err := loadHistorySecret(common.TRACKER_CONFIG_MAP_KEY, c.Secret)
-	if err != nil {
-		logger.Fatal(err)
-	}
-	c.HistorySecrets = historySecret
-
 	// initialize logger
 	logConfig := &logger.Config{
 		Level:              ConvertLogLevel(c.LogLevel),
@@ -209,6 +192,13 @@ func ValidateTrackerConfig(c *common.TrackerConfig) error {
 		RollingFileName:    "godfs-storage",
 	}
 	logger.Init(logConfig)
+
+	historySecret, err := loadHistorySecret(common.TRACKER_CONFIG_MAP_KEY, c.Secret)
+	if err != nil {
+		logger.Fatal(err)
+	}
+	c.HistorySecrets = historySecret
+	GenerateDecKey(c.Secret, historySecret)
 
 	// parse tracker servers
 	if c.Trackers != nil {
@@ -357,7 +347,7 @@ func loadHistorySecret(key, secret string) (map[string]int64, error) {
 	if ret == nil || len(ret) == 0 {
 		return storeNewSecret(secret)
 	}
-	if err = json.Unmarshal(ret, retMap); err != nil {
+	if err = json.Unmarshal(ret, &retMap); err != nil {
 		return nil, err
 	}
 	if retMap[secret] == 0 {

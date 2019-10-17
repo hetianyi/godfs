@@ -254,7 +254,7 @@ func downFileHandler(header *common.Header) (*common.Header, io.Reader, int64, e
 
 	// parse fileId
 	var fileId = header.Attributes["fileId"]
-	fileInfo, err := util.ParseAlias(fileId)
+	fileInfo, _, err := util.ParseAlias(fileId, "")
 	if err != nil {
 		return &common.Header{
 			Result: common.ERROR,
@@ -289,7 +289,7 @@ func inspectFileHandler(header *common.Header) (*common.Header, io.Reader, int64
 
 	// parse fileId
 	var fileId = header.Attributes["fileId"]
-	fileInfo, err := util.ParseAlias(fileId)
+	fileInfo, _, err := util.ParseAlias(fileId, "")
 	if err != nil {
 		return &common.Header{
 			Result: common.ERROR,
