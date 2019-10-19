@@ -28,17 +28,20 @@ func CreateRandNumber(max int) int {
 	return rander.Intn(max)
 }
 
-func GenerateDecKey(secret string, historySecret map[string]int64) {
-	aesEncDecKey = []byte(gox.Md5Sum(secret))
-	if historySecret == nil || len(historySecret) == 0 {
+func AddSecretEncryptKeys(secret ...string) {
+	if secret == nil || len(secret) == 0 {
 		return
 	}
-	i := 0
-	historyAesEncDecKeys = make(map[string]string)
-	for k := range historySecret {
-		historyAesEncDecKeys[gox.Md5Sum(k)] = k
-		i++
+	if historyAesEncDecKeys == nil {
+		historyAesEncDecKeys = make(map[string]string)
 	}
+	for _, k := range secret {
+		historyAesEncDecKeys[gox.Md5Sum(k)] = k
+	}
+}
+
+func GenerateDecKey(secret string) {
+	aesEncDecKey = []byte(gox.Md5Sum(secret))
 }
 
 // CreateAlias create an alias name from file meta info.

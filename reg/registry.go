@@ -3,6 +3,7 @@ package reg
 import (
 	"errors"
 	"github.com/hetianyi/godfs/common"
+	"github.com/hetianyi/godfs/util"
 	"github.com/hetianyi/gox"
 	"github.com/hetianyi/gox/logger"
 	"github.com/hetianyi/gox/timer"
@@ -36,6 +37,9 @@ func Put(ins *common.Instance) error {
 	ins.State = common.REGISTER_HOLD
 	ins.RegisterTime = time.Now().UnixNano()
 	instanceSet[ins.InstanceId] = ins
+	if ins.Role == common.ROLE_STORAGE {
+		util.StoreSecrets(ins.InstanceId, util.CollectMapKeys(ins.Server.HistorySecrets)...)
+	}
 	return nil
 }
 

@@ -35,7 +35,7 @@ type StorageConfig struct {
 	PublicAccessMode      bool     `json:"publicAccessMode"`
 	AllowedDomains        []string `json:"allowedDomains"`
 	InstanceId            string
-	HistorySecrets        map[string]int64
+	HistorySecrets        map[string]string
 	TmpDir                string
 	ParsedTrackers        []Server
 }
@@ -57,7 +57,7 @@ type TrackerConfig struct {
 	LogRotationInterval   string `json:"logRotationInterval"`
 	EnableHttp            bool   `json:"enableHttp"`
 	HttpPort              int    `json:"httpPort"`
-	HistorySecrets        map[string]int64
+	HistorySecrets        map[string]string
 	ParsedTrackers        []Server
 }
 
@@ -73,11 +73,11 @@ type ClientConfig struct {
 }
 
 type Server struct {
-	Host           string   `json:"host"`
-	Port           uint16   `json:"port"`
-	Secret         string   `json:"secret"`
-	HistorySecrets []string `json:"history_secret"` // 历史密码
-	InstanceId     string   `json:"instanceId"`
+	Host           string            `json:"host"`
+	Port           uint16            `json:"port"`
+	Secret         string            `json:"secret"`
+	HistorySecrets map[string]string `json:"history_secret"` // 历史密码
+	InstanceId     string            `json:"instanceId"`
 }
 
 type StorageServer struct {
@@ -175,7 +175,7 @@ func NewConfigMap(path string) (*ConfigMap, error) {
 	err = db.Update(func(tx *bolt.Tx) error {
 		_, e := tx.CreateBucketIfNotExists([]byte("configMap"))
 		if e != nil {
-			return nil
+			return e
 		}
 		if BootAs == BOOT_TRACKER {
 			_, e := tx.CreateBucketIfNotExists([]byte("fileIds"))

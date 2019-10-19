@@ -445,6 +445,7 @@ func (c *clientAPIImpl) SyncInstances(server *common.Server) (map[string]*common
 }
 
 func (c *clientAPIImpl) PushBinlog(server *common.Server, binlogs []common.BingLogDTO) error {
+	logger.Debug("pushing binlog: ", len(binlogs))
 	connection, authenticated, err := conn.GetConnection(server)
 	if err != nil {
 		return err
@@ -515,14 +516,13 @@ func authenticate(p *gpip.Pip, server conn.Server) error {
 	} else if common.BootAs == common.BOOT_STORAGE {
 		conf := common.InitializedStorageConfiguration
 		advPort, _ := convert.StrToUint16(convert.IntToStr(conf.AdvertisePort))
-		historySecrets := make([]string, len(common.InitializedStorageConfiguration.HistorySecrets))
 		instance = &common.Instance{
 			Server: common.Server{
 				Host:           conf.AdvertiseAddress,
 				Port:           advPort,
 				Secret:         conf.Secret,
 				InstanceId:     conf.InstanceId,
-				HistorySecrets: historySecrets,
+				HistorySecrets: common.InitializedStorageConfiguration.HistorySecrets,
 			},
 			Role: common.ROLE_STORAGE,
 			Attributes: map[string]string{

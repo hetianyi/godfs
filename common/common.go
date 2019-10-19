@@ -63,10 +63,6 @@ const (
 	//
 	REGISTER_INTERVAL    = time.Second * 30
 	SYNCHRONIZE_INTERVAL = time.Second * 45
-
-	STORAGE_CONFIG_MAP_KEY = "STORAGE_CONFIG_MAP_KEY"
-	TRACKER_CONFIG_MAP_KEY = "TRACKER_CONFIG_MAP_KEY"
-	PROXY_CONFIG_MAP_KEY   = "PROXY_CONFIG_MAP_KEY"
 )
 
 var (
@@ -78,13 +74,27 @@ var (
 	FileMetaPatternRegexp           = regexp.MustCompile(FILE_META_PATTERN)
 	ServerPatternRegexp             = regexp.MustCompile(SERVER_PATTERN)
 	BootAs                          BootMode
-	configMaps                      = make(map[string]*ConfigMap)
+	configMap                       *ConfigMap
+	CusterSecret                    = make(map[string]string)
 )
 
-func SetConfigMap(configName string, config *ConfigMap) {
-	configMaps[configName] = config
+func SetConfigMap(config *ConfigMap) {
+	configMap = config
 }
 
-func GetConfigMap(configName string) *ConfigMap {
-	return configMaps[configName]
+func GetConfigMap() *ConfigMap {
+	return configMap
+}
+
+func AddSecret(instanceId string, secret ...string) {
+	if secret == nil {
+		return
+	}
+	for _, s := range secret {
+		CusterSecret[s] = instanceId
+	}
+}
+
+func GetSecret(secret string) (instance string) {
+	return CusterSecret[secret]
 }

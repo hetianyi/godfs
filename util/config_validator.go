@@ -4,14 +4,19 @@ import (
 	"encoding/json"
 	"errors"
 	"github.com/hetianyi/godfs/common"
-	"github.com/hetianyi/gox"
 	"github.com/hetianyi/gox/convert"
 	"github.com/hetianyi/gox/file"
 	"github.com/hetianyi/gox/logger"
 	"regexp"
 	"strings"
-	"time"
+	"sync"
 )
+
+var storeSecretLock *sync.Mutex
+
+func init() {
+	storeSecretLock = new(sync.Mutex)
+}
 
 // ValidateStorageConfig validates storage config.
 func ValidateStorageConfig(c *common.StorageConfig) error {
@@ -82,8 +87,6 @@ func ValidateStorageConfig(c *common.StorageConfig) error {
 		}
 	}
 
-	InitialConfigMap(common.STORAGE_CONFIG_MAP_KEY, c.DataDir+"/cfg.dat")
-
 	// initialize logger
 	logConfig := &logger.Config{
 		Level:              ConvertLogLevel(c.LogLevel),
@@ -95,12 +98,15 @@ func ValidateStorageConfig(c *common.StorageConfig) error {
 	}
 	logger.Init(logConfig)
 
-	historySecret, err := loadHistorySecret(common.STORAGE_CONFIG_MAP_KEY, c.Secret)
+	InitialConfigMap(c.DataDir + "/cfg.dat")
+	c.InstanceId = LoadInstanceData()
+
+	historySecret, err := loadHistorySecret(true, c.InstanceId, c.Secret)
 	if err != nil {
 		logger.Fatal(err)
 	}
 	c.HistorySecrets = historySecret
-	GenerateDecKey(c.Secret, historySecret)
+	GenerateDecKey(c.Secret)
 
 	// parse tracker servers
 	if c.Trackers != nil {
@@ -180,8 +186,6 @@ func ValidateTrackerConfig(c *common.TrackerConfig) error {
 		}
 	}
 
-	InitialConfigMap(common.TRACKER_CONFIG_MAP_KEY, c.DataDir+"/cfg.dat")
-
 	// initialize logger
 	logConfig := &logger.Config{
 		Level:              ConvertLogLevel(c.LogLevel),
@@ -193,12 +197,15 @@ func ValidateTrackerConfig(c *common.TrackerConfig) error {
 	}
 	logger.Init(logConfig)
 
-	historySecret, err := loadHistorySecret(common.TRACKER_CONFIG_MAP_KEY, c.Secret)
+	InitialConfigMap(c.DataDir + "/cfg.dat")
+	c.InstanceId = LoadInstanceData()
+
+	historySecret, err := loadHistorySecret(false, c.InstanceId, c.Secret)
 	if err != nil {
 		logger.Fatal(err)
 	}
 	c.HistorySecrets = historySecret
-	GenerateDecKey(c.Secret, historySecret)
+	GenerateDecKey(c.Secret)
 
 	// parse tracker servers
 	if c.Trackers != nil {
@@ -261,12 +268,13 @@ func ValidateClientConfig(c *common.ClientConfig) error {
 	return nil
 }
 
-func InitialConfigMap(key, path string) {
+func InitialConfigMap(path string) {
+	logger.Debug("initial config map: ", path)
 	configMap, err := common.NewConfigMap(path)
 	if err != nil {
 		logger.Fatal("cannot initialize configMap file")
 	}
-	common.SetConfigMap(key, configMap)
+	common.SetConfigMap(configMap)
 }
 
 func ConvertLogLevel(levelString string) logger.Level {
@@ -323,35 +331,100 @@ func ConvertLogFileSize(s int) int {
 }
 
 // loadHistorySecret loads history secrets from db.
-func loadHistorySecret(key, secret string) (map[string]int64, error) {
-	retMap := make(map[string]int64)
-	configKey := "history_secret"
-	configMap := common.GetConfigMap(key)
+func loadHistorySecret(store bool, instanceId, secret string) (map[string]string, error) {
+	if store {
+		if err := StoreSecrets(instanceId, secret); err != nil {
+			return nil, err
+		}
+	}
+	sm, err := GetSecrets()
+	if err != nil {
+		return nil, err
+	}
+	for k, _ := range sm {
+		AddSecretEncryptKeys(k)
+	}
+	return sm, nil
+}
+
+func GetSecrets() (map[string]string, error) {
+	retMap := make(map[string]string)
+	configKey := "secrets"
+	configMap := common.GetConfigMap()
 	ret, err := configMap.GetConfig(configKey)
 	if err != nil {
 		return nil, err
 	}
-
-	storeNewSecret := func(s string) (map[string]int64, error) {
-		retMap[s] = gox.GetTimestamp(time.Now())
-		ret, err := json.Marshal(retMap)
-		if err != nil {
-			return retMap, err
-		}
-		if err = configMap.PutConfig(configKey, ret); err != nil {
-			return retMap, err
-		}
-		return retMap, nil
-	}
-
 	if ret == nil || len(ret) == 0 {
-		return storeNewSecret(secret)
+		return nil, nil
 	}
-	if err = json.Unmarshal(ret, &retMap); err != nil {
+	err = json.Unmarshal(ret, &retMap)
+	if err != nil {
 		return nil, err
 	}
-	if retMap[secret] == 0 {
-		return storeNewSecret(secret)
+	return retMap, nil
+}
+
+// StoreSecrets stores secrets to config bucket.
+func StoreSecrets(instanceId string, secret ...string) error {
+	storeSecretLock.Lock()
+	defer storeSecretLock.Unlock()
+
+	logger.Debug("store secrets for instance ", instanceId, ":", secret)
+	if secret == nil {
+		return nil
 	}
-	return retMap, err
+	newSecrets := make(map[string]string)
+	for _, s := range secret {
+		if common.GetSecret(s) != "" {
+			continue
+		}
+		newSecrets[s] = instanceId
+		common.AddSecret(instanceId, s)
+		AddSecretEncryptKeys(s)
+	}
+
+	if len(newSecrets) == 0 {
+		logger.Debug("now new secrets to store")
+		return nil
+	}
+
+	retMap := make(map[string]string)
+	configKey := "secrets"
+	configMap := common.GetConfigMap()
+	ret, err := configMap.GetConfig(configKey)
+	if err != nil {
+		return err
+	}
+	if ret != nil && len(ret) > 0 {
+		err = json.Unmarshal(ret, &retMap)
+		if err != nil {
+			return err
+		}
+	}
+	for k, v := range newSecrets {
+		retMap[k] = v
+	}
+
+	ret, err = json.Marshal(retMap)
+	if err != nil {
+		return err
+	}
+	if err = configMap.PutConfig(configKey, ret); err != nil {
+		return err
+	}
+	return nil
+}
+
+func CollectMapKeys(m map[string]string) []string {
+	if m == nil {
+		return nil
+	}
+	ret := make([]string, len(m))
+	index := 0
+	for i, _ := range m {
+		ret[index] = i
+		index++
+	}
+	return ret
 }

@@ -19,13 +19,6 @@ func Parse(arguments []string) {
 	appFlag.HelpName = "godfs"
 	// config file location
 	appFlag.Flags = []cli.Flag{
-		cli.StringFlag{
-			Name:  "log-level",
-			Value: "",
-			Usage: `set log level, available options:
-	(trace|debug|info|warn|error|fatal)`,
-			Destination: &logLevel,
-		},
 		cli.BoolFlag{
 			Name:        "version, v",
 			Usage:       `show version`,
@@ -42,6 +35,13 @@ func Parse(arguments []string) {
 				return nil
 			},
 			Flags: []cli.Flag{
+				cli.StringFlag{
+					Name:  "log-level",
+					Value: "",
+					Usage: `set log level, available options:
+	(trace|debug|info|warn|error|fatal)`,
+					Destination: &logLevel,
+				},
 				cli.StringFlag{
 					Name:        "config, c",
 					Value:       "",
@@ -152,6 +152,13 @@ func Parse(arguments []string) {
 				return nil
 			},
 			Flags: []cli.Flag{
+				cli.StringFlag{
+					Name:  "log-level",
+					Value: "",
+					Usage: `set log level, available options:
+	(trace|debug|info|warn|error|fatal)`,
+					Destination: &logLevel,
+				},
 				cli.StringFlag{
 					Name:        "secret, s",
 					Value:       "",
@@ -334,6 +341,13 @@ Usage: godfs client upload <file1> <file2> ...`)
 	[<secret1>@]host1:port1,[<secret2>@]host2:port2`,
 							Destination: &trackers,
 						},
+						cli.StringFlag{
+							Name:  "log-level",
+							Value: "",
+							Usage: `set log level, available options:
+	(trace|debug|info|warn|error|fatal)`,
+							Destination: &logLevel,
+						},
 					},
 				},
 				{
@@ -380,6 +394,13 @@ Usage: godfs client download <fid1> <fid2> ...`)
 	[<secret1>@]host1:port1,[<secret2>@]host2:port2`,
 							Destination: &trackers,
 						},
+						cli.StringFlag{
+							Name:  "log-level",
+							Value: "",
+							Usage: `set log level, available options:
+	(trace|debug|info|warn|error|fatal)`,
+							Destination: &logLevel,
+						},
 					},
 				},
 				{
@@ -418,6 +439,13 @@ Usage: godfs client inspect <fid1> <fid2> ...`)
 							Usage: `set tracker servers, example:
 	[<secret1>@]host1:port1,[<secret2>@]host2:port2`,
 							Destination: &trackers,
+						},
+						cli.StringFlag{
+							Name:  "log-level",
+							Value: "",
+							Usage: `set log level, available options:
+	(trace|debug|info|warn|error|fatal)`,
+							Destination: &logLevel,
 						},
 					},
 				},
@@ -540,6 +568,13 @@ Usage: godfs client token <fid1> <fid2> ...`)
 							Usage: `set tracker servers, example:
 	[<secret1>@]host1:port1,[<secret2>@]host2:port2`,
 							Destination: &trackers,
+						},
+						cli.StringFlag{
+							Name:  "log-level",
+							Value: "",
+							Usage: `set log level, available options:
+	(trace|debug|info|warn|error|fatal)`,
+							Destination: &logLevel,
 						},
 					},
 				},

@@ -157,7 +157,7 @@ func pushStorageBinLogHandler(header *common.Header, clientId string) (*common.H
 		}, nil, 0, nil
 	}
 
-	configMap := common.GetConfigMap(common.TRACKER_CONFIG_MAP_KEY)
+	configMap := common.GetConfigMap()
 	if err := configMap.PutFile(ret); err != nil {
 		return &common.Header{
 			Result: common.ERROR,

@@ -22,8 +22,8 @@ var (
 
 // LoadInstanceData load old instance id from data dir.
 // If there is no old instance id before, create a new instance id for this data dir.
-func LoadInstanceData(configKey string) string {
-	configMap := common.GetConfigMap(configKey)
+func LoadInstanceData() string {
+	configMap := common.GetConfigMap()
 	key := "instanceId"
 	bInsId, err := configMap.GetConfig(key)
 	if err != nil {

@@ -379,7 +379,7 @@ func binlogPusher(server *common.Server) {
 }
 
 func getPusherStatus(instanceId string) (fileIndex int, offset int64, err error) {
-	configMap := common.GetConfigMap(common.STORAGE_CONFIG_MAP_KEY)
+	configMap := common.GetConfigMap()
 	pos, err := configMap.GetConfig("binlog_pos_" + instanceId)
 	if err != nil {
 		logger.Error("error load binlog position for tracker instance: ", instanceId)
@@ -410,7 +410,7 @@ func getPusherStatus(instanceId string) (fileIndex int, offset int64, err error)
 }
 
 func setPusherStatus(instanceId string, fileIndex int, offset int64) error {
-	configMap := common.GetConfigMap(common.STORAGE_CONFIG_MAP_KEY)
+	configMap := common.GetConfigMap()
 	return configMap.BatchUpdateConfig(func(b *bolt.Bucket) error {
 		err := b.Put([]byte("binlog_pos_"+instanceId), []byte(convert.Int64ToStr(offset)))
 		if err != nil {

@@ -11,16 +11,19 @@ import (
 )
 
 func BootTrackerServer() {
+
 	if err := util.ValidateTrackerConfig(common.InitializedTrackerConfiguration); err != nil {
 		fmt.Println("Err:", err)
 		os.Exit(1)
 	}
-	common.InitializedTrackerConfiguration.InstanceId = util.LoadInstanceData(common.TRACKER_CONFIG_MAP_KEY)
+
 	if true {
 		cbs, _ := json.MarshalIndent(common.InitializedTrackerConfiguration, "", "  ")
 		logger.Debug("\n", string(cbs))
 	}
+
 	util.PrintLogo()
+
 	if common.InitializedTrackerConfiguration.EnableHttp {
 		StartTrackerHttpServer(common.InitializedTrackerConfiguration)
 	}

@@ -66,18 +66,20 @@ func authenticationHandler(header *common.Header, secret string) (*common.Header
 	if common.BootAs == common.BOOT_TRACKER {
 		// parse instance info.
 		s1 := header.Attributes["instance"]
-		instance = &common.Instance{}
-		if err := json.Unmarshal([]byte(s1), instance); err != nil {
-			return &common.Header{
-				Result: common.ERROR,
-				Msg:    err.Error(),
-			}, nil, nil, 0, err
-		}
-		if err := reg.Put(instance); err != nil {
-			return &common.Header{
-				Result: common.ERROR,
-				Msg:    err.Error(),
-			}, nil, nil, 0, err
+		if s1 != "" {
+			instance = &common.Instance{}
+			if err := json.Unmarshal([]byte(s1), instance); err != nil {
+				return &common.Header{
+					Result: common.ERROR,
+					Msg:    err.Error(),
+				}, nil, nil, 0, err
+			}
+			if err := reg.Put(instance); err != nil {
+				return &common.Header{
+					Result: common.ERROR,
+					Msg:    err.Error(),
+				}, nil, nil, 0, err
+			}
 		}
 	}
 

@@ -3,6 +3,7 @@ package api
 import (
 	"container/list"
 	"github.com/hetianyi/godfs/common"
+	"github.com/hetianyi/godfs/util"
 	"github.com/hetianyi/gox"
 	"github.com/hetianyi/gox/logger"
 	"github.com/hetianyi/gox/timer"
@@ -29,7 +30,7 @@ type instanceStore struct {
 }
 
 func (ins *instanceStore) expired() bool {
-	return gox.GetTimestamp(time.Now()) > gox.GetTimestamp(ins.fetchTime)
+	return gox.GetTimestamp(time.Now().Add(common.SYNCHRONIZE_INTERVAL*2+time.Second*5)) > gox.GetTimestamp(ins.fetchTime)
 }
 
 func tracks(clientAPI ClientAPI, server *common.Server, synchronizeOnce bool, c chan int) {
@@ -49,6 +50,9 @@ func tracks(clientAPI ClientAPI, server *common.Server, synchronizeOnce bool, c 
 					syncInstances[k] = &instanceStore{
 						instance:  v,
 						fetchTime: now,
+					}
+					if common.BootAs == common.BOOT_STORAGE {
+						util.StoreSecrets(v.InstanceId, util.CollectMapKeys(v.Server.HistorySecrets)...)
 					}
 				}
 			}
@@ -81,7 +85,7 @@ func FilterInstances(role common.Role) *list.List {
 
 func expireDetection() {
 	// allow 2 round failure synchronization
-	timer.Start(0, 0, common.SYNCHRONIZE_INTERVAL*2+time.Second*5, func(t *timer.Timer) {
+	timer.Start(0, 0, common.SYNCHRONIZE_INTERVAL, func(t *timer.Timer) {
 		syncLock.Lock()
 		defer syncLock.Unlock()
 		for k, v := range syncInstances {

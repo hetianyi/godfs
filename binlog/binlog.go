@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"container/list"
+	"encoding/base64"
 	"errors"
 	"github.com/hetianyi/godfs/common"
 	"github.com/hetianyi/godfs/util"
@@ -132,9 +133,8 @@ func (m *localBinlogManager) Write(bin *common.BingLog) error {
 	m.buffer.Write(bin.Timestamp[:])
 	m.buffer.Write(bin.FileLength[:])
 	m.buffer.Write(bin.FileId[:])
-	m.buffer.WriteRune('\n')
 	// persist binlog data.
-	if _, err := m.currentBinLogFile.Write(m.buffer.Bytes()); err != nil {
+	if _, err := m.currentBinLogFile.WriteString(base64.RawURLEncoding.EncodeToString(m.buffer.Bytes()) + "\n"); err != nil {
 		return err
 	}
 	// sync data.
@@ -184,8 +184,12 @@ func (m *localBinlogManager) Read(fileIndex int, offset int64, fetchLine int) ([
 			return nil, offset, err
 		}
 		forwardOffset += int64(len(bs))
-		if bs == nil || len(bs) != LOCAL_BINLOG_SIZE {
+		if bs == nil || len(bs) < 2 {
 			continue
+		}
+		bs, err = base64.RawURLEncoding.DecodeString(string(bs))
+		if err != nil {
+			return nil, offset, err
 		}
 		bs = bs[0 : len(bs)-1]
 		bl := common.BingLog{
