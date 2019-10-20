@@ -13,6 +13,7 @@ import (
 	"github.com/hetianyi/gox/pg"
 	json "github.com/json-iterator/go"
 	"io"
+	"os"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -282,6 +283,13 @@ func handleInspectFile() error {
 
 func handleGenerateToken() {
 	ts := convert.Int64ToStr(gox.GetTimestamp(time.Now().Add(time.Second * time.Duration(tokenLife))))
+	util.GenerateDecKey(secret)
+	// the fileId must be parsed by the given secret.
+	_, _, err := util.ParseAlias(tokenFileId, secret)
+	if err != nil {
+		fmt.Println("\nInvalid secret: cannot parse fileId using given secret")
+		os.Exit(1)
+	}
 	token := util.GenerateToken(tokenFileId, secret, ts)
 	if tokenFormat == "json" {
 		ret := make(map[string]string)
