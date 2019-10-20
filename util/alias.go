@@ -24,10 +24,12 @@ func init() {
 	rander = rand.New(rand.NewSource(time.Now().UnixNano()))
 }
 
+// CreateRandNumber create a random int value.
 func CreateRandNumber(max int) int {
 	return rander.Intn(max)
 }
 
+// AddSecretEncryptKeys adds all history secrets of all storage servers.
 func AddSecretEncryptKeys(secret ...string) {
 	if secret == nil || len(secret) == 0 {
 		return
@@ -40,6 +42,7 @@ func AddSecretEncryptKeys(secret ...string) {
 	}
 }
 
+// GenerateDecKey generates aes encrypt key for current usage.
 func GenerateDecKey(secret string) {
 	aesEncDecKey = []byte(gox.Md5Sum(secret))
 }
@@ -88,6 +91,7 @@ func ParseAlias(alias, currentSecret string) (fileInfo *common.FileInfo, secret 
 	return
 }
 
+// parseAliasForSecret parses fileId from history secrets.
 func parseAliasForSecret(alias string, aesKey []byte) (fileInfo *common.FileInfo, err error) {
 	gox.Try(func() {
 		bs, e := base64.RawURLEncoding.DecodeString(alias)
@@ -133,6 +137,7 @@ func parseAliasForSecret(alias string, aesKey []byte) (fileInfo *common.FileInfo
 	return
 }
 
+// FixZeros prepends '0's to a int value.
 func FixZeros(i int, width int) string {
 	is := convert.IntToStr(i)
 	l := len(is)

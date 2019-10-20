@@ -281,6 +281,7 @@ func handleInspectFile() error {
 	return nil
 }
 
+// handleGenerateToken
 func handleGenerateToken() {
 	ts := convert.Int64ToStr(gox.GetTimestamp(time.Now().Add(time.Second * time.Duration(tokenLife))))
 	util.GenerateDecKey(secret)
@@ -302,7 +303,7 @@ func handleGenerateToken() {
 	}
 }
 
-// handleUploadFile handles upload files by client cli.
+// handleTestUploadFile handles upload files by client cli.
 func handleTestUploadFile() error {
 	// initialize APIClient
 	if err := initClient(); err != nil {
