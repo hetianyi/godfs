@@ -95,6 +95,7 @@ func updateFileReferenceCount(path string, value int64) error {
 		return err
 	}
 	defer oldFile.Close()
+
 	tailRefBytes := make([]byte, 8)
 	if _, err := oldFile.Seek(-4, 2); err != nil {
 		return err

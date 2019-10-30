@@ -10,6 +10,7 @@ import (
 	"os"
 )
 
+// BootTrackerServer starts tracker server.
 func BootTrackerServer() {
 
 	if err := util.ValidateTrackerConfig(common.InitializedTrackerConfiguration); err != nil {

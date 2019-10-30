@@ -10,7 +10,7 @@ import (
 	"os"
 )
 
-// godfs --max-logfile-size=128 --log-rotation-interval=m --log-level=debug storage  -g G01 --preferred-network "VMware Network Adapter VMnet1" --disable-logfile --logdir="D:/logs" --data-dir="E:/data1" --http-port=8999 --http-auth="admin23:123456" --enable-mimetypes --secret="kasd3123" --port 3456 --advertise-port=6543 --allowed-domains="baidu.com,google.com" --trackers=123466@localhost:7899,abcd1234@127.0.0.1:9998
+// BootStorageServer starts storage server.
 func BootStorageServer() {
 
 	if err := util.ValidateStorageConfig(common.InitializedStorageConfiguration); err != nil {
@@ -22,6 +22,7 @@ func BootStorageServer() {
 		logger.Fatal("cannot create tmp dir: ", err)
 	}
 
+	//
 	if true {
 		cbs, _ := json.MarshalIndent(common.InitializedStorageConfiguration, "", "  ")
 		logger.Debug("\n", string(cbs))
@@ -30,6 +31,7 @@ func BootStorageServer() {
 	// initialize dataset.
 	initDataSet()
 
+	// print godfs logo.
 	util.PrintLogo()
 
 	writableBinlogManager = binlog.NewXBinlogManager(binlog.LOCAL_BINLOG_MANAGER)

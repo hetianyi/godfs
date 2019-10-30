@@ -1,3 +1,8 @@
+// package reg
+//
+//
+//
+//
 package reg
 
 import (
@@ -12,11 +17,14 @@ import (
 )
 
 var (
+	// instanceSet stores all instances synchronized from tracker server.
 	instanceSet    = make(map[string]*common.Instance)
 	lock           = new(sync.Mutex)
 	ExpirationTime = time.Second * 30 // 30s
 )
 
+// InitRegistry() starts a timer job for instance expiration detection
+// in a single goroutine.
 func InitRegistry() {
 	go expirationDetection()
 }
@@ -87,20 +95,24 @@ func isInstanceConflict(ins *common.Instance) *common.Instance {
 
 // expirationDetection is a timer job for removing expired instance.
 func expirationDetection() {
+	timerTask := func() {
+		lock.Lock()
+		defer lock.Unlock()
+
+		logger.Debug("current instances: ", len(instanceSet)) // TODO remove
+
+		deadLine := time.Now().UnixNano() - int64(ExpirationTime)
+		for _, i := range instanceSet {
+			if i.State == common.REGISTER_FREE && i.RegisterTime <= deadLine {
+				logger.Debug("instance expired: ", i.InstanceId, "@", i.Server.ConnectionString())
+				delete(instanceSet, i.InstanceId)
+			}
+		}
+	}
+
 	timer.Start(0, ExpirationTime, 0, func(t *timer.Timer) {
 		gox.Try(func() {
-			lock.Lock()
-			defer lock.Unlock()
-			logger.Debug("current instances: ", len(instanceSet)) // TODO remove
-			deadLine := time.Now().UnixNano() - int64(ExpirationTime)
-			for _, i := range instanceSet {
-				if i.State == common.REGISTER_FREE {
-					if i.RegisterTime <= deadLine {
-						logger.Debug("instance expired: ", i.InstanceId, "@", i.Server.ConnectionString())
-						delete(instanceSet, i.InstanceId)
-					}
-				}
-			}
+			timerTask()
 		}, func(e interface{}) {
 			logger.Error("expire err: ", e)
 		})

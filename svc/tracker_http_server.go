@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-// StartTrackerHttpServer starts an storage http server.
+// StartTrackerHttpServer starts a tracker http server.
 func StartTrackerHttpServer(c *common.TrackerConfig) {
 	r := mux.NewRouter()
 	srv := &http.Server{

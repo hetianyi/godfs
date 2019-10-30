@@ -16,13 +16,16 @@ import (
 )
 
 func StartTrackerTcpServer() {
+
 	listener, err := net.Listen("tcp",
 		common.InitializedTrackerConfiguration.BindAddress+":"+
 			convert.IntToStr(common.InitializedTrackerConfiguration.Port))
 	if err != nil {
 		logger.Fatal(err)
 	}
+
 	time.Sleep(time.Millisecond * 50)
+
 	logger.Info(" tcp server listening on ",
 		common.InitializedTrackerConfiguration.BindAddress, ":",
 		common.InitializedTrackerConfiguration.Port)
@@ -31,6 +34,7 @@ func StartTrackerTcpServer() {
 	// running in cluster mode.
 	if common.InitializedTrackerConfiguration.ParsedTrackers != nil &&
 		len(common.InitializedTrackerConfiguration.ParsedTrackers) > 0 {
+
 		servers := make([]*common.Server, len(common.InitializedTrackerConfiguration.ParsedTrackers))
 		for i := range common.InitializedTrackerConfiguration.ParsedTrackers {
 			servers[i] = &common.InitializedTrackerConfiguration.ParsedTrackers[i]
@@ -59,22 +63,28 @@ func trackerClientConnHandler(conn net.Conn) {
 		Conn: conn,
 	}
 	defer pip.Close()
+
 	authorized := false
+
 	var registeredInstance *common.Instance
 	defer func() {
 		if registeredInstance != nil {
 			reg.Free(registeredInstance.InstanceId)
 		}
 	}()
+
 	for {
 		err := pip.Receive(&common.Header{}, func(_header interface{},
 			bodyReader io.Reader, bodyLength int64) error {
+
 			if _header == nil {
 				return errors.New("invalid request: header is empty")
 			}
 			header := _header.(*common.Header)
 			bs, _ := json.Marshal(header)
+
 			logger.Debug("server got message:", string(bs))
+
 			if header.Operation == common.OPERATION_CONNECT {
 				h, ins, b, l, err := authenticationHandler(header, common.InitializedTrackerConfiguration.Secret)
 				registeredInstance = ins
@@ -89,6 +99,7 @@ func trackerClientConnHandler(conn net.Conn) {
 					return pip.Send(h, b, l)
 				}
 			}
+
 			if !authorized {
 				pip.Send(&common.Header{
 					Result: common.UNAUTHORIZED,
@@ -96,6 +107,7 @@ func trackerClientConnHandler(conn net.Conn) {
 				}, nil, 0)
 				return errors.New("unauthorized connection, force disconnection by server")
 			}
+
 			if header.Operation == common.OPERATION_SYNC_INSTANCES {
 				h, b, l, err := synchronizeInstancesHandler(header)
 				if err != nil {

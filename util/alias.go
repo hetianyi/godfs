@@ -47,10 +47,16 @@ func GenerateDecKey(secret string) {
 	aesEncDecKey = []byte(gox.Md5Sum(secret))
 }
 
-// CreateAlias create an alias name from file meta info.
+// CreateAlias create an 86 bytes long, self description alias name from file meta info.
+//
+// Alias name contains file's path, instanceId, private flag, timestamp and a random number,
+// these information combines with '|' and encrypt using AES.
+//
+// Alias name is a little bit long...
 func CreateAlias(fid string, instanceId string, isPrivate bool, ts time.Time) string {
 	tsBuff := make([]byte, 8)
 	bs := convert.Length2Bytes(ts.Unix(), tsBuff)
+
 	var buff bytes.Buffer
 	buff.WriteString(fid)
 	buff.WriteString("|")
@@ -61,6 +67,7 @@ func CreateAlias(fid string, instanceId string, isPrivate bool, ts time.Time) st
 	buff.WriteString(string(bs[4:]))
 	buff.WriteString("|")
 	buff.WriteString(FixZeros(CreateRandNumber(100), 3))
+
 	result, err := AesEncrypt(buff.Bytes(), aesEncDecKey)
 	if err != nil {
 		logger.Error("error while creating alias: ", err)

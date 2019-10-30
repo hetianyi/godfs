@@ -66,14 +66,17 @@ func initDataSet() error {
 	return nil
 }
 
+// Add adds fileId to dataset database.
 func Add(fileId string) error {
 	return dataset.Add([]byte(fileId))
 }
 
+// Add removes fileId from dataset database.
 func Remove(fileId string) (bool, error) {
 	return dataset.Remove([]byte(fileId))
 }
 
+// Contains checks if the fileId exists in dataset database.
 func Contains(fileId string) (bool, error) {
 	return dataset.Contains([]byte(fileId))
 }

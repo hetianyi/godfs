@@ -58,8 +58,8 @@ func init() {
 func StartStorageHttpServer(c *common.StorageConfig) {
 	r := mux.NewRouter()
 	r.HandleFunc("/up", httpUpload).Methods("POST")
-	r.HandleFunc("/upload", httpUpload).Methods("POST")
-	r.HandleFunc("/upload1", httpUpload1).Methods("POST")
+	r.HandleFunc("/upload", httpUpload1).Methods("POST")
+	r.HandleFunc("/upload1", httpUpload).Methods("POST")
 	r.HandleFunc("/dl", httpDownload).Methods("GET")
 	r.HandleFunc("/download", httpDownload).Methods("GET")
 
@@ -197,6 +197,13 @@ func httpUpload(w http.ResponseWriter, r *http.Request) {
 					fInfo.Size()-int64(len(tailRefCount)), common.InitializedStorageConfiguration.InstanceId, time.Now())); err != nil {
 					return errors.New("error writing binlog: " + err.Error())
 				}
+
+				logger.Debug("add dataset...")
+				if err := Add(finalFileId); err != nil {
+					return err
+				}
+				logger.Debug("add dataset success")
+
 				// append form entry.
 				formEntryIndex++
 				formEntries.PushBack(FormEntry{
@@ -245,6 +252,7 @@ func httpUpload(w http.ResponseWriter, r *http.Request) {
 	util.HttpWriteResponse(w, http.StatusOK, string(retJSON))
 }
 
+// httpUpload1 upload files using golang
 func httpUpload1(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 
@@ -273,6 +281,7 @@ func httpUpload1(w http.ResponseWriter, r *http.Request) {
 	if RegexContentTypePattern.Match([]byte(contentType)) {
 		boundary = RegexContentTypePattern.ReplaceAllString(contentType, "${1}")
 	}
+
 	reader := multipart.NewReader(r.Body, boundary)
 
 	var buffer = new(bytes.Buffer)
@@ -356,7 +365,9 @@ func httpUpload1(w http.ResponseWriter, r *http.Request) {
 		targetLoc := common.InitializedStorageConfiguration.DataDir + "/" + targetDir
 		targetFile := common.InitializedStorageConfiguration.DataDir + "/" + targetDir + "/" + md5String
 		finalFileId := common.InitializedStorageConfiguration.Group + "/" + targetDir + "/" + md5String
+
 		logger.Debug("create alias")
+
 		finalFileId = util.CreateAlias(finalFileId, common.InitializedStorageConfiguration.InstanceId, isPrivate, time.Now())
 
 		if !file.Exists(targetLoc) {
@@ -385,6 +396,7 @@ func httpUpload1(w http.ResponseWriter, r *http.Request) {
 				break
 			}
 		}
+
 		// write binlog.
 		logger.Debug("write binlog...")
 		if err = writableBinlogManager.Write(binlog.CreateLocalBinlog(finalFileId,
@@ -394,6 +406,16 @@ func httpUpload1(w http.ResponseWriter, r *http.Request) {
 			clean()
 			break
 		}
+
+		logger.Debug("add dataset...")
+		if err := Add(finalFileId); err != nil {
+			logger.Debug(err)
+			lastErr = err
+			clean()
+			break
+		}
+		logger.Debug("add dataset success")
+
 		// append form entry.
 		formEntryIndex++
 		formEntries.PushBack(FormEntry{

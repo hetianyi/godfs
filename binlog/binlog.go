@@ -30,6 +30,7 @@ var binlogMapManager *XBinlogMapManager
 
 type XBinlogManagerType byte
 
+// XBinlogManager is an interface for binlog manager.
 type XBinlogManager interface {
 
 	// GetType returns this manager type.
@@ -54,6 +55,7 @@ type XBinlogManager interface {
 	Read(fileIndex int, offset int64, fetchLine int) ([]common.BingLogDTO, int64, error)
 }
 
+// NewXBinlogManager creates a new binlog manager.
 func NewXBinlogManager(managerType XBinlogManagerType) XBinlogManager {
 	defer func() {
 		TryFixBinlogFile()
@@ -86,6 +88,7 @@ func NewXBinlogManager(managerType XBinlogManagerType) XBinlogManager {
 	return nil
 }
 
+// localBinlogManager is a binlog manager for storage server.
 type localBinlogManager struct {
 	writeLock         *sync.Mutex
 	currentBinLogFile *os.File // current binlog file
@@ -156,7 +159,9 @@ func (m *localBinlogManager) Read(fileIndex int, offset int64, fetchLine int) ([
 	if err := initialBinlogDir(binlogDir); err != nil {
 		return nil, offset, err
 	}
+
 	binLogFileName := getBinLogFileNameByIndex(binlogDir, fileIndex)
+
 	iInfo, err := os.Stat(binLogFileName)
 	if err != nil {
 		return nil, offset, err
@@ -164,18 +169,21 @@ func (m *localBinlogManager) Read(fileIndex int, offset int64, fetchLine int) ([
 	if iInfo.Size() <= offset {
 		return nil, offset, nil
 	}
+
 	f, err := file.GetFile(binLogFileName)
 	if err != nil {
 		return nil, offset, err
 	}
+
 	_, err = f.Seek(offset, 0)
 	if err != nil {
 		return nil, offset, err
 	}
+
 	bf := bufio.NewReader(f)
 	tmpContainer := list.New()
 	var forwardOffset int64 = 0
-	readedLines := 0
+	readLines := 0
 	for {
 		bs, err := bf.ReadBytes('\n')
 		if err == io.EOF {
@@ -199,9 +207,9 @@ func (m *localBinlogManager) Read(fileIndex int, offset int64, fetchLine int) ([
 			FileLength:     Copy8(bs[17:25]),
 			FileId:         bs[25:],
 		}
-		readedLines++
+		readLines++
 		tmpContainer.PushBack(bl)
-		if readedLines >= fetchLine {
+		if readLines >= fetchLine {
 			break
 		}
 	}

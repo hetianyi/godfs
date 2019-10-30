@@ -138,7 +138,9 @@ func storageClientConnHandler(conn net.Conn) {
 }
 
 func uploadFileHandler(header *common.Header, bodyReader io.Reader, bodyLength int64) (*common.Header, io.Reader, int64, error) {
-	logger.Debug("receiving file...")
+
+	logger.Debug("receive file")
+
 	tmpFileName := common.InitializedStorageConfiguration.TmpDir + "/" + uuid.UUID()
 	out, err := file.CreateFile(tmpFileName)
 	if err != nil {
@@ -162,7 +164,7 @@ func uploadFileHandler(header *common.Header, bodyReader io.Reader, bodyLength i
 		}
 	}
 
-	logger.Debug("coping file...")
+	logger.Debug("copy file")
 	_, err = io.Copy(proxy, io.LimitReader(bodyReader, bodyLength))
 	if err != nil {
 		return nil, nil, 0, err
@@ -175,21 +177,16 @@ func uploadFileHandler(header *common.Header, bodyReader io.Reader, bodyLength i
 		return nil, nil, 0, err
 	}
 	out.Close()
+
 	crc32String := util.GetCrc32HashString(proxy.crcH)
 	md5String := util.GetMd5HashString(proxy.md5H)
 
 	targetDir := strings.ToUpper(strings.Join([]string{crc32String[len(crc32String)-4 : len(crc32String)-2], "/",
 		crc32String[len(crc32String)-2:]}, ""))
-	// 文件放在crc结尾的目录，防止目恶意伪造md5文件进行覆盖
-	// 避免了暴露文件md5可能出现的风险：保证了在md5相等但是文件不同情况下文件出现的覆盖情况。
-	// 此时要求文件的交流必须携带完整的参数
 	targetLoc := common.InitializedStorageConfiguration.DataDir + "/" + targetDir
 	targetFile := common.InitializedStorageConfiguration.DataDir + "/" + targetDir + "/" + md5String
-	// md5 + crc end + ts + size + srcnode
-	// ts: for download
-	// ref: http://blog.chinaunix.net/uid-20196318-id-4058561.html
-	// another consideration is that the file may be duplicated。
 	finalFileId := common.InitializedStorageConfiguration.Group + "/" + targetDir + "/" + md5String
+
 	logger.Debug("create alias")
 	finalFileId = util.CreateAlias(finalFileId, common.InitializedStorageConfiguration.InstanceId, isPrivate, time.Now())
 	if !file.Exists(targetLoc) {
@@ -197,6 +194,7 @@ func uploadFileHandler(header *common.Header, bodyReader io.Reader, bodyLength i
 			return nil, nil, 0, err
 		}
 	}
+
 	if !file.Exists(targetFile) {
 		logger.Debug("file not exists, move to target dir.")
 		if err := file.MoveFile(tmpFileName, targetFile); err != nil {
@@ -209,19 +207,22 @@ func uploadFileHandler(header *common.Header, bodyReader io.Reader, bodyLength i
 			return nil, nil, 0, err
 		}
 	}
+
 	// write binlog.
 	logger.Debug("write binlog...")
 	if err = writableBinlogManager.Write(binlog.CreateLocalBinlog(finalFileId,
 		bodyLength, common.InitializedStorageConfiguration.InstanceId, time.Now())); err != nil {
 		return nil, nil, 0, errors.New("error writing binlog: " + err.Error())
 	}
+
 	logger.Debug("add dataset...")
 	if err := Add(finalFileId); err != nil {
 		return nil, nil, 0, errors.New("error writing dataset: " + err.Error())
 	}
 	logger.Debug("add dataset success")
 
-	logger.Debug("done!!!")
+	logger.Debug("upload success")
+
 	return &common.Header{
 		Result: common.SUCCESS,
 		Attributes: map[string]string{

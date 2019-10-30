@@ -105,6 +105,7 @@ func DefaultAdvertiseAddress() {
 	gox.GetMyAddress("")
 }
 
+// ParseServers parses server infos from a string.
 func ParseServers(servers string) ([]*common.Server, error) {
 	var registeredServers []*common.Server
 	// parse tracker servers
