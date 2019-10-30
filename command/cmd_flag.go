@@ -316,10 +316,10 @@ Usage: godfs client upload <file1> <file2> ...`)
 							Usage:       "upload files to specific group",
 							Destination: &uploadGroup,
 						},
-						cli.BoolTFlag{
-							Name:        "private, p",
-							Usage:       "mark as private files",
-							Destination: &privateUpload,
+						cli.BoolFlag{
+							Name:        "public, p",
+							Usage:       "mark as public files",
+							Destination: &publicUpload,
 						},
 						cli.StringFlag{
 							Name:        "config, c",
@@ -532,10 +532,10 @@ Usage: godfs client token <fid1> <fid2> ...`)
 							Usage:       "upload files to specific group",
 							Destination: &uploadGroup,
 						},
-						cli.BoolTFlag{
-							Name:        "private, p",
-							Usage:       "mark as private files",
-							Destination: &privateUpload,
+						cli.BoolFlag{
+							Name:        "public, p",
+							Usage:       "mark as public files",
+							Destination: &publicUpload,
 						},
 						cli.IntFlag{
 							Name:        "scale",

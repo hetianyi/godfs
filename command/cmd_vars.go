@@ -10,7 +10,7 @@ import (
 
 // var sets
 var (
-	privateUpload          bool      // upload private file
+	publicUpload           bool      // upload private file
 	defaultAccessMode      string    // default access mode of the uploaded files
 	testScale              int       // test scale
 	testThread             int       // test thread
@@ -154,7 +154,7 @@ func ConfigAssembly(bm common.BootMode) interface{} {
 		if tokenFormat != "url" && tokenFormat != "json" {
 			tokenFormat = "url"
 		}
-		c.PrivateUpload = privateUpload
+		c.PrivateUpload = !publicUpload
 		common.InitializedClientConfiguration = c
 		return c
 	}

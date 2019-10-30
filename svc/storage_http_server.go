@@ -490,6 +490,13 @@ func httpDownload(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// query and determine if the file exists.
+	if c, err := Contains(fid); !c || err != nil {
+		logger.Debug("error query fileId: ", c, "<->", err)
+		util.HttpFileNotFoundError(w)
+		return
+	}
+
 	info, curSecret, err := util.ParseAlias(fid, common.InitializedStorageConfiguration.Secret)
 	if err != nil {
 		logger.Debug("error parse alias: ", err)
