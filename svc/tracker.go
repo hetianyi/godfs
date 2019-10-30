@@ -22,6 +22,9 @@ func BootTrackerServer() {
 		logger.Debug("\n", string(cbs))
 	}
 
+	// initialize dataset.
+	initDataSet()
+
 	util.PrintLogo()
 
 	if common.InitializedTrackerConfiguration.EnableHttp {

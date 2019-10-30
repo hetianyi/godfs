@@ -27,6 +27,9 @@ func BootStorageServer() {
 		logger.Debug("\n", string(cbs))
 	}
 
+	// initialize dataset.
+	initDataSet()
+
 	util.PrintLogo()
 
 	writableBinlogManager = binlog.NewXBinlogManager(binlog.LOCAL_BINLOG_MANAGER)

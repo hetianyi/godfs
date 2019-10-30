@@ -215,6 +215,12 @@ func uploadFileHandler(header *common.Header, bodyReader io.Reader, bodyLength i
 		bodyLength, common.InitializedStorageConfiguration.InstanceId, time.Now())); err != nil {
 		return nil, nil, 0, errors.New("error writing binlog: " + err.Error())
 	}
+	logger.Debug("add dataset...")
+	if err := Add(finalFileId); err != nil {
+		return nil, nil, 0, errors.New("error writing dataset: " + err.Error())
+	}
+	logger.Debug("add dataset success")
+
 	logger.Debug("done!!!")
 	return &common.Header{
 		Result: common.SUCCESS,

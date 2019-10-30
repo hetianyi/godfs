@@ -157,12 +157,23 @@ func pushStorageBinLogHandler(header *common.Header, clientId string) (*common.H
 		}, nil, 0, nil
 	}
 
-	configMap := common.GetConfigMap()
+	/*configMap := common.GetConfigMap()
 	if err := configMap.PutFile(ret); err != nil {
 		return &common.Header{
 			Result: common.ERROR,
 			Msg:    err.Error(),
 		}, nil, 0, nil
+	}*/
+
+	if len(ret) > 0 {
+		for _, f := range ret {
+			if err := Add(f.FileId); err != nil {
+				return &common.Header{
+					Result: common.ERROR,
+					Msg:    err.Error(),
+				}, nil, 0, nil
+			}
+		}
 	}
 
 	logger.Debug("binlog write success: ", len(ret))

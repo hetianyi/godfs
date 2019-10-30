@@ -138,9 +138,10 @@ func (m *localBinlogManager) Write(bin *common.BingLog) error {
 		return err
 	}
 	// sync data.
-	if err := m.currentBinLogFile.Sync(); err != nil {
+	// fuck off!
+	/*if err := m.currentBinLogFile.Sync(); err != nil {
 		return err
-	}
+	}*/
 	m.binlogSize += 1
 	// write binlog record size.
 	if err := binlogMapManager.SetRecords(m.currentIndex, m.binlogSize); err != nil {
@@ -191,13 +192,12 @@ func (m *localBinlogManager) Read(fileIndex int, offset int64, fetchLine int) ([
 		if err != nil {
 			return nil, offset, err
 		}
-		bs = bs[0 : len(bs)-1]
 		bl := common.BingLog{
 			DownloadFinish: bs[0],
 			SourceInstance: Copy8(bs[1:9]),
-			Timestamp:      Copy8(bs[10:18]),
-			FileLength:     Copy8(bs[19:27]),
-			FileId:         bs[27:],
+			Timestamp:      Copy8(bs[9:17]),
+			FileLength:     Copy8(bs[17:25]),
+			FileId:         bs[25:],
 		}
 		readedLines++
 		tmpContainer.PushBack(bl)

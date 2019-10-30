@@ -63,6 +63,8 @@ const (
 	//
 	REGISTER_INTERVAL    = time.Second * 30
 	SYNCHRONIZE_INTERVAL = time.Second * 45
+
+	FILE_ID_SIZE = 86
 )
 
 var (
