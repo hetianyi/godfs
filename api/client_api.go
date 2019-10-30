@@ -604,6 +604,7 @@ func (c *clientAPIImpl) selectStorageServer(group string, exclude *list.List) *c
 		return false
 	})
 	if selectedStorage != nil {
+		c.weights[selectedStorage.InstanceId] = c.weights[selectedStorage.InstanceId] + 1
 		logger.Debug("selected storage server: ", selectedStorage.ConnectionString())
 	}
 	return selectedStorage
