@@ -120,6 +120,12 @@ func storageClientConnHandler(conn net.Conn) {
 					return err
 				}
 				return pip.Send(h, b, l)
+			} else if header.Operation == common.OPERATION_SYNC_BINLOGS {
+				h, b, l, err := syncBinlogHandler(header)
+				if err != nil {
+					return err
+				}
+				return pip.Send(h, b, l)
 			}
 			return pip.Send(&common.Header{
 				Result: common.UNKNOWN_OPERATION,
@@ -330,6 +336,77 @@ func inspectFileHandler(header *common.Header) (*common.Header, io.Reader, int64
 	return &common.Header{
 		Result:     common.SUCCESS,
 		Attributes: map[string]string{"info": string(bs)},
+	}, nil, 0, nil
+}
+
+func syncBinlogHandler(header *common.Header) (*common.Header, io.Reader, int64, error) {
+	if header.Attributes == nil {
+		return &common.Header{
+			Result: common.ERROR,
+			Msg:    "invalid header(0)",
+		}, nil, 0, nil
+	}
+
+	// parse fileId
+	clientState := header.Attributes["clientState"]
+	if clientState == "" {
+		return &common.Header{
+			Result: common.ERROR,
+			Msg:    "invalid header(1)",
+		}, nil, 0, nil
+	}
+
+	bq := &common.BinlogQueryDTO{}
+	if err := json.UnmarshalFromString(clientState, bq); err != nil {
+		return &common.Header{
+			Result: common.ERROR,
+			Msg:    "invalid header(2)",
+		}, nil, 0, nil
+	}
+	if bq.FileIndex < 0 || bq.Offset < 0 {
+		return &common.Header{
+			Result: common.ERROR,
+			Msg:    "invalid header(3)",
+		}, nil, 0, nil
+	}
+
+	bls, nOffset, err := writableBinlogManager.Read(bq.FileIndex, bq.Offset, 10)
+	if err != nil {
+		return &common.Header{
+			Result: common.ERROR,
+			Msg:    "error query binlog: " + err.Error(),
+		}, nil, 0, nil
+	}
+
+	result := &common.BinlogQueryResultDTO{}
+	result.Logs = bls
+	result.FileIndex = bq.FileIndex
+	result.Offset = nOffset
+
+	if bq.FileIndex == writableBinlogManager.GetCurrentIndex() && bq.Offset == nOffset {
+		result.Offset = bq.Offset
+		result.FileIndex = bq.FileIndex
+	}
+
+	if writableBinlogManager.GetCurrentIndex() > bq.FileIndex &&
+		(bls == nil || len(bls) == 0) {
+		result.FileIndex = bq.FileIndex + 1
+		result.Offset = 0
+	}
+
+	jr, err := json.MarshalToString(result)
+	if err != nil {
+		return &common.Header{
+			Result: common.ERROR,
+			Msg:    err.Error(),
+		}, nil, 0, nil
+	}
+
+	return &common.Header{
+		Result: common.SUCCESS,
+		Attributes: map[string]string{
+			"result": jr,
+		},
 	}, nil, 0, nil
 }
 

@@ -34,6 +34,7 @@ const (
 	OPERATION_QUERY          Operation = 4
 	OPERATION_SYNC_INSTANCES Operation = 5
 	OPERATION_PUSH_BINLOGS   Operation = 6
+	OPERATION_SYNC_BINLOGS   Operation = 7
 	//
 	SUCCESS           OperationResult = 0
 	ERROR             OperationResult = 1

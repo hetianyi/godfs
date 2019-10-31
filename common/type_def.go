@@ -163,10 +163,16 @@ type FileId struct {
 	Timestamp  time.Time
 }
 
-// BinlogQueryDTO is a binlog query entity between storage servers.
+// BinlogQueryDTO is the binlog query entity between storage servers.
 type BinlogQueryDTO struct {
 	FileIndex int   `json:"fileIndex"`
 	Offset    int64 `json:"offset"`
+}
+
+// BinlogQueryResultDTO is the binlog query result entity between storage servers.
+type BinlogQueryResultDTO struct {
+	BinlogQueryDTO
+	Logs []BingLogDTO `json:"logs"`
 }
 
 type ConfigMap struct {

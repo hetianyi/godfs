@@ -26,8 +26,8 @@ func Init() {
 			{
 				Server: common.Server{
 					Host:       "127.0.0.1",
-					Port:       3456,
-					Secret:     "kasd3123",
+					Port:       8081,
+					Secret:     "123456",
 					InstanceId: "123",
 				},
 				Group: "G1",
@@ -39,7 +39,7 @@ func Init() {
 func uploadFile() {
 	fi, _ := file.GetFile("D:/tmp/js.zip")
 	info, _ := fi.Stat()
-	ret, err := client.Upload(fi, info.Size(), "")
+	ret, err := client.Upload(fi, info.Size(), "", false)
 	if err != nil {
 		logger.Fatal(err)
 	}
@@ -107,4 +107,24 @@ func TestDownload2(t *testing.T) {
 	} else {
 		logger.Info("download file success!")
 	}
+}
+
+func TestSyncBinlogs(t *testing.T) {
+	Init()
+
+	ret, err := client.SyncBinlog(&common.Server{
+		Host:       "127.0.0.1",
+		Port:       8081,
+		Secret:     "123456",
+		InstanceId: "123",
+	}, &common.BinlogQueryDTO{
+		FileIndex: 0,
+		Offset:    0,
+	})
+
+	if err != nil {
+		logger.Fatal(err)
+	}
+	bs, _ := json.MarshalIndent(ret, "", "    ")
+	fmt.Println(string(bs))
 }

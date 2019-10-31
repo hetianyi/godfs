@@ -51,7 +51,7 @@ func InitTrackerTest() {
 func uploadFile1() {
 	fi, _ := file.GetFile("D:/tmp/123.json")
 	info, _ := fi.Stat()
-	ret, err := client1.Upload(fi, info.Size(), "")
+	ret, err := client1.Upload(fi, info.Size(), "", false)
 	if err != nil {
 		logger.Fatal(err)
 	}

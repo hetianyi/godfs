@@ -61,6 +61,9 @@ type ClientAPI interface {
 
 	// PushBinlog pushes binlog to tracker server.
 	PushBinlog(server *common.Server, binlogs []common.BingLogDTO) error
+
+	// SyncBinlog synchronizes binlogs from other storage servers.
+	SyncBinlog(server *common.Server, clientState *common.BinlogQueryDTO) (*common.BinlogQueryResultDTO, error)
 }
 
 // NewClient creates a new APIClient.
@@ -446,6 +449,7 @@ func (c *clientAPIImpl) SyncInstances(server *common.Server) (map[string]*common
 
 func (c *clientAPIImpl) PushBinlog(server *common.Server, binlogs []common.BingLogDTO) error {
 	logger.Debug("pushing binlog: ", len(binlogs))
+
 	connection, authenticated, err := conn.GetConnection(server)
 	if err != nil {
 		return err
@@ -487,6 +491,59 @@ func (c *clientAPIImpl) PushBinlog(server *common.Server, binlogs []common.BingL
 	}
 	conn.ReturnConnection(server, connection, authenticated, false)
 	return nil
+}
+
+func (c *clientAPIImpl) SyncBinlog(server *common.Server, clientState *common.BinlogQueryDTO) (*common.BinlogQueryResultDTO, error) {
+	logger.Debug("synchronize binlog")
+	connection, authenticated, err := conn.GetConnection(server)
+	if err != nil {
+		return nil, err
+	}
+	pip := &gpip.Pip{
+		Conn: *connection,
+	}
+	if authenticated == nil || !authenticated.(bool) {
+		if err = authenticate(pip, server); err != nil {
+			return nil, err
+		}
+		logger.Debug("authentication success with server ", server.ConnectionString())
+	}
+	authenticated = true
+
+	data, err := json.MarshalToString(clientState)
+	if err != nil {
+		return nil, err
+	}
+	// send file body
+	err = pip.Send(&common.Header{
+		Operation: common.OPERATION_SYNC_BINLOGS,
+		Attributes: map[string]string{
+			"clientState": data,
+		},
+	}, nil, 0)
+	if err != nil {
+		return nil, err
+	}
+
+	blr := &common.BinlogQueryResultDTO{}
+
+	// receive response
+	err = pip.Receive(&common.Header{}, func(_header interface{}, bodyReader io.Reader, bodyLength int64) error {
+		header := _header.(*common.Header)
+		if header != nil {
+			if header.Result == common.SUCCESS {
+				ret := header.Attributes["result"]
+				if err := json.UnmarshalFromString(ret, blr); err != nil {
+					return err
+				}
+				return nil
+			}
+			return errors.New("push failed: " + header.Msg)
+		}
+		return errors.New("push failed: got empty response from server")
+	})
+	defer conn.ReturnConnection(server, connection, authenticated, false)
+	return blr, err
 }
 
 // authenticate authenticates with server.
