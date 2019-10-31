@@ -1,6 +1,7 @@
 package binlog_test
 
 import (
+	"encoding/base64"
 	"fmt"
 	"github.com/hetianyi/godfs/util"
 	"github.com/hetianyi/gox"
@@ -31,4 +32,10 @@ func TestFixZeros(t *testing.T) {
 	fmt.Println(util.FixZeros(1, 3))
 	fmt.Println(util.FixZeros(11, 3))
 	fmt.Println(util.FixZeros(111, 3))
+	// ATlkODc1YzgwAAAAAF25TYwAAAAAAAAABGtCVTJhN294cWRyRl9jMnB0OWJ6ZEtWRE1hQXpMUjdIaWdLcU4xWnktUFYyYkJVYk40akliRFhOVW5TbmF5akYzWk13U1VfTHNJbEJLTFl3TUxVYklB
+	bs, err := base64.RawURLEncoding.DecodeString("ATlkODc1YzgwAAAAAF25TYwAAAAAAAAABGtCVTJhN294cWRyRl9jMnB0OWJ6ZEtWRE1hQXpMUjdIaWdLcU4xWnktUFYyYkJVYk40akliRFhOVW5TbmF5akYzWk13U1VfTHNJbEJLTFl3TUxVYklB")
+
+	fmt.Println(err)
+	fmt.Println(err)
+	fmt.Println(string(bs))
 }

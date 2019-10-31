@@ -155,13 +155,16 @@ func (m *localBinlogManager) Write(bin *common.BingLog) error {
 }
 
 func (m *localBinlogManager) Read(fileIndex int, offset int64, fetchLine int) ([]common.BingLogDTO, int64, error) {
+	// prepare binlog dir if it not exists.
 	binlogDir := getBinlogDir()
 	if err := initialBinlogDir(binlogDir); err != nil {
 		return nil, offset, err
 	}
 
+	// get binlog filename.
 	binLogFileName := getBinLogFileNameByIndex(binlogDir, fileIndex)
 
+	// compare file size.
 	iInfo, err := os.Stat(binLogFileName)
 	if err != nil {
 		return nil, offset, err
@@ -170,11 +173,13 @@ func (m *localBinlogManager) Read(fileIndex int, offset int64, fetchLine int) ([
 		return nil, offset, nil
 	}
 
+	// get binlog file.
 	f, err := file.GetFile(binLogFileName)
 	if err != nil {
 		return nil, offset, err
 	}
 
+	// move to target offset.
 	_, err = f.Seek(offset, 0)
 	if err != nil {
 		return nil, offset, err
@@ -184,21 +189,31 @@ func (m *localBinlogManager) Read(fileIndex int, offset int64, fetchLine int) ([
 	tmpContainer := list.New()
 	var forwardOffset int64 = 0
 	readLines := 0
+
 	for {
 		bs, err := bf.ReadBytes('\n')
 		if err == io.EOF {
 			break
 		}
+		// to the end of the file.
 		if err != nil {
 			return nil, offset, err
 		}
+
 		forwardOffset += int64(len(bs))
+		// invalid binlog size, skip.
 		if bs == nil || len(bs) < 2 {
 			continue
 		}
+		// restore binlog from
 		bs, err = base64.RawURLEncoding.DecodeString(string(bs))
 		if err != nil {
 			return nil, offset, err
+		}
+
+		// invalid binlog size, skip.
+		if len(bs) != 111 {
+			continue
 		}
 		bl := common.BingLog{
 			DownloadFinish: bs[0],
@@ -207,14 +222,18 @@ func (m *localBinlogManager) Read(fileIndex int, offset int64, fetchLine int) ([
 			FileLength:     Copy8(bs[17:25]),
 			FileId:         bs[25:],
 		}
+
 		readLines++
 		tmpContainer.PushBack(bl)
+
 		if readLines >= fetchLine {
 			break
 		}
 	}
+
 	ret := make([]common.BingLogDTO, tmpContainer.Len())
 	i := 0
+
 	gox.WalkList(tmpContainer, func(item interface{}) bool {
 		sit := item.(common.BingLog)
 		ret[i] = common.BingLogDTO{

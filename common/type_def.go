@@ -163,6 +163,12 @@ type FileId struct {
 	Timestamp  time.Time
 }
 
+// BinlogQueryDTO is a binlog query entity between storage servers.
+type BinlogQueryDTO struct {
+	FileIndex int   `json:"fileIndex"`
+	Offset    int64 `json:"offset"`
+}
+
 type ConfigMap struct {
 	db *bolt.DB
 }
