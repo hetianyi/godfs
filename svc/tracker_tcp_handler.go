@@ -179,6 +179,19 @@ func pushStorageBinLogHandler(header *common.Header, clientId string) (*common.H
 
 	if len(ret) > 0 {
 		for _, f := range ret {
+			c, err := Contains(f.FileId)
+			if err != nil {
+				return &common.Header{
+					Result: common.ERROR,
+					Msg:    err.Error(),
+				}, nil, 0, nil
+			}
+			if c {
+				logger.Debug("fileId already exists: ", f.FileId)
+				return &common.Header{
+					Result: common.SUCCESS,
+				}, nil, 0, nil
+			}
 			if err := Add(f.FileId); err != nil {
 				return &common.Header{
 					Result: common.ERROR,

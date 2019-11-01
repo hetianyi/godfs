@@ -38,5 +38,8 @@ func BootStorageServer() {
 	if common.InitializedStorageConfiguration.EnableHttp {
 		StartStorageHttpServer(common.InitializedStorageConfiguration)
 	}
+	// start member binlog synchronizer.
+	InitStorageMemberBinlogWatcher()
+	// start tcp server.
 	StartStorageTcpServer()
 }

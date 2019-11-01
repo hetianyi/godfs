@@ -192,9 +192,9 @@ func httpUpload(w http.ResponseWriter, r *http.Request) {
 					}
 				}
 				// write binlog.
-				logger.Debug("write binlog...")
+				logger.Debug("writing binlog...")
 				if err = writableBinlogManager.Write(binlog.CreateLocalBinlog(finalFileId,
-					fInfo.Size()-int64(len(tailRefCount)), common.InitializedStorageConfiguration.InstanceId, time.Now())); err != nil {
+					fInfo.Size()-int64(len(tailRefCount)), common.InitializedStorageConfiguration.InstanceId, time.Now(), 1)); err != nil {
 					return errors.New("error writing binlog: " + err.Error())
 				}
 
@@ -400,7 +400,7 @@ func httpUpload1(w http.ResponseWriter, r *http.Request) {
 		// write binlog.
 		logger.Debug("write binlog...")
 		if err = writableBinlogManager.Write(binlog.CreateLocalBinlog(finalFileId,
-			n, common.InitializedStorageConfiguration.InstanceId, time.Now())); err != nil {
+			n, common.InitializedStorageConfiguration.InstanceId, time.Now(), 1)); err != nil {
 			lastErr = errors.New("error writing binlog: " + err.Error())
 			logger.Debug(lastErr)
 			clean()

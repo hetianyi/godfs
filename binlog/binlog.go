@@ -349,7 +349,7 @@ func getBinLogFileNameByIndex(binlogDir string, i int) string {
 }
 
 // CreateLocalBinlog builds an Binlog.
-func CreateLocalBinlog(fileId string, fileLength int64, instanceId string, tm time.Time) *common.BingLog {
+func CreateLocalBinlog(fileId string, fileLength int64, instanceId string, tm time.Time, downloadFinish byte) *common.BingLog {
 	buffer8 := make([]byte, 8)
 	// file length
 	convert.Length2Bytes(fileLength, buffer8)
@@ -366,7 +366,7 @@ func CreateLocalBinlog(fileId string, fileLength int64, instanceId string, tm ti
 		SourceInstance: ins,
 		FileLength:     flen,
 		Timestamp:      ts,
-		DownloadFinish: 1,
+		DownloadFinish: downloadFinish,
 	}
 }
 

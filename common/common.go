@@ -58,6 +58,7 @@ const (
 	ROLE_STORAGE Role = 2
 	ROLE_PROXY   Role = 3
 	ROLE_CLIENT  Role = 4
+	ROLE_ANY     Role = 5
 	//
 	REGISTER_HOLD RegisterState = 1
 	REGISTER_FREE RegisterState = 2

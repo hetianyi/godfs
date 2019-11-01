@@ -49,7 +49,11 @@ type ClientAPI interface {
 	// Return error can be common.NoStorageServerErr if there is no server available
 	//
 	// or common.NotFoundErr if the file cannot be found on the servers.
-	Download(fileId string, offset int64, length int64, handler func(body io.Reader, bodyLength int64) error) error
+	Download(fileId string, offset int64, length int64,
+		handler func(body io.Reader, bodyLength int64) error) error
+
+	DownloadFrom(fileId string, offset int64, length int64, server *common.Server,
+		handler func(body io.Reader, bodyLength int64) error) error
 
 	// Query queries file's information by fileId.
 	//
@@ -203,8 +207,16 @@ func (c *clientAPIImpl) Upload(src io.Reader, length int64, group string, isPriv
 	return ret, lastErr
 }
 
-func (c *clientAPIImpl) Download(fileId string, offset int64, length int64, handler func(body io.Reader, bodyLength int64) error) error {
+func (c *clientAPIImpl) Download(fileId string, offset int64, length int64,
+	handler func(body io.Reader, bodyLength int64) error) error {
+	return c.DownloadFrom(fileId, offset, length, nil, handler)
+}
+
+func (c *clientAPIImpl) DownloadFrom(fileId string, offset int64, length int64, server *common.Server,
+	handler func(body io.Reader, bodyLength int64) error) error {
+
 	logger.Debug("begin to download file")
+
 	var exclude = list.New()                  // excluded storage list
 	var selectedStorage *common.StorageServer // target server for file uploading.
 	var lastErr error
@@ -216,7 +228,16 @@ func (c *clientAPIImpl) Download(fileId string, offset int64, length int64, hand
 	}
 	gox.Try(func() {
 		for {
-			selectedStorage = c.selectStorageServer(fileInfo.Group, exclude)
+			if server != nil && lastErr != nil {
+				break
+			}
+			if server != nil {
+				selectedStorage = &common.StorageServer{
+					Server: *server,
+				}
+			} else {
+				selectedStorage = c.selectStorageServer(fileInfo.Group, exclude)
+			}
 			if selectedStorage == nil {
 				if lastErr == nil {
 					lastErr = NoStorageServerErr
@@ -495,6 +516,7 @@ func (c *clientAPIImpl) PushBinlog(server *common.Server, binlogs []common.BingL
 
 func (c *clientAPIImpl) SyncBinlog(server *common.Server, clientState *common.BinlogQueryDTO) (*common.BinlogQueryResultDTO, error) {
 	logger.Debug("synchronize binlog")
+
 	connection, authenticated, err := conn.GetConnection(server)
 	if err != nil {
 		return nil, err

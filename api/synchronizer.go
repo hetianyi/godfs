@@ -44,6 +44,7 @@ func tracks(clientAPI ClientAPI, server *common.Server, synchronizeOnce bool, c 
 		} else {
 			syncLock.Lock()
 			defer syncLock.Unlock()
+
 			if ret != nil && len(ret) > 0 {
 				now := time.Now()
 				for k, v := range ret {
@@ -74,13 +75,26 @@ func tracks(clientAPI ClientAPI, server *common.Server, synchronizeOnce bool, c 
 func FilterInstances(role common.Role) *list.List {
 	syncLock.Lock()
 	defer syncLock.Unlock()
+
 	ret := list.New()
 	for _, v := range syncInstances {
-		if v.instance.Role == role {
+		if role == common.ROLE_ANY || v.instance.Role == role {
 			ret.PushBack(v.instance)
 		}
 	}
 	return ret
+}
+
+func FilterInstanceByInstanceId(instanceId string) *common.Instance {
+	syncLock.Lock()
+	defer syncLock.Unlock()
+
+	for _, v := range syncInstances {
+		if v.instance.InstanceId == instanceId {
+			return v.instance
+		}
+	}
+	return nil
 }
 
 func expireDetection() {
@@ -88,6 +102,7 @@ func expireDetection() {
 	timer.Start(0, 0, common.SYNCHRONIZE_INTERVAL, func(t *timer.Timer) {
 		syncLock.Lock()
 		defer syncLock.Unlock()
+
 		for k, v := range syncInstances {
 			if v.expired() {
 				logger.Debug("instance expired: ", v.instance.ConnectionString())

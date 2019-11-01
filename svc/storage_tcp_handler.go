@@ -217,7 +217,7 @@ func uploadFileHandler(header *common.Header, bodyReader io.Reader, bodyLength i
 	// write binlog.
 	logger.Debug("write binlog...")
 	if err = writableBinlogManager.Write(binlog.CreateLocalBinlog(finalFileId,
-		bodyLength, common.InitializedStorageConfiguration.InstanceId, time.Now())); err != nil {
+		bodyLength, common.InitializedStorageConfiguration.InstanceId, time.Now(), 1)); err != nil {
 		return nil, nil, 0, errors.New("error writing binlog: " + err.Error())
 	}
 
@@ -339,6 +339,7 @@ func inspectFileHandler(header *common.Header) (*common.Header, io.Reader, int64
 	}, nil, 0, nil
 }
 
+// syncBinlogHandler gets local binlogs for other storage server.
 func syncBinlogHandler(header *common.Header) (*common.Header, io.Reader, int64, error) {
 	if header.Attributes == nil {
 		return &common.Header{
