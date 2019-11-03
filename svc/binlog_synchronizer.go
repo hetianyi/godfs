@@ -32,6 +32,7 @@ func init() {
 	configChangeLock = new(sync.Mutex)
 }
 
+// TODO BUG
 func updateConfigChangeState(changed bool) {
 	configChangeLock.Lock()
 	defer configChangeLock.Unlock()
@@ -84,7 +85,8 @@ func InitStorageMemberBinlogWatcher() {
 
 		config := common.GetConfigMap()
 
-		err := config.BatchUpdateConfig(func(b *bolt.Bucket) error {
+		err := config.BatchUpdate(func(tx *bolt.Tx) error {
+			b := tx.Bucket([]byte(common.BUCKET_KEY_CONFIGMAP))
 			for k, v := range synchronizationState {
 				bs, err := json.Marshal(v)
 				if err != nil {
@@ -107,26 +109,18 @@ func InitStorageMemberBinlogWatcher() {
 		updateConfigChangeState(false)
 	})
 
-	// timer task: check storage server instances
+	// timer task: check and watch storage server instances
 	timer.Start(time.Second*5, common.SYNCHRONIZE_INTERVAL, 0, func(t *timer.Timer) {
-		ss := api.FilterInstances(common.ROLE_STORAGE)
+		ss := filterGroupMembers(api.FilterInstances(common.ROLE_STORAGE), common.InitializedStorageConfiguration.Group)
 		if ss == nil || ss.Len() == 0 {
 			return
 		}
 
-		sameGroupInstances := list.New()
 		expiredInstances := list.New()
-		// filter group
-		for ele := ss.Front(); ele != nil; ele = ele.Next() {
-			if ele.Value.(*common.Instance).Attributes["group"] == common.InitializedStorageConfiguration.Group &&
-				ele.Value.(*common.Instance).InstanceId != common.InitializedStorageConfiguration.InstanceId {
-				sameGroupInstances.PushBack(ele.Value)
-			}
-		}
 
 		for k, v := range watchingMembers {
 			c := false
-			gox.WalkList(sameGroupInstances, func(item interface{}) bool {
+			gox.WalkList(ss, func(item interface{}) bool {
 				if item.(*common.Instance).InstanceId == k {
 					c = true
 					return true
@@ -141,7 +135,7 @@ func InitStorageMemberBinlogWatcher() {
 			unWatch(item.(*common.Server))
 			return false
 		})
-		gox.WalkList(sameGroupInstances, func(item interface{}) bool {
+		gox.WalkList(ss, func(item interface{}) bool {
 			watch(&item.(*common.Instance).Server)
 			return false
 		})

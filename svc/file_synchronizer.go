@@ -2,7 +2,9 @@ package svc
 
 import (
 	"container/list"
+	"encoding/json"
 	"errors"
+	"github.com/boltdb/bolt"
 	"github.com/hetianyi/godfs/api"
 	"github.com/hetianyi/godfs/common"
 	"github.com/hetianyi/godfs/util"
@@ -16,7 +18,11 @@ import (
 	"time"
 )
 
-var ()
+var (
+	downloadBinlogPosKey = []byte("downloadBinlogPos")
+	downloadBinlogPos    = 0
+	fetchSize            = 50
+)
 
 func init() {
 
@@ -24,9 +30,70 @@ func init() {
 
 func InitFileSynchronization() {
 	timer.Start(time.Second*5, time.Second*5, 0, func(t *timer.Timer) {
-		//config := common.GetConfigMap()
-		// TODO add new bucket for failed files.
+		config := common.GetConfigMap()
+		for true {
+			// filter group members.
+			ins := filterGroupMembers(api.FilterInstances(common.ROLE_STORAGE), common.InitializedStorageConfiguration.Group)
+			if ins.Len() == 0 {
+				logger.Debug("no group member available")
+				break
+			}
+
+			// get current binlog read position
+			bs, err := config.GetConfig(string(downloadBinlogPosKey))
+			if err != nil {
+				logger.Debug(err)
+				break
+			}
+
+			ret := &common.BinlogQueryDTO{}
+			if err := json.Unmarshal(bs, ret); err != nil {
+				logger.Debug(err)
+				break
+			}
+			old := *ret
+
+			bls, nOffset, err := writableBinlogManager.Read(ret.FileIndex, ret.Offset, 50)
+			if err != nil {
+				logger.Debug(err)
+				break
+			}
+			ret.Offset = nOffset
+
+			if writableBinlogManager.GetCurrentIndex() > ret.FileIndex &&
+				(bls == nil || len(bls) == 0) {
+				ret.FileIndex = ret.FileIndex + 1
+				ret.Offset = 0
+			}
+
+			// save config
+			// download files
+			syncFiles(ret, &old, bls)
+			// remove config
+			//
+
+		}
 	})
+}
+
+func syncFiles(c *common.BinlogQueryDTO, o *common.BinlogQueryDTO, bls []common.BingLogDTO) {
+	if len(bls) > 0 {
+		return
+	}
+
+	logger.Debug("load ", len(bls), " binlogs")
+
+	failed := 0
+	for _, v := range bls {
+		if err := syncFile(&v, nil); err != nil {
+			failed++
+		}
+	}
+
+	// save binlog position and fail position.
+	if err := saveDownloadStateConfig(c, o, failed); err != nil {
+		logger.Debug(err)
+	}
 }
 
 func syncFile(binlog *common.BingLogDTO, server *common.Server) error {
@@ -73,6 +140,8 @@ func syncFile(binlog *common.BingLogDTO, server *common.Server) error {
 			if s.InstanceId == binlog.SourceInstance {
 				continue
 			}
+
+			server = &s.Server
 
 			logger.Debug("trying to download from ",
 				server.ConnectionString(), "(", server.InstanceId, ")")
@@ -164,4 +233,31 @@ func filterGroupMembers(members *list.List, group string) *list.List {
 		return false
 	})
 	return ret
+}
+
+func saveDownloadStateConfig(n *common.BinlogQueryDTO, o *common.BinlogQueryDTO, failed int) error {
+	bs1, err := json.Marshal(n)
+	if err != nil {
+		return nil
+	}
+	bs2, err := json.Marshal(o)
+	if err != nil {
+		return nil
+	}
+	config := common.GetConfigMap()
+	return config.BatchUpdate(func(tx *bolt.Tx) error {
+		b1 := tx.Bucket([]byte(common.BUCKET_KEY_CONFIGMAP))
+		err := b1.Put(downloadBinlogPosKey, bs1)
+		if err != nil {
+			return err
+		}
+		if failed > 0 {
+			b2 := tx.Bucket([]byte(common.BUCKET_KEY_FAILED_BINLOG_POS))
+			err = b2.Put(bs2, nil)
+			if err != nil {
+				return err
+			}
+		}
+		return nil
+	})
 }

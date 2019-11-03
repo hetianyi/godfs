@@ -371,7 +371,7 @@ func syncBinlogHandler(header *common.Header) (*common.Header, io.Reader, int64,
 		}, nil, 0, nil
 	}
 
-	bls, nOffset, err := writableBinlogManager.Read(bq.FileIndex, bq.Offset, 10)
+	bls, nOffset, err := writableBinlogManager.Read(bq.FileIndex, bq.Offset, 100)
 	if err != nil {
 		return &common.Header{
 			Result: common.ERROR,
@@ -496,7 +496,8 @@ func getPusherStatus(instanceId string) (fileIndex int, offset int64, err error)
 
 func setPusherStatus(instanceId string, fileIndex int, offset int64) error {
 	configMap := common.GetConfigMap()
-	return configMap.BatchUpdateConfig(func(b *bolt.Bucket) error {
+	return configMap.BatchUpdate(func(tx *bolt.Tx) error {
+		b := tx.Bucket([]byte(common.BUCKET_KEY_CONFIGMAP))
 		err := b.Put([]byte("binlog_pos_"+instanceId), []byte(convert.Int64ToStr(offset)))
 		if err != nil {
 			logger.Error("error load binlog position for tracker instance: ", instanceId)

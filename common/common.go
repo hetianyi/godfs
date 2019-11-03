@@ -67,6 +67,10 @@ const (
 	SYNCHRONIZE_INTERVAL = time.Second * 45
 
 	FILE_ID_SIZE = 86
+
+	BUCKET_KEY_CONFIGMAP         = "configMap"
+	BUCKET_KEY_FAILED_BINLOG_POS = "failedBinlogPos"
+	BUCKET_KEY_FILEID            = "fileIds"
 )
 
 var (

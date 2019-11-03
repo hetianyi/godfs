@@ -1,6 +1,7 @@
 package common
 
 import (
+	"encoding/json"
 	"github.com/boltdb/bolt"
 	"github.com/hetianyi/gox/convert"
 	"strings"
@@ -185,12 +186,16 @@ func NewConfigMap(path string) (*ConfigMap, error) {
 		return nil, err
 	}
 	err = db.Update(func(tx *bolt.Tx) error {
-		_, e := tx.CreateBucketIfNotExists([]byte("configMap"))
+		_, e := tx.CreateBucketIfNotExists([]byte(BUCKET_KEY_CONFIGMAP))
+		if e != nil {
+			return e
+		}
+		_, e = tx.CreateBucketIfNotExists([]byte(BUCKET_KEY_FAILED_BINLOG_POS))
 		if e != nil {
 			return e
 		}
 		if BootAs == BOOT_TRACKER {
-			_, e := tx.CreateBucketIfNotExists([]byte("fileIds"))
+			_, e := tx.CreateBucketIfNotExists([]byte(BUCKET_KEY_FILEID))
 			if e != nil {
 				return nil
 			}
@@ -200,16 +205,15 @@ func NewConfigMap(path string) (*ConfigMap, error) {
 	return &ConfigMap{db}, err
 }
 
-func (c *ConfigMap) BatchUpdateConfig(w func(b *bolt.Bucket) error) error {
-	return c.db.Update(func(tx *bolt.Tx) error {
-		b := tx.Bucket([]byte("configMap"))
-		return w(b)
+func (c *ConfigMap) BatchUpdate(w func(tx *bolt.Tx) error) error {
+	return c.db.Batch(func(tx *bolt.Tx) error {
+		return w(tx)
 	})
 }
 
 func (c *ConfigMap) PutConfig(key string, value []byte) error {
-	return c.db.Update(func(tx *bolt.Tx) error {
-		b := tx.Bucket([]byte("configMap"))
+	return c.db.Batch(func(tx *bolt.Tx) error {
+		b := tx.Bucket([]byte(BUCKET_KEY_CONFIGMAP))
 		b.Put([]byte(key), value)
 		return nil
 	})
@@ -217,7 +221,7 @@ func (c *ConfigMap) PutConfig(key string, value []byte) error {
 
 func (c *ConfigMap) GetConfig(key string) (ret []byte, err error) {
 	err = c.db.View(func(tx *bolt.Tx) error {
-		b := tx.Bucket([]byte("configMap"))
+		b := tx.Bucket([]byte(BUCKET_KEY_CONFIGMAP))
 		ret = b.Get([]byte(key))
 		return nil
 	})
@@ -225,8 +229,8 @@ func (c *ConfigMap) GetConfig(key string) (ret []byte, err error) {
 }
 
 func (c *ConfigMap) PutFile(binlogs []BingLogDTO) error {
-	return c.db.Update(func(tx *bolt.Tx) error {
-		b := tx.Bucket([]byte("fileIds"))
+	return c.db.Batch(func(tx *bolt.Tx) error {
+		b := tx.Bucket([]byte(BUCKET_KEY_FILEID))
 		for _, log := range binlogs {
 			if err := b.Put([]byte(log.FileId), []byte(convert.Int64ToStr(log.FileLength))); err != nil {
 				return err
@@ -238,9 +242,26 @@ func (c *ConfigMap) PutFile(binlogs []BingLogDTO) error {
 
 func (c *ConfigMap) GetFile(key string) (ret []byte, err error) {
 	err = c.db.View(func(tx *bolt.Tx) error {
-		b := tx.Bucket([]byte("fileIds"))
+		b := tx.Bucket([]byte(BUCKET_KEY_FILEID))
 		ret = b.Get([]byte(key))
 		return nil
 	})
 	return
+}
+
+func (c *ConfigMap) PutFailedBinlogPos(binlogPos *BinlogQueryDTO) error {
+	bs, err := json.Marshal(binlogPos)
+	if err != nil {
+		return err
+	}
+	return c.db.Batch(func(tx *bolt.Tx) error {
+		return tx.Bucket([]byte(BUCKET_KEY_FAILED_BINLOG_POS)).Put(bs, nil)
+	})
+}
+
+func (c *ConfigMap) IteratorFailedBinlog(iterator func(c *bolt.Cursor) error) error {
+	return c.db.View(func(tx *bolt.Tx) error {
+		b := tx.Bucket([]byte(BUCKET_KEY_FAILED_BINLOG_POS))
+		return iterator(b.Cursor())
+	})
 }

@@ -49,9 +49,8 @@ type XBinlogManager interface {
 
 	// Read reads binlog from file.
 	//
-	// fileIndex: the binlog file index, -1 means reads from latest binlog file.
-	//
-	// offset: read offset in bytes, must be integer multiple of the binlog.
+	//  fileIndex: the binlog file index, -1 means reads from latest binlog file.
+	//  offset: read offset in bytes, must be integer multiple of the binlog.
 	Read(fileIndex int, offset int64, fetchLine int) ([]common.BingLogDTO, int64, error)
 }
 
