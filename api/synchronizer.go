@@ -30,7 +30,7 @@ type instanceStore struct {
 }
 
 func (ins *instanceStore) expired() bool {
-	return gox.GetTimestamp(time.Now().Add(common.SYNCHRONIZE_INTERVAL*2+time.Second*5)) > gox.GetTimestamp(ins.fetchTime)
+	return gox.GetTimestamp(time.Now().Add(common.SYNCHRONIZE_INTERVAL*2+time.Second*5)) < gox.GetTimestamp(ins.fetchTime)
 }
 
 func tracks(clientAPI ClientAPI, server *common.Server, synchronizeOnce bool, c chan int) {

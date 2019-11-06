@@ -449,9 +449,9 @@ func (c *clientAPIImpl) SyncInstances(server *common.Server) (map[string]*common
 					return err
 				}
 				for k := range ret {
-					var a common.Instance
-					err = json.Unmarshal(*ret[k], &a)
-					result[k] = &a
+					var a = &common.Instance{}
+					err = json.Unmarshal(*ret[k], a)
+					result[k] = a
 				}
 				server.InstanceId = instanceId
 				return nil

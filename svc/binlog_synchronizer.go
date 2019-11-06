@@ -19,7 +19,7 @@ var (
 	watchingMembers map[string]*common.Server
 	// binlog synchronization state of all storage servers.
 	synchronizationState map[string]*common.BinlogQueryDTO
-	configChanged        = false
+	synchronizationFlag  map[string]int64
 	configKeyPrefix      = "binlogSynchronizationState:"
 	syncLock             *sync.Mutex
 	configChangeLock     *sync.Mutex
@@ -28,18 +28,22 @@ var (
 func init() {
 	watchingMembers = make(map[string]*common.Server)
 	synchronizationState = make(map[string]*common.BinlogQueryDTO)
+	synchronizationFlag = make(map[string]int64)
 	syncLock = new(sync.Mutex)
 	configChangeLock = new(sync.Mutex)
 }
 
 // TODO BUG
-func updateConfigChangeState(changed bool) {
+func updateConfigChangeState(instanceId string, clear bool) {
 	configChangeLock.Lock()
 	defer configChangeLock.Unlock()
 
-	if changed || (!changed && !configChanged) {
-		configChanged = changed
-		return
+	if clear {
+		for k := range synchronizationFlag {
+			synchronizationFlag[k] = 0
+		}
+	} else {
+		synchronizationFlag[instanceId] = synchronizationFlag[instanceId] + 1
 	}
 }
 
@@ -78,13 +82,21 @@ func InitStorageMemberBinlogWatcher() {
 
 	// timer task: save synchronization state every second.
 	timer.Start(time.Second*5, time.Second, 0, func(t *timer.Timer) {
+		configChangeLock.Lock()
+		defer configChangeLock.Unlock()
 
-		if !configChanged || len(synchronizationState) == 0 {
+		configChanged := false
+		for _, v := range synchronizationFlag {
+			if v > 0 {
+				configChanged = true
+				break
+			}
+		}
+		if !configChanged {
 			return
 		}
 
 		config := common.GetConfigMap()
-
 		err := config.BatchUpdate(func(tx *bolt.Tx) error {
 			b := tx.Bucket([]byte(common.BUCKET_KEY_CONFIGMAP))
 			for k, v := range synchronizationState {
@@ -106,7 +118,7 @@ func InitStorageMemberBinlogWatcher() {
 		} else {
 			logger.Debug("save synchronization state success")
 		}
-		updateConfigChangeState(false)
+		updateConfigChangeState("", true)
 	})
 
 	// timer task: check and watch storage server instances
@@ -218,7 +230,7 @@ func watch(server *common.Server) {
 			if failed == 0 {
 				config.Offset = ret.Offset
 				config.FileIndex = ret.FileIndex
-				updateConfigChangeState(true)
+				updateConfigChangeState(server.InstanceId, false)
 				logger.Debug("binlog write success")
 			} else {
 				logger.Debug("binlog write error: ", lastErr, ", failed ", failed)
