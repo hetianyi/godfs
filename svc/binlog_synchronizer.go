@@ -80,6 +80,8 @@ func InitStorageMemberBinlogWatcher() {
 	syncLock.Lock()
 	defer syncLock.Unlock()
 
+	InitFileSynchronization()
+
 	// timer task: save synchronization state every second.
 	timer.Start(time.Second*5, time.Second, 0, func(t *timer.Timer) {
 		configChangeLock.Lock()
@@ -123,7 +125,8 @@ func InitStorageMemberBinlogWatcher() {
 
 	// timer task: check and watch storage server instances
 	timer.Start(time.Second*5, common.SYNCHRONIZE_INTERVAL, 0, func(t *timer.Timer) {
-		ss := filterGroupMembers(api.FilterInstances(common.ROLE_STORAGE), common.InitializedStorageConfiguration.Group)
+		ss := filterGroupMembers(api.FilterInstances(common.ROLE_STORAGE),
+			common.InitializedStorageConfiguration.Group)
 		if ss == nil || ss.Len() == 0 {
 			return
 		}
@@ -247,5 +250,6 @@ func unWatch(server *common.Server) {
 	syncLock.Lock()
 	defer syncLock.Unlock()
 
+	logger.Debug("unwatch server: ", server.ConnectionString(), "(", server.InstanceId, "): ")
 	delete(watchingMembers, server.InstanceId)
 }

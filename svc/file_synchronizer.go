@@ -46,6 +46,11 @@ func InitFileSynchronization() {
 				break
 			}
 
+			if bs == nil || len(bs) == 0 {
+				logger.Debug("no file to be download")
+				break
+			}
+
 			ret := &common.BinlogQueryDTO{}
 			if err := json.Unmarshal(bs, ret); err != nil {
 				logger.Debug(err)
@@ -251,6 +256,7 @@ func saveDownloadStateConfig(n *common.BinlogQueryDTO, o *common.BinlogQueryDTO,
 		if err != nil {
 			return err
 		}
+		// mark failed binlog position
 		if failed > 0 {
 			b2 := tx.Bucket([]byte(common.BUCKET_KEY_FAILED_BINLOG_POS))
 			err = b2.Put(bs2, nil)
