@@ -33,10 +33,11 @@ func init() {
 	configChangeLock = new(sync.Mutex)
 }
 
-// TODO BUG
-func updateConfigChangeState(instanceId string, clear bool) {
-	configChangeLock.Lock()
-	defer configChangeLock.Unlock()
+func updateConfigChangeState(instanceId string, clear bool, isLocked bool) {
+	if !isLocked {
+		configChangeLock.Lock()
+		defer configChangeLock.Unlock()
+	}
 
 	if clear {
 		for k := range synchronizationFlag {
@@ -84,9 +85,6 @@ func InitStorageMemberBinlogWatcher() {
 
 	// timer task: save synchronization state every second.
 	timer.Start(time.Second*5, time.Second, 0, func(t *timer.Timer) {
-		configChangeLock.Lock()
-		defer configChangeLock.Unlock()
-
 		configChanged := false
 		for _, v := range synchronizationFlag {
 			if v > 0 {
@@ -97,6 +95,9 @@ func InitStorageMemberBinlogWatcher() {
 		if !configChanged {
 			return
 		}
+
+		configChangeLock.Lock()
+		defer configChangeLock.Unlock()
 
 		config := common.GetConfigMap()
 		err := config.BatchUpdate(func(tx *bolt.Tx) error {
@@ -120,7 +121,7 @@ func InitStorageMemberBinlogWatcher() {
 		} else {
 			logger.Debug("save synchronization state success")
 		}
-		updateConfigChangeState("", true)
+		updateConfigChangeState("", true, true)
 	})
 
 	// timer task: check and watch storage server instances
@@ -233,8 +234,10 @@ func watch(server *common.Server) {
 			if failed == 0 {
 				config.Offset = ret.Offset
 				config.FileIndex = ret.FileIndex
-				updateConfigChangeState(server.InstanceId, false)
-				logger.Debug("binlog write success")
+				updateConfigChangeState(server.InstanceId, false, false)
+				if len(ret.Logs) > 0 {
+					logger.Debug("binlog write success")
+				}
 			} else {
 				logger.Debug("binlog write error: ", lastErr, ", failed ", failed)
 			}
