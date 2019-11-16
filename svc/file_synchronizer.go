@@ -46,16 +46,14 @@ func InitFileSynchronization() {
 				break
 			}
 
-			if bs == nil || len(bs) == 0 {
-				logger.Debug("no file to be download")
-				break
+			ret := &common.BinlogQueryDTO{}
+			if bs != nil && len(bs) > 0 {
+				if err := json.Unmarshal(bs, ret); err != nil {
+					logger.Debug(err)
+					break
+				}
 			}
 
-			ret := &common.BinlogQueryDTO{}
-			if err := json.Unmarshal(bs, ret); err != nil {
-				logger.Debug(err)
-				break
-			}
 			old := *ret
 
 			bls, nOffset, err := writableBinlogManager.Read(ret.FileIndex, ret.Offset, 50)
@@ -65,8 +63,7 @@ func InitFileSynchronization() {
 			}
 			ret.Offset = nOffset
 
-			if writableBinlogManager.GetCurrentIndex() > ret.FileIndex &&
-				(bls == nil || len(bls) == 0) {
+			if writableBinlogManager.GetCurrentIndex() > ret.FileIndex && len(bls) == 0 {
 				ret.FileIndex = ret.FileIndex + 1
 				ret.Offset = 0
 			}
@@ -77,12 +74,15 @@ func InitFileSynchronization() {
 			// remove config
 			//
 
+			if len(bls) == 0 {
+				break
+			}
 		}
 	})
 }
 
 func syncFiles(c *common.BinlogQueryDTO, o *common.BinlogQueryDTO, bls []common.BingLogDTO) {
-	if len(bls) > 0 {
+	if len(bls) == 0 {
 		return
 	}
 
@@ -135,6 +135,10 @@ func syncFile(binlog *common.BingLogDTO, server *common.Server) error {
 
 		if err := syncFile(binlog, &srcServer); err != nil {
 			lasErr = err
+		}
+
+		if lasErr == nil {
+			return nil
 		}
 
 		logger.Debug("cannot download from source server, try other servers.")
