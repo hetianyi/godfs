@@ -82,9 +82,12 @@ func ConfigAssembly(bm common.BootMode) interface{} {
 		if advertisePort == 0 {
 			advertisePort = c.Port
 		}
-		if advertiseAddress == "" {
+
+		c.AdvertiseAddress = advertiseAddress
+		if c.AdvertiseAddress == "" {
 			c.AdvertiseAddress = gox.GetMyAddress(preferredNetwork)
 		}
+
 		c.PreferredNetworks = preferredNetwork
 
 		if bindAddress == "" {
@@ -126,9 +129,12 @@ func ConfigAssembly(bm common.BootMode) interface{} {
 		if advertisePort == 0 {
 			advertisePort = c.Port
 		}
-		if advertiseAddress == "" {
+
+		c.AdvertiseAddress = advertiseAddress
+		if c.AdvertiseAddress == "" {
 			c.AdvertiseAddress = gox.GetMyAddress(preferredNetwork)
 		}
+
 		c.PreferredNetworks = preferredNetwork
 
 		if bindAddress == "" {
