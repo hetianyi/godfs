@@ -34,7 +34,10 @@ func initDataSet() error {
 
 	// slotSize is the slot size of the set,
 	// it loads the number of slots bytes to memory, so be careful.
+	// storage: 16777216
+	// tracker: 33554432
 	slotNum := 1 << (23 + common.BootAs)
+	//a := 1 << 23
 
 	logger.Debug("slot number: ", slotNum)
 

@@ -371,7 +371,8 @@ func syncBinlogHandler(header *common.Header) (*common.Header, io.Reader, int64,
 		}, nil, 0, nil
 	}
 
-	bls, nOffset, err := writableBinlogManager.Read(bq.FileIndex, bq.Offset, 100)
+	// fetch 30+ once a tiem will exceed pip header size
+	bls, nOffset, err := writableBinlogManager.Read(bq.FileIndex, bq.Offset, 30)
 	if err != nil {
 		return &common.Header{
 			Result: common.ERROR,
