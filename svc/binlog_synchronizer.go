@@ -33,6 +33,7 @@ func init() {
 	configChangeLock = new(sync.Mutex)
 }
 
+// updateConfigChangeState updates synchronization state of each instance.
 func updateConfigChangeState(instanceId string, clear bool, isLocked bool) {
 	if !isLocked {
 		configChangeLock.Lock()
@@ -48,6 +49,7 @@ func updateConfigChangeState(instanceId string, clear bool, isLocked bool) {
 	}
 }
 
+// loadSynchronizationConfig queries synchronization state of the instance.
 func loadSynchronizationConfig(instanceId string) (*common.BinlogQueryDTO, error) {
 
 	if synchronizationState[instanceId] != nil {
@@ -67,6 +69,7 @@ func loadSynchronizationConfig(instanceId string) (*common.BinlogQueryDTO, error
 	return ret, nil
 }
 
+// checkServer checks if the server is still alive.
 func checkServer(instanceId string) bool {
 	syncLock.Lock()
 	defer syncLock.Unlock()
@@ -77,6 +80,7 @@ func checkServer(instanceId string) bool {
 	return false
 }
 
+// InitStorageMemberBinlogWatcher initializes timer jobs for binlog and file synchronization.
 func InitStorageMemberBinlogWatcher() {
 	syncLock.Lock()
 	defer syncLock.Unlock()
@@ -158,6 +162,7 @@ func InitStorageMemberBinlogWatcher() {
 	})
 }
 
+// watch starts to watch a single storage member server.
 func watch(server *common.Server) {
 	syncLock.Lock()
 	defer syncLock.Unlock()
@@ -224,8 +229,6 @@ func watch(server *common.Server) {
 						lastErr = err
 						logger.Debug("error write binlog: ", err)
 					}
-					// write to dataset
-					// TODO write when file synchronize success.
 				} else {
 					logger.Debug("binlog already exists: ", v.FileId)
 				}
@@ -249,6 +252,7 @@ func watch(server *common.Server) {
 
 }
 
+// unWatch stops watching the storage member server.
 func unWatch(server *common.Server) {
 	syncLock.Lock()
 	defer syncLock.Unlock()

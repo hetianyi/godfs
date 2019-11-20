@@ -28,6 +28,7 @@ func init() {
 
 }
 
+// InitFileSynchronization starts a timer job for file synchronization.
 func InitFileSynchronization() {
 	timer.Start(time.Second*5, time.Second*5, 0, func(t *timer.Timer) {
 		config := common.GetConfigMap()
@@ -46,44 +47,142 @@ func InitFileSynchronization() {
 				break
 			}
 
-			ret := &common.BinlogQueryDTO{}
-			if bs != nil && len(bs) > 0 {
-				if err := json.Unmarshal(bs, ret); err != nil {
-					logger.Debug(err)
-					break
-				}
+			if n, _ := fromBinlogPos(bs, false); n == 0 {
+				break
 			}
+		}
+	})
+	retryFiles()
+}
 
-			old := *ret
+func fromBinlogPos(bs []byte, isRetry bool) (int, []common.BingLogDTO) {
 
-			bls, nOffset, err := writableBinlogManager.Read(ret.FileIndex, ret.Offset, 50)
-			if err != nil {
+	ret := &common.BinlogQueryDTO{}
+	if bs != nil && len(bs) > 0 {
+		if err := json.Unmarshal(bs, ret); err != nil {
+			logger.Debug(err)
+			return 0, nil
+		}
+	}
+
+	old := *ret
+
+	bls, nOffset, err := writableBinlogManager.Read(ret.FileIndex, ret.Offset, 50)
+	if err != nil {
+		logger.Debug(err)
+		return len(bls), bls
+	}
+	ret.Offset = nOffset
+
+	if writableBinlogManager.GetCurrentIndex() > ret.FileIndex && len(bls) == 0 {
+		ret.FileIndex = ret.FileIndex + 1
+		ret.Offset = 0
+	}
+
+	// save config
+	// download files
+	failed := syncFiles(bls)
+
+	if !isRetry {
+		// save binlog position and fail position.
+		if err := saveDownloadStateConfig(ret, &old, failed); err != nil {
+			logger.Debug(err)
+		}
+	}
+
+	return len(bls), bls
+}
+
+// retryFiles starts a timer job which retries to synchronize files failed before.
+//
+//
+func retryFiles() {
+
+	temp := list.New()
+	offset := 0
+	donePos := list.New()
+
+	var clearFun = func() {
+		// clear
+		for temp.Front() != nil {
+			temp.Remove(temp.Front())
+		}
+	}
+
+	timer.Start(time.Second*5, time.Second*5, 0, func(t *timer.Timer) {
+
+		offset = 0
+
+		for true {
+			clearFun()
+			// load 100 binlog position once a time.
+			if err := common.GetConfigMap().IteratorFailedBinlog(func(c *bolt.Cursor) error {
+				skipped := 0
+				for k, _ := c.First(); k != nil; k, _ = c.Next() {
+					skipped++
+					if skipped < offset {
+						continue
+					}
+					temp.PushBack(k)
+				}
+				offset += temp.Len()
+				return nil
+			}); err != nil {
 				logger.Debug(err)
 				break
 			}
-			ret.Offset = nOffset
 
-			if writableBinlogManager.GetCurrentIndex() > ret.FileIndex && len(bls) == 0 {
-				ret.FileIndex = ret.FileIndex + 1
-				ret.Offset = 0
+			if temp.Len() == 0 {
+				break
 			}
 
-			// save config
-			// download files
-			syncFiles(ret, &old, bls)
-			// remove config
-			//
+			// retry download files.
+			gox.WalkList(temp, func(item interface{}) bool {
+				k := item.([]byte)
+				_, bls := fromBinlogPos(k, true)
+				// check if all binlog of this position are finished.
+				finished := 0
+				for _, v := range bls {
+					c, err := Contains(v.FileId)
+					if err != nil {
+						logger.Debug(err)
+						break
+					}
+					if c {
+						finished++
+					}
+				}
+				// all file were synchronized of this binlog position.
+				if finished == len(bls) {
+					donePos.PushBack(item)
+				}
+				return false
+			})
 
-			if len(bls) == 0 {
-				break
+			if donePos.Len() > 0 {
+				removeSuccess := 0
+				// remove finished positions.
+				common.GetConfigMap().BatchUpdate(func(tx *bolt.Tx) error {
+					gox.WalkList(donePos, func(item interface{}) bool {
+						if err := tx.Bucket([]byte(common.BUCKET_KEY_FAILED_BINLOG_POS)).Delete(item.([]byte)); err != nil {
+							logger.Debug("error remove failed key: ", err)
+							return false
+						}
+						removeSuccess++
+						return false
+					})
+					return nil
+				})
+				offset -= removeSuccess
 			}
 		}
 	})
 }
 
-func syncFiles(c *common.BinlogQueryDTO, o *common.BinlogQueryDTO, bls []common.BingLogDTO) {
+// syncFiles synchronizes files by binlogs.
+func syncFiles(bls []common.BingLogDTO) int {
 	if len(bls) == 0 {
-		return
+		return 0
 	}
 
 	logger.Debug("load ", len(bls), " binlogs")
@@ -95,12 +194,10 @@ func syncFiles(c *common.BinlogQueryDTO, o *common.BinlogQueryDTO, bls []common.
 		}
 	}
 
-	// save binlog position and fail position.
-	if err := saveDownloadStateConfig(c, o, failed); err != nil {
-		logger.Debug(err)
-	}
+	return failed
 }
 
+// syncFile synchronizes a single file.
 func syncFile(binlog *common.BingLogDTO, server *common.Server) error {
 
 	if binlog == nil {
@@ -254,6 +351,7 @@ func saveDownloadStateConfig(n *common.BinlogQueryDTO, o *common.BinlogQueryDTO,
 		return nil
 	}
 	config := common.GetConfigMap()
+
 	return config.BatchUpdate(func(tx *bolt.Tx) error {
 		b1 := tx.Bucket([]byte(common.BUCKET_KEY_CONFIGMAP))
 		err := b1.Put(downloadBinlogPosKey, bs1)
@@ -263,9 +361,11 @@ func saveDownloadStateConfig(n *common.BinlogQueryDTO, o *common.BinlogQueryDTO,
 		// mark failed binlog position
 		if failed > 0 {
 			b2 := tx.Bucket([]byte(common.BUCKET_KEY_FAILED_BINLOG_POS))
-			err = b2.Put(bs2, nil)
-			if err != nil {
-				return err
+			if b2.Get(bs2) == nil {
+				err = b2.Put(bs2, []byte{1})
+				if err != nil {
+					return err
+				}
 			}
 		}
 		return nil
