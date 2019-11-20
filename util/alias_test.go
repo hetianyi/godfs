@@ -14,7 +14,7 @@ import (
 )
 
 func TestCreateAlias(t *testing.T) {
-	util.GenerateDecKey("123456", nil)
+	util.GenerateDecKey("123456")
 	base64S := util.CreateAlias("G01/00/E2/012345678901234567890123456789ea", "ac3343ac", true, time.Now())
 	fmt.Println(base64S)
 	fmt.Println(time.Now().Unix())
@@ -47,7 +47,7 @@ func TestAesCbcEncrypt(t *testing.T) {
 }
 
 func TestParseAlias(t *testing.T) {
-	util.GenerateDecKey("123456", nil)
+	util.GenerateDecKey("123456")
 	fmt.Println(util.ParseAlias("tqZbw_9VNFpaVDaEbcdal8jINLjKQfNN58f9BrfEkKeTEaWObbtYa49jbGfmQilu8r9imVKFdPv5tEo1pjai5g", ""))
 	a := []byte{1, 2, 3}
 	fmt.Println(a[0:1])
