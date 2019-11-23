@@ -23,7 +23,7 @@ var (
 	ExpirationTime = time.Second * 30 // 30s
 )
 
-// InitRegistry() starts a timer job for instance expiration detection
+// InitRegistry starts a timer job for instance expiration detection
 // in a single goroutine.
 func InitRegistry() {
 	go expirationDetection()
