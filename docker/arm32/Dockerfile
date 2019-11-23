@@ -5,7 +5,7 @@ RUN cd /root && \
     git clone https://github.com/hetianyi/godfs && \
     cd godfs && \
     git checkout 2.0.0-dev && \
-    sh make.sh && \
+    sh make.sh
 
 
 FROM arm32v7/alpine:3.10.3
