@@ -31,7 +31,11 @@ func registerDownloadingFile(fileId string) bool {
 	downloadingFileLock.Lock()
 	defer downloadingFileLock.Unlock()
 
-	return downloadingFiles[fileId] != 1
+	if downloadingFiles[fileId] == 1 {
+		return false
+	}
+	downloadingFiles[fileId] = 1
+	return true
 }
 
 func unregisterDownloadingFile(fileId string) {
