@@ -4,7 +4,9 @@ import (
 	"encoding/json"
 	"github.com/boltdb/bolt"
 	"github.com/hetianyi/gox/convert"
+	"github.com/hetianyi/gox/logger"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -180,6 +182,8 @@ type ConfigMap struct {
 	db *bolt.DB
 }
 
+var configMapLock = new(sync.Mutex)
+
 func NewConfigMap(path string) (*ConfigMap, error) {
 	db, err := bolt.Open(path, 0600, nil)
 	if err != nil {
@@ -206,12 +210,27 @@ func NewConfigMap(path string) (*ConfigMap, error) {
 }
 
 func (c *ConfigMap) BatchUpdate(w func(tx *bolt.Tx) error) error {
+	configMapLock.Lock()
+	defer func() {
+		configMapLock.Unlock()
+		if err := recover(); err != nil {
+			logger.Error("error performing action BatchUpdate: ", err)
+		}
+	}()
 	return c.db.Batch(func(tx *bolt.Tx) error {
 		return w(tx)
 	})
 }
 
 func (c *ConfigMap) PutConfig(key string, value []byte) error {
+	configMapLock.Lock()
+	defer func() {
+		configMapLock.Unlock()
+		if err := recover(); err != nil {
+			logger.Error("error performing action PutConfig: ", err)
+		}
+	}()
+
 	return c.db.Batch(func(tx *bolt.Tx) error {
 		b := tx.Bucket([]byte(BUCKET_KEY_CONFIGMAP))
 		b.Put([]byte(key), value)
@@ -229,6 +248,14 @@ func (c *ConfigMap) GetConfig(key string) (ret []byte, err error) {
 }
 
 func (c *ConfigMap) PutFile(binlogs []BingLogDTO) error {
+	configMapLock.Lock()
+	defer func() {
+		configMapLock.Unlock()
+		if err := recover(); err != nil {
+			logger.Error("error performing action PutFile: ", err)
+		}
+	}()
+
 	return c.db.Batch(func(tx *bolt.Tx) error {
 		b := tx.Bucket([]byte(BUCKET_KEY_FILEID))
 		for _, log := range binlogs {
@@ -250,6 +277,14 @@ func (c *ConfigMap) GetFile(key string) (ret []byte, err error) {
 }
 
 func (c *ConfigMap) PutFailedBinlogPos(binlogPos *BinlogQueryDTO) error {
+	configMapLock.Lock()
+	defer func() {
+		configMapLock.Unlock()
+		if err := recover(); err != nil {
+			logger.Error("error performing action PutFailedBinlogPos: ", err)
+		}
+	}()
+
 	bs, err := json.Marshal(binlogPos)
 	if err != nil {
 		return err

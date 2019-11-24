@@ -123,7 +123,11 @@ func retryFiles() {
 					if skipped < offset {
 						continue
 					}
-					temp.PushBack(k)
+					// key must be a copy.
+					// or it will panic when use the key out of this transaction: unexpected fault address
+					cp := make([]byte, len(k))
+					copy(cp, k)
+					temp.PushBack(cp)
 				}
 				offset += temp.Len()
 				return nil
@@ -189,6 +193,10 @@ func syncFiles(bls []common.BingLogDTO) int {
 
 	failed := 0
 	for _, v := range bls {
+		// skip own binlog.
+		if v.FileId == common.InitializedStorageConfiguration.InstanceId {
+			continue
+		}
 		if err := syncFile(&v, nil); err != nil {
 			failed++
 		}
@@ -203,7 +211,8 @@ func syncFile(binlog *common.BingLogDTO, server *common.Server) error {
 	if binlog == nil {
 		return nil
 	}
-
+	// 1242419667.jpg
+	// YV3FG7Xl8LPVLIzWFtmbLtC4Fn_mkuKm611lAQEy_F4vd5KvpBi0tRNhs2TLXcCCs7qUeYrgnObZ0vXlxOMS7w
 	fInfo, _, err := util.ParseAlias(binlog.FileId, common.InitializedStorageConfiguration.Secret)
 	if err != nil {
 		return errors.New("cannot parse alias: " + binlog.FileId)
@@ -219,10 +228,10 @@ func syncFile(binlog *common.BingLogDTO, server *common.Server) error {
 		ins = filterGroupMembers(ins, common.InitializedStorageConfiguration.Group)
 
 		// download from source server first.
-		var srcServer common.Server
+		var srcServer *common.Server
 		gox.WalkList(ins, func(item interface{}) bool {
 			if item.(*common.Instance).InstanceId == binlog.SourceInstance {
-				srcServer = item.(*common.Instance).Server
+				srcServer = &item.(*common.Instance).Server
 				return true
 			}
 			return false
@@ -230,15 +239,16 @@ func syncFile(binlog *common.BingLogDTO, server *common.Server) error {
 
 		var lasErr error
 
-		if err := syncFile(binlog, &srcServer); err != nil {
-			lasErr = err
+		if srcServer != nil {
+			if err := syncFile(binlog, srcServer); err != nil {
+				lasErr = err
+			}
+			if lasErr == nil {
+				return nil
+			}
 		}
 
-		if lasErr == nil {
-			return nil
-		}
-
-		logger.Debug("cannot download from source server, try other servers.")
+		logger.Debug("cannot download from source server, try other servers: ", lasErr)
 
 		// fallback, download from other servers.
 		for ele := ins.Front(); ele != nil; ele = ele.Next() {
