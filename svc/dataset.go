@@ -8,13 +8,15 @@ import (
 )
 
 var (
-	dataset  *set.DataSet
-	initLock *sync.Mutex
-	initd    = false
+	dataset   *set.DataSet
+	initLock  *sync.Mutex
+	writeLock *sync.Mutex
+	initd     = false
 )
 
 func init() {
 	initLock = new(sync.Mutex)
+	writeLock = new(sync.Mutex)
 }
 
 // initDataSet initializes database which stores fileId.
@@ -83,4 +85,19 @@ func Remove(fileId string) (bool, error) {
 // Contains checks if the fileId exists in dataset database.
 func Contains(fileId string) (bool, error) {
 	return dataset.Contains([]byte(fileId))
+}
+
+// DoIfNotExist does work if the fileId not exists.
+func DoIfNotExist(fileId string, work func() error) error {
+	writeLock.Lock()
+	defer writeLock.Unlock()
+
+	c, err := dataset.Contains([]byte(fileId))
+	if err != nil {
+		return err
+	}
+	if !c {
+		return work()
+	}
+	return nil
 }

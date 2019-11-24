@@ -15,9 +15,12 @@ import (
 
 func TestCreateAlias(t *testing.T) {
 	util.GenerateDecKey("123456")
-	base64S := util.CreateAlias("G01/00/E2/012345678901234567890123456789ea", "ac3343ac", true, time.Now())
+	now := time.Unix(1574600316, 253740900)
+	base64S := util.CreateAlias("G01/64/22/e92c1c72e7fff2801c7d4af5b154f88d", "43f01e05", true, now)
 	fmt.Println(base64S)
 	fmt.Println(time.Now().Unix())
+
+	fmt.Println(util.ParseAlias(base64S, "123456"))
 
 	buff := make([]byte, 8)
 	convert.Length2Bytes(2000000, buff)

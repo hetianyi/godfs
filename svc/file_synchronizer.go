@@ -15,17 +15,30 @@ import (
 	"github.com/hetianyi/gox/uuid"
 	"io"
 	"strings"
+	"sync"
 	"time"
 )
 
 var (
 	downloadBinlogPosKey = []byte("downloadBinlogPos")
+	downloadingFiles     = make(map[string]byte)
+	downloadingFileLock  = new(sync.Mutex)
 	downloadBinlogPos    = 0
 	fetchSize            = 50
 )
 
-func init() {
+func registerDownloadingFile(fileId string) bool {
+	downloadingFileLock.Lock()
+	defer downloadingFileLock.Unlock()
 
+	return downloadingFiles[fileId] != 1
+}
+
+func unregisterDownloadingFile(fileId string) {
+	downloadingFileLock.Lock()
+	defer downloadingFileLock.Unlock()
+
+	delete(downloadingFiles, fileId)
 }
 
 // InitFileSynchronization starts a timer job for file synchronization.
@@ -218,6 +231,16 @@ func syncFile(binlog *common.BingLogDTO, server *common.Server) error {
 		return errors.New("cannot parse alias: " + binlog.FileId)
 	}
 
+	c, err := Contains(binlog.FileId)
+	if err != nil {
+		return err
+	}
+
+	if c {
+		logger.Debug("file already exists")
+		return nil
+	}
+
 	if server == nil {
 		ins := api.FilterInstances(common.ROLE_STORAGE)
 		if ins.Len() == 0 {
@@ -273,6 +296,12 @@ func syncFile(binlog *common.BingLogDTO, server *common.Server) error {
 		return lasErr
 	}
 
+	if !registerDownloadingFile(binlog.FileId) {
+		logger.Debug("file is downloading, skip")
+		return nil
+	}
+	defer unregisterDownloadingFile(binlog.FileId)
+
 	logger.Debug("begin to synchronize file ", binlog.FileId, " from ",
 		server.ConnectionString(), "(", server.InstanceId, ")")
 
@@ -323,17 +352,19 @@ func syncFile(binlog *common.BingLogDTO, server *common.Server) error {
 			}
 		} else {
 			logger.Debug("file already exists, increasing reference count.")
+			c, err := Contains(binlog.FileId)
+			if err != nil {
+				return err
+			}
+			if c {
+				logger.Debug("file already exists")
+				return nil
+			}
 			// increase file reference count.
 			if err = updateFileReferenceCount(targetFile, 1); err != nil {
 				return err
 			}
 		}
-
-		logger.Debug("add dataset...")
-		if err := Add(binlog.FileId); err != nil {
-			return errors.New("error writing dataset: " + err.Error())
-		}
-		logger.Debug("add dataset success")
 		logger.Debug("download success")
 		return nil
 	})

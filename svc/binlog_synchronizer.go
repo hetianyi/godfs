@@ -215,22 +215,28 @@ func watch(server *common.Server) {
 					// binlog is mime, so skip.
 					continue
 				}
-				c, err := Contains(v.FileId)
-				if err != nil {
-					failed++
-					lastErr = err
-					logger.Debug("error query local binlog: ", v.FileId, ":", err)
-					continue
-				}
-				if !c {
-					if err = writableBinlogManager.Write(binlog.CreateLocalBinlog(v.FileId,
+
+				if err = DoIfNotExist(v.FileId, func() error {
+					if err := writableBinlogManager.Write(binlog.CreateLocalBinlog(v.FileId,
 						v.FileLength, v.SourceInstance, time.Now(), 0)); err != nil {
 						failed++
 						lastErr = err
 						logger.Debug("error write binlog: ", err)
+						return err
 					}
-				} else {
-					logger.Debug("binlog already exists: ", v.FileId)
+					logger.Debug("add dataset...")
+					if err := Add(v.FileId); err != nil {
+						failed++
+						lastErr = err
+						logger.Error("error writing dataset")
+						return err
+					}
+					logger.Debug("add dataset success")
+					return nil
+				}); err != nil {
+					failed++
+					lastErr = err
+					continue
 				}
 			}
 

@@ -191,14 +191,29 @@ func uploadFileHandler(header *common.Header, bodyReader io.Reader, bodyLength i
 		crc32String[len(crc32String)-2:]}, ""))
 	targetLoc := common.InitializedStorageConfiguration.DataDir + "/" + targetDir
 	targetFile := common.InitializedStorageConfiguration.DataDir + "/" + targetDir + "/" + md5String
-	finalFileId := common.InitializedStorageConfiguration.Group + "/" + targetDir + "/" + md5String
+	_finalFileId := common.InitializedStorageConfiguration.Group + "/" + targetDir + "/" + md5String
 
 	logger.Debug("create alias")
-	finalFileId = util.CreateAlias(finalFileId, common.InitializedStorageConfiguration.InstanceId, isPrivate, time.Now())
+	now := time.Now()
+	finalFileId := util.CreateAlias(_finalFileId, common.InitializedStorageConfiguration.InstanceId, isPrivate, now)
 	if !file.Exists(targetLoc) {
 		if err := file.CreateDirs(targetLoc); err != nil {
 			return nil, nil, 0, err
 		}
+	}
+
+	_, s, err := util.ParseAlias(finalFileId, common.InitializedStorageConfiguration.Secret)
+
+	if err != nil {
+		tsBuff := make([]byte, 8)
+		bs := convert.Length2Bytes(now.Unix(), tsBuff)
+
+		logger.Debug("args: ", finalFileId)
+		logger.Debug("args: ", _finalFileId)
+		logger.Debug("args: ", common.InitializedStorageConfiguration.InstanceId)
+		logger.Debug("args: ", bs[4:])
+		logger.Debug(s)
+		logger.Fatal(err)
 	}
 
 	if !file.Exists(targetFile) {

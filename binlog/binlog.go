@@ -44,6 +44,7 @@ type XBinlogManager interface {
 	// GetCurrentIndex gets current binlog file index.
 	GetCurrentIndex() int
 
+	// TODO add batch binlog writer
 	// Write writes a binlog to file.
 	Write(bin *common.BingLog) error
 

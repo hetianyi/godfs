@@ -59,13 +59,9 @@ func CreateAlias(fid string, instanceId string, isPrivate bool, ts time.Time) st
 
 	var buff bytes.Buffer
 	buff.WriteString(fid)
-	buff.WriteString("|")
 	buff.WriteString(instanceId)
-	buff.WriteString("|")
 	buff.WriteString(gox.TValue(isPrivate, "1", "0").(string))
-	buff.WriteString("|")
 	buff.WriteString(string(bs[4:]))
-	buff.WriteString("|")
 	buff.WriteString(FixZeros(CreateRandNumber(100), 3))
 
 	result, err := AesEncrypt(buff.Bytes(), aesEncDecKey)
@@ -111,10 +107,13 @@ func parseAliasForSecret(alias string, aesKey []byte) (fileInfo *common.FileInfo
 			err = e
 			return
 		}
-		parts := strings.Split(string(recovered), "|")
-		if len(parts) != 5 {
-			err = ErrInvalidFileId
-			return
+		l := len(recovered)
+		parts := []string{
+			string(recovered[:l-16]),
+			string(recovered[l-16 : l-8]),
+			string(recovered[l-8 : l-7]),
+			string(recovered[l-7 : l-3]),
+			string(recovered[l-3 : l]),
 		}
 		if !common.FileMetaPatternRegexp.Match([]byte(parts[0])) || len(parts[1]) != 8 {
 			err = ErrInvalidFileId
