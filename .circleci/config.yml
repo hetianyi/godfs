@@ -13,8 +13,8 @@ jobs:
             echo "$dockerhub_pass" | docker login -u "$dockerhub_user" --password-stdin
             git checkout 2.0.0-dev
             cd docker
-            docker build --no-cache -t hehety/godfs:latest .
-            docker push hehety/godfs:latest
+            docker build --no-cache -t hehety/godfs:2.0.0-dev .
+            docker push hehety/godfs:2.0.0-dev
 
 
 workflows:
