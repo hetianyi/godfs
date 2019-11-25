@@ -51,6 +51,8 @@ func updateConfigChangeState(instanceId string, clear bool, isLocked bool) {
 
 // loadSynchronizationConfig queries synchronization state of the instance.
 func loadSynchronizationConfig(instanceId string) (*common.BinlogQueryDTO, error) {
+	syncLock.Lock()
+	defer syncLock.Unlock()
 
 	if synchronizationState[instanceId] != nil {
 		return synchronizationState[instanceId], nil

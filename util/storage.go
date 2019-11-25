@@ -3,8 +3,10 @@ package util
 import (
 	"encoding/base64"
 	"fmt"
+	"github.com/hetianyi/godfs/common"
 	"github.com/hetianyi/gox"
 	"github.com/hetianyi/gox/convert"
+	"github.com/hetianyi/gox/file"
 	"math/rand"
 	"time"
 )
@@ -37,4 +39,11 @@ func CreateMD5FileID(instanceId string, md5 string) string {
 // GenerateToken generates token for http file download.
 func GenerateToken(fileId, secret string, expireTimestamp string) string {
 	return gox.Md5Sum(expireTimestamp, fileId, secret)
+}
+
+func ExistsFile(fInfo *common.FileInfo) bool {
+	if common.BootAs == common.BOOT_STORAGE {
+		return file.Exists(common.InitializedStorageConfiguration.DataDir + "/" + fInfo.Path)
+	}
+	return false
 }

@@ -467,9 +467,6 @@ func httpDownload(w http.ResponseWriter, r *http.Request) {
 	}()
 
 	// TODO check refer
-	// TODO check auth
-	// TODO cache support
-	// TODO token support
 
 	// handle http options method
 	headers := w.Header()

@@ -235,13 +235,8 @@ func syncFile(binlog *common.BingLogDTO, server *common.Server) error {
 		return errors.New("cannot parse alias: " + binlog.FileId)
 	}
 
-	c, err := Contains(binlog.FileId)
-	if err != nil {
-		return err
-	}
-
-	if c {
-		logger.Debug("file already exists")
+	if util.ExistsFile(fInfo) {
+		// logger.Debug("file already exists")
 		return nil
 	}
 
