@@ -2,7 +2,6 @@ package svc
 
 import (
 	"container/list"
-	"encoding/json"
 	"github.com/boltdb/bolt"
 	"github.com/hetianyi/godfs/api"
 	"github.com/hetianyi/godfs/binlog"
@@ -10,6 +9,7 @@ import (
 	"github.com/hetianyi/gox"
 	"github.com/hetianyi/gox/logger"
 	"github.com/hetianyi/gox/timer"
+	json "github.com/json-iterator/go"
 	"sync"
 	"time"
 )
@@ -90,7 +90,7 @@ func InitStorageMemberBinlogWatcher() {
 	InitFileSynchronization()
 
 	// timer task: save synchronization state every second.
-	timer.Start(time.Second*5, time.Second, 0, func(t *timer.Timer) {
+	timer.Start(time.Second*10, time.Second, 0, func(t *timer.Timer) {
 		configChanged := false
 		for _, v := range synchronizationFlag {
 			if v > 0 {
@@ -180,7 +180,7 @@ func watch(server *common.Server) {
 
 	watchingMembers[server.InstanceId] = server
 
-	timer.Start(0, time.Second*5, 0, func(t *timer.Timer) {
+	timer.Start(0, time.Second*10, 0, func(t *timer.Timer) {
 		for true {
 			// make sure this member is not expired.
 			if !checkServer(server.InstanceId) {

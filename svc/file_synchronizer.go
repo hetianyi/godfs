@@ -2,7 +2,6 @@ package svc
 
 import (
 	"container/list"
-	"encoding/json"
 	"errors"
 	"github.com/boltdb/bolt"
 	"github.com/hetianyi/godfs/api"
@@ -13,6 +12,7 @@ import (
 	"github.com/hetianyi/gox/logger"
 	"github.com/hetianyi/gox/timer"
 	"github.com/hetianyi/gox/uuid"
+	json "github.com/json-iterator/go"
 	"io"
 	"strings"
 	"sync"

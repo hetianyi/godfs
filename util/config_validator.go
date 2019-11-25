@@ -1,12 +1,12 @@
 package util
 
 import (
-	"encoding/json"
 	"errors"
 	"github.com/hetianyi/godfs/common"
 	"github.com/hetianyi/gox/convert"
 	"github.com/hetianyi/gox/file"
 	"github.com/hetianyi/gox/logger"
+	json "github.com/json-iterator/go"
 	"regexp"
 	"strings"
 	"sync"

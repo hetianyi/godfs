@@ -3,7 +3,6 @@ package svc
 import (
 	"bytes"
 	"container/list"
-	"encoding/json"
 	"errors"
 	"github.com/gorilla/mux"
 	"github.com/hetianyi/godfs/binlog"
@@ -15,6 +14,7 @@ import (
 	"github.com/hetianyi/gox/httpx"
 	"github.com/hetianyi/gox/logger"
 	"github.com/hetianyi/gox/uuid"
+	json "github.com/json-iterator/go"
 	"io"
 	"mime/multipart"
 	"net/http"

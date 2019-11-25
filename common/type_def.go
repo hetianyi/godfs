@@ -1,10 +1,10 @@
 package common
 
 import (
-	"encoding/json"
 	"github.com/boltdb/bolt"
 	"github.com/hetianyi/gox/convert"
 	"github.com/hetianyi/gox/logger"
+	json "github.com/json-iterator/go"
 	"strings"
 	"sync"
 	"time"

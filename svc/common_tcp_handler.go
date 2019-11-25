@@ -1,7 +1,6 @@
 package svc
 
 import (
-	"encoding/json"
 	"errors"
 	"github.com/hetianyi/godfs/api"
 	"github.com/hetianyi/godfs/binlog"
@@ -10,6 +9,7 @@ import (
 	"github.com/hetianyi/gox/convert"
 	"github.com/hetianyi/gox/file"
 	"github.com/hetianyi/gox/logger"
+	json "github.com/json-iterator/go"
 	"hash"
 	"io"
 	"os"
