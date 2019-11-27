@@ -31,6 +31,8 @@ func BootStorageServer() {
 	// initialize dataset.
 	initDataSet()
 
+	startCounterLoop()
+
 	// print godfs logo.
 	util.PrintLogo()
 

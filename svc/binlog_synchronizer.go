@@ -184,8 +184,13 @@ func watch(server *common.Server) {
 	binlogList := list.New()
 
 	timer.Start(0, time.Second*10, 0, func(t *timer.Timer) {
+
 		for true {
 
+			if sumCounter() > 0 {
+				// TODO add delay factor
+				time.Sleep(time.Millisecond)
+			}
 			// clear the list
 			util.ClearList(binlogList)
 

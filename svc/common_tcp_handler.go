@@ -2,6 +2,7 @@ package svc
 
 import (
 	"errors"
+	"fmt"
 	"github.com/hetianyi/godfs/api"
 	"github.com/hetianyi/godfs/binlog"
 	"github.com/hetianyi/godfs/common"
@@ -9,10 +10,13 @@ import (
 	"github.com/hetianyi/gox/convert"
 	"github.com/hetianyi/gox/file"
 	"github.com/hetianyi/gox/logger"
+	"github.com/hetianyi/gox/timer"
 	json "github.com/json-iterator/go"
 	"hash"
 	"io"
 	"os"
+	"sync"
+	"time"
 )
 
 const MaxConnPerServer uint = 100
@@ -20,7 +24,16 @@ const MaxConnPerServer uint = 100
 var (
 	clientAPI             api.ClientAPI
 	writableBinlogManager binlog.XBinlogManager
+	// counting traffic within 1 minutes
+	counterLoop [60]int
+	counterPos  int
+	counterLock *sync.Mutex
 )
+
+func init() {
+	counterLoop = [60]int{}
+	counterLock = new(sync.Mutex)
+}
 
 // DigestProxyWriter is a writer proxy which can calculate crc and md5 for the stream file.
 type DigestProxyWriter struct {
@@ -142,4 +155,36 @@ func seekRead(fullPath string, offset, length int64) (io.Reader, int64, error) {
 		return nil, 0, err
 	}
 	return io.LimitReader(fi, length), length, nil
+}
+
+func increaseCountForTheSecond() {
+	counterLock.Lock()
+	defer counterLock.Unlock()
+
+	counterLoop[counterPos] = counterLoop[counterPos] + 1
+}
+
+func sumCounter() int {
+	counterLock.Lock()
+	defer counterLock.Unlock()
+
+	ret := 0
+	for _, v := range counterLoop {
+		ret += v
+	}
+	return ret
+}
+
+func startCounterLoop() {
+	timer.Start(0, 0, time.Second, func(t *timer.Timer) {
+		counterLock.Lock()
+		defer counterLock.Unlock()
+
+		fmt.Println(counterLoop)
+		counterPos++
+		if counterPos > 59 {
+			counterPos = 0
+		}
+		counterLoop[counterPos] = 0
+	})
 }

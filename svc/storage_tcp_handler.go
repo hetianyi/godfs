@@ -145,6 +145,8 @@ func uploadFileHandler(header *common.Header, bodyReader io.Reader, bodyLength i
 
 	logger.Debug("receive file")
 
+	increaseCountForTheSecond()
+
 	tmpFileName := common.InitializedStorageConfiguration.TmpDir + "/" + uuid.UUID()
 	out, err := file.CreateFile(tmpFileName)
 	if err != nil {

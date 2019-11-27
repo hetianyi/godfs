@@ -85,6 +85,8 @@ func httpUpload(w http.ResponseWriter, r *http.Request) {
 
 	logger.Debug("accept new upload request")
 
+	increaseCountForTheSecond()
+
 	// file is private or public
 	s := strings.TrimSpace(r.URL.Query().Get("s"))
 	isPrivate := common.InitializedStorageConfiguration.PublicAccessMode
@@ -257,6 +259,8 @@ func httpUpload1(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 
 	logger.Debug("accept new upload request")
+
+	increaseCountForTheSecond()
 
 	// file is private or public
 	s := strings.TrimSpace(r.URL.Query().Get("s"))
