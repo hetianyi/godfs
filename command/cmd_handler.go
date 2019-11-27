@@ -1,7 +1,6 @@
 package command
 
 import (
-	"bytes"
 	"fmt"
 	"github.com/hetianyi/godfs/api"
 	"github.com/hetianyi/godfs/common"
@@ -16,7 +15,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"sync"
 	"time"
 )
 
@@ -305,65 +303,4 @@ func handleGenerateToken() {
 	} else {
 		fmt.Println("token=" + token + "&ts=" + ts)
 	}
-}
-
-// handleTestUploadFile handles upload files by client cli.
-func handleTestUploadFile() error {
-	// initialize APIClient
-	if err := initClient(); err != nil {
-		logger.Fatal(err)
-	}
-	startTime := gox.GetTimestamp(time.Now())
-	waitGroup := sync.WaitGroup{}
-	step := common.InitializedClientConfiguration.TestScale / common.InitializedClientConfiguration.TestThread
-	for i := 1; i <= common.InitializedClientConfiguration.TestThread; i++ {
-		if i == common.InitializedClientConfiguration.TestThread {
-			go uploadTask((i-1)*step, common.InitializedClientConfiguration.TestScale, &waitGroup)
-		} else {
-			go uploadTask((i-1)*step, i*step, &waitGroup)
-		}
-	}
-	waitGroup.Add(common.InitializedClientConfiguration.TestThread)
-	waitGroup.Wait()
-	endTime := gox.GetTimestamp(time.Now())
-	// bug fixes: panic: runtime error: integer divide by zero
-	if endTime == startTime {
-		endTime += 1
-	}
-	fmt.Println("+---------------------------+")
-	fmt.Println("| total  :", common.InitializedClientConfiguration.TestScale)
-	fmt.Println("| failed :", testFailed)
-	fmt.Println("| time   :", (endTime-startTime)/1000, "s")
-	fmt.Println("| average:", int64(common.InitializedClientConfiguration.TestScale)/((endTime-startTime)/1000), "/s")
-	fmt.Println("+---------------------------+")
-	return nil
-}
-
-func uploadTask(start int, end int, waitGroup *sync.WaitGroup) {
-	for i := start; i < end; i++ {
-		name := convert.IntToStr(i)
-		data := []byte(name)
-		size := int64(len(data))
-		r := bytes.NewReader(data)
-		fmt.Println(gox.GetLongLongDateString(time.Now()), "  start upload")
-		ret, err := client.Upload(r, size, group, common.InitializedClientConfiguration.PrivateUpload)
-		fmt.Println(gox.GetLongLongDateString(time.Now()), "  end   upload")
-		if err != nil {
-			logger.Error(err)
-			updateTestSuccessCount()
-		} else {
-			bs, _ := json.MarshalIndent(ret, "", "  ")
-			logger.Info("upload success:\n", string(bs))
-		}
-	}
-	waitGroup.Done()
-}
-
-var testLock = new(sync.Mutex)
-var testFailed = 0
-
-func updateTestSuccessCount() {
-	testLock.Lock()
-	defer testLock.Unlock()
-	testFailed++
 }

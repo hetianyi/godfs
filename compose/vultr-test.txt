@@ -4,16 +4,16 @@ godfs tracker --bind-address 0.0.0.0 --secret 123123 --data-dir /godfs/data
 
 docker run -d --net host --name s1  hehety/godfs:2.0.0-dev \
 godfs storage --bind-address 0.0.0.0 --secret 123123 --data-dir /godfs/data \
---log-dir /godfs/logs --trackers 123123@149.28.82.229:11706 --preferred-network eth0
+--log-dir /godfs/logs --trackers 123123@45.32.90.250:11706 --preferred-network eth0
 
 
 docker run -d --net host --name s2  hehety/godfs:2.0.0-dev \
 godfs storage --bind-address 0.0.0.0 --secret 123123 --data-dir /godfs/data \
---log-dir /godfs/logs --trackers 123123@149.28.82.229:11706 --preferred-network eth0
+--log-dir /godfs/logs --trackers 123123@45.32.90.250:11706 --preferred-network eth0
 
 
 docker run -d --net host --name s3  hehety/godfs:2.0.0-dev \
 godfs storage --bind-address 0.0.0.0 --secret 123123 --data-dir /godfs/data \
---log-dir /godfs/logs --trackers 123123@149.28.82.229:11706 --preferred-network eth0
+--log-dir /godfs/logs --trackers 123123@45.32.90.250:11706 --preferred-network eth0
 
 
