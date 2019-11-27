@@ -1,6 +1,8 @@
 package util_test
 
 import (
+	"bufio"
+	"bytes"
 	"encoding/base64"
 	"fmt"
 	"github.com/hetianyi/godfs/util"
@@ -74,4 +76,12 @@ func TestN(t *testing.T) {
 	fmt.Println(gox.Md5Sum("123456"))
 	var a map[string]int = nil
 	fmt.Println(len(a))
+}
+
+func TestBufIO(t *testing.T) {
+	out := new(bytes.Buffer)
+	resultBuffer := bufio.NewWriterSize(out, 1024)
+
+	resultBuffer.Write([]byte{})
+	resultBuffer.Flush()
 }

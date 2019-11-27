@@ -84,12 +84,18 @@ func uploadTask(start int, end int, waitGroup *sync.WaitGroup) {
 			updateTestCount(false)
 		} else {
 			bs, _ := json.MarshalIndent(ret, "", "  ")
-			//logger.Info("upload success:\n", string(bs))
-			resultBuffer.Write(bs)
+			writeResult(bs)
 			updateTestCount(true)
 		}
 	}
 	waitGroup.Done()
+}
+
+func writeResult(bs []byte) {
+	testLock.Lock()
+	defer testLock.Unlock()
+
+	resultBuffer.Write(bs)
 }
 
 func updateTestCount(s bool) {
