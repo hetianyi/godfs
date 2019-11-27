@@ -102,13 +102,13 @@ func (c *clientAPIImpl) SetConfig(config *Config) {
 	}
 	if c.config.TrackerServers != nil {
 		for _, s := range c.config.TrackerServers {
-			conn.InitServerSettings(s, c.config.MaxConnectionsPerServer, time.Minute*5)
+			conn.InitServerSettings(s, c.config.MaxConnectionsPerServer, time.Minute*2)
 			tracks(c, s, config.SynchronizeOnce, config.SynchronizeOnceCallback)
 		}
 	}
 	if c.config.StaticStorageServers != nil {
 		for _, s := range c.config.StaticStorageServers {
-			conn.InitServerSettings(s, c.config.MaxConnectionsPerServer, time.Minute*5)
+			conn.InitServerSettings(s, c.config.MaxConnectionsPerServer, time.Minute*2)
 		}
 	}
 }
@@ -326,14 +326,14 @@ func (c *clientAPIImpl) Query(fileId string) (*common.FileInfo, error) {
 	var lastConn *net.Conn
 	var result *common.FileInfo
 
-	fileInfo, _, err := util.ParseAlias(fileId, "")
+	/*fileInfo, _, err := util.ParseAlias(fileId, "")
 	if err != nil {
 		return nil, err
-	}
+	}*/
 	// TODO offline function
 	gox.Try(func() {
 		for {
-			selectedStorage = c.selectStorageServer(fileInfo.Group, exclude)
+			selectedStorage = c.selectStorageServer("", exclude)
 			if selectedStorage == nil {
 				if lastErr == nil {
 					lastErr = NoStorageServerErr
@@ -637,7 +637,9 @@ func authenticate(p *gpip.Pip, server conn.Server) error {
 func (c *clientAPIImpl) selectStorageServer(group string, exclude *list.List) *common.StorageServer {
 	c.lock.Lock()
 	defer c.lock.Unlock()
-	logger.Debug("select storage server...")
+
+	logger.Debug("select storage server")
+
 	var candidates = list.New()
 	// if registered storage server is not empty, use it first.
 	syncStorages := FilterInstances(common.ROLE_STORAGE)
@@ -660,7 +662,7 @@ func (c *clientAPIImpl) selectStorageServer(group string, exclude *list.List) *c
 		}
 	}
 	// if no candidate server, choose from static storage servers.
-	// static server usually has no group configured, so here ignores the group.
+	// static server has no group configured, so here ignores the group.
 	if candidates.Len() == 0 {
 		for _, s := range c.config.StaticStorageServers {
 			if isExcluded(s.Server, exclude) {

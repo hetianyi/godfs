@@ -23,21 +23,46 @@ func ValidateStorageConfig(c *common.StorageConfig) error {
 	if c == nil {
 		return errors.New("no config provided")
 	}
+
+	ExchangeEnvValue("port", func(envValue string) {
+		p, err := convert.StrToInt(envValue)
+		logger.Fatal("invalid port number \"", envValue, "\": ", err)
+		c.Port = p
+	})
+
 	// check port range
 	if c.Port < 0 || c.Port > 65535 {
-		return errors.New("invalid port number " +
-			convert.IntToStr(c.Port) + ", port number must in the range of 0 to 65535")
+		return errors.New("invalid port number \"" +
+			convert.IntToStr(c.Port) + "\", port number must in the range of 0 to 65535")
 	}
+
+	ExchangeEnvValue("advertisePort", func(envValue string) {
+		p, err := convert.StrToInt(envValue)
+		logger.Fatal("invalid port number \"", envValue, "\": ", err)
+		c.AdvertisePort = p
+	})
+
 	// check advertise port range
 	if c.AdvertisePort < 0 || c.AdvertisePort > 65535 {
-		return errors.New("invalid advertise port number " +
-			convert.IntToStr(c.Port) + ", port number must in the range of 0 to 65535")
+		return errors.New("invalid advertise port number \"" +
+			convert.IntToStr(c.Port) + "\", port number must in the range of 0 to 65535")
 	}
+
+	ExchangeEnvValue("httpPort", func(envValue string) {
+		p, err := convert.StrToInt(envValue)
+		logger.Fatal("invalid port number \"", envValue, "\": ", err)
+		c.HttpPort = p
+	})
+
 	// check http port range
 	if c.HttpPort < 0 || c.HttpPort > 65535 {
 		return errors.New("invalid http port number " +
 			convert.IntToStr(c.Port) + ", port number must in the range of 0 to 65535")
 	}
+
+	ExchangeEnvValue("group", func(envValue string) {
+		c.Group = envValue
+	})
 	// check group
 	if c.Group == "" {
 		c.Group = common.DEFAULT_GROUP
@@ -46,6 +71,11 @@ func ValidateStorageConfig(c *common.StorageConfig) error {
 		return errors.New("invalid group \"" + c.Group +
 			"\", group must match pattern " + common.GROUP_PATTERN)
 	}
+
+	ExchangeEnvValue("secret", func(envValue string) {
+		c.Secret = envValue
+	})
+
 	// check secret
 	if c.Secret != "" {
 		if m, err := regexp.MatchString(common.SECRET_PATTERN, c.Secret); err != nil || !m {
@@ -54,24 +84,51 @@ func ValidateStorageConfig(c *common.StorageConfig) error {
 		}
 	}
 
+	ExchangeEnvValue("logLevel", func(envValue string) {
+		c.LogLevel = envValue
+	})
+
 	// check log level
 	c.LogLevel = strings.ToLower(c.LogLevel)
 	if c.LogLevel != "trace" && c.LogLevel != "debug" && c.LogLevel != "info" &&
 		c.LogLevel != "warn" && c.LogLevel != "error" && c.LogLevel != "fatal" {
 		c.LogLevel = "info"
 	}
+
+	ExchangeEnvValue("logRotationInterval", func(envValue string) {
+		c.LogRotationInterval = envValue
+	})
+
 	// check log rotation interval
 	c.LogRotationInterval = strings.ToLower(c.LogRotationInterval)
 	if c.LogRotationInterval != "h" && c.LogRotationInterval != "d" &&
 		c.LogRotationInterval != "m" && c.LogRotationInterval != "y" {
 		c.LogRotationInterval = "y"
 	}
+
+	ExchangeEnvValue("maxRollingLogfileSize", func(envValue string) {
+		s, err := convert.StrToInt(envValue)
+		logger.Fatal("invalid size number \"", envValue, "\": ", err)
+		c.MaxRollingLogfileSize = s
+	})
+
 	// check rolling log file size
 	if c.MaxRollingLogfileSize != 64 && c.MaxRollingLogfileSize != 128 &&
 		c.MaxRollingLogfileSize != 256 && c.MaxRollingLogfileSize != 512 &&
 		c.MaxRollingLogfileSize != 1024 {
 		c.MaxRollingLogfileSize = 64
 	}
+
+	ExchangeEnvValue("logDir", func(envValue string) {
+		c.LogDir = envValue
+	})
+
+	ExchangeEnvValue("disableLogfile", func(envValue string) {
+		b, err := convert.StrToBool(envValue)
+		logger.Fatal("invalid bool value \"", envValue, "\": ", err)
+		c.SaveLog2File = !b
+	})
+
 	// prepare log directory
 	if c.SaveLog2File {
 		if !file.Exists(c.LogDir) {
@@ -80,6 +137,11 @@ func ValidateStorageConfig(c *common.StorageConfig) error {
 			}
 		}
 	}
+
+	ExchangeEnvValue("dataDir", func(envValue string) {
+		c.DataDir = envValue
+	})
+
 	c.DataDir = file.FixPath(c.DataDir)
 	if !file.Exists(c.DataDir) {
 		if err := file.CreateDirs(c.DataDir); err != nil {
@@ -96,9 +158,11 @@ func ValidateStorageConfig(c *common.StorageConfig) error {
 		RollingFileDir:     c.LogDir,
 		RollingFileName:    "godfs-storage",
 	}
+
 	logger.Init(logConfig)
 
 	InitialConfigMap(c.DataDir + "/cfg.dat")
+
 	c.InstanceId = LoadInstanceData()
 
 	historySecret, err := loadHistorySecret(true, c.InstanceId, c.Secret)
@@ -130,21 +194,47 @@ func ValidateTrackerConfig(c *common.TrackerConfig) error {
 	if c == nil {
 		return errors.New("no config provided")
 	}
+
+	ExchangeEnvValue("port", func(envValue string) {
+		p, err := convert.StrToInt(envValue)
+		logger.Fatal("invalid port number \"", envValue, "\": ", err)
+		c.Port = p
+	})
+
 	// check port range
 	if c.Port < 0 || c.Port > 65535 {
 		return errors.New("invalid port number " +
 			convert.IntToStr(c.Port) + ", port number must in the range of 0 to 65535")
 	}
+
+	ExchangeEnvValue("advertisePort", func(envValue string) {
+		p, err := convert.StrToInt(envValue)
+		logger.Fatal("invalid port number \"", envValue, "\": ", err)
+		c.AdvertisePort = p
+	})
+
 	// check advertise port range
 	if c.AdvertisePort < 0 || c.AdvertisePort > 65535 {
 		return errors.New("invalid advertise port number " +
 			convert.IntToStr(c.Port) + ", port number must in the range of 0 to 65535")
 	}
+
+	ExchangeEnvValue("httpPort", func(envValue string) {
+		p, err := convert.StrToInt(envValue)
+		logger.Fatal("invalid port number \"", envValue, "\": ", err)
+		c.HttpPort = p
+	})
+
 	// check http port range
 	if c.HttpPort < 0 || c.HttpPort > 65535 {
 		return errors.New("invalid http port number " +
 			convert.IntToStr(c.Port) + ", port number must in the range of 0 to 65535")
 	}
+
+	ExchangeEnvValue("secret", func(envValue string) {
+		c.Secret = envValue
+	})
+
 	// check secret
 	if c.Secret != "" {
 		if m, err := regexp.MatchString(common.SECRET_PATTERN, c.Secret); err != nil || !m {
@@ -153,24 +243,51 @@ func ValidateTrackerConfig(c *common.TrackerConfig) error {
 		}
 	}
 
+	ExchangeEnvValue("logLevel", func(envValue string) {
+		c.LogLevel = envValue
+	})
+
 	// check log level
 	c.LogLevel = strings.ToLower(c.LogLevel)
 	if c.LogLevel != "trace" && c.LogLevel != "debug" && c.LogLevel != "info" &&
 		c.LogLevel != "warn" && c.LogLevel != "error" && c.LogLevel != "fatal" {
 		c.LogLevel = "info"
 	}
+
+	ExchangeEnvValue("logRotationInterval", func(envValue string) {
+		c.LogRotationInterval = envValue
+	})
+
 	// check log rotation interval
 	c.LogRotationInterval = strings.ToLower(c.LogRotationInterval)
 	if c.LogRotationInterval != "h" && c.LogRotationInterval != "d" &&
 		c.LogRotationInterval != "m" && c.LogRotationInterval != "y" {
 		c.LogRotationInterval = "y"
 	}
+
+	ExchangeEnvValue("maxRollingLogfileSize", func(envValue string) {
+		s, err := convert.StrToInt(envValue)
+		logger.Fatal("invalid size number \"", envValue, "\": ", err)
+		c.MaxRollingLogfileSize = s
+	})
+
 	// check rolling log file size
 	if c.MaxRollingLogfileSize != 64 && c.MaxRollingLogfileSize != 128 &&
 		c.MaxRollingLogfileSize != 256 && c.MaxRollingLogfileSize != 512 &&
 		c.MaxRollingLogfileSize != 1024 {
 		c.MaxRollingLogfileSize = 64
 	}
+
+	ExchangeEnvValue("logDir", func(envValue string) {
+		c.LogDir = envValue
+	})
+
+	ExchangeEnvValue("disableLogfile", func(envValue string) {
+		b, err := convert.StrToBool(envValue)
+		logger.Fatal("invalid bool value \"", envValue, "\": ", err)
+		c.SaveLog2File = !b
+	})
+
 	// prepare log directory
 	if c.SaveLog2File {
 		if !file.Exists(c.LogDir) {
@@ -179,6 +296,11 @@ func ValidateTrackerConfig(c *common.TrackerConfig) error {
 			}
 		}
 	}
+
+	ExchangeEnvValue("dataDir", func(envValue string) {
+		c.DataDir = envValue
+	})
+
 	c.DataDir = file.FixPath(c.DataDir)
 	if !file.Exists(c.DataDir) {
 		if err := file.CreateDirs(c.DataDir); err != nil {
@@ -193,7 +315,7 @@ func ValidateTrackerConfig(c *common.TrackerConfig) error {
 		Write2File:         c.SaveLog2File,
 		AlwaysWriteConsole: true,
 		RollingFileDir:     c.LogDir,
-		RollingFileName:    "godfs-storage",
+		RollingFileName:    "godfs-tracker",
 	}
 	logger.Init(logConfig)
 

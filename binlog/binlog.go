@@ -15,7 +15,6 @@ import (
 	"io"
 	"os"
 	"sync"
-	"time"
 )
 
 const (
@@ -23,7 +22,7 @@ const (
 	SYNC_BINLOG_MANAGER    XBinlogManagerType = 2
 	TRACKER_BINLOG_MANAGER XBinlogManagerType = 3
 	MAX_BINLOG_SIZE        int                = 2 << 20 // 200w binlog records
-	LOCAL_BINLOG_SIZE                         = 112     // single binlog size.
+	LOCAL_BINLOG_SIZE                         = 102     // single binlog size.
 )
 
 var binlogMapManager *XBinlogMapManager
@@ -44,9 +43,8 @@ type XBinlogManager interface {
 	// GetCurrentIndex gets current binlog file index.
 	GetCurrentIndex() int
 
-	// TODO add batch binlog writer
 	// Write writes a binlog to file.
-	Write(bin *common.BingLog) error
+	Write(bin ...*common.BingLog) error
 
 	// Read reads binlog from file.
 	//
@@ -78,24 +76,25 @@ func NewXBinlogManager(managerType XBinlogManagerType) XBinlogManager {
 	}
 	if managerType == LOCAL_BINLOG_MANAGER {
 		return &localBinlogManager{
-			writeLock:    new(sync.Mutex),
-			binlogSize:   0,
-			buffer:       bytes.Buffer{},
-			lengthBuffer: make([]byte, 8),
+			writeLock:          new(sync.Mutex),
+			binlogSize:         0,
+			buffer:             bytes.Buffer{},
+			lengthBuffer:       make([]byte, 8),
+			singleBinlogBuffer: make([]byte, LOCAL_BINLOG_SIZE), // 8+8+86
 		}
 	}
-	// TODO
 	return nil
 }
 
 // localBinlogManager is a binlog manager for storage server.
 type localBinlogManager struct {
-	writeLock         *sync.Mutex
-	currentBinLogFile *os.File // current binlog file
-	binlogSize        int      // binlog items count
-	buffer            bytes.Buffer
-	lengthBuffer      []byte
-	currentIndex      int
+	writeLock          *sync.Mutex
+	currentBinLogFile  *os.File // current binlog file
+	binlogSize         int      // binlog items count
+	buffer             bytes.Buffer
+	lengthBuffer       []byte
+	singleBinlogBuffer []byte
+	currentIndex       int
 }
 
 func (m *localBinlogManager) GetType() XBinlogManagerType {
@@ -106,11 +105,19 @@ func (m *localBinlogManager) GetCurrentIndex() int {
 	return m.currentIndex
 }
 
-func (m *localBinlogManager) Write(bin *common.BingLog) error {
+func (m *localBinlogManager) Write(bin ...*common.BingLog) error {
+
+	l := len(bin)
+	if bin == nil || l == 0 {
+		return nil
+	}
+
 	m.writeLock.Lock()
 	defer m.writeLock.Unlock()
 
 	logger.Debug("writing binlog")
+
+	// initialize binlog file or create new binlog file if it exceeds max size.
 	if m.currentBinLogFile == nil || m.binlogSize >= MAX_BINLOG_SIZE {
 		// file size exceed, close old file
 		if m.currentBinLogFile != nil {
@@ -131,26 +138,27 @@ func (m *localBinlogManager) Write(bin *common.BingLog) error {
 
 	// build buffer
 	defer m.buffer.Reset()
-	m.buffer.WriteByte(bin.DownloadFinish)
-	m.buffer.Write(bin.SourceInstance[:])
-	m.buffer.Write(bin.Timestamp[:])
-	m.buffer.Write(bin.FileLength[:])
-	m.buffer.Write(bin.FileId[:])
+
+	for i := 0; i < l; i++ {
+		copy(m.singleBinlogBuffer[0:8], bin[i].SourceInstance[:])
+		copy(m.singleBinlogBuffer[8:16], bin[i].FileLength[:])
+		copy(m.singleBinlogBuffer[16:], bin[i].FileId[:])
+		m.buffer.WriteString(base64.RawURLEncoding.EncodeToString(m.singleBinlogBuffer))
+		m.buffer.WriteRune('\n')
+	}
+
 	// persist binlog data.
-	if _, err := m.currentBinLogFile.WriteString(base64.RawURLEncoding.EncodeToString(m.buffer.Bytes()) + "\n"); err != nil {
+	if _, err := m.currentBinLogFile.Write(m.buffer.Bytes()); err != nil {
 		return err
 	}
-	// sync data.
-	// fuck off!
-	/*if err := m.currentBinLogFile.Sync(); err != nil {
-		return err
-	}*/
 	m.binlogSize += 1
 	// write binlog record size.
 	if err := binlogMapManager.SetRecords(m.currentIndex, m.binlogSize); err != nil {
 		return err
 	}
+
 	logger.Debug("binlog write success")
+
 	return nil
 }
 
@@ -212,15 +220,13 @@ func (m *localBinlogManager) Read(fileIndex int, offset int64, fetchLine int) ([
 		}
 
 		// invalid binlog size, skip.
-		if len(bs) != 111 {
+		if len(bs) != LOCAL_BINLOG_SIZE {
 			continue
 		}
 		bl := common.BingLog{
-			DownloadFinish: bs[0],
-			SourceInstance: Copy8(bs[1:9]),
-			Timestamp:      Copy8(bs[9:17]),
-			FileLength:     Copy8(bs[17:25]),
-			FileId:         bs[25:],
+			SourceInstance: Copy8(bs[0:8]),
+			FileLength:     Copy8(bs[8:16]),
+			FileId:         bs[16:],
 		}
 
 		readLines++
@@ -349,24 +355,18 @@ func getBinLogFileNameByIndex(binlogDir string, i int) string {
 }
 
 // CreateLocalBinlog builds an Binlog.
-func CreateLocalBinlog(fileId string, fileLength int64, instanceId string, tm time.Time, downloadFinish byte) *common.BingLog {
+func CreateLocalBinlog(fileId string, fileLength int64, instanceId string) *common.BingLog {
 	buffer8 := make([]byte, 8)
 	// file length
 	convert.Length2Bytes(fileLength, buffer8)
 	var flen = Copy8(buffer8)
-	// timestamp
-	convert.Length2Bytes(tm.Unix(), buffer8)
-	var ts = Copy8(buffer8)
 	// instance
 	var ins = Copy8([]byte(instanceId))
 
 	return &common.BingLog{
-		Type:           byte(LOCAL_BINLOG_MANAGER),
 		FileId:         []byte(fileId),
 		SourceInstance: ins,
 		FileLength:     flen,
-		Timestamp:      ts,
-		DownloadFinish: downloadFinish,
 	}
 }
 

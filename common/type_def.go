@@ -145,10 +145,7 @@ type InstanceMap struct {
 }
 
 type BingLog struct {
-	Type           byte    // 1: local upload binlog, 2: local synchronization binlog, 3: tracker binlog
-	DownloadFinish byte    // 1 finish, 0 not finish
 	SourceInstance [8]byte // file source instance
-	Timestamp      [8]byte // upload time
 	FileLength     [8]byte // file length
 	FileId         []byte  // fileId
 }

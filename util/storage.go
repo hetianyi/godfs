@@ -1,6 +1,7 @@
 package util
 
 import (
+	"container/list"
 	"encoding/base64"
 	"fmt"
 	"github.com/hetianyi/godfs/common"
@@ -46,4 +47,14 @@ func ExistsFile(fInfo *common.FileInfo) bool {
 		return file.Exists(common.InitializedStorageConfiguration.DataDir + "/" + fInfo.Path)
 	}
 	return false
+}
+
+// ClearList clears the list elements.
+func ClearList(l *list.List) {
+	if l == nil {
+		return
+	}
+	for l.Front() != nil {
+		l.Remove(l.Front())
+	}
 }

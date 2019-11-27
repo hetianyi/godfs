@@ -23,6 +23,10 @@ import (
 var client api.ClientAPI
 
 // initClient initializes APIClient.
+//
+// It will parse tracker servers and storage servers first and
+// then connect to each tracker server and synchronize instances
+// before doing client jobs.
 func initClient() error {
 	util.ValidateClientConfig(common.InitializedClientConfiguration)
 	client = api.NewClient()
@@ -322,12 +326,16 @@ func handleTestUploadFile() error {
 	waitGroup.Add(common.InitializedClientConfiguration.TestThread)
 	waitGroup.Wait()
 	endTime := gox.GetTimestamp(time.Now())
-	fmt.Println("[---------------------------]")
-	fmt.Println("total  :", common.InitializedClientConfiguration.TestScale)
-	fmt.Println("failed :", testFailed)
-	fmt.Println("time   :", (endTime-startTime)/1000, "s")
-	fmt.Println("average:", int64(common.InitializedClientConfiguration.TestScale)/((endTime-startTime)/1000), "/s")
-	fmt.Println("[---------------------------]")
+	// bug fixes: panic: runtime error: integer divide by zero
+	if endTime == startTime {
+		endTime += 1
+	}
+	fmt.Println("+---------------------------+")
+	fmt.Println("| total  :", common.InitializedClientConfiguration.TestScale)
+	fmt.Println("| failed :", testFailed)
+	fmt.Println("| time   :", (endTime-startTime)/1000, "s")
+	fmt.Println("| average:", int64(common.InitializedClientConfiguration.TestScale)/((endTime-startTime)/1000), "/s")
+	fmt.Println("+---------------------------+")
 	return nil
 }
 

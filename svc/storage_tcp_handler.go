@@ -200,20 +200,6 @@ func uploadFileHandler(header *common.Header, bodyReader io.Reader, bodyLength i
 		}
 	}
 
-	_, s, err := util.ParseAlias(finalFileId, common.InitializedStorageConfiguration.Secret)
-
-	if err != nil {
-		tsBuff := make([]byte, 8)
-		bs := convert.Length2Bytes(now.Unix(), tsBuff)
-
-		logger.Debug("args: ", finalFileId)
-		logger.Debug("args: ", _finalFileId)
-		logger.Debug("args: ", common.InitializedStorageConfiguration.InstanceId)
-		logger.Debug("args: ", bs[4:])
-		logger.Debug(s)
-		logger.Fatal(err)
-	}
-
 	if !file.Exists(targetFile) {
 		logger.Debug("file not exists, move to target dir.")
 		if err := file.MoveFile(tmpFileName, targetFile); err != nil {
@@ -230,7 +216,7 @@ func uploadFileHandler(header *common.Header, bodyReader io.Reader, bodyLength i
 	// write binlog.
 	logger.Debug("write binlog...")
 	if err = writableBinlogManager.Write(binlog.CreateLocalBinlog(finalFileId,
-		bodyLength, common.InitializedStorageConfiguration.InstanceId, time.Now(), 1)); err != nil {
+		bodyLength, common.InitializedStorageConfiguration.InstanceId)); err != nil {
 		return nil, nil, 0, errors.New("error writing binlog: " + err.Error())
 	}
 

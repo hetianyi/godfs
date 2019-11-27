@@ -6,6 +6,7 @@ import (
 	"github.com/hetianyi/godfs/api"
 	"github.com/hetianyi/godfs/binlog"
 	"github.com/hetianyi/godfs/common"
+	"github.com/hetianyi/godfs/util"
 	"github.com/hetianyi/gox"
 	"github.com/hetianyi/gox/logger"
 	"github.com/hetianyi/gox/timer"
@@ -180,8 +181,14 @@ func watch(server *common.Server) {
 
 	watchingMembers[server.InstanceId] = server
 
+	binlogList := list.New()
+
 	timer.Start(0, time.Second*10, 0, func(t *timer.Timer) {
 		for true {
+
+			// clear the list
+			util.ClearList(binlogList)
+
 			// make sure this member is not expired.
 			if !checkServer(server.InstanceId) {
 				t.Destroy()
@@ -212,6 +219,7 @@ func watch(server *common.Server) {
 
 			failed := 0
 			var lastErr error
+
 			for _, v := range ret.Logs {
 				if v.SourceInstance == common.InitializedStorageConfiguration.InstanceId {
 					// binlog is mime, so skip.
@@ -219,27 +227,43 @@ func watch(server *common.Server) {
 				}
 
 				if err = DoIfNotExist(v.FileId, func() error {
-					if err := writableBinlogManager.Write(binlog.CreateLocalBinlog(v.FileId,
-						v.FileLength, v.SourceInstance, time.Now(), 0)); err != nil {
-						failed++
-						lastErr = err
-						logger.Debug("error write binlog: ", err)
-						return err
-					}
-					logger.Debug("add dataset...")
-					if err := Add(v.FileId); err != nil {
-						failed++
-						lastErr = err
-						logger.Error("error writing dataset")
-						return err
-					}
-					logger.Debug("add dataset success")
+					binlogList.PushBack(binlog.CreateLocalBinlog(v.FileId,
+						v.FileLength, v.SourceInstance))
 					return nil
 				}); err != nil {
 					failed++
 					lastErr = err
 					continue
 				}
+			}
+
+			if binlogList.Len() > 0 {
+				tmp := make([]*common.BingLog, binlogList.Len())
+				i := 0
+				gox.WalkList(binlogList, func(item interface{}) bool {
+					tmp[i] = item.(*common.BingLog)
+					i++
+					return false
+				})
+
+				// write binlog first and dataset after.
+				if err := writableBinlogManager.Write(tmp...); err != nil {
+					lastErr = err
+					logger.Debug("error write binlog: ", err)
+				}
+
+				gox.WalkList(binlogList, func(item interface{}) bool {
+					v := item.(*common.BingLog)
+					logger.Debug("add dataset...")
+					if err := Add(string(v.FileId[:])); err != nil {
+						failed++
+						lastErr = err
+						logger.Debug("error writing dataset")
+						return false
+					}
+					logger.Debug("add dataset success")
+					return false
+				})
 			}
 
 			if failed == 0 {
@@ -251,6 +275,7 @@ func watch(server *common.Server) {
 				}
 			} else {
 				logger.Debug("binlog write error: ", lastErr, ", failed ", failed)
+				break
 			}
 			if len(ret.Logs) == 0 {
 				break

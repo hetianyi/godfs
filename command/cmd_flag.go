@@ -43,12 +43,6 @@ func Parse(arguments []string) {
 					Destination: &logLevel,
 				},
 				cli.StringFlag{
-					Name:        "config, c",
-					Value:       "",
-					Usage:       "use custom config file",
-					Destination: &configFile,
-				},
-				cli.StringFlag{
 					Name:        "secret, s",
 					Value:       "",
 					Usage:       "custom global secret",
@@ -170,12 +164,6 @@ func Parse(arguments []string) {
 					Value:       "",
 					Usage:       "set group name of storage server",
 					Destination: &group,
-				},
-				cli.StringFlag{
-					Name:        "config, c",
-					Value:       "",
-					Usage:       "use custom config file",
-					Destination: &configFile,
 				},
 				cli.StringFlag{
 					Name:  "access-mode, m",
@@ -322,12 +310,6 @@ Usage: godfs client upload <file1> <file2> ...`)
 							Destination: &publicUpload,
 						},
 						cli.StringFlag{
-							Name:        "config, c",
-							Value:       "",
-							Usage:       "use custom config file",
-							Destination: &configFile,
-						},
-						cli.StringFlag{
 							Name:  "storages",
 							Value: "",
 							Usage: `set storage servers, example:
@@ -375,12 +357,6 @@ Usage: godfs client download <fid1> <fid2> ...`)
 							Destination: &customDownloadFileName,
 						},
 						cli.StringFlag{
-							Name:        "config, c",
-							Value:       "",
-							Usage:       "use custom config file",
-							Destination: &configFile,
-						},
-						cli.StringFlag{
 							Name:  "storages",
 							Value: "",
 							Usage: `set storage servers, example:
@@ -421,12 +397,6 @@ Usage: godfs client inspect <fid1> <fid2> ...`)
 					},
 					Flags: []cli.Flag{
 						cli.StringFlag{
-							Name:        "config, c",
-							Value:       "",
-							Usage:       "use custom config file",
-							Destination: &configFile,
-						},
-						cli.StringFlag{
 							Name:  "storages",
 							Value: "",
 							Usage: `set storage servers, example:
@@ -446,42 +416,6 @@ Usage: godfs client inspect <fid1> <fid2> ...`)
 							Usage: `set log level, available options:
 	(trace|debug|info|warn|error|fatal)`,
 							Destination: &logLevel,
-						},
-					},
-				},
-				{ // this sub command is only used by client cli
-					Name:  "config",
-					Usage: "config settings operations",
-					Action: func(c *cli.Context) error {
-						if len(c.Args()) == 0 {
-							cli.ShowSubcommandHelp(c)
-							os.Exit(0)
-						}
-						return nil
-					},
-					Subcommands: []cli.Command{
-						{
-							Name:  "set",
-							Usage: "set configs in 'k=v' form",
-							Action: func(c *cli.Context) error {
-								finalCommand = common.CMD_UPDATE_CONFIG
-								if len(c.Args()) == 0 {
-									return errors.New(`Err: no parameters provided.
-Usage: godfs client config set key=value key=value ...`)
-								}
-								for i := range c.Args() {
-									updateConfigList.PushBack(c.Args().Get(i))
-								}
-								return nil
-							},
-						},
-						{
-							Name:  "ls",
-							Usage: "show configs",
-							Action: func(c *cli.Context) error {
-								finalCommand = common.CMD_SHOW_CONFIG
-								return nil
-							},
 						},
 					},
 				},
@@ -538,22 +472,16 @@ Usage: godfs client token <fid1> <fid2> ...`)
 							Destination: &publicUpload,
 						},
 						cli.IntFlag{
-							Name:        "scale",
+							Name:        "scale, s",
 							Usage:       "test scale",
 							Value:       10000,
 							Destination: &testScale,
 						},
 						cli.IntFlag{
-							Name:        "thread",
+							Name:        "thread, t",
 							Usage:       "test thread size",
 							Value:       5,
 							Destination: &testThread,
-						},
-						cli.StringFlag{
-							Name:        "config, c",
-							Value:       "",
-							Usage:       "use custom config file",
-							Destination: &configFile,
 						},
 						cli.StringFlag{
 							Name:  "storages",
