@@ -19,19 +19,24 @@ import (
 	"time"
 )
 
-const MaxConnPerServer uint = 100
+const (
+	MaxConnPerServer uint = 100
+	counterLoopSize       = 60
+	maxUploadFactor       = 1000 // max uploads per sec of.
+)
 
 var (
 	clientAPI             api.ClientAPI
 	writableBinlogManager binlog.XBinlogManager
 	// counting traffic within 1 minutes
-	counterLoop [60]int
-	counterPos  int
-	counterLock *sync.Mutex
+	counterLoop         [counterLoopSize]int // 64, about 1 minute.
+	counterPos          int
+	counterLock         *sync.Mutex
+	millionSecPerUpload = float32(1000) / float32(maxUploadFactor)
 )
 
 func init() {
-	counterLoop = [60]int{}
+	counterLoop = [counterLoopSize]int{}
 	counterLock = new(sync.Mutex)
 }
 
@@ -180,11 +185,19 @@ func startCounterLoop() {
 		counterLock.Lock()
 		defer counterLock.Unlock()
 
-		fmt.Println(counterLoop)
 		counterPos++
-		if counterPos > 59 {
+		if counterPos > counterLoopSize-1 {
 			counterPos = 0
 		}
 		counterLoop[counterPos] = 0
 	})
+}
+
+func limit() {
+	s := sumCounter()
+	if s > 0 {
+		a := int(float32(s) / float32(counterLoopSize) * millionSecPerUpload)
+		fmt.Println(s, "sleep ", a, "ms")
+		time.Sleep(time.Millisecond * time.Duration(a))
+	}
 }

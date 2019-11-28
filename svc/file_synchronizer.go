@@ -225,6 +225,8 @@ func syncFiles(bls []common.BingLogDTO) int {
 // syncFile synchronizes a single file.
 func syncFile(binlog *common.BingLogDTO, server *common.Server) error {
 
+	limit()
+
 	if binlog == nil {
 		return nil
 	}

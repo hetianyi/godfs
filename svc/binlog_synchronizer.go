@@ -187,10 +187,6 @@ func watch(server *common.Server) {
 
 		for true {
 
-			if sumCounter() > 0 {
-				// TODO add delay factor
-				time.Sleep(time.Millisecond)
-			}
 			// clear the list
 			util.ClearList(binlogList)
 
