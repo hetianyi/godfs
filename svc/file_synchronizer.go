@@ -53,7 +53,7 @@ func InitFileSynchronization() {
 			// filter group members.
 			ins := filterGroupMembers(api.FilterInstances(common.ROLE_STORAGE), common.InitializedStorageConfiguration.Group)
 			if ins.Len() == 0 {
-				logger.Debug("no group member available")
+				// logger.Debug("no group member available")
 				break
 			}
 

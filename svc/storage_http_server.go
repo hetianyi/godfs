@@ -20,7 +20,6 @@ import (
 	"net/http"
 	"os"
 	"regexp"
-	"strconv"
 	"strings"
 	"time"
 )
@@ -545,110 +544,31 @@ func httpDownload(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// 304 Not Modified
-	eTag := r.Header["If-None-Match"]
-	if common.InitializedStorageConfiguration.EnableMimeTypes &&
-		eTag != nil && len(eTag) > 0 && eTag[0] == "\""+strings.Split(info.Path, "/")[2]+"\"" {
-		setMimeHeaders(strings.Split(info.Path, "/")[2], &headers)
-		w.WriteHeader(304)
-		return
-	}
-
-	// parse header: range
-	rangeS := r.Header.Get("Range")
-	start, end := parseHeaderRange(rangeS)
-
 	filePath := strings.Join([]string{common.InitializedStorageConfiguration.DataDir, info.Path}, "/")
-	outFile, err := file.GetFile(filePath)
-	if err != nil {
-		logger.Debug("error open file: ", info.Path, ": ", err)
-		util.HttpFileNotFoundError(w)
-		return
-	}
 	fileInfo, err := os.Stat(filePath)
 	if err != nil {
 		logger.Debug("error stat file: ", info.Path, ": ", err)
 		util.HttpFileNotFoundError(w)
 		return
 	}
-
-	if start <= 0 {
-		start = 0
-	}
-	if start > fileInfo.Size()-4 {
-		start = fileInfo.Size() - 4
-	}
-	if end <= 0 || end >= (fileInfo.Size()-4) || end == start || end < start {
-		end = fileInfo.Size() - 4
-	}
-	totalLen := end - start
-
-	if rangeS != "" {
-		if _, err = outFile.Seek(start, 0); err != nil {
-			logger.Debug("error seek file: ", info.Path, ": ", err)
-			util.HttpInternalServerError(w, "Not Found.")
-			return
-		}
+	if fileInfo.Size() < 4 {
+		logger.Debug("invalid file length")
+		util.HttpInternalServerError(w, "Internal Server Error.")
+		return
 	}
 
-	headers.Set("Content-Length", convert.Int64ToStr(totalLen))
-	headers.Set("Accept-Ranges", "bytes")
-	if rangeS != "" {
-		headers.Set("Content-Range", "bytes "+convert.Int64ToStr(start)+"-"+convert.Int64ToStr(end-1)+"/"+convert.Int64ToStr(fileInfo.Size()-4))
-	}
-
-	if fileName == "" && common.InitializedStorageConfiguration.EnableMimeTypes {
-		gmtLocation, _ := time.LoadLocation("GMT")
-		headers.Set("Last-Modified", fileInfo.ModTime().In(gmtLocation).Format(time.RFC1123))
-		headers.Set("Expires", time.Now().Add(time.Hour*2400).In(gmtLocation).Format(time.RFC1123))
-		setMimeHeaders(strings.Split(info.Path, "/")[2], &headers)
-		headers.Set("Content-Type", common.GetMimeType(ext))
-	} else {
-		headers.Set("Expires", "0")
-		headers.Set("Pragma", "public")
-		// headers.Set("Accept-Ranges", "bytes")
-		headers.Set("Content-Transfer-Encoding", "binary")
-		headers.Set("Cache-Control", "must-revalidate, post-check=0, pre-check=0")
-		headers.Set("Content-Disposition", "attachment;filename=\""+fileName+"\"")
-	}
-
-	if rangeS == "" {
-		w.WriteHeader(200)
-	} else {
-		w.WriteHeader(206)
-	}
-	_, err = io.Copy(w, io.LimitReader(outFile, totalLen))
+	outFile, err := file.GetFile(filePath)
 	if err != nil {
-		logger.Debug("error write file: ", err)
+		logger.Debug("error open file: ", info.Path, ": ", err)
+		util.HttpFileNotFoundError(w)
+		return
 	}
-}
+	sr := io.NewSectionReader(outFile, 0, fileInfo.Size()-4)
 
-// parseHeaderRange if end is 0, then the end represents max
-func parseHeaderRange(rang string) (int64, int64) {
-	if rang == "" {
-		return 0, 0
+	if fileName != "" {
+		headers.Set("Content-Disposition", "attachment;filename=\""+fileName+"\"")
+	} else if fileName == "" && ext != "" {
+		fileName = uuid.UUID() + "." + ext
 	}
-	if mat, _ := regexp.Match(rangeHeader, []byte(rang)); !mat {
-		return 0, 0
-	}
-	s := compiledRegexpRangeHeader.ReplaceAllString(rang, "${1}")
-	e := compiledRegexpRangeHeader.ReplaceAllString(rang, "${2}")
-	uintS, e1 := strconv.ParseInt(s, 10, 64)
-	uintE, e2 := strconv.ParseInt(e, 10, 64)
-	if e1 != nil {
-		return 0, 0
-	}
-	if e2 != nil {
-		return uintS, 0
-	}
-	return uintS, uintE
-}
-
-func setMimeHeaders(md5 string, headers *http.Header) {
-	// headers.Set("Cache-Control", "public")
-	headers.Set("Cache-Control", "max-age=604800")
-	headers.Set("Access-Control-Allow-Origin", "*")
-	headers.Set("date", time.Now().In(gmtLocation).Format(time.RFC1123))
-	headers.Set("Etag", "\""+md5+"\"")
-	// headers.Set("Connection", "keep-alive")
+	httpx.ServeContent(w, r, fileName, fileInfo.ModTime(), sr, fileInfo.Size()-4)
 }
