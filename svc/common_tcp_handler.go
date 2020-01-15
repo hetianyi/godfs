@@ -2,7 +2,6 @@ package svc
 
 import (
 	"errors"
-	"fmt"
 	"github.com/hetianyi/godfs/api"
 	"github.com/hetianyi/godfs/binlog"
 	"github.com/hetianyi/godfs/common"
@@ -197,7 +196,7 @@ func limit() {
 	s := sumCounter()
 	if s > 0 {
 		a := int(float32(s) / float32(counterLoopSize) * millionSecPerUpload)
-		fmt.Println(s, "sleep ", a, "ms")
+		// fmt.Println(s, "sleep ", a, "ms")
 		time.Sleep(time.Millisecond * time.Duration(a))
 	}
 }
