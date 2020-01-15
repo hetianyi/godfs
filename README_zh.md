@@ -3,7 +3,20 @@ godfs
 [![Build Status](https://travis-ci.org/hetianyi/godfs.svg?branch=master)](https://travis-ci.org/hetianyi/godfs)
 [![go report card](https://goreportcard.com/badge/github.com/hetianyi/godfs "go report card")](https://goreportcard.com/report/github.com/hetianyi/godfs)
 
+
+
+```non
+   ____  ____  ____  _________
+  / ___\/ __ \/ __ \/ ___/ __/ GoDFS::v2.0.0-dev
+ / /_/\  /_/ / /_/ / /__/\ \   A distribute filesystem.
+ \____/\____/____./_/______/   github.com/hetianyi/godfs
+```
+
+
+
 [README](README.md) | [中文文档](README_zh.md)
+
+
 
 ### ```godfs``` 是一个用go实现的轻量，快速，简单易用的分布式文件存储服务器。
 
@@ -20,13 +33,13 @@ godfs
 
 ## 特性
 
-- 快速, 轻量, 开箱即用, 友好的API
+- 快速, 轻量, 开箱即用, 友好的go API
 - 易于扩展，运行稳定
 - 低开销
 - 提供HTTP方式的下载和上传API
 - 支持文件断点下载
 - 跨站点资源保护
-- 支持不同平台下的编译运行: Linux, Windows, Mac
+- 支持不同平台下的编译运行: Linux, Windows
 - 更好地支持docker容器
 - 更好的文件迁移解决方案
 - 支持读写和只读文件节点
@@ -41,7 +54,6 @@ godfs
 
 ### 从最新的源码构建：
 ```shell
-yum install golang -y
 git clone https://github.com/hetianyi/godfs.git
 cd godfs
 ./make.sh
@@ -75,13 +87,13 @@ godfs client upload /you/upload/file [--trackers <pass>@<host>:<port>[,<pass>@<h
 # 没有tracker服务器，也可以直接上传到指定的storage服务器
 godfs client upload /you/upload/file [--storages <pass>@<host>:<port>[,<pass>@<host>:<port>]]
 ```
-![architecture](/doc/20180828095840.png)
+![architecture](doc/20180828095840.png)
 
 如果你想上传文件到指定的group，可以在命令行加参数```-g <groupID>```
 
 你还可以用一个更酷的命令来上传一个文件夹下所有的文件:
 ```shell
-godfs client upload *
+godfs client upload * --trackers <trackers>
 ```
 ![architecture](/doc/20180828100341.png)
 
@@ -121,9 +133,9 @@ godfs client download CfzJHbO1MS84thD13PWEsLIURCw_ZZ7bIqPgpWFJxZ3Ad1cZFzTSL9AMP1
 
 #### Token的使用
 
-token机制是参考FastDFS实现的，能够控制一个私有文件在一定时间内的可访问性。
+token能够控制一个私有文件在一定时间内的可访问性。
 
-token需要在后端自行生成，godfs只需要计算并匹配token，token携带的格式如下：
+token需要在后端根据secret自行生成，godfs只需要计算并匹配token，token携带的格式如下：
 
 http://...?tk=<md5>&ts=<timestamp>
 
@@ -133,7 +145,7 @@ md5(timestamp+filemd5+secret) ==> token
 
 
 
-### 从最新源代码构建docker镜像：
+### 构建docker镜像：
 ```shell
 cd godfs/docker
 docker build -t godfs:latest .
