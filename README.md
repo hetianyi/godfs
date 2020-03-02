@@ -3,356 +3,202 @@ godfs
 [![Build Status](https://travis-ci.org/hetianyi/godfs.svg?branch=master)](https://travis-ci.org/hetianyi/godfs)
 [![go report card](https://goreportcard.com/badge/github.com/hetianyi/godfs "go report card")](https://goreportcard.com/report/github.com/hetianyi/godfs)
 
-[README](README.md) | [中文文档](README_zh.md)
-# Description
 
-### ```godfs``` is a simple fast, easy use distributed file system written by golang.
 
-```godfs``` provides out-of-the-box usage and friendly support for docker，
+```non
+   ____  ____  ____  _________
+  / ___\/ __ \/ __ \/ ___/ __/ GoDFS::v2.0.0-dev
+ / /_/\  /_/ / /_/ / /__/\ \   A distribute filesystem.
+ \____/\____/____./_/______/   github.com/hetianyi/godfs
+```
 
-You can pull the image on docker hub:
+
+
+[README](README_EN.md) | [中文文档](README.md)
+
+
+
+### ```godfs``` 是一个用go实现的轻量，快速，简单易用的分布式文件存储服务器。
+
+```godfs``` 开箱即用，并对docker支持友好。
+
+你可以在docker hub上下载最新镜像:
 [https://hub.docker.com/r/hehety/godfs/](https://hub.docker.com/r/hehety/godfs/)
 
-##### [2019-03-28 UPDATE] Latest Version 1.1.1-dev and later is NOT compatible with previous versions!
 
-##### [2019-01-17 UPDATE] Latest Version 1.1.0+ is NOT compatible with previous versions!
 
-##### [2018-12-05 UPDATE] Godfs is now support dashboard for monitoring godfs running state!
+版本兼容表
 
-project is here:[https://github.com/hetianyi/godfs-dashboard](https://github.com/hetianyi/godfs-dashboard)
 
-![architecture](/doc/20180830151005.png)
 
-## Features
+## 特性
 
-- Fast, lightweight, stable, out-of-the-box, friendly api
-- Easy to expand, Stable to RUN
-- Low resource overhead
-- Native client api and java client api
-- API for http upload and download
-- Support file breakpoint download
-- Support basic verification for http download and upload
-- Cross-site resource protection
-- Clear logs help troubleshoot errors
-- Support different platforms: Linux, Windows, Mac
-- Better support for docker
-- File fragmentation storage
-- Better data migration solution
-- Support readonly node
-- File synchronization in same group
-- Support dashboard(beta, in development)
-- Support access token
+- 快速, 轻量, 开箱即用, 友好的go API
+- 易于扩展，运行稳定
+- 低开销
+- 提供HTTP方式的下载和上传API
+- 支持文件断点下载
+- 跨站点资源保护
+- 支持不同平台下的编译运行: Linux, Windows
+- 更好地支持docker容器
+- 更好的文件迁移解决方案
+- 支持读写和只读文件节点
+- 文件组内自动同步
+- 支持访问令牌
 
-## Install
+## 安装
 
-> Please install golang1.8+ first!
+> 请先安装golang1.11+
 
-Take CentOS 7 as example.
+以CentOS7为例.
 
-### build from latest source code:
+### 从最新的源码构建：
 ```shell
-yum install golang -y
 git clone https://github.com/hetianyi/godfs.git
 cd godfs
 ./make.sh
-# on windows you just need to click 'make.cmd'
+# Windows下直接点击 make.cmd 开始构建。
 ```
-After the build is successful, three files will be generated under the `````./bin````` directory:
+构建成功后, 会在`````bin````` 目录下生成一个可执行文件:
 ```shell
-./bin/client
-./bin/storage
-./bin/tracker
-./bin/bashboard
+./bin/godfs
 ```
 
-Install godfs binary files to ```/usr/local/godfs```:
+将构建成功的二进制文件安装到目录 ```/usr/bin```:
 ```shell
-./install.sh /usr/local/godfs
-```
-You can start tracker server by:
-```shell
-/usr/local/godfs/bin/tracker [-c /your/tracker/config/path]
-```
-and start storage node by:
-```shell
-/usr/local/godfs/bin/storage [-c /your/storage/config/path]
-```
-then you can using command ```client``` directly in command line to upload and download file.
-> Of course, you must first set up the tracker server.
-```shell
-# set up tracker servers for client
-client config set "trackers=host1:port1[,host2:port2]" "log_level=debug" ...
-# config secret
-client config set "secret=OASAD834jA97AAQE761=="
-# print client config
-client config ls
+./install.sh
 ```
 
-For example, you can upload file by:
+启动tracker服务:
 ```shell
-# upload a file
-client upload /f/project.rar
+godfs tracker [options]
 ```
-![architecture](/doc/20180828095840.png)
-
-If you want to upload file to specified group, you can add flag ```-g <groupID>``` in command line.
-also, it's cool that you can upload all files in a directory by:
+启动storage服务:
 ```shell
-client upload *
+godfs storage [options]
+```
+
+
+上传文件:
+
+```shell
+# 已有tracker
+godfs client upload /you/upload/file [--trackers <pass>@<host>:<port>[,<pass>@<host>:<port>]]
+# 没有tracker服务器，也可以直接上传到指定的storage服务器
+godfs client upload /you/upload/file [--storages <pass>@<host>:<port>[,<pass>@<host>:<port>]]
+```
+![architecture](doc/20180828095840.png)
+
+如果你想上传文件到指定的group，可以在命令行加参数```-g <groupID>```
+
+你还可以用一个更酷的命令来上传一个文件夹下所有的文件:
+```shell
+godfs client upload * --trackers <trackers>
 ```
 ![architecture](/doc/20180828100341.png)
 
-if you don't has a godfs client, you can use ```curl``` to upload files by:
+也可以使用 ```curl``` 来上传文件:
 ```shell
 curl -F "file=@/your/file" "http://your.host:http_port/upload"
 ```
-if upload success, server will return a json string like this:
+上传成功之后，服务器会返回一个json字符串:
 ```json
 {
-    "status":"success",
-    "formData":{
-        "data":[
-            "G01/01/M/826d552525bceec5b8e9709efaf481ec"
-        ],
-        "name":[
-            "mike"
-        ]
-    },
-    "fileInfo":[
+    "accessMode":"public",
+    "form":[
         {
-            "index":0,
-            "fileName":"mysql-cluster-community-7.6.7-1.sles12.x86_64.rpm-bundle.tar",
-            "path":"G01/01/M/826d552525bceec5b8e9709efaf481ec"
+            "index":1,
+            "type":"file",
+            "name":"f",
+            "value":"fme_eval.msi",
+            "size":1309757440,
+            "group":"G01",
+            "instanceId":"9de71d97",
+            "md5":"71e55b30e36b1b8c3343270f86bb6234",
+            "fileId":"CfzJHbO1MS84thD13PWEsLIURCw_ZZ7bIqPgpWFJxZ3Ad1cZFzTSL9AMP1CnCChK3Au9dqQ0ciAmdQ5Oaxgj0g"
         }
     ]
 }
 ```
 
-> The ```formData``` contains all parameters of your posted form, the file will be replaced by a remote path(none english characters will encode to hex string, such as '图片' --> '\\u56fe\\u7247').
-If you want to upload file to specified group, you can add parameter ```?group=<groupID>``` to the request path.
+> 其中， ```form``` 是post表单中的所有字段的name-value信息，文件已被替换为上传之后的路径地址
+> 如果你想上传文件到指定的group，可以在路径上加参数```?group=<groupID>```
 
 ```shell
-# download a file as 123.zip
-client download G01/10/M/2c9da7ea280c020db7f4879f8180dfd6 --name 123.zip
+# 下载文件
+godfs client download CfzJHbO1MS84thD13PWEsLIURCw_ZZ7bIqPgpWFJxZ3Ad1cZFzTSL9AMP1CnCChK3Au9dqQ0ciAmdQ5Oaxgj0g --name 123.zip
 ```
 
 
 
-#### Usage of Token
+#### Token的使用
 
-token refers from FastDFS, it can control a file be accessable within a certain time.
+token能够控制一个私有文件在一定时间内的可访问性。
 
-you need to generate token by yourself on backend, godfs only need to calculate from request parameters and compare them, token request format is：
+token需要在后端根据secret自行生成，godfs只需要计算并匹配token，token携带的格式如下：
 
 http://...?tk=<md5>&ts=<timestamp>
 
-token calculatation：
+token计算：
 
 md5(timestamp+filemd5+secret) ==> token
 
 
 
-### build docker image from latest source code:
-
+### 构建docker镜像：
 ```shell
 cd godfs/docker
-docker build -t godfs .
+docker build -t godfs:latest .
 ```
-It is highly recommended to use docker to run godfs.
-You can pull the docker image from [docker hub](https://hub.docker.com/r/hehety/godfs/):
+推荐使用docker来运行godfs，最新的godfs的docker镜像可以在 [docker hub](https://hub.docker.com/r/hehety/godfs/) 获取:
 ```shell
 docker pull hehety/godfs
 ```
 
-start tracker using docker:
+启动tracker服务器:
 ```shell
-docker run -d -p 1022:1022 --name tracker --restart always -v /godfs/data:/godfs/data --privileged -e log_level="info" hehety/godfs:latest tracker
+docker run -d --net host --name tracker hehety/godfs:2.0.0-dev \
+godfs tracker \
+--bind-address 0.0.0.0 \
+--secret 123123 \
+--data-dir /godfs/data
 ```
 
-start storage using docker:
+启动storage服务器:
 ```shell
-docker run -d -p 1024:1024 -p 80:8001 --name storage -v /godfs/data:/godfs/data --privileged -e trackers=192.168.1.172:1022 -e advertise_addr=192.168.1.187 -e port=1024  -e instance_id="01" hehety/godfs storage
-# you'd better add docker command '-e port=1024' on single machine.  
+docker run -d --net host --name s1  hehety/godfs:2.0.0-dev \
+godfs storage \
+--bind-address 0.0.0.0 \
+--secret 123123 \
+--data-dir /godfs/data \
+--log-dir /godfs/logs \
+--trackers 123123@149.28.82.229:11706 \
+--preferred-network eth0
 ```
-we're here using directory ```/godfs/data``` to persist data, you can use ```-e``` in docker command line to override default configuration.
+你可以使用docker的命令```-e```来覆盖配置文件中的相应配置。
 
-client usage:
+客户端命令:
 ```shell
-NAME:
-   godfs client cli
-USAGE:
-   client [global options] command [command options] [arguments...]
-VERSION:
-   1.1.0-beta
-COMMANDS:
-     upload    upload local files
-     download  download a file
-     inspect   inspect files information by md5
-     config    client cli configuration settings operation
-     help, h   Shows a list of commands or help for one command
-GLOBAL OPTIONS:
-   --trackers value               tracker servers (default: "127.0.0.1:1022")
-   --log_level value              log level (trace, debug, info, warm, error, fatal) (default: "info")
-   --log_rotation_interval value  log rotation interval h(hour),d(day),m(month),y(year) (default: "d")
-   --secret value                 secret of trackers (trace, debug, info, warm, error, fatal)
-   --help, -h                     show help
-   --version, -v                  print the version
-```
+Usage: godfs [global options] command [command options] [arguments...]
 
+Commands:
 
+     tracker  start as tracker server
+     storage  start as storage server
+     client   godfs client cli
+     help, h  Shows a list of commands or help for one command
 
-## Monitoring
+Options:
 
-godfs monitoring project is now available at [HERE](https://github.com/hetianyi/godfs-dashboard)
-
-This project is currently under development and can monitor some basic status information of godfs.
-
-You can use it out of the box by docker([HERE](https://github.com/hetianyi/godfs-dashboard)).
-
-```shell
-# run the dashboard
-docker run -d -p 8080:80 --restart always --name godfs-dashboard hehety/godfs-dashboard
+   --version, -v  show version
+   --help, -h     show help
 ```
 
-![architecture](/doc/20181205154643.png)
-
-![architecture](/doc/20181205154909.png)
 
 
 
-## Tcp client based stress test on workstations (v1.1.0 and later)
 
-[Test case is here](https://github.com/hetianyi/godfs/tree/master/example)
+##### 说明：
 
-Machine configuration
+godfs 2.0版本移除了sqlite数据库（在1.x中测试发现，sqlite数据库文件在大并发和大数据量的情况下可能会出现损坏和无法写入情况），使用boltdb来存储配置数据，使用gox包的set来存储文件id，简化的数据存储策略能够大幅提升随机写入性能。
 
-| Node     | CPU                                      | CPU core number | Memory | Disk |
-| -------- | ---------------------------------------- | :-------------: | :----: | ---- |
-| tracker1 | Intel(R) Xeon(R) CPU E5-1620 0 @ 3.60GHz |        1        |  1GB   | SSD  |
-| tracker2 | Intel(R) Xeon(R) CPU E5-1620 0 @ 3.60GHz |        1        |  1GB   | SSD  |
-| storage1 | Intel(R) Xeon(R) CPU E5-1620 0 @ 3.60GHz |        2        |  1GB   | SSD  |
-| storage2 | Intel(R) Xeon(R) CPU E5-1620 0 @ 3.60GHz |        2        |  1GB   | SSD  |
-
-Test summary
-
-| Key                       | Value                     |
-| ------------------------- | ------------------------- |
-| type                      | VM                        |
-| operating System          | CentOS7                   |
-| tracker number            | 2                         |
-| group number              | 2（G01,G02）              |
-| storage number            | 4（G01x2,G02x2）          |
-| docker version            | 18.06.1-ce, build e68fc7a |
-| total files               | 5,000,000                 |
-| threads                   | 5                         |
-| total times               | 2h 35min                  |
-| System average throughput | 537 files/s               |
-| Single node throughput    | 134 files/s               |
-| Failure                   | 0                         |
-
-schematic diagram
-
-![architecture](doc/20190215153655.png)
-
-
-
-## Simple load test on vultr(before v1.1.0)
-
-### HTTP upload test
-|Name|Value|
-|---|---|
-| OS        | CentOS7   |
-| RAM       | 1GB       |
-| CPU core  | 1         |
-| DISK      | 60GB SSD  |
-
-#### Test description
-Generate 500w simple files, the file content
-is just a number from 1 to 5000000.
-and they were uploaded in 5 different threads by curl command(http upload).
-
-
-The test took 41.26 hours with not a single error which means 33.7 files uploaded per second.
-
-The CPU usage of the host in the test was kept at 60%-70%, and the memory consumed by the tracker and storage were both less than 30M.
->The test and one tracker server, one storage server are on the same machine.
-This test shows that godfs has no problem in handling large concurrent (for file system) uploads and database writes, and the system performs very stable.
-
-Test tool is available in release page.
-
-### HTTP download test
-
-storage server configuration(California)
-
-|Name|Value|
-|---|---|
-| OS        | CentOS7   |
-| RAM       | 512M       |
-| CPU core  | 1         |
-| DISK      | SSD  |
-
-download client machine configuration(Los Angeles)
-
-|Name|Value|
-|---|---|
-| OS        | CentOS7   |
-| RAM       | 8GB       |
-| CPU core  | 4         |
-| DISK      | SSD  |
-
-
-#### Test description
-We are here using apache [jmeter-5.0](http://jmeter.apache.org/download_jmeter.cgi) as test tool.
-
-In the test, we used 20 threads to download 4 files of different sizes (less than 1MB), each thread running 100000 times, a total of 800000.
-
-
-| Label | # Samples | Average | Median | 90% Line | 95% Line | 99% Line | Min  | Max  | Error % | Throughput | Received KB/sec | Sent KB/sec |
-| ----- | --------- | ------- | ------ | -------- | -------- | -------- | ---- | ---- | ------- | ---------- | --------------- | ----------- |
-| 1     | 200000    | 78      | 72     | 116      | 135      | 195      | 5    | 8377 | 0.00%   | 79.88966   | 20079.84        | 13.65       |
-| 2     | 200000    | 39      | 36     | 66       | 76       | 106      | 2    | 2715 | 0.00%   | 79.89087   | 11202.43        | 13.65       |
-| 3     | 200000    | 76      | 65     | 125      | 154      | 238      | 5    | 8641 | 0.00%   | 79.89052   | 37493.62        | 13.65       |
-| 4     | 200000    | 55      | 49     | 91       | 111      | 171      | 4    | 2789 | 0.00%   | 79.891     | 23045.82        | 13.65       |
-| Total | 800000    | 62      | 55     | 104      | 126      | 193      | 2    | 8641 | 0.00%   | 319.55492  | 91819.69        | 54.61       |
-
-
-![architecture](/doc/response-time.png)
-
-**Test result:**
-
-| Total       | 800000      |
-| ----------- | ----------- |
-| Threads     | 20          |
-| Total times | 41min       |
-| requests    | 319.55492/s |
-| avg time    | 62ms        |
-| success     | 100%        |
-| error       | 0%          |
-
-And I will do more test in the future.
-
-
-
-## Update logs
-
-2019/03/28
-1. Refer to FastDFS to implement the token mechanism.
-
-
-2019/01/17
-
-1. Import many 3rd part opensource libs for better performance include:
-
-   [github.com/mattn/go-sqlite3](https://github.com/mattn/go-sqlite3)
-
-   [github.com/jinzhu/gorm](github.com/jinzhu/gorm)
-
-   [github.com/json-iterator/go](github.com/json-iterator/go)
-
-   [github.com/urfave/cli](https://github.com/urfave/cli)
-
-2. Rewrite the underlying communication protocol which makes the program more scalable.
-
-3. Code refactoring
-
-4. Redesign client commands
