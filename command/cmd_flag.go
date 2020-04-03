@@ -224,6 +224,11 @@ func Parse(arguments []string) {
 					Usage:       "enable http mime type",
 					Destination: &enableMimetypes,
 				},
+				cli.BoolFlag{
+					Name:        "readonly, r",
+					Usage:       "read only mode(cannot upload file through this instance)",
+					Destination: &readOnly,
+				},
 				cli.StringFlag{
 					Name:        "allowed-hosts",
 					Usage:       "allowed access hosts",

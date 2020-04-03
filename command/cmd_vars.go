@@ -39,6 +39,7 @@ var (
 	disableHttp            bool
 	httpPort               int
 	enableMimetypes        bool
+	readOnly               bool
 	allowedDomains         string
 	logDir                 string
 	disableSaveLogfile     bool
