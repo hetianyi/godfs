@@ -26,7 +26,9 @@ func ValidateStorageConfig(c *common.StorageConfig) error {
 
 	ExchangeEnvValue("port", func(envValue string) {
 		p, err := convert.StrToInt(envValue)
-		logger.Fatal("invalid port number \"", envValue, "\": ", err)
+		if err != nil {
+			logger.Fatal("invalid port number \"", envValue, "\": ", err)
+		}
 		c.Port = p
 	})
 
@@ -38,7 +40,9 @@ func ValidateStorageConfig(c *common.StorageConfig) error {
 
 	ExchangeEnvValue("advertisePort", func(envValue string) {
 		p, err := convert.StrToInt(envValue)
-		logger.Fatal("invalid port number \"", envValue, "\": ", err)
+		if err != nil {
+			logger.Fatal("invalid port number \"", envValue, "\": ", err)
+		}
 		c.AdvertisePort = p
 	})
 
@@ -50,7 +54,9 @@ func ValidateStorageConfig(c *common.StorageConfig) error {
 
 	ExchangeEnvValue("httpPort", func(envValue string) {
 		p, err := convert.StrToInt(envValue)
-		logger.Fatal("invalid port number \"", envValue, "\": ", err)
+		if err != nil {
+			logger.Fatal("invalid port number \"", envValue, "\": ", err)
+		}
 		c.HttpPort = p
 	})
 
@@ -108,7 +114,9 @@ func ValidateStorageConfig(c *common.StorageConfig) error {
 
 	ExchangeEnvValue("maxRollingLogfileSize", func(envValue string) {
 		s, err := convert.StrToInt(envValue)
-		logger.Fatal("invalid size number \"", envValue, "\": ", err)
+		if err != nil {
+			logger.Fatal("invalid size number \"", envValue, "\": ", err)
+		}
 		c.MaxRollingLogfileSize = s
 	})
 
@@ -125,7 +133,9 @@ func ValidateStorageConfig(c *common.StorageConfig) error {
 
 	ExchangeEnvValue("disableLogfile", func(envValue string) {
 		b, err := convert.StrToBool(envValue)
-		logger.Fatal("invalid bool value \"", envValue, "\": ", err)
+		if err != nil {
+			logger.Fatal("invalid bool value \"", envValue, "\": ", err)
+		}
 		c.SaveLog2File = !b
 	})
 
@@ -197,7 +207,9 @@ func ValidateTrackerConfig(c *common.TrackerConfig) error {
 
 	ExchangeEnvValue("port", func(envValue string) {
 		p, err := convert.StrToInt(envValue)
-		logger.Fatal("invalid port number \"", envValue, "\": ", err)
+		if err != nil {
+			logger.Fatal("invalid port number \"", envValue, "\": ", err)
+		}
 		c.Port = p
 	})
 
@@ -209,7 +221,9 @@ func ValidateTrackerConfig(c *common.TrackerConfig) error {
 
 	ExchangeEnvValue("advertisePort", func(envValue string) {
 		p, err := convert.StrToInt(envValue)
-		logger.Fatal("invalid port number \"", envValue, "\": ", err)
+		if err != nil {
+			logger.Fatal("invalid port number \"", envValue, "\": ", err)
+		}
 		c.AdvertisePort = p
 	})
 
@@ -221,7 +235,9 @@ func ValidateTrackerConfig(c *common.TrackerConfig) error {
 
 	ExchangeEnvValue("httpPort", func(envValue string) {
 		p, err := convert.StrToInt(envValue)
-		logger.Fatal("invalid port number \"", envValue, "\": ", err)
+		if err != nil {
+			logger.Fatal("invalid port number \"", envValue, "\": ", err)
+		}
 		c.HttpPort = p
 	})
 
@@ -267,7 +283,9 @@ func ValidateTrackerConfig(c *common.TrackerConfig) error {
 
 	ExchangeEnvValue("maxRollingLogfileSize", func(envValue string) {
 		s, err := convert.StrToInt(envValue)
-		logger.Fatal("invalid size number \"", envValue, "\": ", err)
+		if err != nil {
+			logger.Fatal("invalid size number \"", envValue, "\": ", err)
+		}
 		c.MaxRollingLogfileSize = s
 	})
 
@@ -284,7 +302,9 @@ func ValidateTrackerConfig(c *common.TrackerConfig) error {
 
 	ExchangeEnvValue("disableLogfile", func(envValue string) {
 		b, err := convert.StrToBool(envValue)
-		logger.Fatal("invalid bool value \"", envValue, "\": ", err)
+		if err != nil {
+			logger.Fatal("invalid bool value \"", envValue, "\": ", err)
+		}
 		c.SaveLog2File = !b
 	})
 
