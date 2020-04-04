@@ -62,6 +62,7 @@ func ConfigAssembly(bm common.BootMode) interface{} {
 		c.LogRotationInterval = logRotationInterval
 		c.MaxRollingLogfileSize = maxLogfileSize
 		c.SaveLog2File = !disableSaveLogfile
+		c.Readonly = readOnly
 
 		if defaultAccessMode == "public" {
 			c.PublicAccessMode = true

@@ -35,7 +35,6 @@ type Config struct {
 
 // ClientAPI is godfs APIClient interface.
 type ClientAPI interface {
-
 	// SetConfig sets or refresh client server config.
 	SetConfig(config *Config)
 
@@ -123,7 +122,7 @@ func (c *clientAPIImpl) Upload(src io.Reader, length int64, group string, isPriv
 	gox.Try(func() {
 		for {
 			// select storage server.
-			selectedStorage = c.selectStorageServer(group, exclude)
+			selectedStorage = c.selectStorageServer(group, true, exclude)
 			if selectedStorage == nil {
 				if lastErr == nil {
 					lastErr = NoStorageServerErr
@@ -236,7 +235,7 @@ func (c *clientAPIImpl) DownloadFrom(fileId string, offset int64, length int64, 
 					Server: *server,
 				}
 			} else {
-				selectedStorage = c.selectStorageServer(fileInfo.Group, exclude)
+				selectedStorage = c.selectStorageServer(fileInfo.Group, false, exclude)
 			}
 			if selectedStorage == nil {
 				if lastErr == nil {
@@ -333,7 +332,7 @@ func (c *clientAPIImpl) Query(fileId string) (*common.FileInfo, error) {
 	// TODO offline function
 	gox.Try(func() {
 		for {
-			selectedStorage = c.selectStorageServer("", exclude)
+			selectedStorage = c.selectStorageServer("", false, exclude)
 			if selectedStorage == nil {
 				if lastErr == nil {
 					lastErr = NoStorageServerErr
@@ -605,7 +604,8 @@ func authenticate(p *gpip.Pip, server conn.Server) error {
 			},
 			Role: common.ROLE_STORAGE,
 			Attributes: map[string]string{
-				"group": conf.Group,
+				"group":    conf.Group,
+				"readonly": convert.BoolToStr(conf.Readonly),
 			},
 		}
 	} /* else if common.BootAs == common.BOOT_PROXY {} */
@@ -634,15 +634,20 @@ func authenticate(p *gpip.Pip, server conn.Server) error {
 }
 
 // selectStorageServer selects proper storage server.
-func (c *clientAPIImpl) selectStorageServer(group string, exclude *list.List) *common.StorageServer {
+func (c *clientAPIImpl) selectStorageServer(group string, uploadable bool, exclude *list.List) *common.StorageServer {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 
 	logger.Debug("select storage server")
 
 	var candidates = list.New()
+	var syncStorages *list.List
 	// if registered storage server is not empty, use it first.
-	syncStorages := FilterInstances(common.ROLE_STORAGE)
+	if uploadable {
+		syncStorages = FilterUploadableInstances()
+	} else {
+		syncStorages = FilterInstances(common.ROLE_STORAGE)
+	}
 	if syncStorages.Len() > 0 {
 		for ele := syncStorages.Front(); ele != nil; ele = ele.Next() {
 			s := ele.Value.(*common.Instance)

@@ -6,6 +6,7 @@ import (
 	"github.com/hetianyi/godfs/binlog"
 	"github.com/hetianyi/godfs/common"
 	"github.com/hetianyi/godfs/util"
+	"github.com/hetianyi/gox"
 	"github.com/hetianyi/gox/convert"
 	"github.com/hetianyi/gox/file"
 	"github.com/hetianyi/gox/gpip"
@@ -35,7 +36,9 @@ func StartStorageTcpServer() {
 	logger.Info(" tcp server listening on ",
 		common.InitializedStorageConfiguration.BindAddress, ":",
 		common.InitializedStorageConfiguration.Port)
-	logger.Info(aurora.BrightGreen("::: storage server started :::"))
+	logger.Info("my instance id: ", common.InitializedStorageConfiguration.InstanceId)
+	logger.Info(aurora.BrightGreen("::: storage server started " +
+		gox.TValue(common.InitializedStorageConfiguration.Readonly, "in READONLY mode ", "").(string) + ":::"))
 
 	// running in cluster mode.
 	if common.InitializedStorageConfiguration.ParsedTrackers != nil &&

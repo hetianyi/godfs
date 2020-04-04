@@ -97,6 +97,20 @@ func FilterInstanceByInstanceId(instanceId string) *common.Instance {
 	return nil
 }
 
+// FilterReadonlyInstances gets readonly storage instance.
+func FilterUploadableInstances() *list.List {
+	syncLock.Lock()
+	defer syncLock.Unlock()
+
+	ret := list.New()
+	for _, v := range syncInstances {
+		if v.instance.Role == common.ROLE_STORAGE && v.instance.Attributes["readonly"] != "true" {
+			ret.PushBack(v.instance)
+		}
+	}
+	return ret
+}
+
 func expireDetection() {
 	// allow 2 round failure synchronization
 	timer.Start(0, 0, common.SYNCHRONIZE_INTERVAL, func(t *timer.Timer) {

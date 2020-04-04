@@ -35,6 +35,7 @@ type StorageConfig struct {
 	EnableHttp            bool     `json:"enableHttp"`
 	HttpPort              int      `json:"httpPort"`
 	EnableMimeTypes       bool     `json:"enableMimeTypes"`
+	Readonly              bool     `json:"readonly"`
 	PublicAccessMode      bool     `json:"publicAccessMode"`
 	AllowedDomains        []string `json:"allowedDomains"`
 	InstanceId            string

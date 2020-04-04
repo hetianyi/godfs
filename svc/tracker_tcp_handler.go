@@ -29,6 +29,7 @@ func StartTrackerTcpServer() {
 	logger.Info(" tcp server listening on ",
 		common.InitializedTrackerConfiguration.BindAddress, ":",
 		common.InitializedTrackerConfiguration.Port)
+	logger.Info("my instance id: ", common.InitializedTrackerConfiguration.InstanceId)
 	logger.Info(aurora.BrightGreen("::: tracker server started :::"))
 
 	// running in cluster mode.
