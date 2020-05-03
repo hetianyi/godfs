@@ -76,7 +76,7 @@ func ConfigAssembly(bm common.BootMode) interface{} {
 		c.LogDir = logDir
 
 		if dataDir == "" {
-			dataDir = util.DefaultDataDir()
+			dataDir = util.DefaultDataDir(bm)
 		}
 		c.DataDir = dataDir
 		c.TmpDir = dataDir + "/tmp"
@@ -107,6 +107,37 @@ func ConfigAssembly(bm common.BootMode) interface{} {
 		}
 		common.InitializedStorageConfiguration = c
 		return c
+	} else if bm == common.BOOT_AGENT {
+		c := &common.AgentConfig{}
+		c.Port = gox.TValue(port <= 0, common.DEFAULT_STORAGE_TCP_PORT, port).(int)
+		c.HttpPort = gox.TValue(httpPort <= 0, common.DEFAULT_STORAGE_HTTP_PORT, httpPort).(int)
+		c.Secret = secret
+		c.LogLevel = logLevel
+		c.LogRotationInterval = logRotationInterval
+		c.MaxRollingLogfileSize = maxLogfileSize
+		c.SaveLog2File = !disableSaveLogfile
+
+		if logDir == "" {
+			logDir = util.DefaultLogDir()
+		}
+		c.LogDir = logDir
+
+		if dataDir == "" {
+			dataDir = util.DefaultDataDir(bm)
+		}
+		c.DataDir = dataDir
+		c.TmpDir = dataDir + "/tmp"
+
+		if bindAddress == "" {
+			bindAddress = "127.0.0.1"
+		}
+		c.BindAddress = bindAddress
+
+		if trackers != "" {
+			c.Trackers = strings.Split(trackers, ",")
+		}
+		common.InitializedAgentConfiguration = c
+		return c
 	} else if bm == common.BOOT_TRACKER {
 		c := &common.TrackerConfig{}
 		c.Port = gox.TValue(port <= 0, common.DEFAULT_TRACKER_TCP_PORT, port).(int)
@@ -124,7 +155,7 @@ func ConfigAssembly(bm common.BootMode) interface{} {
 		c.LogDir = logDir
 
 		if dataDir == "" {
-			dataDir = util.DefaultDataDir()
+			dataDir = util.DefaultDataDir(bm)
 		}
 		c.DataDir = dataDir
 

@@ -44,6 +44,24 @@ type StorageConfig struct {
 	ParsedTrackers        []Server
 }
 
+type AgentConfig struct {
+	Trackers              []string `json:"trackers"`
+	Secret                string   `json:"secret"`
+	BindAddress           string   `json:"bindAddress"`
+	Port                  int      `json:"port"`
+	DataDir               string   `json:"dataDir"`
+	LogLevel              string   `json:"logLevel"`
+	LogDir                string   `json:"logDir"`
+	SaveLog2File          bool     `json:"saveLog2File"`
+	MaxRollingLogfileSize int      `json:"maxRollingLogfileSize"`
+	LogRotationInterval   string   `json:"logRotationInterval"`
+	HttpPort              int      `json:"httpPort"`
+	InstanceId            string
+	HistorySecrets        map[string]string
+	TmpDir                string
+	ParsedTrackers        []Server
+}
+
 type TrackerConfig struct {
 	Trackers              []string `json:"trackers"`
 	Secret                string   `json:"secret"`

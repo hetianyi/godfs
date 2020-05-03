@@ -268,6 +268,84 @@ func Parse(arguments []string) {
 			},
 		},
 		{
+			Name:  "agent",
+			Usage: "start as agent server",
+			Action: func(c *cli.Context) error {
+				finalCommand = common.CMD_BOOT_AGENT
+				return nil
+			},
+			Flags: []cli.Flag{
+				cli.StringFlag{
+					Name:  "log-level",
+					Value: "",
+					Usage: `set log level, available options:
+	(trace|debug|info|warn|error|fatal)`,
+					Destination: &logLevel,
+				},
+				cli.StringFlag{
+					Name:        "secret, s",
+					Value:       "",
+					Usage:       "custom global secret",
+					Destination: &secret,
+				},
+				cli.StringFlag{
+					Name:        "bind-address",
+					Value:       "",
+					Usage:       "bind listening address",
+					Destination: &bindAddress,
+				},
+				cli.IntFlag{
+					Name:        "port, p",
+					Value:       0,
+					Usage:       "server tcp port",
+					Destination: &port,
+				},
+				cli.StringFlag{
+					Name:        "data-dir",
+					Value:       "",
+					Usage:       "data directory",
+					Destination: &dataDir,
+				},
+				cli.IntFlag{
+					Name:        "http-port",
+					Value:       0,
+					Usage:       "http port",
+					Destination: &httpPort,
+				},
+				cli.StringFlag{
+					Name:  "trackers",
+					Value: "",
+					Usage: `set tracker servers, example:
+	[<secret1>@]host1:port1,[<secret2>@]host2:port2`,
+					Destination: &trackers,
+				},
+				cli.StringFlag{
+					Name:        "log-dir",
+					Value:       "",
+					Usage:       "set log directory",
+					Destination: &logDir,
+				},
+				cli.IntFlag{
+					Name:  "max-logfile-size",
+					Value: 0,
+					Usage: `rolling log file max size, available options:
+	(0|64|128|256|512|1024)`,
+					Destination: &maxLogfileSize,
+				},
+				cli.StringFlag{
+					Name:        "log-rotation-interval",
+					Value:       "d",
+					Usage:       "log rotation interval(h|d|m|y)",
+					Destination: &logRotationInterval,
+				},
+				cli.BoolFlag{
+					Name:        "disable-logfile",
+					Usage:       "disable save log to file",
+					Destination: &disableSaveLogfile,
+				},
+			},
+		},
+		{
 			Name:  "client",
 			Usage: "godfs client cli",
 			Action: func(c *cli.Context) error {

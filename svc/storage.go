@@ -18,7 +18,7 @@ func BootStorageServer() {
 		os.Exit(1)
 	}
 
-	if err := util.PrepareDirs(); err != nil {
+	if err := util.PrepareDirs(common.InitializedStorageConfiguration.TmpDir); err != nil {
 		logger.Fatal("cannot create tmp dir: ", err)
 	}
 

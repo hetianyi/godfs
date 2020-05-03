@@ -199,6 +199,161 @@ func ValidateStorageConfig(c *common.StorageConfig) error {
 	return nil
 }
 
+// ValidateAgentConfig validates agent config.
+func ValidateAgentConfig(c *common.AgentConfig) error {
+	if c == nil {
+		return errors.New("no config provided")
+	}
+
+	ExchangeEnvValue("port", func(envValue string) {
+		p, err := convert.StrToInt(envValue)
+		if err != nil {
+			logger.Fatal("invalid port number \"", envValue, "\": ", err)
+		}
+		c.Port = p
+	})
+
+	// check port range
+	if c.Port < 0 || c.Port > 65535 {
+		return errors.New("invalid port number \"" +
+			convert.IntToStr(c.Port) + "\", port number must in the range of 0 to 65535")
+	}
+
+	ExchangeEnvValue("httpPort", func(envValue string) {
+		p, err := convert.StrToInt(envValue)
+		if err != nil {
+			logger.Fatal("invalid port number \"", envValue, "\": ", err)
+		}
+		c.HttpPort = p
+	})
+
+	// check http port range
+	if c.HttpPort < 0 || c.HttpPort > 65535 {
+		return errors.New("invalid http port number " +
+			convert.IntToStr(c.Port) + ", port number must in the range of 0 to 65535")
+	}
+
+	ExchangeEnvValue("secret", func(envValue string) {
+		c.Secret = envValue
+	})
+
+	// check secret
+	if c.Secret != "" {
+		if m, err := regexp.MatchString(common.SECRET_PATTERN, c.Secret); err != nil || !m {
+			return errors.New("invalid secret \"" + c.Secret +
+				"\", secret must match pattern " + common.SECRET_PATTERN)
+		}
+	}
+
+	ExchangeEnvValue("logLevel", func(envValue string) {
+		c.LogLevel = envValue
+	})
+
+	// check log level
+	c.LogLevel = strings.ToLower(c.LogLevel)
+	if c.LogLevel != "trace" && c.LogLevel != "debug" && c.LogLevel != "info" &&
+		c.LogLevel != "warn" && c.LogLevel != "error" && c.LogLevel != "fatal" {
+		c.LogLevel = "info"
+	}
+
+	ExchangeEnvValue("logRotationInterval", func(envValue string) {
+		c.LogRotationInterval = envValue
+	})
+
+	// check log rotation interval
+	c.LogRotationInterval = strings.ToLower(c.LogRotationInterval)
+	if c.LogRotationInterval != "h" && c.LogRotationInterval != "d" &&
+		c.LogRotationInterval != "m" && c.LogRotationInterval != "y" {
+		c.LogRotationInterval = "y"
+	}
+
+	ExchangeEnvValue("maxRollingLogfileSize", func(envValue string) {
+		s, err := convert.StrToInt(envValue)
+		if err != nil {
+			logger.Fatal("invalid size number \"", envValue, "\": ", err)
+		}
+		c.MaxRollingLogfileSize = s
+	})
+
+	// check rolling log file size
+	if c.MaxRollingLogfileSize != 64 && c.MaxRollingLogfileSize != 128 &&
+		c.MaxRollingLogfileSize != 256 && c.MaxRollingLogfileSize != 512 &&
+		c.MaxRollingLogfileSize != 1024 {
+		c.MaxRollingLogfileSize = 64
+	}
+
+	ExchangeEnvValue("logDir", func(envValue string) {
+		c.LogDir = envValue
+	})
+
+	ExchangeEnvValue("disableLogfile", func(envValue string) {
+		b, err := convert.StrToBool(envValue)
+		if err != nil {
+			logger.Fatal("invalid bool value \"", envValue, "\": ", err)
+		}
+		c.SaveLog2File = !b
+	})
+
+	// prepare log directory
+	if c.SaveLog2File {
+		if !file.Exists(c.LogDir) {
+			if err := file.CreateDirs(c.LogDir); err != nil {
+				return err
+			}
+		}
+	}
+
+	ExchangeEnvValue("dataDir", func(envValue string) {
+		c.DataDir = envValue
+	})
+
+	c.DataDir = file.FixPath(c.DataDir)
+	if !file.Exists(c.DataDir) {
+		if err := file.CreateDirs(c.DataDir); err != nil {
+			return err
+		}
+	}
+
+	// initialize logger
+	logConfig := &logger.Config{
+		Level:              ConvertLogLevel(c.LogLevel),
+		RollingPolicy:      []int{ConvertRollInterval(c.LogRotationInterval), ConvertLogFileSize(c.MaxRollingLogfileSize)},
+		Write2File:         c.SaveLog2File,
+		AlwaysWriteConsole: true,
+		RollingFileDir:     c.LogDir,
+		RollingFileName:    "godfs-agent",
+	}
+
+	logger.Init(logConfig)
+
+	InitialConfigMap(c.DataDir + "/cfg.dat")
+
+	c.InstanceId = LoadInstanceData()
+
+	historySecret, err := loadHistorySecret(true, c.InstanceId, c.Secret)
+	if err != nil {
+		logger.Fatal(err)
+	}
+	c.HistorySecrets = historySecret
+	GenerateDecKey(c.Secret)
+
+	// parse tracker servers
+	if c.Trackers != nil {
+		if c.ParsedTrackers == nil {
+			c.ParsedTrackers = make([]common.Server, len(c.Trackers))
+		}
+		for i, t := range c.Trackers {
+			server, err := ParseServer(t)
+			if err != nil {
+				return err
+			}
+			c.ParsedTrackers[i] = *server
+		}
+	}
+	// done!
+	return nil
+}
+
 // ValidateTrackerConfig validates tracker config.
 func ValidateTrackerConfig(c *common.TrackerConfig) error {
 	if c == nil {

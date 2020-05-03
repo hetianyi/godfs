@@ -13,6 +13,11 @@ func call(cmd common.Command) {
 		ConfigAssembly(common.BOOT_STORAGE)
 		svc.BootStorageServer()
 		break
+	case common.CMD_BOOT_AGENT:
+		common.BootAs = common.BOOT_AGENT
+		ConfigAssembly(common.BOOT_AGENT)
+		svc.BootAgentServer()
+		break
 	case common.CMD_BOOT_TRACKER:
 		common.BootAs = common.BOOT_TRACKER
 		ConfigAssembly(common.BOOT_TRACKER)

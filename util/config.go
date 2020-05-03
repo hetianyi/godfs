@@ -3,6 +3,7 @@ package util
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"github.com/hetianyi/godfs/common"
 	"github.com/hetianyi/gox"
 	"github.com/hetianyi/gox/convert"
@@ -37,11 +38,11 @@ func LoadInstanceData() string {
 	return string(bInsId)
 }
 
-func PrepareDirs() error {
-	file.DeleteAll(common.InitializedStorageConfiguration.TmpDir)
+func PrepareDirs(tmpDir string) error {
+	file.DeleteAll(tmpDir)
 	// tmp dir
-	if !file.Exists(common.InitializedStorageConfiguration.TmpDir) {
-		return file.CreateDirs(common.InitializedStorageConfiguration.TmpDir)
+	if !file.Exists(tmpDir) {
+		return file.CreateDirs(tmpDir)
 	}
 	return nil
 }
@@ -90,15 +91,26 @@ func DefaultLogDir() string {
 }
 
 // DefaultLogDir returns default system log directory.
-func DefaultDataDir() string {
+func DefaultDataDir(mode common.BootMode) string {
 	user, err := homedir.Dir()
+	var middlePath = ""
+	if mode == common.BOOT_STORAGE {
+		middlePath = "Storage"
+	} else if mode == common.BOOT_TRACKER {
+		middlePath = "Tracker"
+	} else if mode == common.BOOT_CLIENT {
+		middlePath = "Client"
+	} else if mode == common.BOOT_AGENT {
+		middlePath = "Agent"
+	}
 	if err != nil {
+		fmt.Println("cannot get home dir, use tmp dir: " + err.Error())
 		return "/tmp/godfs"
 	}
 	if runtime.GOOS == "windows" {
-		return user + "\\AppData\\Local\\godfs\\Data"
+		return user + "\\AppData\\Local\\godfs\\" + middlePath
 	}
-	return user + "/godfs/data"
+	return user + "/godfs/" + strings.ToLower(middlePath)
 }
 
 func DefaultAdvertiseAddress() {

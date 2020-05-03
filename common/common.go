@@ -12,6 +12,7 @@ const (
 	BOOT_CLIENT  BootMode = 0
 	BOOT_STORAGE BootMode = 1
 	BOOT_TRACKER BootMode = 2
+	BOOT_AGENT   BootMode = 3
 	//
 	GROUP_PATTERN       = "^[0-9a-zA-Z-_]{1,30}$"
 	SECRET_PATTERN      = "^[^@]{1,30}$"
@@ -53,6 +54,7 @@ const (
 	CMD_BOOT_STORAGE   Command = 8
 	CMD_TEST_UPLOAD    Command = 9
 	CMD_GENERATE_TOKEN Command = 10
+	CMD_BOOT_AGENT     Command = 11
 	//
 	ROLE_TRACKER Role = 1
 	ROLE_STORAGE Role = 2
@@ -78,6 +80,7 @@ var (
 	ServerErr                       = errors.New("server internal error")
 	InitializedTrackerConfiguration *TrackerConfig
 	InitializedStorageConfiguration *StorageConfig
+	InitializedAgentConfiguration   *AgentConfig
 	InitializedClientConfiguration  *ClientConfig
 	FileMetaPatternRegexp           = regexp.MustCompile(FILE_META_PATTERN)
 	ServerPatternRegexp             = regexp.MustCompile(SERVER_PATTERN)
