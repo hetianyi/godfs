@@ -2,7 +2,6 @@ package util
 
 import (
 	"net/http"
-	"strconv"
 )
 
 func HttpFileNotFoundError(w http.ResponseWriter) {
@@ -20,5 +19,5 @@ func HttpForbiddenError(w http.ResponseWriter, message string) {
 // HttpWriteResponse writes error response.
 func HttpWriteResponse(writer http.ResponseWriter, statusCode int, message string) {
 	writer.WriteHeader(statusCode)
-	writer.Write([]byte(strconv.Itoa(statusCode) + " " + message))
+	writer.Write([]byte(message))
 }

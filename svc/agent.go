@@ -30,5 +30,7 @@ func BootAgentServer() {
 	// print godfs logo.
 	util.PrintLogo()
 
+	StartAgentTcpServer()
+
 	StartAgentHttpServer(common.InitializedAgentConfiguration)
 }

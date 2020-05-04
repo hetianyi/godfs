@@ -40,9 +40,6 @@ func StartAgentTcpServer() {
 			TrackerServers:          servers,
 		}
 		InitializeClientAPI(config)
-		for _, s := range servers {
-			go binlogPusher(s)
-		}
 	}
 
 	// TODO tcp agent is not ready yet.

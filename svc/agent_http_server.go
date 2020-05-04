@@ -2,20 +2,17 @@ package svc
 
 import (
 	"container/list"
-	"fmt"
 	"github.com/gorilla/mux"
 	"github.com/hetianyi/godfs/api"
 	"github.com/hetianyi/godfs/common"
 	"github.com/hetianyi/godfs/util"
 	"github.com/hetianyi/gox"
-	"github.com/hetianyi/gox/conn"
 	"github.com/hetianyi/gox/convert"
 	"github.com/hetianyi/gox/file"
 	"github.com/hetianyi/gox/httpx"
 	"github.com/hetianyi/gox/logger"
 	"github.com/hetianyi/gox/uuid"
 	"io"
-	"net"
 	"net/http"
 	"os"
 	"strings"
@@ -68,8 +65,6 @@ func proxyHttpUpload1(w http.ResponseWriter, r *http.Request) {
 
 	logger.Debug("begin to upload file")
 
-	fmt.Println(r.URL.Path)
-
 	group := strings.TrimSpace(r.URL.Query().Get("group"))
 
 	headers := r.Header
@@ -81,7 +76,6 @@ func proxyHttpUpload1(w http.ResponseWriter, r *http.Request) {
 	var exclude = list.New()                  // excluded storage list
 	var selectedStorage *common.StorageServer // target server for file uploading.
 	var lastErr error
-	var lastConn *net.Conn
 
 	gox.Try(func() {
 		for {
@@ -94,7 +88,11 @@ func proxyHttpUpload1(w http.ResponseWriter, r *http.Request) {
 				break
 			}
 
-			req, err := http.NewRequest("POST", r.RequestURI, r.Body)
+			logger.Info("agent upload to target server: ", selectedStorage.Host, ":", convert.Uint16ToStr(selectedStorage.HttpPort), "(", selectedStorage.InstanceId, ")")
+
+			req, err := http.NewRequest("POST",
+				"http://"+selectedStorage.GetHost()+":"+convert.Uint16ToStr(selectedStorage.HttpPort)+r.RequestURI,
+				r.Body)
 			if err != nil {
 				logger.Error(err)
 				continue
@@ -113,22 +111,27 @@ func proxyHttpUpload1(w http.ResponseWriter, r *http.Request) {
 			}
 
 			code := resp.StatusCode
-
 			if code == http.StatusOK {
 				logger.Debug("upload success")
 			} else {
 				logger.Debug("upload failed")
 			}
+
+			for k, v := range resp.Header {
+				for _, h := range v {
+					w.Header().Add(k, h)
+				}
+			}
+			b := make([]byte, resp.ContentLength)
+			resp.Body.Read(b)
+			w.WriteHeader(code)
+			w.Write(b)
 			break
 		}
 	}, func(e interface{}) {
 		lastErr = e.(error)
 		panic(lastErr)
 	})
-	// lastConn should be returned and set to nil.
-	if lastConn != nil {
-		conn.ReturnConnection(selectedStorage, lastConn, nil, true)
-	}
 }
 
 // httpDownload handles http file upload.
