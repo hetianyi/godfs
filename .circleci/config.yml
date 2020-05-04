@@ -1,24 +1,1 @@
-version: 2
-jobs:
-  build-godfs:
-    machine: true
-    working_directory: ~/godfs
-    # The primary container is an instance of the first image listed. The job's commands run in this container.
-    steps:
-      - checkout
-      # Download and cache dependencies
-      - run:
-          name: build godfs
-          command: |
-            echo "$dockerhub_pass" | docker login -u "$dockerhub_user" --password-stdin
-            git checkout 2.0.0-dev
-            cd docker
-            docker build --no-cache -t hehety/godfs:2.0.0-dev .
-            docker push hehety/godfs:2.0.0-dev
-
-
-workflows:
-  version: 2
-  build-all:
-    jobs:
-      - build-godfs
+version: 2jobs:  build-godfs:    machine: true    working_directory: ~/godfs    # The primary container is an instance of the first image listed. The job's commands run in this container.    steps:      - checkout      # Download and cache dependencies      - run:          name: build godfs          command: |            echo "$dockerhub_pass" | docker login -u "$dockerhub_user" --password-stdin            git checkout 2.0.0-dev            cd docker            docker build --no-cache -t hehety/godfs:2.0.0-dev .            docker push hehety/godfs:2.0.0-devworkflows:  version: 2  build-all:    jobs:      - build-godfs

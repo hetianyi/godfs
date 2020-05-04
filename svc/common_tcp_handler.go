@@ -91,11 +91,13 @@ func authenticationHandler(header *common.Header, secret string) (*common.Header
 					Msg:    err.Error(),
 				}, nil, nil, 0, err
 			}
-			if err := reg.Put(instance); err != nil {
-				return &common.Header{
-					Result: common.ERROR,
-					Msg:    err.Error(),
-				}, nil, nil, 0, err
+			if instance.InstanceId != "" {
+				if err := reg.Put(instance); err != nil {
+					return &common.Header{
+						Result: common.ERROR,
+						Msg:    err.Error(),
+					}, nil, nil, 0, err
+				}
 			}
 		}
 	}

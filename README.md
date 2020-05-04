@@ -78,6 +78,13 @@ godfs tracker [options]
 godfs storage [options]
 ```
 
+启动agent服务:
+
+```shell
+godfs agent [options]
+```
+
+> agent为新增节点角色，是storage server的代理，能够代理后端storage服务文件的上传下载，提供给前端服务一个统一的入口点，尤其在http协议下能够屏蔽组内文件同步的延时问题和下载容错问题。
 
 上传文件:
 
