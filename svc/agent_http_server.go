@@ -8,13 +8,9 @@ import (
 	"github.com/hetianyi/godfs/util"
 	"github.com/hetianyi/gox"
 	"github.com/hetianyi/gox/convert"
-	"github.com/hetianyi/gox/file"
-	"github.com/hetianyi/gox/httpx"
 	"github.com/hetianyi/gox/logger"
-	"github.com/hetianyi/gox/uuid"
 	"io"
 	"net/http"
-	"os"
 	"strings"
 	"time"
 )
@@ -159,24 +155,11 @@ func proxyHttpDownload(w http.ResponseWriter, r *http.Request) {
 	fid := ""
 	token := ""
 	timestamp := ""
-	fileName := ""
-	// if EnableMimeTypes is on and fileName is not empty,
-	// EnableMimeTypes will be ignored.
-	ext := ""
 	qs := r.URL.Query()
 	if qs != nil {
 		fid = qs.Get("id")
-		fileName = qs.Get("fn")
-		ext = qs.Get("type")
 		token = qs.Get("token")
 		timestamp = qs.Get("timestamp")
-		// custom content type
-		if fileName == "" {
-			fileName = qs.Get("fileName")
-		}
-		if fileName != "" {
-			ext = file.GetFileExt(fileName)
-		}
 		if token == "" {
 			token = qs.Get("tk")
 		}
@@ -185,14 +168,7 @@ func proxyHttpDownload(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// query and determine if the file exists.
-	if c, err := Contains(fid); !c || err != nil {
-		logger.Debug("error query fileId: ", c, "<->", err)
-		util.HttpFileNotFoundError(w)
-		return
-	}
-
-	info, curSecret, err := util.ParseAlias(fid, common.InitializedStorageConfiguration.Secret)
+	info, curSecret, err := util.ParseAlias(fid, common.InitializedAgentConfiguration.Secret)
 	if err != nil {
 		logger.Debug("error parse alias: ", err)
 		util.HttpFileNotFoundError(w)
@@ -217,31 +193,79 @@ func proxyHttpDownload(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	filePath := strings.Join([]string{common.InitializedStorageConfiguration.DataDir, info.Path}, "/")
-	fileInfo, err := os.Stat(filePath)
-	if err != nil {
-		logger.Debug("error stat file: ", info.Path, ": ", err)
-		util.HttpFileNotFoundError(w)
-		return
-	}
-	if fileInfo.Size() < 4 {
-		logger.Debug("invalid file length")
-		util.HttpInternalServerError(w, "Internal Server Error.")
-		return
+	initialInstance := false
+	if time.Now().Unix()-info.CreateTime < 300 { // 5min
+		initialInstance = true
 	}
 
-	outFile, err := file.GetFile(filePath)
-	if err != nil {
-		logger.Debug("error open file: ", info.Path, ": ", err)
-		util.HttpFileNotFoundError(w)
-		return
-	}
-	sr := io.NewSectionReader(outFile, 0, fileInfo.Size()-4)
+	var exclude = list.New()                  // excluded storage list
+	var selectedStorage *common.StorageServer // target server for file uploading.
+	var lastErr error
 
-	if fileName != "" {
-		headers.Set("Content-Disposition", "attachment;filename=\""+fileName+"\"")
-	} else if fileName == "" && ext != "" {
-		fileName = uuid.UUID() + "." + ext
-	}
-	httpx.ServeContent(w, r, fileName, fileInfo.ModTime(), sr, fileInfo.Size()-4)
+	gox.Try(func() {
+		for {
+			if initialInstance {
+				initialInstance = false
+				ins := api.FilterInstanceByInstanceId(info.InstanceId)
+				if ins == nil {
+					continue
+				}
+				selectedStorage = &common.StorageServer{
+					Server: ins.Server,
+					Group:  info.Group,
+				}
+				logger.Info("download from source server: ", selectedStorage.Host, ":", convert.Uint16ToStr(selectedStorage.HttpPort), "(", selectedStorage.InstanceId, ")")
+			}
+			if selectedStorage == nil {
+				// select storage server.
+				selectedStorage = clientAPI.SelectStorageServer(info.Group, false, exclude)
+			}
+			if selectedStorage == nil {
+				if lastErr == nil {
+					lastErr = api.NoStorageServerErr
+				}
+				break
+			}
+
+			req, err := http.NewRequest("GET",
+				"http://"+selectedStorage.GetHost()+":"+convert.Uint16ToStr(selectedStorage.HttpPort)+r.RequestURI, nil)
+			if err != nil {
+				logger.Error(err)
+				continue
+			}
+
+			for k, v := range r.Header {
+				for _, h := range v {
+					req.Header.Add(k, h)
+				}
+			}
+
+			resp, err := httpClient.Do(req)
+			if err != nil {
+				logger.Error(err)
+				return
+			}
+
+			code := resp.StatusCode
+			if code == http.StatusOK {
+				logger.Debug("upload success")
+			} else {
+				logger.Debug("upload failed")
+			}
+
+			for k, v := range resp.Header {
+				for _, h := range v {
+					w.Header().Set(k, h)
+				}
+			}
+			//b := make([]byte, resp.ContentLength)
+			//resp.Body.Read(b)
+			w.WriteHeader(code)
+			io.Copy(w, resp.Body)
+			break
+		}
+	}, func(e interface{}) {
+		lastErr = e.(error)
+		panic(lastErr)
+	})
 }
