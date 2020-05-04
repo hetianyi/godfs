@@ -1,33 +1,42 @@
 package svc
 
 import (
-	"bytes"
 	"container/list"
-	"errors"
+	"fmt"
 	"github.com/gorilla/mux"
-	"github.com/hetianyi/godfs/binlog"
+	"github.com/hetianyi/godfs/api"
 	"github.com/hetianyi/godfs/common"
 	"github.com/hetianyi/godfs/util"
 	"github.com/hetianyi/gox"
+	"github.com/hetianyi/gox/conn"
 	"github.com/hetianyi/gox/convert"
 	"github.com/hetianyi/gox/file"
 	"github.com/hetianyi/gox/httpx"
 	"github.com/hetianyi/gox/logger"
 	"github.com/hetianyi/gox/uuid"
-	json "github.com/json-iterator/go"
 	"io"
-	"mime/multipart"
+	"net"
 	"net/http"
 	"os"
 	"strings"
 	"time"
 )
 
+var (
+	httpClient *http.Client
+)
+
+func init() {
+	httpClient = &http.Client{
+		Timeout: time.Second * 20,
+	}
+}
+
 // StartStorageHttpServer starts an storage http server.
 func StartAgentHttpServer(c *common.AgentConfig) {
 	r := mux.NewRouter()
-	r.HandleFunc("/ul", proxyHttpUpload).Methods("POST")
-	r.HandleFunc("/upload", proxyHttpUpload).Methods("POST")
+	r.HandleFunc("/ul", proxyHttpUpload1).Methods("POST")
+	r.HandleFunc("/upload", proxyHttpUpload1).Methods("POST")
 	// r.HandleFunc("/upload1", httpUpload).Methods("POST")
 	r.HandleFunc("/dl", proxyHttpDownload).Methods("GET")
 	r.HandleFunc("/download", proxyHttpDownload).Methods("GET")
@@ -49,181 +58,6 @@ func StartAgentHttpServer(c *common.AgentConfig) {
 	}
 }
 
-// proxyHttpUpload handles http file upload.
-func proxyHttpUpload(w http.ResponseWriter, r *http.Request) {
-	defer r.Body.Close()
-
-	logger.Debug("accept new upload request")
-
-	increaseCountForTheSecond()
-
-	// file is private or public
-	s := strings.TrimSpace(r.URL.Query().Get("s"))
-	isPrivate := common.InitializedStorageConfiguration.PublicAccessMode
-	if s == "false" || s == "0" {
-		isPrivate = false
-	} else if s == "true" || s == "1" {
-		isPrivate = true
-	}
-
-	// formEntries stores form's text fields and file fields.
-	formEntries := list.New()
-	var result = make(map[string]interface{})
-	result["accessMode"] = gox.TValue(isPrivate, "private", "public")
-
-	// define a handler for file upload.
-	handler := &httpx.FileUploadHandler{
-		Request: r,
-	}
-
-	formEntryIndex := 0
-
-	// handle form text field.
-	handler.OnFormField = func(paraName, paraValue string) {
-		logger.Debug("form parameter: name=", paraName, ", value=", paraValue)
-		formEntryIndex++
-		formEntries.PushBack(FormEntry{
-			Index:          formEntryIndex,
-			Type:           FORM_TEXT,
-			ParameterName:  paraName,
-			ParameterValue: paraValue,
-			Size:           0,
-		})
-	}
-
-	// handle form file field.
-	handler.OnFileField = func(paraName, fileName string) *httpx.FileTransactionProcessor {
-		tmpFileName := ""
-		var out *os.File
-		var proxy *DigestProxyWriter
-		return &httpx.FileTransactionProcessor{
-			Before: func() error {
-				tmpFileName = common.InitializedStorageConfiguration.TmpDir + "/" + uuid.UUID()
-				o, err := file.CreateFile(tmpFileName)
-				if err != nil {
-					return err
-				}
-				out = o
-				proxy = &DigestProxyWriter{
-					crcH: util.CreateCrc32Hash(),
-					md5H: util.CreateMd5Hash(),
-					out:  out,
-				}
-				return nil
-			},
-			Error: func(err error) {
-				// close tmp file and delete it.
-				if out != nil {
-					out.Close()
-				}
-				file.Delete(tmpFileName)
-			},
-			Success: func() error {
-				logger.Debug("write tail")
-				// write reference count mark.
-				_, err := out.Write(tailRefCount)
-				if err != nil {
-					return err
-				}
-				out.Close()
-
-				// get file info.
-				fInfo, err := os.Stat(tmpFileName)
-				if err != nil {
-					return err
-				}
-
-				// get crc and md5.
-				crc32String := util.GetCrc32HashString(proxy.crcH)
-				md5String := util.GetMd5HashString(proxy.md5H)
-
-				// build target dir and fileId.
-				targetDir := strings.ToUpper(strings.Join([]string{crc32String[len(crc32String)-4 : len(crc32String)-2], "/",
-					crc32String[len(crc32String)-2:]}, ""))
-				targetLoc := common.InitializedStorageConfiguration.DataDir + "/" + targetDir
-				targetFile := common.InitializedStorageConfiguration.DataDir + "/" + targetDir + "/" + md5String
-				finalFileId := common.InitializedStorageConfiguration.Group + "/" + targetDir + "/" + md5String
-				logger.Debug("create alias")
-				finalFileId = util.CreateAlias(finalFileId, common.InitializedStorageConfiguration.InstanceId, isPrivate, time.Now())
-
-				if !file.Exists(targetLoc) {
-					if err := file.CreateDirs(targetLoc); err != nil {
-						return err
-					}
-				}
-				if !file.Exists(targetFile) {
-					logger.Debug("file not exists, move to target dir.")
-					if err := file.MoveFile(tmpFileName, targetFile); err != nil {
-						return err
-					}
-				} else {
-					logger.Debug("file already exists, increasing reference count.")
-					// increase file reference count.
-					if err = updateFileReferenceCount(targetFile, 1); err != nil {
-						return err
-					}
-				}
-				// write binlog.
-				logger.Debug("writing binlog...")
-				if err = writableBinlogManager.Write(binlog.CreateLocalBinlog(finalFileId,
-					fInfo.Size()-int64(len(tailRefCount)), common.InitializedStorageConfiguration.InstanceId)); err != nil {
-					return errors.New("error writing binlog: " + err.Error())
-				}
-
-				logger.Debug("add dataset...")
-				if err := Add(finalFileId); err != nil {
-					return err
-				}
-				logger.Debug("add dataset success")
-
-				// append form entry.
-				formEntryIndex++
-				formEntries.PushBack(FormEntry{
-					Index:          formEntryIndex,
-					Type:           FORM_FILE,
-					ParameterName:  paraName,
-					ParameterValue: fileName,
-					Size:           fInfo.Size() - int64(len(tailRefCount)),
-					Group:          common.InitializedStorageConfiguration.Group,
-					InstanceId:     common.InitializedStorageConfiguration.InstanceId,
-					FileId:         finalFileId,
-				})
-				return nil
-			},
-			Write: func(bs []byte) error {
-				_, err := proxy.Write(bs)
-				return err
-			},
-		}
-	}
-
-	// begin to parse form.
-	if err := handler.Parse(); err != nil {
-		logger.Error("error upload files: ", err)
-	}
-
-	// result form field entries
-	formEntriesArray := make([]FormEntry, formEntries.Len())
-	i := 0
-	gox.WalkList(formEntries, func(item interface{}) bool {
-		formEntriesArray[i] = item.(FormEntry)
-		i++
-		return false
-	})
-
-	result["form"] = formEntriesArray
-	retJSON, err := json.Marshal(result)
-	if err != nil {
-		logger.Debug(err)
-		util.HttpInternalServerError(w, "Internal Server Error.")
-		return
-	}
-
-	// write response.
-	w.Header().Set("Content-Type", "application/json;charset=UTF-8")
-	util.HttpWriteResponse(w, http.StatusOK, string(retJSON))
-}
-
 // httpUpload1 upload files using golang
 func proxyHttpUpload1(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
@@ -232,204 +66,69 @@ func proxyHttpUpload1(w http.ResponseWriter, r *http.Request) {
 
 	increaseCountForTheSecond()
 
-	// file is private or public
-	s := strings.TrimSpace(r.URL.Query().Get("s"))
-	isPrivate := common.InitializedStorageConfiguration.PublicAccessMode
-	if s == "false" || s == "0" {
-		isPrivate = false
-	} else if s == "true" || s == "1" {
-		isPrivate = true
+	logger.Debug("begin to upload file")
+
+	fmt.Println(r.URL.Path)
+
+	group := strings.TrimSpace(r.URL.Query().Get("group"))
+
+	headers := r.Header
+	copyHeaders := make(map[string]string)
+	for k, v := range headers {
+		copyHeaders[k] = v[0]
 	}
 
-	// formEntries stores form's text fields and file fields.
-	formEntries := list.New()
-	var result = make(map[string]interface{})
-	result["accessMode"] = gox.TValue(isPrivate, "private", "public")
-
-	// get form boundary
-	headerContentType := r.Header["Content-Type"]
-	var contentType, boundary string
-	if headerContentType != nil && len(headerContentType) > 0 {
-		contentType = headerContentType[0]
-	}
-	if RegexContentTypePattern.Match([]byte(contentType)) {
-		boundary = RegexContentTypePattern.ReplaceAllString(contentType, "${1}")
-	}
-
-	reader := multipart.NewReader(r.Body, boundary)
-
-	var buffer = new(bytes.Buffer)
+	var exclude = list.New()                  // excluded storage list
+	var selectedStorage *common.StorageServer // target server for file uploading.
 	var lastErr error
-	formEntryIndex := 0
+	var lastConn *net.Conn
 
-	for {
-		buffer.Reset()
-		p, err := reader.NextPart()
-		if err != nil {
-			if err == io.EOF {
+	gox.Try(func() {
+		for {
+			// select storage server.
+			selectedStorage = clientAPI.SelectStorageServer(group, true, exclude)
+			if selectedStorage == nil {
+				if lastErr == nil {
+					lastErr = api.NoStorageServerErr
+				}
 				break
 			}
-			logger.Debug(err)
-			lastErr = err
-			break
-		}
 
-		// read text field.
-		if strings.TrimSpace(p.FileName()) == "" {
-			if _, err := io.Copy(buffer, p); err != nil {
-				logger.Debug(err)
-				lastErr = err
-				break
+			req, err := http.NewRequest("POST", r.RequestURI, r.Body)
+			if err != nil {
+				logger.Error(err)
+				continue
 			}
-			formEntryIndex++
-			formEntries.PushBack(FormEntry{
-				Index:          formEntryIndex,
-				Type:           FORM_TEXT,
-				ParameterName:  p.FormName(),
-				ParameterValue: string(buffer.Bytes()),
-				Size:           0,
-			})
-			continue
-		}
 
-		// read file field.
-		tmpFileName := common.InitializedStorageConfiguration.TmpDir + "/" + uuid.UUID()
-		out, err := file.CreateFile(tmpFileName)
-		if err != nil {
-			logger.Debug(err)
-			lastErr = err
-			break
-		}
-
-		clean := func() {
-			out.Close()
-			file.Delete(tmpFileName)
-		}
-		proxy := &DigestProxyWriter{
-			crcH: util.CreateCrc32Hash(),
-			md5H: util.CreateMd5Hash(),
-			out:  out,
-		}
-		n, err := io.Copy(proxy, p)
-		if err != nil {
-			logger.Debug(err)
-			lastErr = err
-			clean()
-			break
-		}
-		logger.Debug("write tail")
-		// write reference count mark.
-		_, err = out.Write(tailRefCount)
-		if err != nil {
-			logger.Debug(err)
-			lastErr = err
-			clean()
-			break
-		}
-		out.Close()
-
-		// TODO duplicate code
-		// get crc and md5.
-		crc32String := util.GetCrc32HashString(proxy.crcH)
-		md5String := util.GetMd5HashString(proxy.md5H)
-
-		// build target dir and fileId.
-		targetDir := strings.ToUpper(strings.Join([]string{crc32String[len(crc32String)-4 : len(crc32String)-2], "/",
-			crc32String[len(crc32String)-2:]}, ""))
-		targetLoc := common.InitializedStorageConfiguration.DataDir + "/" + targetDir
-		targetFile := common.InitializedStorageConfiguration.DataDir + "/" + targetDir + "/" + md5String
-		finalFileId := common.InitializedStorageConfiguration.Group + "/" + targetDir + "/" + md5String
-
-		logger.Debug("create alias")
-
-		finalFileId = util.CreateAlias(finalFileId, common.InitializedStorageConfiguration.InstanceId, isPrivate, time.Now())
-
-		if !file.Exists(targetLoc) {
-			if err := file.CreateDirs(targetLoc); err != nil {
-				logger.Debug(err)
-				lastErr = err
-				clean()
-				break
+			for k, v := range r.Header {
+				for _, h := range v {
+					req.Header.Add(k, h)
+				}
 			}
-		}
-		if !file.Exists(targetFile) {
-			logger.Debug("file not exists, move to target dir.")
-			if err := file.MoveFile(tmpFileName, targetFile); err != nil {
-				logger.Debug(err)
-				lastErr = err
-				clean()
-				break
-			}
-		} else {
-			logger.Debug("file already exists, increasing reference count.")
-			// increase file reference count.
-			if err = updateFileReferenceCount(targetFile, 1); err != nil {
-				logger.Debug(err)
-				lastErr = err
-				clean()
-				break
-			}
-		}
 
-		// write binlog.
-		logger.Debug("write binlog...")
-		if err = writableBinlogManager.Write(binlog.CreateLocalBinlog(finalFileId,
-			n, common.InitializedStorageConfiguration.InstanceId)); err != nil {
-			lastErr = errors.New("error writing binlog: " + err.Error())
-			logger.Debug(lastErr)
-			clean()
+			resp, err := httpClient.Do(req)
+			if err != nil {
+				logger.Error(err)
+				return
+			}
+
+			code := resp.StatusCode
+
+			if code == http.StatusOK {
+				logger.Debug("upload success")
+			} else {
+				logger.Debug("upload failed")
+			}
 			break
 		}
-
-		logger.Debug("add dataset...")
-		if err := Add(finalFileId); err != nil {
-			logger.Debug(err)
-			lastErr = err
-			clean()
-			break
-		}
-		logger.Debug("add dataset success")
-
-		// append form entry.
-		formEntryIndex++
-		formEntries.PushBack(FormEntry{
-			Index:          formEntryIndex,
-			Type:           FORM_FILE,
-			ParameterName:  p.FormName(),
-			ParameterValue: p.FileName(),
-			Size:           n,
-			Group:          common.InitializedStorageConfiguration.Group,
-			InstanceId:     common.InitializedStorageConfiguration.InstanceId,
-			Md5:            md5String,
-			FileId:         finalFileId,
-		})
-	}
-
-	if lastErr != nil {
-		util.HttpInternalServerError(w, "Internal Server Error")
-		return
-	}
-
-	// result form field entries
-	formEntriesArray := make([]FormEntry, formEntries.Len())
-	i := 0
-	gox.WalkList(formEntries, func(item interface{}) bool {
-		formEntriesArray[i] = item.(FormEntry)
-		i++
-		return false
+	}, func(e interface{}) {
+		lastErr = e.(error)
+		panic(lastErr)
 	})
-
-	result["form"] = formEntriesArray
-	retJSON, err := json.Marshal(result)
-	if err != nil {
-		logger.Debug(err)
-		util.HttpInternalServerError(w, "Internal Server Error")
-		return
+	// lastConn should be returned and set to nil.
+	if lastConn != nil {
+		conn.ReturnConnection(selectedStorage, lastConn, nil, true)
 	}
-
-	// write response.
-	w.Header().Set("Content-Type", "application/json;charset=UTF-8")
-	util.HttpWriteResponse(w, http.StatusOK, string(retJSON))
 }
 
 // httpDownload handles http file upload.

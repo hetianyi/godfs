@@ -67,6 +67,9 @@ type ClientAPI interface {
 
 	// SyncBinlog synchronizes binlogs from other storage servers.
 	SyncBinlog(server *common.Server, clientState *common.BinlogQueryDTO) (*common.BinlogQueryResultDTO, error)
+
+	// SelectStorageServer selects proper storage server.
+	SelectStorageServer(group string, uploadable bool, exclude *list.List) *common.StorageServer
 }
 
 // NewClient creates a new APIClient.
@@ -122,7 +125,7 @@ func (c *clientAPIImpl) Upload(src io.Reader, length int64, group string, isPriv
 	gox.Try(func() {
 		for {
 			// select storage server.
-			selectedStorage = c.selectStorageServer(group, true, exclude)
+			selectedStorage = c.SelectStorageServer(group, true, exclude)
 			if selectedStorage == nil {
 				if lastErr == nil {
 					lastErr = NoStorageServerErr
@@ -235,7 +238,7 @@ func (c *clientAPIImpl) DownloadFrom(fileId string, offset int64, length int64, 
 					Server: *server,
 				}
 			} else {
-				selectedStorage = c.selectStorageServer(fileInfo.Group, false, exclude)
+				selectedStorage = c.SelectStorageServer(fileInfo.Group, false, exclude)
 			}
 			if selectedStorage == nil {
 				if lastErr == nil {
@@ -332,7 +335,7 @@ func (c *clientAPIImpl) Query(fileId string) (*common.FileInfo, error) {
 	// TODO offline function
 	gox.Try(func() {
 		for {
-			selectedStorage = c.selectStorageServer("", false, exclude)
+			selectedStorage = c.SelectStorageServer("", false, exclude)
 			if selectedStorage == nil {
 				if lastErr == nil {
 					lastErr = NoStorageServerErr
@@ -582,10 +585,12 @@ func authenticate(p *gpip.Pip, server conn.Server) error {
 	if common.BootAs == common.BOOT_TRACKER {
 		conf := common.InitializedTrackerConfiguration
 		advPort, _ := convert.StrToUint16(convert.IntToStr(conf.AdvertisePort))
+		advHttpPort, _ := convert.StrToUint16(convert.IntToStr(conf.HttpPort))
 		instance = &common.Instance{
 			Server: common.Server{
 				Host:       conf.AdvertiseAddress,
 				Port:       advPort,
+				HttpPort:   advHttpPort,
 				Secret:     conf.Secret,
 				InstanceId: conf.InstanceId,
 			},
@@ -594,10 +599,12 @@ func authenticate(p *gpip.Pip, server conn.Server) error {
 	} else if common.BootAs == common.BOOT_STORAGE {
 		conf := common.InitializedStorageConfiguration
 		advPort, _ := convert.StrToUint16(convert.IntToStr(conf.AdvertisePort))
+		advHttpPort, _ := convert.StrToUint16(convert.IntToStr(conf.HttpPort))
 		instance = &common.Instance{
 			Server: common.Server{
 				Host:           conf.AdvertiseAddress,
 				Port:           advPort,
+				HttpPort:       advHttpPort,
 				Secret:         conf.Secret,
 				InstanceId:     conf.InstanceId,
 				HistorySecrets: common.InitializedStorageConfiguration.HistorySecrets,
@@ -634,7 +641,7 @@ func authenticate(p *gpip.Pip, server conn.Server) error {
 }
 
 // selectStorageServer selects proper storage server.
-func (c *clientAPIImpl) selectStorageServer(group string, uploadable bool, exclude *list.List) *common.StorageServer {
+func (c *clientAPIImpl) SelectStorageServer(group string, uploadable bool, exclude *list.List) *common.StorageServer {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 

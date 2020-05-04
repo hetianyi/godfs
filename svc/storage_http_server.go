@@ -56,7 +56,7 @@ func init() {
 // StartStorageHttpServer starts an storage http server.
 func StartStorageHttpServer(c *common.StorageConfig) {
 	r := mux.NewRouter()
-	r.HandleFunc("/ul", httpUpload).Methods("POST")
+	r.HandleFunc("/ul", httpUpload1).Methods("POST")
 	r.HandleFunc("/upload", httpUpload1).Methods("POST")
 	// r.HandleFunc("/upload1", httpUpload).Methods("POST")
 	r.HandleFunc("/dl", httpDownload).Methods("GET")

@@ -165,7 +165,8 @@ func increaseCountForTheSecond() {
 	counterLock.Lock()
 	defer counterLock.Unlock()
 
-	counterLoop[counterPos] = counterLoop[counterPos] + 1
+	pos := counterPos
+	counterLoop[pos] = counterLoop[pos] + 1
 }
 
 func sumCounter() int {

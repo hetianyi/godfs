@@ -109,8 +109,8 @@ func ConfigAssembly(bm common.BootMode) interface{} {
 		return c
 	} else if bm == common.BOOT_AGENT {
 		c := &common.AgentConfig{}
-		c.Port = gox.TValue(port <= 0, common.DEFAULT_STORAGE_TCP_PORT, port).(int)
-		c.HttpPort = gox.TValue(httpPort <= 0, common.DEFAULT_STORAGE_HTTP_PORT, httpPort).(int)
+		c.Port = gox.TValue(port <= 0, common.DEFAULT_AGENT_TCP_PORT, port).(int)
+		c.HttpPort = gox.TValue(httpPort <= 0, common.DEFAULT_AGENT_HTTP_PORT, httpPort).(int)
 		c.Secret = secret
 		c.LogLevel = logLevel
 		c.LogRotationInterval = logRotationInterval

@@ -78,7 +78,7 @@ type TrackerConfig struct {
 	MaxRollingLogfileSize int    `json:"maxRollingLogfileSize"`
 	LogRotationInterval   string `json:"logRotationInterval"`
 	EnableHttp            bool   `json:"enableHttp"`
-	HttpPort              int    `json:"httpPort"`
+	HttpPort              int    `json:"httpPort"` // TODO add advertise http port
 	HistorySecrets        map[string]string
 	ParsedTrackers        []Server
 }
@@ -97,6 +97,7 @@ type ClientConfig struct {
 type Server struct {
 	Host           string            `json:"host"`
 	Port           uint16            `json:"port"`
+	HttpPort       uint16            `json:"httpPort"`
 	Secret         string            `json:"secret"`
 	HistorySecrets map[string]string `json:"history_secret"` // 历史密码
 	InstanceId     string            `json:"instanceId"`
