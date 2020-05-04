@@ -1,139 +1,1 @@
-version: '3.5'
-services:
-  tracker:
-    image: hehety/godfs:2.0.0-dev-arm32v7
-    networks:
-      - host
-    command:
-      - godfs
-      - tracker
-      - --bind-address
-      - 0.0.0.0
-      - --secret
-      - "123123"
-      - --data-dir
-      - /godfs/data
-      - --log-dir
-      - /godfs/logs
-      - --preferred-network
-      - wlan0
-    deploy:
-      replicas: 1
-      placement:
-        constraints:
-          - node.labels.tracker==true
-    volumes:
-      - tracker:/godfs
-
-  s1:
-    image: hehety/godfs:2.0.0-dev-arm32v7
-    networks:
-      - host
-    command:
-      - godfs
-      - storage
-      - --bind-address
-      - 0.0.0.0
-      - --secret
-      - "123123"
-      - --data-dir
-      - /godfs/data
-      - --log-dir
-      - /godfs/logs
-      - --trackers
-      - 123123@192.168.0.100:11706
-      - --preferred-network
-      - wlan0
-      - --log-level
-      - debug
-    deploy:
-      replicas: 1
-      placement:
-        constraints:
-          - node.labels.worker1==true
-    volumes:
-      - s1:/godfs
-
-
-  s2:
-    image: hehety/godfs:2.0.0-dev-arm32v7
-    networks:
-      - host
-    command:
-      - godfs
-      - storage
-      - --bind-address
-      - 0.0.0.0
-      - --secret
-      - "123123"
-      - --data-dir
-      - /godfs/data
-      - --log-dir
-      - /godfs/logs
-      - --trackers
-      - 123123@192.168.0.100:11706
-      - --preferred-network
-      - wlan0
-      - --log-level
-      - debug
-    deploy:
-      replicas: 1
-      placement:
-        constraints:
-          - node.labels.worker2==true
-    volumes:
-      - s2:/godfs
-
-
-  s3:
-    image: hehety/godfs:2.0.0-dev-arm32v7
-    networks:
-      - host
-    command:
-      - godfs
-      - storage
-      - --bind-address
-      - 0.0.0.0
-      - --secret
-      - "123123"
-      - --data-dir
-      - /godfs/data
-      - --log-dir
-      - /godfs/logs
-      - --trackers
-      - 123123@192.168.0.100:11706
-      - --preferred-network
-      - wlan0
-      - --log-level
-      - debug
-    deploy:
-      replicas: 1
-      placement:
-        constraints:
-          - node.labels.worker3==true
-    volumes:
-      - s3:/godfs
-
-
-networks:
-  host:
-    external: true
-
-volumes:
-  tracker:
-  s1:
-  s2:
-  s3:
-
-
-
-
-
-
-
-
-
-
-
-
-
+version: '3.5'services:  tracker:    image: hehety/godfs:2.0.0-dev-arm32v7    networks:      - host    command:      - godfs      - tracker      - --bind-address      - 0.0.0.0      - --secret      - "123123"      - --data-dir      - /godfs/data      - --log-dir      - /godfs/logs      - --preferred-network      - wlan0    deploy:      replicas: 1      placement:        constraints:          - node.labels.tracker==true    volumes:      - tracker:/godfs  s1:    image: hehety/godfs:2.0.0-dev-arm32v7    networks:      - host    command:      - godfs      - storage      - --bind-address      - 0.0.0.0      - --secret      - "123123"      - --data-dir      - /godfs/data      - --log-dir      - /godfs/logs      - --trackers      - 123123@192.168.0.100:11706      - --preferred-network      - wlan0      - --log-level      - debug    deploy:      replicas: 1      placement:        constraints:          - node.labels.worker1==true    volumes:      - s1:/godfs  s2:    image: hehety/godfs:2.0.0-dev-arm32v7    networks:      - host    command:      - godfs      - storage      - --bind-address      - 0.0.0.0      - --secret      - "123123"      - --data-dir      - /godfs/data      - --log-dir      - /godfs/logs      - --trackers      - 123123@192.168.0.100:11706      - --preferred-network      - wlan0      - --log-level      - debug    deploy:      replicas: 1      placement:        constraints:          - node.labels.worker2==true    volumes:      - s2:/godfs  s3:    image: hehety/godfs:2.0.0-dev-arm32v7    networks:      - host    command:      - godfs      - storage      - --bind-address      - 0.0.0.0      - --secret      - "123123"      - --data-dir      - /godfs/data      - --log-dir      - /godfs/logs      - --trackers      - 123123@192.168.0.100:11706      - --preferred-network      - wlan0      - --log-level      - debug    deploy:      replicas: 1      placement:        constraints:          - node.labels.worker3==true    volumes:      - s3:/godfsnetworks:  host:    external: truevolumes:  tracker:  s1:  s2:  s3:
