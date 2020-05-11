@@ -3,7 +3,7 @@ pipeline {
     agent {
       docker {
         customWorkspace '/tmp'
-        image 'hehety/golang:1.12.13-alpine3.9-arm32v7'
+        image 'hehety/docker-huild-golang:1.12.17-arm32v7'
         args '-v godfs_build_cache:/root/go'
       }
     }
