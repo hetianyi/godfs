@@ -1,36 +1,45 @@
-#!/usr/bin/groovy
-
 pipeline {
-    agent any
+
+    agent {
+      docker {
+        customWorkspace '/tmp'
+        image 'hehety/golang:1.12.13-alpine3.9-arm32v7'
+        args '-v godfs_build_cache:/root/go'
+      }
+    }
+
+    environment {
+      GOPROXY = "https://goproxy.io"
+    }
 
     stages {
-        stage('Pull Dependencies') {
-            steps {
-                echo '下载依赖...'
-                sh 'go mod tidy'
-            }
+      stage('Checkout') {
+        steps {
+          sh 'env'
+          echo 'checkout repository...'
+          checkout([$class: 'GitSCM', branches: [[name: '*/jenkins-pipeline']], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[url: 'https://github.com/hetianyi/godfs.git']]])
         }
+      }
 
-        stage('Build Binary') {
-            steps {
-                echo '构建可执行二进制文件...'
-                sh 'go build -o bin/godfs main.go'
-            }
+      stage('Pull Dependencies') {
+        steps {
+          echo 'pull dependencies...'
+          sh 'go mod tidy'
         }
+      }
 
-        stage('Build Docker Image') {
-            steps {
-                echo '构建Docker镜像...'
-            }
-            dir ('example') {
-                /* 构建镜像 */
-                def customImage = docker.build("hehety/godfs:${params.VERSION}-arm32v7")
-
-                docker.withRegistry('https://index.docker.io', 'docker-registry') {
-                    customImage.push()
-                    customImage.push('latest')
-                }
-            }
+      stage('Build') {
+        steps {
+          echo 'build binary file...'
+          sh 'go build -o bin/godfs main.go'
         }
+      }
+
+      stage('Clean') {
+        steps {
+          cleanWs()
+        }
+      }
+
     }
 }
